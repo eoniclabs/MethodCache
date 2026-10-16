@@ -1,0 +1,94 @@
+﻿
+  Determining projects to restore...
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Samples.Tests\MethodCache.Samples.Tests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.OpenTelemetry\MethodCache.OpenTelemetry.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.CodeFixes\MethodCache.CodeFixes.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Redis.IntegrationTests\MethodCache.Redis.IntegrationTests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Analyzers.Tests\MethodCache.Analyzers.Tests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.AspNetCore\MethodCache.AspNetCore.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.OpenTelemetry.Tests\MethodCache.OpenTelemetry.Tests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SqlServer.IntegrationTests\MethodCache.SqlServer.IntegrationTests.csproj (in 547 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.WebDemo\MethodCache.WebDemo.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Redis.Tests\MethodCache.Redis.Tests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\benchmarks\MethodCache.Benchmarks\MethodCache.Benchmarks.csproj (in 555 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SqlServer.Tests\MethodCache.SqlServer.Tests.csproj (in 546 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.Demo\MethodCache.Demo.csproj (in 546 ms).
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [C:\mc\runs\20261015-223954-4f6cd7382a73\MethodCache.sln]
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.Demo.FxVendor\MethodCache.Demo.FxVendor.csproj (in 1 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.SourceGenerator\MethodCache.SourceGenerator.csproj (in 8 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Core\MethodCache.Core.csproj (in 8 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.HttpCaching.Tests\MethodCache.HttpCaching.Tests.csproj (in 9 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.HttpCaching.IntegrationTests\MethodCache.HttpCaching.IntegrationTests.csproj (in 23 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SourceGenerator.IntegrationTests\MethodCache.SourceGenerator.IntegrationTests.csproj (in 21 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Redis\MethodCache.Redis.csproj (in 16 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.AspNetCore.Tests\MethodCache.AspNetCore.Tests.csproj (in 19 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.CompatTests\MethodCache.CompatTests.csproj (in 19 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Docs.Tests\MethodCache.Docs.Tests.csproj (in 24 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SourceGenerator.Tests\MethodCache.SourceGenerator.Tests.csproj (in 31 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.SqlServer\MethodCache.SqlServer.csproj (in 40 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Benchmarks.Tests\MethodCache.Benchmarks.Tests.csproj (in 23 ms).
+  Restored C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj (in 24 ms).
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+  MethodCache.CodeFixes -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.CodeFixes\bin\Release\netstandard2.0\MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Analyzers\bin\Release\netstandard2.0\MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.SourceGenerator\bin\Release\netstandard2.0\MethodCache.SourceGenerator.dll
+  MethodCache.Demo.FxVendor -> C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.Demo.FxVendor\bin\Release\net10.0\MethodCache.Demo.FxVendor.dll
+  MethodCache.Core -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Core\bin\Release\net10.0\MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.OpenTelemetry\bin\Release\net10.0\MethodCache.OpenTelemetry.dll
+  MethodCache.Redis -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Redis\bin\Release\net10.0\MethodCache.Redis.dll
+  MethodCache.Serialization.MessagePack -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.Serialization.MessagePack\bin\Release\net10.0\MethodCache.Serialization.MessagePack.dll
+  MethodCache.SqlServer -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.SqlServer\bin\Release\net10.0\MethodCache.SqlServer.dll
+  MethodCache.Samples.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Samples.Tests\bin\Release\net10.0\MethodCache.Samples.Tests.dll
+  MethodCache.Analyzers.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Analyzers.Tests\bin\Release\net10.0\MethodCache.Analyzers.Tests.dll
+  MethodCache.AspNetCore -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.AspNetCore\bin\Release\net10.0\MethodCache.AspNetCore.dll
+  MethodCache.HttpCaching -> C:\mc\runs\20261015-223954-4f6cd7382a73\src\MethodCache.HttpCaching\bin\Release\net10.0\MethodCache.HttpCaching.dll
+  MethodCache.CompatTests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.CompatTests\bin\Release\net10.0\MethodCache.CompatTests.dll
+  MethodCache.SourceGenerator.IntegrationTests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SourceGenerator.IntegrationTests\bin\Release\net10.0\MethodCache.SourceGenerator.IntegrationTests.dll
+  MethodCache.SourceGenerator.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SourceGenerator.Tests\bin\Release\net10.0\MethodCache.SourceGenerator.Tests.dll
+  Copying EmptyFiles to C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SourceGenerator.Tests\bin\Release\net10.0\EmptyFiles
+  MethodCache.Demo -> C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.Demo\bin\Release\net10.0\MethodCache.Demo.dll
+  MethodCache.SqlServer.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SqlServer.Tests\bin\Release\net10.0\MethodCache.SqlServer.Tests.dll
+  MethodCache.OpenTelemetry.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.OpenTelemetry.Tests\bin\Release\net10.0\MethodCache.OpenTelemetry.Tests.dll
+  MethodCache.SqlServer.IntegrationTests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.SqlServer.IntegrationTests\bin\Release\net10.0\MethodCache.SqlServer.IntegrationTests.dll
+  MethodCache.HttpCaching.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.HttpCaching.Tests\bin\Release\net10.0\MethodCache.HttpCaching.Tests.dll
+  MethodCache.Redis.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Redis.Tests\bin\Release\net10.0\MethodCache.Redis.Tests.dll
+  MethodCache.Benchmarks -> C:\mc\runs\20261015-223954-4f6cd7382a73\benchmarks\MethodCache.Benchmarks\bin\Release\net10.0\MethodCache.Benchmarks.dll
+  MethodCache.Redis.IntegrationTests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Redis.IntegrationTests\bin\Release\net10.0\MethodCache.Redis.IntegrationTests.dll
+  MethodCache.WebDemo -> C:\mc\runs\20261015-223954-4f6cd7382a73\samples\MethodCache.WebDemo\bin\Release\net10.0\MethodCache.WebDemo.dll
+  MethodCache.AspNetCore.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.AspNetCore.Tests\bin\Release\net10.0\MethodCache.AspNetCore.Tests.dll
+  MethodCache.Benchmarks.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Benchmarks.Tests\bin\Release\net10.0\MethodCache.Benchmarks.Tests.dll
+  MethodCache.HttpCaching.IntegrationTests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.HttpCaching.IntegrationTests\bin\Release\net10.0\MethodCache.HttpCaching.IntegrationTests.dll
+  MethodCache.Docs.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Docs.Tests\bin\Release\net10.0\MethodCache.Docs.Tests.dll
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+  MethodCache.Core.Tests -> C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\bin\Release\net10.0\MethodCache.Core.Tests.dll
+
+Build succeeded.
+
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\Core\GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [C:\mc\runs\20261015-223954-4f6cd7382a73\tests\MethodCache.Core.Tests\MethodCache.Core.Tests.csproj]
+    9 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:13.17

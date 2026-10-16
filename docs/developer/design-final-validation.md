@@ -1,5 +1,21 @@
 # Final design verification
 
+## Whole-probe allocation warmup
+
+The 388050f Linux jobs and Windows build/unit checks pass, but macOS unit CI reports 272 bytes in
+the strict no-listener telemetry allocation fact. Its exact allocation source remains unproven. The
+APIs had a warmup loop, but the complete NoInlining probe, including its allocation-counter calls and
+loop/JIT path, was invoked for the first time inside the measured window. The fixture now warms that
+whole probe once, then measures one fixed 10000-pair window with the same exact-zero assertion.
+It does not retry, select a minimum or permit small allocations.
+
+A new negative guard injects one escaping object only inside that final window and detects it.
+Separate escaping-array mutations in each real telemetry API fail the unchanged zero assertion;
+production source is restored byte-for-byte. All 1039 Core facts and the full fourteen-project unit
+job (2465 facts, one intentional opt-in soak skip) pass locally. This improves the warmup boundary,
+without claiming the original 272-byte object's type or replacing fresh external CI.
+[Original failure, single-allocation guard and both API mutations](../../plans/design-benchmarks/telemetry-whole-probe-warmup/).
+
 ## CI startup, source-file and timeout follow-up
 
 The exact 8647bdc CI run fails compilation on all three platforms: the genuine long-prefix benchmark
@@ -25,7 +41,10 @@ timeout and reports exit 125 in that fixture; no success or specific 124 code is
 The independent Git clone race has a [reproduced fix in PR136](https://github.com/eoniclabs/MethodCache/pull/136):
 automatic maintenance must finish before the mirror is cloned. Coordinator changes require installation
 with `--update-only`; source changes alone do not update the installed scheduler. No running job is
-stopped by publishing or atomically installing that fix. The old orphan requires separate cleanup.
+stopped by publishing or atomically installing that fix. On 2026-10-16 Johan explicitly authorized the
+old SDK cleanup. Only its verified container was stopped; Redis/SQL states and start timestamps match
+before and after. The old diffcoverage result is exit 137, and its orphan shell/testhost released the
+capacity lock. [Exact scoped cleanup evidence](../../plans/design-benchmarks/approved-orphan-sdk-stop/).
 
 Local follow-up verification passes all 2,560 facts across sixteen projects, with required native Redis/SQL
 and the single intentional opt-in soak skip. Changed-line coverage is 3486/3708 (94.0%); native macOS
@@ -157,6 +176,17 @@ and updated-probe output is preserved alongside this final receipt.
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
 - Prefix component/facade measurements and current HTTP publication results must pass the same review.
 - Every published head needs its required three-platform CI; drafts remain unmerged meanwhile.
+
+Exact current-head functional receipts are now collected for [HTTP f0dd6c2](../../plans/design-benchmarks/http-functional-f0dd6c2/),
+[.NET 10 1bafff1](../../plans/design-benchmarks/net10-functional-1bafff1/) and
+[SipHash 4f6cd73](../../plans/design-benchmarks/siphash-functional-4f6cd73/): fourteen job exits and all four
+commit statuses pass for each. HTTP's historical branch still ran three frameworks; that does not
+expand the final .NET 10 support target. Combined-head CI and timing are separate remaining gates.
+
+The [frozen version-4 protocol sources](../../plans/design-benchmarks/guid-full-protocol-v4/) retain all
+180 planned launches and the actual PR comparison edges. Its newly deployed validation controller waits
+for preparation, then checks all sixty compiled family inventories without creating a timing directory.
+The full measurement dispatcher remains stopped until those inputs are reviewed.
 
 An additional historical #129 package run at 2bb7c0 failed its net8.0 SQL independent-process
 check at phase 2, exit 5: the L2 value and zero origin calls had passed, but the expected key

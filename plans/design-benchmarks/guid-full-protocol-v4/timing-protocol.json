@@ -1,0 +1,183 @@
+{
+  "purpose": "Full design actual PR-base and cumulative GUID acceptance; separately labelled int controls and independent native families",
+  "workloads_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "pr1-base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+    "pr1": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "pr2": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "pr3": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "pr4": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "pr5": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "prefix": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "http": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "net10": "1bafff182df69a4cf156280f904b9248bae8ce74",
+    "constructor-base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "final": "b92553dac51d0a29f1784508ca4cbacedeea73ea"
+  },
+  "image": "sha256:28177d4fc98bf285dd0a62da2d22d2ef5f9e8d6adbc2500c8e49046b4ca4cdbf",
+  "helpers_sha256": {
+    "guid-final-v4/timing-all.py": "8824c6f15af27af19cdaac08bc43d3008eeacfc83c4a1f239e11d52198e93dc0",
+    "guid-final-v4/timing-worker.py": "504a79a09b7616e0175da7803d6bd93898e719f3332d8b406e6fbba1b359313b",
+    "guid-final-v4/bdn_affinity.py": "e354dbe522842cfcacc335972d3403cac00298a255d191566f7d3f6079ec7065",
+    "guid-final-v4/prepare.py": "56581c23d77575d1b243c34ac68c7c118c80f7cf8d13f893a909de70c34339f5",
+    "guid-final-v4/prepare-all.py": "cfcca08b1a34baa296e4acae4d9dd703f068048fdc4e6d97e26f5922b90923aa",
+    "leased-batch.py": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "guid-final-v4/comparison-edges.json": "75028e14ce4a6fe769bd8675158394d9617618c55a293e35494e4ae84b8c40f3",
+    "guid-final-v4/native-runner/Program.cs": "d9ffdbfa70c21ce09d39715f4f98a9aa456cb9df14535a15f711e22f1800cae0",
+    "guid-final-v4/native-runner/ImageValidation.cs": "e9217976b6a6d353e6f7317bce586dd3b5cd2d35d154c821f3299cf167b0a238",
+    "guid-final-v4/native-runner/Runner.csproj": "f6fae7b6a186f28648736c9a35a8ea1a78e5d9f88e4b016d5a9b6f11134e9436",
+    "guid-final-v4/native-runner/backend-images.json": "c3d7a496f5e96a43dc72e84b1f9dfcda3e978e365336c4b940909c7fa49ce07d",
+    "guid-final-v4/native-runner/bin/Release/net10.0/backend-images.json": "c3d7a496f5e96a43dc72e84b1f9dfcda3e978e365336c4b940909c7fa49ce07d",
+    "guid-final-v4/workloads/benchmarks/MethodCache.Benchmarks/validation/workload_inventory.py": "7ba3f0a88d7208e58e066eb9449c5a28f9b766c876c51c8f6178a11ef403ab77",
+    "guid-final-v4/validate-timing.py": "bfa3247854c1836d79cbf645a169a5c2435e4d91a853b7fdd5aca123c57b0eae",
+    "guid-final-v4/summarize-design.py": "72f00f0cad124eb96a249843962fe04a369ace2fa00cdf1d83d4dea5b9df6bff",
+    "guid-final-v4/summarize-pair.py": "9d8f78f664d9dd06206d0ec26b576f13bf02ad45954a9c443c7129afca40bd95",
+    "guid-final-v4/validate-all.py": "9afdf91bef2a99a10ecd17740ff37a38daba9e8167253dfbc0ee69620c91766a"
+  },
+  "full_workload_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "component_cpus": [
+    2
+  ],
+  "warmups": 16,
+  "actual_iterations": 12,
+  "iteration_ms": 500,
+  "quiet_seconds": 60,
+  "sdk_version": "10.0.401",
+  "runtime_prefix": ".NET 10.0.12",
+  "independent_rounds": 3,
+  "batch_limit_seconds": 1500,
+  "logical_complete_revision_rounds": 42,
+  "full_workload_family_launches": 126,
+  "component_launches": 54,
+  "dispatch_not_started": true,
+  "comparison_policy": "Descending/ascending/descending source order, same SDK/runtime/workstation concurrent GC; compare independent run means with 95% t intervals. A >3% increase with disjoint intervals stops a PR. Broad intervals are insufficient, hit allocations may not increase. Feature additions are classified separately.",
+  "comparisons": [
+    {
+      "pr": 123,
+      "base": "pr1-base",
+      "change": "pr1",
+      "base_sha": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+      "change_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "verified_merge_base": "a023336088c0df4fe887ee336dabcbbdb41f5b26"
+    },
+    {
+      "pr": 124,
+      "base": "pr1",
+      "change": "pr2",
+      "base_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "change_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "verified_merge_base": "8abc020b8f118331b1c5b74d676ae0957af1b91e"
+    },
+    {
+      "pr": 125,
+      "base": "pr2",
+      "change": "pr3",
+      "base_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "change_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "verified_merge_base": "e368484321cbb1c846ade78e10991e64f8cb41dc"
+    },
+    {
+      "pr": 126,
+      "base": "pr3",
+      "change": "pr4",
+      "base_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "change_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "verified_merge_base": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52"
+    },
+    {
+      "pr": 127,
+      "base": "pr4",
+      "change": "pr5",
+      "base_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "change_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "verified_merge_base": "399e16587487a65a064c067b91a31ac4ab2c2527"
+    },
+    {
+      "pr": 128,
+      "base": "pr5",
+      "change": "prefix",
+      "base_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "change_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "verified_merge_base": "2f4a91d0c9144dd0cd9de3482291f365c4443508"
+    },
+    {
+      "pr": 129,
+      "base": "prefix",
+      "change": "http",
+      "base_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "change_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "verified_merge_base": "9c31e3b150b269d10dec99e2e93043918a718579"
+    },
+    {
+      "pr": 130,
+      "base": "http",
+      "change": "net10",
+      "base_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "change_sha": "1bafff182df69a4cf156280f904b9248bae8ce74",
+      "verified_merge_base": "f0dd6c204cd3eefb8fb08ef0509340caf242da92"
+    },
+    {
+      "pr": 132,
+      "base": "constructor-base",
+      "change": "constructor",
+      "base_sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "change_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "verified_merge_base": "9767fec6adcfe41cbe83862915ba922e06770030"
+    },
+    {
+      "pr": 133,
+      "base": "constructor",
+      "change": "siphash",
+      "base_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "change_sha": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+      "verified_merge_base": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f"
+    },
+    {
+      "pr": "cumulative",
+      "base": "base",
+      "change": "final",
+      "base_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "change_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea"
+    }
+  ],
+  "component_workloads_sha": "bbff4a6dfaebfe57235f6457a62baa57170c6417",
+  "component_family_case_counts": {
+    "component-lookup": 18,
+    "component-facade": 36,
+    "component-generated": 48
+  },
+  "native_images": {
+    "redis": {
+      "reference": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "image_id": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+    },
+    "sqlserver": {
+      "reference": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+      "image_id": "sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+    }
+  },
+  "preflight_required_compiled_families": 60,
+  "latest_product_head": "388050fa04ea9c3f11fd65b4f83d94ad1d3a04dc",
+  "runtime_equivalence": "Compared with final B925, latest product head changes generator hint filenames and test/CI/docs only. Runtime library source, key identities, measured workload bytes and frozen ABI images are unchanged."
+}

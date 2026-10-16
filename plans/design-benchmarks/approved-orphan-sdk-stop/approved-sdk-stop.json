@@ -1,0 +1,21 @@
+{
+  "at_utc": "2026-10-16T06:08:53.557872+00:00",
+  "human_authorized": true,
+  "run": "20261015-231740-b92553dac51d",
+  "only_stopped": "cfe525730034433cffcc7efc8e75e87df13a50498357f65a115f6311e49fd8f0",
+  "stop_exit": 0,
+  "backends_before": {
+    "3620f83f969e": "true 2026-10-15T21:19:03.425985174Z",
+    "3a6b34a1f4cd": "true 2026-10-15T21:19:03.126117938Z"
+  },
+  "backends_after": {
+    "3620f83f969e": "true 2026-10-15T21:19:03.425985174Z",
+    "3a6b34a1f4cd": "true 2026-10-15T21:19:03.126117938Z"
+  },
+  "saved_log_sha256": "469a13f1088220d5748a809cce6971f306b9cb1b244752233474b1078e55b684",
+  "subsequent_observation": {
+    "at_utc": "2026-10-16T06:19:39Z",
+    "old_run_containers_remaining": 0,
+    "explanation": "The existing linux.sh EXIT cleanup removes all old-run-labelled temporary containers after its SDK job ends. Only the SDK received our explicit stop command; immediate backend before/after snapshots matched. No unrelated job/service was changed."
+  }
+}

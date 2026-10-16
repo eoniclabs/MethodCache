@@ -1,0 +1,37 @@
+{
+  "observed_utc": "2026-10-16T06:38:54.978121+00:00",
+  "failing_ci_head": "388050fa04ea9c3f11fd65b4f83d94ad1d3a04dc",
+  "failing_run": "20261016-082211-388050fa04ea",
+  "original_failure_bytes": 272,
+  "files": {
+    "original-388-macos-unit.log": {
+      "original_sha256": "0f35b069224702e25dc47154788fc0c9da2c9e7bfb99bbb245934de0aa2b1b04",
+      "stored_sha256": "0f35b069224702e25dc47154788fc0c9da2c9e7bfb99bbb245934de0aa2b1b04"
+    },
+    "probe-green.log": {
+      "original_sha256": "83b640e082aa2b2a744633d4d2a5a87aa03ca55487611abd62507c840fd09322",
+      "stored_sha256": "83b640e082aa2b2a744633d4d2a5a87aa03ca55487611abd62507c840fd09322"
+    },
+    "core-green.log": {
+      "original_sha256": "093c117987d2530e5cbe611ff549c9c958e0146b76dee6ad7faf713e314e7e1c",
+      "stored_sha256": "093c117987d2530e5cbe611ff549c9c958e0146b76dee6ad7faf713e314e7e1c"
+    },
+    "unit-green.log": {
+      "original_sha256": "9d9923979eb42d176124c890a6bf64e8695ccbd60926c4be34d57b94a8b69411",
+      "stored_sha256": "9d9923979eb42d176124c890a6bf64e8695ccbd60926c4be34d57b94a8b69411"
+    },
+    "request-mutation-red.log": {
+      "original_sha256": "e0f9d99dc7636544b809cc98a65f9da5fec4e0347db1ad7d8752a45aea2ea875",
+      "stored_sha256": "e0f9d99dc7636544b809cc98a65f9da5fec4e0347db1ad7d8752a45aea2ea875"
+    },
+    "operation-mutation-red.log": {
+      "original_sha256": "c6182dc1d054d0a6a3674646623b3a2d904cab108c580c9e757119c164c62de4",
+      "stored_sha256": "c6182dc1d054d0a6a3674646623b3a2d904cab108c580c9e757119c164c62de4"
+    }
+  },
+  "new_local_core_passed": 1039,
+  "new_local_unit_passed": 2465,
+  "new_local_unit_projects": 14,
+  "intentional_opt_in_soak_skip": 1,
+  "policy": "One fixed whole-probe warmup and one fixed 10000-pair measured window with exact zero allocation; no retry, minimum, tolerance or discarded measured iterations. A separate negative case injects exactly one escaping object inside the measured window. Both real API allocation mutants fail the unchanged zero assertion. Production telemetry restored byte-for-byte. Original 272-byte causal source remains unproven."
+}
