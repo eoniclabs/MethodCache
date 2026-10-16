@@ -4,6 +4,8 @@
 Each pair is one base launch and one head launch run back to back, so slow phases of the machine affect both.
 The head/base ratio of each pair is averaged in log space; the 95 % interval uses Student's t with n-1 degrees
 of freedom. A case is slower when the whole interval lies above 1 and the estimate is more than 3 % above it.
+The comparison fails on a slower case, on an interval wider than 6 % (not enough evidence either way) and on a
+case without a time in some launch.
 
 usage: paired.py <directory with base-<i>.jsonl and head-<i>.jsonl> [--markdown report.md]
 """
@@ -25,7 +27,7 @@ def t95(df):
 
 def load(path):
     with open(path, encoding="utf-8") as lines:
-        return {r["case"]: r["ns"] for r in map(json.loads, filter(str.strip, lines)) if r.get("ns")}
+        return {r["case"]: r.get("ns") for r in map(json.loads, filter(str.strip, lines))}
 
 
 def main():
@@ -41,8 +43,12 @@ def main():
     if len(pairs) < 2:
         sys.exit("need at least two pairs")
     lines = ["| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |", "|---|---:|---:|---:|---|---|"]
-    slower = 0
-    for case in sorted(set.intersection(*(set(b) & set(h) for b, h in pairs))):
+    slower = noisy = missing = 0
+    for case in sorted(set.union(*(set(b) | set(h) for b, h in pairs))):
+        if any(not b.get(case) or not h.get(case) for b, h in pairs):
+            lines.append(f"| {case} | | | | | **no time in some launch** |")
+            missing += 1
+            continue
         logs = [math.log(h[case] / b[case]) for b, h in pairs]
         mean = statistics.fmean(logs)
         half = t95(len(logs) - 1) * statistics.stdev(logs) / math.sqrt(len(logs))
@@ -52,7 +58,7 @@ def main():
         elif high < 1 and estimate < 0.97:
             verdict = "faster"
         elif high - low > 0.06:
-            verdict = "too noisy"
+            verdict, noisy = "**too noisy**", noisy + 1
         else:
             verdict = "same"
         base_ns = statistics.median(b[case] for b, _ in pairs)
@@ -60,11 +66,12 @@ def main():
         lines.append(f"| {case} | {base_ns:.1f} | {head_ns:.1f} | {estimate:.3f} | {low:.3f}-{high:.3f} | {verdict} |")
     report = "\n".join(lines)
     print(report)
-    print(f"\n{len(pairs)} pairs, {slower} slower")
+    compared = len(lines) - 2 - missing
+    print(f"\n{len(pairs)} pairs, {compared} compared, {slower} slower, {noisy} too noisy, {missing} without a time")
     if args.markdown:
         with open(args.markdown, "w", encoding="utf-8") as file:
             file.write(report + "\n")
-    return 1 if slower else 0
+    return 1 if slower or noisy or missing or compared == 0 else 0
 
 
 if __name__ == "__main__":
