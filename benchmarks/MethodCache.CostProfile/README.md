@@ -48,7 +48,11 @@ bytes per operation to the allocated type, the innermost frames and the innermos
 benchmarks/MethodCache.CostProfile/cost-profile.sh --time <pairs> <base-ref> [case filter]
 ```
 
-Starts the base and the change alternately, `<pairs>` times each, with the same short in-process BenchmarkDotNet
-job, and compares them pair by pair (`paired.py`): a case is slower when the whole 95 % interval of the
-change/base ratio lies above 1 and the estimate is more than 3 % above it. Run it on a quiet machine. The
-profile does not see a change that only costs CPU time, so §10 says when this step is required.
+Times every matching case in its own process, `<pairs>` times per side, alternating which side goes first, with
+the same short in-process BenchmarkDotNet job, and compares them pair by pair (`paired.py`). Cases timed one after
+another in one process shape each other's JIT and GC state; in a trial here that alone made later cases look up to
+30 % slower. A case is slower when the whole 95 % interval of the change/base ratio lies above 1 and the estimate is
+more than 3 % above it; an interval wider than 6 % or a missing time fails too. A deliberate slowdown passes with a
+`time` bound (the largest accepted ratio) in `accepted.json`. Each case and launch takes about 6 seconds, so filter
+it. Run it on a quiet machine. The profile does not see a change that only costs CPU time, so §10 says when this
+step is required.

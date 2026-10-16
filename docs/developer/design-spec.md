@@ -618,11 +618,14 @@ om inte `accepted.json` godkänner fallet med motivering och övre gränser som 
 Ett godkännande är ett designbeslut och granskas som kod. `--stacks <sekunder>` fördelar ett falls
 allokeringar på anropsplatser (EventPipe), så en skillnad kan spåras till sin rad i båda revisionerna.
 
-**Steg 2, parad tidsmätning.** `cost-profile.sh --time <par> <bas>` startar bas och ändring växelvis
-(bas först i udda par, ändring först i jämna) med samma korta BenchmarkDotNet-jobb i processen. Kvoten
+**Steg 2, parad tidsmätning.** `cost-profile.sh --time <par> <bas>` kör varje fall i en egen process, växelvis
+för bas och ändring (bas först i udda par, ändring först i jämna), med samma korta BenchmarkDotNet-jobb. Fall
+som körs efter varandra i samma process påverkar varandras JIT- och GC-tillstånd. Kvoten
 ändring/bas per par medelvärdesbildas i logaritmen och får ett 95-procentigt intervall med Students t och
 n−1 frihetsgrader. Ett fall är långsammare om hela intervallet ligger över 1 och skattningen är mer än 3 %
 över. Ett intervall bredare än 6 % är otillräcklig evidens, inte ett pass: mät om på en lugnare maskin.
+En avsiktlig försämring (som SipHash-prefixets kostnad för int-träffar) godkänns med en `time`-gräns i
+`accepted.json`.
 Mät på en lugn maskin med samma runtime- och GC-inställningar för båda sidor och redovisa full SHA,
 SDK/runtime, CPU, GC och antal par.
 

@@ -5,11 +5,12 @@ using BenchmarkDotNet.Loggers;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
-// One timing launch: every matching case once, in this process, with a short fixed job. cost-profile.sh --time starts
-// one launch per revision in turn, so drift on the machine hits both sides of a pair alike.
+// One timing launch: the matching cases in this process, with a short fixed job. Cases timed in one process shape each
+// other's JIT and GC state, so cost-profile.sh --time starts one launch per case and revision, alternating the sides,
+// so drift on the machine hits both sides of a pair alike.
 internal static class Timing
 {
-    internal static async Task<int> RunAsync(Type[] types, string filter, bool hasRedis, bool hasSql, string output)
+    internal static async Task<int> RunAsync(Type[] types, Func<string, bool> matches, bool hasRedis, bool hasSql, string output)
     {
         var job = Job.Default.WithToolchain(InProcessEmitToolchain.Instance)
             .WithWarmupCount(4).WithIterationCount(12).WithIterationTime(Perfolizer.Horology.TimeInterval.FromMilliseconds(150));
@@ -19,7 +20,7 @@ internal static class Timing
         {
             var all = BenchmarkConverter.TypeToBenchmarks(type, config);
             var cases = all.BenchmarksCases
-                .Where(c => Name(c).Contains(filter, StringComparison.Ordinal))
+                .Where(c => matches(Name(c)))
                 .Where(c => c.Parameters.Items.All(p => (hasRedis || !Equals(p.Value, "Redis")) && (hasSql || !Equals(p.Value, "SqlServer"))))
                 .ToArray();
             if (cases.Length == 0) continue;
