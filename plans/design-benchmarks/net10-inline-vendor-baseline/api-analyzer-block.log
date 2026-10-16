@@ -1,0 +1,4 @@
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+<worktree>/src/MethodCache.Core/PublicAPI.Unshipped.txt(222,1): error RS0017: Symbol 'MethodCache.Generated.KeyBuilder.KeyBuilder(MethodCache.Generated.MethodCall call, System.Span<char> buffer) -> void' is part of the declared API, but is either not public or could not be found (https://github.com/dotnet/roslyn-analyzers/blob/main/src/PublicApiAnalyzers/PublicApiAnalyzers.Help.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]

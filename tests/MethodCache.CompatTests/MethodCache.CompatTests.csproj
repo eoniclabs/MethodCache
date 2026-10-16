@@ -14,8 +14,12 @@
     <!-- Deliberately binary references: ordinary builds/tests never rebuild the vendor baseline. -->
     <Reference Include="FrozenVendor.Contract1" HintPath="Baselines/Contract1/FrozenVendor.Contract1.dll" />
     <Reference Include="FrozenVendor.ThirdParty" HintPath="Baselines/Contract1/FrozenVendor.ThirdParty.dll" />
+    <Reference Include="FrozenVendor.Contract1Net10" HintPath="Baselines/Contract1Net10/FrozenVendor.Contract1Net10.dll" />
+    <Reference Include="FrozenVendor.ThirdPartyNet10" HintPath="Baselines/Contract1Net10/FrozenVendor.ThirdPartyNet10.dll" />
     <Compile Remove="Baselines/**/*.cs" />
     <Content Include="Baselines/Contract1/manifest.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Baselines/Contract1/FrozenVendor.Contract99.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1Net10/manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1Net10/FrozenVendor.Contract99Net10.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

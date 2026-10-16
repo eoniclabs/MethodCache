@@ -1,0 +1,30 @@
+{
+  "contract": 1,
+  "source_commit": "ba86985c9c7a1e248a5a0a0ee07b0dc570f7b3d2",
+  "package_version": "1.0.0-gba86985c9c",
+  "target_framework": "net10.0",
+  "core_sha256": "d5cd3b071daa180d6d9038f4fc50e2e2f6cccffa5f4abdd1d42a4c490cef8933",
+  "generator_sha256": "087342e480897c36c96bd7b4655dfd5867a10cfcb63533c211206263f810dc5e",
+  "sources": {
+    "source/Incompatible/Incompatible.csproj": "1bcc20034647569fd6096e009c5f9a56ce1a79ccc9e0ab43f0235728933d692e",
+    "source/Incompatible/Module.cs": "f7f94437fa31aabba3bc439aaae2490beea620feac82e6c7273f044113477406",
+    "source/ThirdParty/Client.cs": "71437dddebd078d3d7a1b0c1354ac38bcf8b971c24ef78e79a6cfcc89f80aba7",
+    "source/ThirdParty/ThirdParty.csproj": "7d7061c9f340536d7e4df7875a84e2412fd6088a6c044e23ac93066bc941c50e",
+    "source/Vendor/Services.cs": "ca09a82138ec5a68b4a15ae661e622786f9ff2bfd179b841232df3c1acf02c2c",
+    "source/Vendor/Vendor.csproj": "7432ff1231b62c5cb3c7d642ade8bb4443989f4749b93d9b3ce846d1bfd20ad1"
+  },
+  "images": [
+    {
+      "file": "FrozenVendor.ThirdPartyNet10.dll",
+      "sha256": "66c1aa4fe6d74058b7c56575ef6f3d646863d3b7f980ee08b68085ea5da6ed9c"
+    },
+    {
+      "file": "FrozenVendor.Contract1Net10.dll",
+      "sha256": "acecc6cdca10046a86769d61dd8b494536efa25de8a849d914eb66698743d3d4"
+    },
+    {
+      "file": "FrozenVendor.Contract99Net10.dll",
+      "sha256": "f9129e9f34f20cd8268f912e21858120a0b41ad6f4628c8b98bc68a5feb81d03"
+    }
+  ]
+}
