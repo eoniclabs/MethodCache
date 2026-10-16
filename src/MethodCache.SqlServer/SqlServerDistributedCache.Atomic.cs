@@ -8,6 +8,10 @@ namespace MethodCache.SqlServer;
 
 internal sealed partial class SqlServerDistributedCache
 {
+    // Only the latest bounded batch shape is retained, never a key or generation value.
+    private sealed record EpochCommand(int Count, string Text);
+    private EpochCommand? _epochCommand;
+
     // @data contains stamp + version + init-id + BE revision. Used inside the caller's serializable key lock.
     private const string AdvanceEpochSql = """
         DECLARE @high bigint = CONVERT(bigint, SUBSTRING(@data, 26, 4));
@@ -57,8 +61,40 @@ internal sealed partial class SqlServerDistributedCache
         await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
         // A single command/round trip. Sorting physical IDs gives concurrent vectors one lock order.
         var sorted = keys.Select((key, index) => (Key: GetPhysicalKey(key), Index: index)).OrderBy(item => item.Key, StringComparer.Ordinal).ToArray();
-        var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION; DECLARE @previous varbinary(max), @data varbinary(max), @expires datetimeoffset, @absolute datetimeoffset, @sliding bigint;\n");
+        var connection = new SqlConnection(_connectionString);
+        await using var connectionScope = connection.ConfigureAwait(false);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var command = new SqlCommand(EpochCommandText(sorted.Length), connection);
+        await using var commandScope = command.ConfigureAwait(false);
+        AddEpochParameters(command);
         for (var i = 0; i < sorted.Length; i++)
+        {
+            command.Parameters.Add(new SqlParameter("@key" + i, SqlDbType.NVarChar, 449) { Value = sorted[i].Key });
+            command.Parameters.Add(new SqlParameter("@seed" + i, SqlDbType.VarBinary, 16) { Value = Guid.NewGuid().ToByteArray() });
+        }
+        var result = new CacheEpoch[keys.Count];
+        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using var readerScope = reader.ConfigureAwait(false);
+        do
+        {
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var index = sorted[reader.GetInt32(0)].Index;
+                if (!EpochMetadata.TryRead((byte[])reader.GetValue(1), out result[index]))
+                    throw new IncompatibleDistributedScopeException("The distributed epoch metadata has an incompatible schema.");
+            }
+        } while (await reader.NextResultAsync(cancellationToken).ConfigureAwait(false));
+        return result;
+    }
+
+    // The shape uses sorted positions only; caller positions are restored after the query.
+    internal string EpochCommandText(int count)
+    {
+        if (count is < 1 or > 128) throw new ArgumentOutOfRangeException(nameof(count));
+        var cached = Volatile.Read(ref _epochCommand);
+        if (cached?.Count == count) return cached.Text;
+        var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION; DECLARE @previous varbinary(max), @data varbinary(max), @expires datetimeoffset, @absolute datetimeoffset, @sliding bigint;\n");
+        for (var i = 0; i < count; i++)
         {
             sql.Append($"""
                 SET @previous = NULL; SET @expires = NULL; SET @absolute = NULL; SET @sliding = NULL;
@@ -74,34 +110,13 @@ internal sealed partial class SqlServerDistributedCache
                 ELSE IF @previous IS NULL OR @data <> @previous OR @expires <> @maximum
                     OR @absolute IS NULL OR @absolute <> @maximum OR @sliding IS NOT NULL
                     UPDATE {_table} SET [Value] = @data, [ExpiresAtTime] = @maximum, [AbsoluteExpiration] = @maximum, [SlidingExpirationInSeconds] = NULL WHERE [Id] = @key{i};
-                SELECT {sorted[i].Index} AS [Position], @data AS [Value];
+                SELECT {i} AS [Position], @data AS [Value];
                 """);
         }
         sql.Append("COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION; THROW; END CATCH;");
-        var connection = new SqlConnection(_connectionString);
-        await using var connectionScope = connection.ConfigureAwait(false);
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var command = new SqlCommand(sql.ToString(), connection);
-        await using var commandScope = command.ConfigureAwait(false);
-        AddEpochParameters(command);
-        for (var i = 0; i < sorted.Length; i++)
-        {
-            command.Parameters.Add(new SqlParameter("@key" + i, SqlDbType.NVarChar, 449) { Value = sorted[i].Key });
-            command.Parameters.Add(new SqlParameter("@seed" + i, SqlDbType.VarBinary, 16) { Value = Guid.NewGuid().ToByteArray() });
-        }
-        var result = new CacheEpoch[keys.Count];
-        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        await using var readerScope = reader.ConfigureAwait(false);
-        do
-        {
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                var index = reader.GetInt32(0);
-                if (!EpochMetadata.TryRead((byte[])reader.GetValue(1), out result[index]))
-                    throw new IncompatibleDistributedScopeException("The distributed epoch metadata has an incompatible schema.");
-            }
-        } while (await reader.NextResultAsync(cancellationToken).ConfigureAwait(false));
-        return result;
+        var command = new EpochCommand(count, sql.ToString());
+        Volatile.Write(ref _epochCommand, command);
+        return command.Text;
     }
 
     public async ValueTask<CacheEpoch> AdvanceEpochAsync(string key, CancellationToken cancellationToken = default)

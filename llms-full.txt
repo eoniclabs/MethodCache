@@ -1324,6 +1324,8 @@ generation, so later requests fetch the updated response. With native Redis or S
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
 SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
 non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
+The transport retains only its latest bounded command-text shape. It does not cache generation values;
+reordered or duplicate keys still return generations in the caller's order.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
 URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
@@ -2695,6 +2697,8 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
 Initialized permanent HTTP epochs are read without rewriting their rows. Initialization and retention repair
 remain atomic, and each HTTP lookup still reads the shared generation records.
+The transport reuses only its latest bounded command-text shape; it never caches generation values.
+Reordered and duplicate epoch keys retain their caller positions.
 
 Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
 are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
@@ -3105,6 +3109,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Reuse the latest SQL Server epoch command shape instead of rebuilding its SQL text on every HTTP lookup.
+  Generation values remain fresh; reordered and duplicate keys retain their caller positions.
 
 - Avoid temporary sets and sorting when HTTP responses have no custom key headers or `Vary` fields;
   private caches still select by `Authorization` and `Cookie`.
