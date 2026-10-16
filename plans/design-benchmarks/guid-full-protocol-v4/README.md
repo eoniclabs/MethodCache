@@ -25,3 +25,5 @@ that receipt is reviewed. Deployed files/prepared inputs are immutable; preserve
 The summary requires all 180 unique successful tuples and actual comparison edges. Its 95% t intervals use
 three independent launch means, not within-process BDN iterations. It is not automatic acceptance: inspect
 feature equivalence, new work, uncertain intervals, decisive regressions and corresponding hit allocations.
+
+Run the archived Python guard tests with PYTHONDONTWRITEBYTECODE=1; interpreter caches are not protocol inputs.
