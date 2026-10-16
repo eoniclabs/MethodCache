@@ -1,0 +1,28 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-guid-final-v5-primary-pr1-base 2026-10-16T08:53:05.636011+00:00
+/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/DesignValidation.csproj
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/DesignValidation.csproj (in 249 ms).
+  8 of 9 projects are up-to-date for restore.
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/pr1-base/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  DesignValidation -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:06.75
+// start dotnet  restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/publish/" in /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1
+// command took 1.89 sec and exited with 0
+// start dotnet  build -c Release --no-restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/publish/" --output "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1/bin/Release/net10.0/" in /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/harness/pr1-base/bin/Release/net10.0/DesignValidation-Job-UITVRW-1
+// command took 12.58 sec and exited with 0
+Compiled generated BDN programs for 67 cases; no benchmarks executed.
+Verified eight resident generated hit shapes and thirty distinct-key misses.
+Verified cold publication, HTTP hit/revalidation, weighted/listener contention, single-flight and local cookie modes.
+Releasing exclusive lease methodcache-design-20261015-01a13a93-guid-final-v5-primary-pr1-base exit 0 2026-10-16T08:53:30.178265+00:00

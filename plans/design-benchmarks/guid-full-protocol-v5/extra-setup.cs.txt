@@ -1,0 +1,72 @@
+if (args.Contains("--verify-extra-local"))
+{
+    using var definition = BenchmarkConverter.TypeToBenchmarks(typeof(HttpColdMissBenchmarks), config);
+    if (definition.BenchmarksCases.Length != 4 || definition.BenchmarksCases.Any(c =>
+        c.Job.Run.InvocationCount != HttpColdMissBenchmarks.InvocationsPerIteration || c.Job.Run.UnrollFactor != 1 ||
+        c.Descriptor.IterationSetupMethod?.Name != "ResetBatch"))
+        throw new Exception("Bounded HTTP publication job definition changed.");
+    foreach (var listening in new[] { false, true })
+    foreach (var invalidated in new[] { false, true })
+    {
+        var cold = new HttpColdMissBenchmarks { Listening = listening, AfterInvalidation = invalidated };
+        try
+        {
+            await cold.Setup();
+            for (var batch = 0; batch < 2; batch++)
+            {
+                if (batch != 0) cold.ResetBatch();
+                var initial = invalidated ? 7 : 3;
+                if (cold.OriginLoads != initial) throw new Exception("HTTP state leaked across cold batches.");
+                for (var i = 0; i < HttpColdMissBenchmarks.InvocationsPerIteration; i++)
+                    if (await cold.Miss() != 200) throw new Exception("Cold publication returned the wrong response.");
+                if (cold.OriginLoads != initial + HttpColdMissBenchmarks.InvocationsPerIteration)
+                    throw new Exception("Cold publication did not load origin every time.");
+            }
+        }
+        finally { cold.Cleanup(); }
+        var hit = new HttpResponsePathBenchmarks { Listening = listening, AfterInvalidation = invalidated };
+        try
+        {
+            await hit.Setup();
+            var before = hit.OriginLoads;
+            if (await hit.FreshHit() != 200 || await hit.VariantHit() != 200 || hit.OriginLoads != before)
+                throw new Exception("HTTP resident hit called origin.");
+            if (await hit.Revalidated() != 200 || hit.OriginLoads != before + 1)
+                throw new Exception("HTTP revalidation did not call origin.");
+        }
+        finally { hit.Cleanup(); }
+    }
+    foreach (var listening in new[] { false, true })
+    foreach (var weighted in new[] { false, true })
+    {
+        var memory = new DesignMemoryWorkloadBenchmarks
+        { Listening = listening, Weighted = weighted, SelectPerformanceCores = false };
+        try
+        {
+            await memory.Setup();
+            if (await memory.Hit() != 42) throw new Exception("Memory hit failed.");
+            await memory.ContendedHits();
+            if (await memory.SingleFlightBatch() != 168 || memory.OriginLoads != 1)
+                throw new Exception("Single-flight did not share one origin.");
+            if (await memory.EvictionPressure() != 42) throw new Exception("Pressure call failed.");
+        }
+        finally { memory.Cleanup(); }
+    }
+    foreach (var cookies in new[] { false, true })
+    {
+        var http = new DesignHttpWorkloadBenchmarks
+        { Backend = "Local", KeepCookies = cookies, SelectPerformanceCores = false };
+        try
+        {
+            await http.Setup();
+            var before = http.OriginLoads;
+            if (await http.Fresh() != 200 || http.OriginLoads != before + (cookies ? 1 : 0))
+                throw new Exception("Local HTTP caching/bypass did not match its declaration.");
+            if (await http.Miss() != 200 || http.OriginLoads != before + (cookies ? 2 : 1))
+                throw new Exception("Local HTTP miss did not load.");
+        }
+        finally { await http.Cleanup(); }
+    }
+    Console.WriteLine("Verified cold publication, HTTP hit/revalidation, weighted/listener contention, single-flight and local cookie modes.");
+    return;
+}

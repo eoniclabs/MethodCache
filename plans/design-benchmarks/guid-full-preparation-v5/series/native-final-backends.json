@@ -1,0 +1,18 @@
+{
+  "label": "methodcache-design-20261015-01a13a93-guid-final-v5-native-final",
+  "images": {
+    "redis": {
+      "reference": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "image_id": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+    },
+    "sqlserver": {
+      "reference": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+      "image_id": "sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+    }
+  },
+  "redis_container_id": "56cadeb6355cb166f1ed1fc5cf5386d301877bb62bf39b53e6690651978caa85",
+  "sql_container_id": "33c3ece1c1df19deacefab3dde2cc6fe7f8d56fa147039719369d19d14926452",
+  "verified_before": "2026-10-16T09:08:22.2932403+00:00",
+  "verified_after": "2026-10-16T09:08:23.7293012+00:00",
+  "child_exit": 0
+}

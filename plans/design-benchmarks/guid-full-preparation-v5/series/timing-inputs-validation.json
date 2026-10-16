@@ -1,0 +1,368 @@
+{
+  "at_utc": "2026-10-16T09:09:13.480705+00:00",
+  "protocol_sha256": "7ed0602806c5a0934de83ba38b17cd4d5db9ffd75f879951c12a82b2ecb0e3d2",
+  "prepared_manifest_sha256": "96b25395fd0f3d8635235307e5e9abcaf28f944ee8b3aeebeea6b0c84a2d23eb",
+  "validated": [
+    {
+      "revision": "base",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "base",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "base",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr1-base",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr1-base",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr1-base",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr1",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr1",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr1",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr2",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr2",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr2",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr3",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr3",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr3",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr4",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr4",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr4",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr5",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "pr5",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "pr5",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "prefix",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "prefix",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "prefix",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "http",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "http",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "http",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "net10",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "net10",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "net10",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "constructor",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "constructor",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "constructor",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "siphash",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "siphash",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "siphash",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "final",
+      "group": "local-contract",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 27"
+    },
+    {
+      "revision": "final",
+      "group": "local-pressure",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 20"
+    },
+    {
+      "revision": "final",
+      "group": "native",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 16"
+    },
+    {
+      "revision": "pr5",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "pr5",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "pr5",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    },
+    {
+      "revision": "prefix",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "prefix",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "prefix",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "constructor-base",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    },
+    {
+      "revision": "constructor",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "constructor",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "constructor",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    },
+    {
+      "revision": "siphash",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "siphash",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "siphash",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    },
+    {
+      "revision": "final",
+      "group": "component-lookup",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 18"
+    },
+    {
+      "revision": "final",
+      "group": "component-facade",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 36"
+    },
+    {
+      "revision": "final",
+      "group": "component-generated",
+      "exit": 0,
+      "output": "Validated immutable inputs and actual inventory: 48"
+    }
+  ],
+  "measurement_started": false
+}

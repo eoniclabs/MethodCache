@@ -1,0 +1,73 @@
+Waiting for exclusive capacity: checkout 2026-10-16T08:45:34.032241+00:00
+Finished checkout 2026-10-16T08:52:20.944209+00:00
+Waiting for exclusive capacity: primary-base 2026-10-16T08:52:30.944741+00:00
+Finished primary-base 2026-10-16T08:52:55.616142+00:00
+Waiting for exclusive capacity: primary-pr1-base 2026-10-16T08:53:05.616666+00:00
+Finished primary-pr1-base 2026-10-16T08:53:30.181874+00:00
+Waiting for exclusive capacity: primary-pr1 2026-10-16T08:53:40.182286+00:00
+Finished primary-pr1 2026-10-16T08:54:05.151216+00:00
+Waiting for exclusive capacity: primary-pr2 2026-10-16T08:54:15.151722+00:00
+Finished primary-pr2 2026-10-16T08:54:40.323471+00:00
+Waiting for exclusive capacity: primary-pr3 2026-10-16T08:54:50.323967+00:00
+Finished primary-pr3 2026-10-16T08:55:14.998024+00:00
+Waiting for exclusive capacity: primary-pr4 2026-10-16T08:55:24.998530+00:00
+Finished primary-pr4 2026-10-16T08:55:50.059971+00:00
+Waiting for exclusive capacity: primary-pr5 2026-10-16T08:56:00.060492+00:00
+Finished primary-pr5 2026-10-16T08:56:25.224715+00:00
+Waiting for exclusive capacity: primary-prefix 2026-10-16T08:56:35.225193+00:00
+Finished primary-prefix 2026-10-16T08:57:00.099208+00:00
+Waiting for exclusive capacity: primary-http 2026-10-16T08:57:10.099551+00:00
+Finished primary-http 2026-10-16T08:57:35.553141+00:00
+Waiting for exclusive capacity: primary-net10 2026-10-16T08:57:45.553644+00:00
+Finished primary-net10 2026-10-16T08:58:07.610115+00:00
+Waiting for exclusive capacity: primary-constructor-base 2026-10-16T08:58:17.610640+00:00
+Finished primary-constructor-base 2026-10-16T08:58:39.772094+00:00
+Waiting for exclusive capacity: primary-constructor 2026-10-16T08:58:49.772602+00:00
+Finished primary-constructor 2026-10-16T08:59:11.640986+00:00
+Waiting for exclusive capacity: primary-siphash 2026-10-16T08:59:21.641508+00:00
+Finished primary-siphash 2026-10-16T08:59:43.595792+00:00
+Waiting for exclusive capacity: primary-final 2026-10-16T08:59:53.596297+00:00
+Finished primary-final 2026-10-16T09:00:15.653775+00:00
+Waiting for exclusive capacity: component-pr5 2026-10-16T09:00:25.654283+00:00
+Finished component-pr5 2026-10-16T09:00:41.711875+00:00
+Waiting for exclusive capacity: component-prefix 2026-10-16T09:00:51.712354+00:00
+Finished component-prefix 2026-10-16T09:01:07.964301+00:00
+Waiting for exclusive capacity: component-constructor-base 2026-10-16T09:01:17.964744+00:00
+Finished component-constructor-base 2026-10-16T09:01:32.914281+00:00
+Waiting for exclusive capacity: component-constructor 2026-10-16T09:01:42.914735+00:00
+Finished component-constructor 2026-10-16T09:01:57.866280+00:00
+Waiting for exclusive capacity: component-siphash 2026-10-16T09:02:07.866741+00:00
+Finished component-siphash 2026-10-16T09:02:22.421898+00:00
+Waiting for exclusive capacity: component-final 2026-10-16T09:02:32.422388+00:00
+Finished component-final 2026-10-16T09:02:47.269425+00:00
+Waiting for exclusive capacity: native-base 2026-10-16T09:02:57.269992+00:00
+Finished native-base 2026-10-16T09:03:11.419742+00:00
+Waiting for exclusive capacity: native-pr1-base 2026-10-16T09:03:21.420310+00:00
+Finished native-pr1-base 2026-10-16T09:03:35.471602+00:00
+Waiting for exclusive capacity: native-pr1 2026-10-16T09:03:45.472182+00:00
+Finished native-pr1 2026-10-16T09:03:59.519999+00:00
+Waiting for exclusive capacity: native-pr2 2026-10-16T09:04:09.520576+00:00
+Finished native-pr2 2026-10-16T09:04:23.571844+00:00
+Waiting for exclusive capacity: native-pr3 2026-10-16T09:04:33.572414+00:00
+Finished native-pr3 2026-10-16T09:04:47.633318+00:00
+Waiting for exclusive capacity: native-pr4 2026-10-16T09:04:57.633896+00:00
+Finished native-pr4 2026-10-16T09:05:11.580340+00:00
+Waiting for exclusive capacity: native-pr5 2026-10-16T09:05:21.580907+00:00
+Finished native-pr5 2026-10-16T09:05:35.532472+00:00
+Waiting for exclusive capacity: native-prefix 2026-10-16T09:05:45.533050+00:00
+Finished native-prefix 2026-10-16T09:05:59.584641+00:00
+Waiting for exclusive capacity: native-http 2026-10-16T09:06:09.585182+00:00
+Finished native-http 2026-10-16T09:06:23.636633+00:00
+Waiting for exclusive capacity: native-net10 2026-10-16T09:06:33.637204+00:00
+Finished native-net10 2026-10-16T09:06:47.888533+00:00
+Waiting for exclusive capacity: native-constructor-base 2026-10-16T09:06:57.888888+00:00
+Finished native-constructor-base 2026-10-16T09:07:12.033952+00:00
+Waiting for exclusive capacity: native-constructor 2026-10-16T09:07:22.034551+00:00
+Finished native-constructor 2026-10-16T09:07:36.186047+00:00
+Waiting for exclusive capacity: native-siphash 2026-10-16T09:07:46.186239+00:00
+Finished native-siphash 2026-10-16T09:08:00.326674+00:00
+Waiting for exclusive capacity: native-final 2026-10-16T09:08:10.327223+00:00
+Finished native-final 2026-10-16T09:08:24.576631+00:00
+Waiting for exclusive capacity: inventory 2026-10-16T09:08:34.577133+00:00
+Finished inventory 2026-10-16T09:08:45.023688+00:00
+All generated BDN programs compile; full setup and compiled inventories prepared. No timing dispatch. 2026-10-16T09:08:55.023881+00:00

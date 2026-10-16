@@ -2,15 +2,15 @@
 
 ## Latest complete three-platform functional checkpoint
 
-Combined head `5dd27bb25e574869fbf766448b3c1c652e6dc835` passes all fourteen CI jobs
-and all four commit statuses. Linux runs 2,561 facts across sixteen projects, with no failures
+Combined head `453be958abc7f57253341b8a43125404e180c551` passes all fourteen CI jobs
+and all four commit statuses. Linux runs 2,562 facts across sixteen projects, with no failures
 and the single intentional opt-in soak skip. Required Redis/SQL, randomized properties,
 enabled soak, both cultures, demo, AOT175, all installed packages and docs pass; changed-line
 coverage is 3486/3708 (94.0%). The complete no-listener probe passes on all three platforms.
-The preceding dd6b1c6 and 6caa856 also pass all fourteen jobs. These results do not explain the historical
+The preceding 5dd27bb, dd6b1c6 and 6caa856 also pass all fourteen jobs. These results do not explain the historical
 272-byte object's exact source or establish timing acceptance. Subsequent benchmark-tool, test and
 documentation edits require their own published-head CI.
-[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-5dd27bb/).
+[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-453be95/).
 
 Source review before full timing also corrects the archived V4 analysis helper's L2 label:
 enabled round-trip validation already existed before PR4. The new opt-out changes writes;
@@ -212,6 +212,21 @@ Python validation tests pass. Every runtime point must pass the new generated co
 before a fresh cohort; no rejected V4 sample is carried forward.
 [Original failures and concrete red/green evidence](../../plans/design-benchmarks/guid-full-bdn-build-failure-v4/).
 
+## Corrected V5 preparation and dispatch
+
+V5 retains the fourteen runtime points and six component C# points, with primary workload source
+453be95 and component source bbff4a6. All twenty actual BDN-generated programs compile: each
+primary program contains 67 cases, four of which are untimed growing-cache diagnostics; each
+component program contains 102 cases. Origin/setup guards pass. Each primary runtime then passes
+fresh Redis/SQL setup with actual pinned image IDs verified before and after execution.
+
+All sixty immutable compiled-family validations pass. Independent review at 09:09:35 UTC checks
+the actual generated build logs, fourteen native receipts, exact source/program bytes and
+2,358 harness plus seventeen native-runner DLLs. The fixed 180-launch series explicitly starts
+at 09:10:18 UTC on 2026-10-16. The first benchmark processes execute and exit successfully;
+no partial means are reviewed or pooled. All 180 launches and section-10 review remain required.
+[Exact frozen inputs, native receipts, build logs, validation and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
+
 ## Remaining acceptance gates
 
 - Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 4f6cd73 pass current commit statuses.
@@ -221,15 +236,13 @@ before a fresh cohort; no rejected V4 sample is carried forward.
   [Exact fresh same-head evidence](../../plans/design-benchmarks/guid-functional-419c786/).
   Its historical macOS checkout lacks reachable Git objects before tests; PR136 reproduces and
   fixes detached maintenance. Preserve that [original failure and connectivity evidence](../../plans/design-benchmarks/guid-macos-history-419c786/).
-- Primary workload bytes are frozen at B925 and component workload bytes at bbff4a6.
-  Nimbus preparation of all fourteen runtime points and six component points now passes,
-  including actual before/after Redis/SQL image IDs and all sixty compiled family validations.
-  The independent preflight rehashes 2,358 harness DLLs. The fixed 180-launch dispatcher starts
-  at 08:30:54 UTC on 2026-10-16, then stops at 08:32:09 before executing any benchmark:
-  BDN rejects the asynchronous cold-HTTP iteration setup. Its original attempt is retained;
-  a corrected fresh cohort must also compile BDN-generated programs during preflight. Compare identical key
+- Corrected primary workload bytes are frozen at 453be95 and component C# at bbff4a6.
+  V5 preparation passes all twenty actual generated-program builds, fourteen native setups
+  and sixty compiled family validations. The independent review rehashes 2,358 harness DLLs.
+  The fixed 180-launch dispatcher starts at 09:10:18 UTC on 2026-10-16; full completion and
+  review remain required. V4's zero-execution failure stays archived. Compare identical key
   types and workloads across revisions; keep int and GUID results separate.
-  [Completed preparation and dispatch provenance](../../plans/design-benchmarks/guid-full-preparation-v4/).
+  [Completed V5 preparation and dispatch provenance](../../plans/design-benchmarks/guid-full-preparation-v5/).
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.

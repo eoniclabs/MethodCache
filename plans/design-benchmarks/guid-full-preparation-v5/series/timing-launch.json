@@ -1,0 +1,7 @@
+{
+  "pid": 4125199,
+  "started_utc": "2026-10-16T09:10:18.621361+00:00",
+  "script": "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/timing-all.py",
+  "protocol_sha256": "7ed0602806c5a0934de83ba38b17cd4d5db9ffd75f879951c12a82b2ecb0e3d2",
+  "prepared_manifest_sha256": "96b25395fd0f3d8635235307e5e9abcaf28f944ee8b3aeebeea6b0c84a2d23eb"
+}
