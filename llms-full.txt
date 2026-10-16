@@ -1315,6 +1315,8 @@ the URL you sent it to, also when the response redirects (`303 See Other`) elsew
 background revalidation that was already in flight can still complete, but it stores its response under the old
 generation, so later requests fetch the updated response. With native Redis or SQL Server configured, the generation is shared by every instance, even when backplane
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
+SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
+non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
 URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
@@ -2684,6 +2686,9 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
 Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
+Initialized permanent HTTP epochs are read without rewriting their rows. Initialization and retention repair
+remain atomic, and each HTTP lookup still reads the shared generation records.
+
 Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
 are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
 have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
@@ -3089,6 +3094,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
+  expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.
 
 - Preserve `MethodCall.StartKey` in generated contract 1 for already compiled inline callers. Add a
   separate frozen .NET 10 vendor checkpoint and a complete contract-member guard; original images stay unchanged.

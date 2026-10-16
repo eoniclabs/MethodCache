@@ -1,0 +1,97 @@
+  Determining projects to restore...
+  Restored <worktree>/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 759 ms).
+  6 of 7 projects are up-to-date for restore.
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> <worktree>/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.SqlServer -> <worktree>/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.SqlServer.IntegrationTests -> <worktree>/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+Test run for <worktree>/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.05]   Discovering: MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.08]   Discovered:  MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.09]   Starting:    MethodCache.SqlServer.IntegrationTests
+[testcontainers.org 00:00:00.07] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels:
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.20] Docker container cf99f194e441 created
+[testcontainers.org 00:00:00.22] Start Docker container cf99f194e441
+[testcontainers.org 00:00:00.41] Wait for Docker container cf99f194e441 to complete readiness checks
+[testcontainers.org 00:00:01.44] Docker container cf99f194e441 ready
+[testcontainers.org 00:00:01.49] Docker container 4c23f5d7b51c created
+[testcontainers.org 00:00:01.50] Start Docker container 4c23f5d7b51c
+[testcontainers.org 00:00:01.62] Wait for Docker container 4c23f5d7b51c to complete readiness checks
+[testcontainers.org 00:00:01.63] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container 4c23f5d7b51c
+[testcontainers.org 00:00:01.71] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container 4c23f5d7b51c
+[testcontainers.org 00:00:10.84] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container 4c23f5d7b51c
+[testcontainers.org 00:00:16.71] Docker container 4c23f5d7b51c ready
+[xUnit.net 00:00:17.80]     MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage [FAIL]
+[xUnit.net 00:00:17.80]       Microsoft.Data.SqlClient.SqlException : Reading initialized epochs must not update their storage.
+[xUnit.net 00:00:17.80]       Stack Trace:
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlInternalConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, SqlCommand command, Boolean callerHasConnectionLock, Boolean asyncClose)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlDataReader.TryConsumeMetaData()
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlDataReader.get_MetaData()
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.FinishExecuteReader(SqlDataReader ds, RunBehavior runBehavior, String resetOptionsString, Boolean isInternal, Boolean forDescribeParameterEncryption, Boolean shouldCacheForAlwaysEncrypted)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.CompleteAsyncExecuteReader(Boolean isInternal, Boolean forDescribeParameterEncryption)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.InternalEndExecuteReader(IAsyncResult asyncResult, Boolean isInternal, String endMethod)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.EndExecuteReaderInternal(IAsyncResult asyncResult)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.EndExecuteReaderAsync(IAsyncResult asyncResult)
+[xUnit.net 00:00:17.80]            at Microsoft.Data.SqlClient.SqlCommand.<>c.<InternalExecuteReaderAsync>b__201_1(IAsyncResult asyncResult)
+[xUnit.net 00:00:17.80]            at System.Threading.Tasks.TaskFactory`1.FromAsyncCoreLogic(IAsyncResult iar, Func`2 endFunction, Action`1 endAction, Task`1 promise, Boolean requiresSynchronization)
+[xUnit.net 00:00:17.80]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:17.80]         <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs(90,0): at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken)
+[xUnit.net 00:00:17.80]         <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs(101,0): at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken)
+[xUnit.net 00:00:17.80]         <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs(101,0): at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken)
+[xUnit.net 00:00:17.80]         <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs(29,0): at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage()
+[xUnit.net 00:00:17.80]         <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs(29,0): at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage()
+[xUnit.net 00:00:17.80]         <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs(29,0): at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage()
+[xUnit.net 00:00:17.80]         <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs(31,0): at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage()
+[xUnit.net 00:00:17.80]         --- End of stack trace from previous location ---
+[testcontainers.org 00:00:17.64] Delete Docker container 4c23f5d7b51c
+[xUnit.net 00:00:18.03]   Finished:    MethodCache.SqlServer.IntegrationTests
+  Failed MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage [563 ms]
+  Error Message:
+   Microsoft.Data.SqlClient.SqlException : Reading initialized epochs must not update their storage.
+  Stack Trace:
+     at Microsoft.Data.SqlClient.SqlConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   at Microsoft.Data.SqlClient.SqlInternalConnection.OnError(SqlException exception, Boolean breakConnection, Action`1 wrapCloseInAction)
+   at Microsoft.Data.SqlClient.TdsParser.ThrowExceptionAndWarning(TdsParserStateObject stateObj, SqlCommand command, Boolean callerHasConnectionLock, Boolean asyncClose)
+   at Microsoft.Data.SqlClient.TdsParser.TryRun(RunBehavior runBehavior, SqlCommand cmdHandler, SqlDataReader dataStream, BulkCopySimpleResultSet bulkCopyHandler, TdsParserStateObject stateObj, Boolean& dataReady)
+   at Microsoft.Data.SqlClient.SqlDataReader.TryConsumeMetaData()
+   at Microsoft.Data.SqlClient.SqlDataReader.get_MetaData()
+   at Microsoft.Data.SqlClient.SqlCommand.FinishExecuteReader(SqlDataReader ds, RunBehavior runBehavior, String resetOptionsString, Boolean isInternal, Boolean forDescribeParameterEncryption, Boolean shouldCacheForAlwaysEncrypted)
+   at Microsoft.Data.SqlClient.SqlCommand.CompleteAsyncExecuteReader(Boolean isInternal, Boolean forDescribeParameterEncryption)
+   at Microsoft.Data.SqlClient.SqlCommand.InternalEndExecuteReader(IAsyncResult asyncResult, Boolean isInternal, String endMethod)
+   at Microsoft.Data.SqlClient.SqlCommand.EndExecuteReaderInternal(IAsyncResult asyncResult)
+   at Microsoft.Data.SqlClient.SqlCommand.EndExecuteReaderAsync(IAsyncResult asyncResult)
+   at Microsoft.Data.SqlClient.SqlCommand.<>c.<InternalExecuteReaderAsync>b__201_1(IAsyncResult asyncResult)
+   at System.Threading.Tasks.TaskFactory`1.FromAsyncCoreLogic(IAsyncResult iar, Func`2 endFunction, Action`1 endAction, Task`1 promise, Boolean requiresSynchronization)
+--- End of stack trace from previous location ---
+   at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken) in <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs:line 90
+   at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken) in <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs:line 101
+   at MethodCache.SqlServer.SqlServerDistributedCache.EnsureEpochsAsync(IReadOnlyList`1 keys, CancellationToken cancellationToken) in <worktree>/src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs:line 101
+   at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage() in <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs:line 29
+   at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage() in <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs:line 29
+   at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage() in <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs:line 29
+   at MethodCache.SqlServer.IntegrationTests.EpochContractTests.EnsureEpochs_InitializedVector_DoesNotUpdateStorage() in <worktree>/tests/MethodCache.SqlServer.IntegrationTests/EpochContractTests.cs:line 31
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 1
+     Failed: 1
+ Total time: 18,2919 Seconds

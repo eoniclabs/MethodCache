@@ -57,12 +57,13 @@ internal sealed partial class SqlServerDistributedCache
         await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
         // A single command/round trip. Sorting physical IDs gives concurrent vectors one lock order.
         var sorted = keys.Select((key, index) => (Key: GetPhysicalKey(key), Index: index)).OrderBy(item => item.Key, StringComparer.Ordinal).ToArray();
-        var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION; DECLARE @previous varbinary(max), @data varbinary(max), @expires datetimeoffset;\n");
+        var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION; DECLARE @previous varbinary(max), @data varbinary(max), @expires datetimeoffset, @absolute datetimeoffset, @sliding bigint;\n");
         for (var i = 0; i < sorted.Length; i++)
         {
             sql.Append($"""
-                SET @previous = NULL; SET @expires = NULL;
-                SELECT @previous = [Value], @expires = [ExpiresAtTime] FROM {_table} WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = @key{i};
+                SET @previous = NULL; SET @expires = NULL; SET @absolute = NULL; SET @sliding = NULL;
+                SELECT @previous = [Value], @expires = [ExpiresAtTime], @absolute = [AbsoluteExpiration], @sliding = [SlidingExpirationInSeconds]
+                    FROM {_table} WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = @key{i};
                 IF @expires <= SYSDATETIMEOFFSET() SET @previous = NULL;
                 IF @previous IS NULL OR DATALENGTH(@previous) = 8
                     SET @data = ISNULL(@previous, @emptyStamp) + 0x01 + @seed{i} + 0x0000000000000000;
@@ -70,7 +71,9 @@ internal sealed partial class SqlServerDistributedCache
                 ELSE THROW 50001, 'MethodCache epoch metadata schema mismatch.', 1;
                 IF @expires IS NULL
                     INSERT INTO {_table} ([Id], [Value], [ExpiresAtTime], [AbsoluteExpiration], [SlidingExpirationInSeconds]) VALUES (@key{i}, @data, @maximum, @maximum, NULL);
-                ELSE UPDATE {_table} SET [Value] = @data, [ExpiresAtTime] = @maximum, [AbsoluteExpiration] = @maximum, [SlidingExpirationInSeconds] = NULL WHERE [Id] = @key{i};
+                ELSE IF @previous IS NULL OR @data <> @previous OR @expires <> @maximum
+                    OR @absolute IS NULL OR @absolute <> @maximum OR @sliding IS NOT NULL
+                    UPDATE {_table} SET [Value] = @data, [ExpiresAtTime] = @maximum, [AbsoluteExpiration] = @maximum, [SlidingExpirationInSeconds] = NULL WHERE [Id] = @key{i};
                 SELECT {sorted[i].Index} AS [Position], @data AS [Value];
                 """);
         }

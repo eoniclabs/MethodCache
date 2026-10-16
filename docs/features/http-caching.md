@@ -63,6 +63,8 @@ the URL you sent it to, also when the response redirects (`303 See Other`) elsew
 background revalidation that was already in flight can still complete, but it stores its response under the old
 generation, so later requests fetch the updated response. With native Redis or SQL Server configured, the generation is shared by every instance, even when backplane
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
+SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
+non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
 URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes

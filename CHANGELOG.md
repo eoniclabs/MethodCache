@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
+  expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.
+
 - Preserve `MethodCall.StartKey` in generated contract 1 for already compiled inline callers. Add a
   separate frozen .NET 10 vendor checkpoint and a complete contract-member guard; original images stay unchanged.
 
