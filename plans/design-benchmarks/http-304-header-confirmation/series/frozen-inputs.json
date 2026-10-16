@@ -1,0 +1,13 @@
+{
+  "purpose": "Fresh three-pair HTTP-only confirmation; no historical data pooled; not GUID whole-matrix acceptance",
+  "candidate_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+  "base_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+  "files_sha256": {
+    "source.bundle": "d3eb0331ac5b66fe88ce124e4b600bd137c25eb05260c03233193460dee0ce20",
+    "run.py": "07ba18789cda1658168c3fc30ae949a5801d4ecb67e1666548237c3a2e91a816",
+    "prepare.py": "6282f96c82fc7b6340047cc2988df3ed76a795797aaeddb8f29e322e579d9c1c",
+    "worker.py": "7485958eea7adbf0e9ec9db8265e233448064a6c89465412aef668fac457816f"
+  },
+  "leased_batch_sha256": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+  "process_activity_sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+}

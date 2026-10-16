@@ -1,0 +1,13 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-affinity-startup-v4-verify-startup-affinity 2026-10-15T17:43:27.208061+00:00
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/affinity-startup-v4/startup-probe/Probe.csproj (in 50 ms).
+  Probe -> /home/agent-admin/methodcache-design-bench-20261015/affinity-startup-v4/startup-probe/bin/Release/net10.0/Probe.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.77
+ProcessorCount=1;Affinity=4
+
+Releasing exclusive lease methodcache-design-20261015-01a13a93-affinity-startup-v4-verify-startup-affinity exit 0 2026-10-15T17:43:29.624618+00:00

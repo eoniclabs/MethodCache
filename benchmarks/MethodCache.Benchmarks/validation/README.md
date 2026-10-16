@@ -42,8 +42,9 @@ other common test/build runners, and excludes the benchmark's own compilation de
 not proof against every possible source of system load. Other jobs are never terminated. Logs and JSON retain
 all failed or interrupted attempts; a restart must preserve rejected attempt directories before reusing a run name.
 The script only gathers evidence: section-10 acceptance still requires 95% intervals over the three independent run
-means, allocation comparisons and review of uncertain/regressed cases. New RoundTrip/KeepCookies behavior is reported
-separately where the historical feature was absent.
+means, allocation comparisons and review of uncertain/regressed cases. KeepCookies and the new
+round-trip opt-out are reported separately where historical behavior differs; enabled round-trip
+validation already existed before PR4.
 
 Run the guard regression tests with `python3 -m unittest discover -s benchmarks/MethodCache.Benchmarks/validation`.
 The Flutter-worker case failed before the broadened guard; own benchmark descendants and normal backend/app
@@ -104,6 +105,21 @@ do not pool previous growing-miss data with this bounded publication case.
 The explicit invocation count overrides iterationTime for this one class; other scenarios retain their
 normal 500 ms target. See [BenchmarkDotNet InvocationCount](https://benchmarkdotnet.org/api/BenchmarkDotNet.Attributes.InvocationCountAttribute.html).
 Growing-pressure rows still require performance review; the separation does not waive regressions.
+
+## Full frozen Nimbus cohort
+
+The published [version-4 protocol](../../../plans/design-benchmarks/guid-full-protocol-v4/)
+supersedes the preliminary twelve-point local dispatcher above for final evidence. It preserves
+fourteen actual runtime points and six component points, split into 180 bounded launches.
+Preparation and all sixty compiled family checks must complete before the measurement dispatcher starts.
+
+Use `summarize-design.py RESULTS --output REPORT.json` for the full eleven-edge review. It requires
+all 180 unique successful launches and identical source/program hashes across each actual PR edge.
+Its pair statistics are the same as `summarize-pair.py`; acceptance remains manual.
+The source-reviewed round-trip classification supersedes the frozen protocol archive's earlier
+analysis-only label: validation already existed, PR4 adds an opt-out affecting writes, and both
+read labels remain comparable. [Original failing cases and source evidence](../../../plans/design-benchmarks/guid-feature-review-v1/)
+retain that correction without changing deployed measurement inputs or collecting different samples.
 
 ## Independent-run statistical report
 

@@ -1,0 +1,32 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-http-304-header-v1-build-candidate 2026-10-15T20:49:39.454751+00:00
+/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/candidate/DesignValidation.csproj
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Core/MethodCache.Core.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Redis/MethodCache.Redis.csproj (in 273 ms).
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/candidate/DesignValidation.csproj (in 277 ms).
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  DesignValidation -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/candidate/bin/Release/net10.0/DesignValidation.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:09.40
+Verified 100 resident/304 operations, listener=False, invalidated=False
+Verified 100 resident/304 operations, listener=False, invalidated=True
+Verified 100 resident/304 operations, listener=True, invalidated=False
+Verified 100 resident/304 operations, listener=True, invalidated=True
+Releasing exclusive lease methodcache-design-20261015-01a13a93-http-304-header-v1-build-candidate exit 0 2026-10-15T20:49:49.975623+00:00

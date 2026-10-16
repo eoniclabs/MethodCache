@@ -1,0 +1,21 @@
+Waiting for exclusive capacity: verify-startup-affinity 2026-10-15T16:47:27.017247+00:00
+Finished verify-startup-affinity 2026-10-15T17:43:29.628116+00:00
+Waiting for exclusive capacity: round-1-prefix 2026-10-15T17:43:39.645915+00:00
+Finished round-1-prefix 2026-10-15T17:58:21.195135+00:00
+Waiting for exclusive capacity: round-2-prefix 2026-10-15T17:58:31.195947+00:00
+Finished round-2-prefix 2026-10-15T18:10:30.749584+00:00
+Waiting for exclusive capacity: round-3-prefix 2026-10-15T18:10:40.750953+00:00
+Finished round-3-prefix 2026-10-15T18:22:42.287552+00:00
+Waiting for exclusive capacity: round-4-prefix 2026-10-15T18:22:52.288149+00:00
+Finished round-4-prefix 2026-10-15T19:16:13.578683+00:00
+Waiting for exclusive capacity: round-5-prefix 2026-10-15T19:16:23.579988+00:00
+Finished round-5-prefix 2026-10-15T19:56:03.175545+00:00
+Waiting for exclusive capacity: round-6-prefix 2026-10-15T19:56:13.176958+00:00
+Finished round-6-prefix 2026-10-15T20:08:20.715507+00:00
+Waiting for exclusive capacity: round-7-prefix 2026-10-15T20:08:30.716942+00:00
+Finished round-7-prefix 2026-10-16T06:39:17.479711+00:00
+Waiting for exclusive capacity: round-8-prefix 2026-10-16T06:39:27.480692+00:00
+Finished round-8-prefix 2026-10-16T06:44:27.002812+00:00
+Waiting for exclusive capacity: round-9-prefix 2026-10-16T06:44:37.003213+00:00
+Finished round-9-prefix 2026-10-16T07:11:52.483174+00:00
+Nine-launch startup-affinity pilot complete. Review all means/intervals; no automatic acceptance. 2026-10-16T07:12:02.483989+00:00

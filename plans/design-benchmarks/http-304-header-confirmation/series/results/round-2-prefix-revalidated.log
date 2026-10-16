@@ -1,0 +1,570 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 4 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/publish/" in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1
+// command took 1.82 sec and exited with 0
+// start dotnet  build -c Release --no-restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/publish/" --output "/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0/" in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1
+// command took 12.28 sec and exited with 0
+// ***** Done, took 00:00:14 (14.14 sec)   *****
+// Found 4 benchmarks:
+//   HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=False]
+//   HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=True]
+//   HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=False]
+//   HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=True]
+
+// **************************
+// Benchmark: HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=False]
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet DesignValidation-Job-ACOERQ-1.dll --anonymousPipes 148 149 --benchmarkName "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: False)" --job "Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16" --benchmarkId 0 in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.4
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL VectorSize=256
+// Job: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16)
+
+OverheadJitting  1: 1 op, 135849.00 ns, 135.8490 us/op
+WorkloadJitting  1: 1 op, 2054205.00 ns, 2.0542 ms/op
+
+OverheadJitting  2: 16 op, 224031.00 ns, 14.0019 us/op
+WorkloadJitting  2: 16 op, 994425.00 ns, 62.1516 us/op
+
+WorkloadPilot    1: 16 op, 631669.00 ns, 39.4793 us/op
+WorkloadPilot    2: 12672 op, 506034642.00 ns, 39.9333 us/op
+WorkloadPilot    3: 12528 op, 382096345.00 ns, 30.4994 us/op
+WorkloadPilot    4: 16400 op, 265803758.00 ns, 16.2075 us/op
+WorkloadPilot    5: 30864 op, 185879062.00 ns, 6.0225 us/op
+WorkloadPilot    6: 83024 op, 433652006.00 ns, 5.2232 us/op
+WorkloadPilot    7: 95728 op, 498000766.00 ns, 5.2022 us/op
+WorkloadPilot    8: 96112 op, 500650530.00 ns, 5.2090 us/op
+WorkloadPilot    9: 96000 op, 501469655.00 ns, 5.2236 us/op
+
+OverheadWarmup   1: 96000 op, 192949.00 ns, 2.0099 ns/op
+OverheadWarmup   2: 96000 op, 220680.00 ns, 2.2988 ns/op
+OverheadWarmup   3: 96000 op, 213159.00 ns, 2.2204 ns/op
+OverheadWarmup   4: 96000 op, 199196.00 ns, 2.0750 ns/op
+OverheadWarmup   5: 96000 op, 199364.00 ns, 2.0767 ns/op
+OverheadWarmup   6: 96000 op, 197667.00 ns, 2.0590 ns/op
+
+OverheadActual   1: 96000 op, 198021.00 ns, 2.0627 ns/op
+OverheadActual   2: 96000 op, 217412.00 ns, 2.2647 ns/op
+OverheadActual   3: 96000 op, 223736.00 ns, 2.3306 ns/op
+OverheadActual   4: 96000 op, 205005.00 ns, 2.1355 ns/op
+OverheadActual   5: 96000 op, 193300.00 ns, 2.0135 ns/op
+OverheadActual   6: 96000 op, 194485.00 ns, 2.0259 ns/op
+OverheadActual   7: 96000 op, 200362.00 ns, 2.0871 ns/op
+OverheadActual   8: 96000 op, 187093.00 ns, 1.9489 ns/op
+OverheadActual   9: 96000 op, 194385.00 ns, 2.0248 ns/op
+OverheadActual  10: 96000 op, 187148.00 ns, 1.9495 ns/op
+OverheadActual  11: 96000 op, 228023.00 ns, 2.3752 ns/op
+OverheadActual  12: 96000 op, 246783.00 ns, 2.5707 ns/op
+OverheadActual  13: 96000 op, 203362.00 ns, 2.1184 ns/op
+OverheadActual  14: 96000 op, 199299.00 ns, 2.0760 ns/op
+OverheadActual  15: 96000 op, 199223.00 ns, 2.0752 ns/op
+OverheadActual  16: 96000 op, 199274.00 ns, 2.0758 ns/op
+OverheadActual  17: 96000 op, 215035.00 ns, 2.2399 ns/op
+OverheadActual  18: 96000 op, 246068.00 ns, 2.5632 ns/op
+OverheadActual  19: 96000 op, 236893.00 ns, 2.4676 ns/op
+OverheadActual  20: 96000 op, 199314.00 ns, 2.0762 ns/op
+
+WorkloadWarmup   1: 96000 op, 511895403.00 ns, 5.3322 us/op
+WorkloadWarmup   2: 96000 op, 504274812.00 ns, 5.2529 us/op
+WorkloadWarmup   3: 96000 op, 502447765.00 ns, 5.2338 us/op
+WorkloadWarmup   4: 96000 op, 500358006.00 ns, 5.2121 us/op
+WorkloadWarmup   5: 96000 op, 503010881.00 ns, 5.2397 us/op
+WorkloadWarmup   6: 96000 op, 499815071.00 ns, 5.2064 us/op
+WorkloadWarmup   7: 96000 op, 499542835.00 ns, 5.2036 us/op
+WorkloadWarmup   8: 96000 op, 500457111.00 ns, 5.2131 us/op
+WorkloadWarmup   9: 96000 op, 502574563.00 ns, 5.2352 us/op
+WorkloadWarmup  10: 96000 op, 500213655.00 ns, 5.2106 us/op
+WorkloadWarmup  11: 96000 op, 499913011.00 ns, 5.2074 us/op
+WorkloadWarmup  12: 96000 op, 501019995.00 ns, 5.2190 us/op
+WorkloadWarmup  13: 96000 op, 502504252.00 ns, 5.2344 us/op
+WorkloadWarmup  14: 96000 op, 503366209.00 ns, 5.2434 us/op
+WorkloadWarmup  15: 96000 op, 502406427.00 ns, 5.2334 us/op
+WorkloadWarmup  16: 96000 op, 540415461.00 ns, 5.6293 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 96000 op, 502306716.00 ns, 5.2324 us/op
+WorkloadActual   2: 96000 op, 502549496.00 ns, 5.2349 us/op
+WorkloadActual   3: 96000 op, 500625210.00 ns, 5.2148 us/op
+WorkloadActual   4: 96000 op, 500304239.00 ns, 5.2115 us/op
+WorkloadActual   5: 96000 op, 502589018.00 ns, 5.2353 us/op
+WorkloadActual   6: 96000 op, 501866633.00 ns, 5.2278 us/op
+WorkloadActual   7: 96000 op, 501943627.00 ns, 5.2286 us/op
+WorkloadActual   8: 96000 op, 501481779.00 ns, 5.2238 us/op
+WorkloadActual   9: 96000 op, 501864226.00 ns, 5.2278 us/op
+WorkloadActual  10: 96000 op, 500307866.00 ns, 5.2115 us/op
+WorkloadActual  11: 96000 op, 500534309.00 ns, 5.2139 us/op
+WorkloadActual  12: 96000 op, 501252047.00 ns, 5.2214 us/op
+
+// AfterActualRun
+WorkloadResult   1: 96000 op, 502106878.00 ns, 5.2303 us/op
+WorkloadResult   2: 96000 op, 502349658.00 ns, 5.2328 us/op
+WorkloadResult   3: 96000 op, 500425372.00 ns, 5.2128 us/op
+WorkloadResult   4: 96000 op, 500104401.00 ns, 5.2094 us/op
+WorkloadResult   5: 96000 op, 502389180.00 ns, 5.2332 us/op
+WorkloadResult   6: 96000 op, 501666795.00 ns, 5.2257 us/op
+WorkloadResult   7: 96000 op, 501743789.00 ns, 5.2265 us/op
+WorkloadResult   8: 96000 op, 501281941.00 ns, 5.2217 us/op
+WorkloadResult   9: 96000 op, 501664388.00 ns, 5.2257 us/op
+WorkloadResult  10: 96000 op, 500108028.00 ns, 5.2095 us/op
+WorkloadResult  11: 96000 op, 500334471.00 ns, 5.2118 us/op
+WorkloadResult  12: 96000 op, 501052209.00 ns, 5.2193 us/op
+// GC:  94 1 0 792597280 96000
+// Threading:  0 0 96000
+
+// AfterAll
+// Benchmark Process 3666889 has exited with code 0.
+
+Mean = 5.222 us, StdErr = 0.003 us (0.05%), N = 12, StdDev = 0.009 us
+Min = 5.209 us, Q1 = 5.213 us, Median = 5.224 us, Q3 = 5.227 us, Max = 5.233 us
+IQR = 0.015 us, LowerFence = 5.190 us, UpperFence = 5.250 us
+ConfidenceInterval = [5.210 us; 5.233 us] (CI 99.9%), Margin = 0.011 us (0.22% of Mean)
+Skewness = -0.15, Kurtosis = 1.33, MValue = 2
+
+// ** Remained 3 (75.0 %) benchmark(s) to run. Estimated finish 2026-10-16 6:41 (0h 0m from now) **
+// **************************
+// Benchmark: HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=True]
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet DesignValidation-Job-ACOERQ-1.dll --anonymousPipes 148 149 --benchmarkName "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: True)" --job "Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16" --benchmarkId 1 in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.4
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL VectorSize=256
+// Job: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16)
+
+OverheadJitting  1: 1 op, 136395.00 ns, 136.3950 us/op
+WorkloadJitting  1: 1 op, 2069698.00 ns, 2.0697 ms/op
+
+OverheadJitting  2: 16 op, 238719.00 ns, 14.9199 us/op
+WorkloadJitting  2: 16 op, 1004738.00 ns, 62.7961 us/op
+
+WorkloadPilot    1: 16 op, 640466.00 ns, 40.0291 us/op
+WorkloadPilot    2: 12496 op, 504575711.00 ns, 40.3790 us/op
+WorkloadPilot    3: 12384 op, 386329198.00 ns, 31.1958 us/op
+WorkloadPilot    4: 16032 op, 256967863.00 ns, 16.0284 us/op
+WorkloadPilot    5: 31200 op, 196890567.00 ns, 6.3106 us/op
+WorkloadPilot    6: 79232 op, 435409729.00 ns, 5.4954 us/op
+WorkloadPilot    7: 90992 op, 496417995.00 ns, 5.4556 us/op
+WorkloadPilot    8: 91664 op, 501402633.00 ns, 5.4700 us/op
+WorkloadPilot    9: 91408 op, 500597254.00 ns, 5.4765 us/op
+
+OverheadWarmup   1: 91408 op, 178755.00 ns, 1.9556 ns/op
+OverheadWarmup   2: 91408 op, 178271.00 ns, 1.9503 ns/op
+OverheadWarmup   3: 91408 op, 178233.00 ns, 1.9499 ns/op
+OverheadWarmup   4: 91408 op, 178185.00 ns, 1.9493 ns/op
+OverheadWarmup   5: 91408 op, 178184.00 ns, 1.9493 ns/op
+OverheadWarmup   6: 91408 op, 178225.00 ns, 1.9498 ns/op
+OverheadWarmup   7: 91408 op, 178101.00 ns, 1.9484 ns/op
+OverheadWarmup   8: 91408 op, 193874.00 ns, 2.1210 ns/op
+OverheadWarmup   9: 91408 op, 195895.00 ns, 2.1431 ns/op
+OverheadWarmup  10: 91408 op, 178121.00 ns, 1.9486 ns/op
+
+OverheadActual   1: 91408 op, 178387.00 ns, 1.9515 ns/op
+OverheadActual   2: 91408 op, 178314.00 ns, 1.9507 ns/op
+OverheadActual   3: 91408 op, 182879.00 ns, 2.0007 ns/op
+OverheadActual   4: 91408 op, 182335.00 ns, 1.9947 ns/op
+OverheadActual   5: 91408 op, 182114.00 ns, 1.9923 ns/op
+OverheadActual   6: 91408 op, 178218.00 ns, 1.9497 ns/op
+OverheadActual   7: 91408 op, 178236.00 ns, 1.9499 ns/op
+OverheadActual   8: 91408 op, 178252.00 ns, 1.9501 ns/op
+OverheadActual   9: 91408 op, 178123.00 ns, 1.9487 ns/op
+OverheadActual  10: 91408 op, 201600.00 ns, 2.2055 ns/op
+OverheadActual  11: 91408 op, 191370.00 ns, 2.0936 ns/op
+OverheadActual  12: 91408 op, 178197.00 ns, 1.9495 ns/op
+OverheadActual  13: 91408 op, 178311.00 ns, 1.9507 ns/op
+OverheadActual  14: 91408 op, 178165.00 ns, 1.9491 ns/op
+OverheadActual  15: 91408 op, 178246.00 ns, 1.9500 ns/op
+
+WorkloadWarmup   1: 91408 op, 509338234.00 ns, 5.5721 us/op
+WorkloadWarmup   2: 91408 op, 503140260.00 ns, 5.5043 us/op
+WorkloadWarmup   3: 91408 op, 502783714.00 ns, 5.5004 us/op
+WorkloadWarmup   4: 91408 op, 501440153.00 ns, 5.4857 us/op
+WorkloadWarmup   5: 91408 op, 502725255.00 ns, 5.4998 us/op
+WorkloadWarmup   6: 91408 op, 500244166.00 ns, 5.4727 us/op
+WorkloadWarmup   7: 91408 op, 499923003.00 ns, 5.4691 us/op
+WorkloadWarmup   8: 91408 op, 499403722.00 ns, 5.4635 us/op
+WorkloadWarmup   9: 91408 op, 501339400.00 ns, 5.4846 us/op
+WorkloadWarmup  10: 91408 op, 538255898.00 ns, 5.8885 us/op
+WorkloadWarmup  11: 91408 op, 501091195.00 ns, 5.4819 us/op
+WorkloadWarmup  12: 91408 op, 501651592.00 ns, 5.4880 us/op
+WorkloadWarmup  13: 91408 op, 502172407.00 ns, 5.4937 us/op
+WorkloadWarmup  14: 91408 op, 500045029.00 ns, 5.4705 us/op
+WorkloadWarmup  15: 91408 op, 500495761.00 ns, 5.4754 us/op
+WorkloadWarmup  16: 91408 op, 502212623.00 ns, 5.4942 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 91408 op, 504364180.00 ns, 5.5177 us/op
+WorkloadActual   2: 91408 op, 503952552.00 ns, 5.5132 us/op
+WorkloadActual   3: 91408 op, 502170778.00 ns, 5.4937 us/op
+WorkloadActual   4: 91408 op, 502758904.00 ns, 5.5002 us/op
+WorkloadActual   5: 91408 op, 504078165.00 ns, 5.5146 us/op
+WorkloadActual   6: 91408 op, 502734654.00 ns, 5.4999 us/op
+WorkloadActual   7: 91408 op, 500968142.00 ns, 5.4806 us/op
+WorkloadActual   8: 91408 op, 501779477.00 ns, 5.4894 us/op
+WorkloadActual   9: 91408 op, 501903836.00 ns, 5.4908 us/op
+WorkloadActual  10: 91408 op, 501152904.00 ns, 5.4826 us/op
+WorkloadActual  11: 91408 op, 500330901.00 ns, 5.4736 us/op
+WorkloadActual  12: 91408 op, 500278483.00 ns, 5.4730 us/op
+
+// AfterActualRun
+WorkloadResult   1: 91408 op, 504185869.00 ns, 5.5158 us/op
+WorkloadResult   2: 91408 op, 503774241.00 ns, 5.5113 us/op
+WorkloadResult   3: 91408 op, 501992467.00 ns, 5.4918 us/op
+WorkloadResult   4: 91408 op, 502580593.00 ns, 5.4982 us/op
+WorkloadResult   5: 91408 op, 503899854.00 ns, 5.5126 us/op
+WorkloadResult   6: 91408 op, 502556343.00 ns, 5.4979 us/op
+WorkloadResult   7: 91408 op, 500789831.00 ns, 5.4786 us/op
+WorkloadResult   8: 91408 op, 501601166.00 ns, 5.4875 us/op
+WorkloadResult   9: 91408 op, 501725525.00 ns, 5.4889 us/op
+WorkloadResult  10: 91408 op, 500974593.00 ns, 5.4806 us/op
+WorkloadResult  11: 91408 op, 500152590.00 ns, 5.4717 us/op
+WorkloadResult  12: 91408 op, 500100172.00 ns, 5.4711 us/op
+// GC:  90 1 0 754684832 91408
+// Threading:  0 0 91408
+
+// AfterAll
+// Benchmark Process 3666912 has exited with code 0.
+
+Mean = 5.492 us, StdErr = 0.004 us (0.08%), N = 12, StdDev = 0.015 us
+Min = 5.471 us, Q1 = 5.480 us, Median = 5.490 us, Q3 = 5.501 us, Max = 5.516 us
+IQR = 0.021 us, LowerFence = 5.448 us, UpperFence = 5.533 us
+ConfidenceInterval = [5.472 us; 5.512 us] (CI 99.9%), Margin = 0.020 us (0.36% of Mean)
+Skewness = 0.16, Kurtosis = 1.53, MValue = 2
+
+// ** Remained 2 (50.0 %) benchmark(s) to run. Estimated finish 2026-10-16 6:41 (0h 0m from now) **
+// **************************
+// Benchmark: HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=False]
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet DesignValidation-Job-ACOERQ-1.dll --anonymousPipes 148 149 --benchmarkName "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: False)" --job "Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16" --benchmarkId 2 in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.4
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL VectorSize=256
+// Job: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16)
+
+OverheadJitting  1: 1 op, 134915.00 ns, 134.9150 us/op
+WorkloadJitting  1: 1 op, 2162021.00 ns, 2.1620 ms/op
+
+OverheadJitting  2: 16 op, 251223.00 ns, 15.7014 us/op
+WorkloadJitting  2: 16 op, 1033358.00 ns, 64.5849 us/op
+
+WorkloadPilot    1: 16 op, 646607.00 ns, 40.4129 us/op
+WorkloadPilot    2: 12384 op, 501931936.00 ns, 40.5307 us/op
+WorkloadPilot    3: 12336 op, 401555772.00 ns, 32.5515 us/op
+WorkloadPilot    4: 15360 op, 249222244.00 ns, 16.2254 us/op
+WorkloadPilot    5: 30816 op, 190686799.00 ns, 6.1879 us/op
+WorkloadPilot    6: 80816 op, 424104010.00 ns, 5.2478 us/op
+WorkloadPilot    7: 95280 op, 499664086.00 ns, 5.2442 us/op
+WorkloadPilot    8: 95344 op, 497742971.00 ns, 5.2205 us/op
+WorkloadPilot    9: 95776 op, 500414880.00 ns, 5.2248 us/op
+WorkloadPilot   10: 95712 op, 500852305.00 ns, 5.2329 us/op
+
+OverheadWarmup   1: 95712 op, 186987.00 ns, 1.9536 ns/op
+OverheadWarmup   2: 95712 op, 186550.00 ns, 1.9491 ns/op
+OverheadWarmup   3: 95712 op, 186621.00 ns, 1.9498 ns/op
+OverheadWarmup   4: 95712 op, 186496.00 ns, 1.9485 ns/op
+OverheadWarmup   5: 95712 op, 186626.00 ns, 1.9499 ns/op
+OverheadWarmup   6: 95712 op, 189332.00 ns, 1.9781 ns/op
+OverheadWarmup   7: 95712 op, 186550.00 ns, 1.9491 ns/op
+
+OverheadActual   1: 95712 op, 194459.00 ns, 2.0317 ns/op
+OverheadActual   2: 95712 op, 186763.00 ns, 1.9513 ns/op
+OverheadActual   3: 95712 op, 191553.00 ns, 2.0013 ns/op
+OverheadActual   4: 95712 op, 190728.00 ns, 1.9927 ns/op
+OverheadActual   5: 95712 op, 186677.00 ns, 1.9504 ns/op
+OverheadActual   6: 95712 op, 190797.00 ns, 1.9934 ns/op
+OverheadActual   7: 95712 op, 186659.00 ns, 1.9502 ns/op
+OverheadActual   8: 95712 op, 186615.00 ns, 1.9498 ns/op
+OverheadActual   9: 95712 op, 186561.00 ns, 1.9492 ns/op
+OverheadActual  10: 95712 op, 199938.00 ns, 2.0890 ns/op
+OverheadActual  11: 95712 op, 212628.00 ns, 2.2215 ns/op
+OverheadActual  12: 95712 op, 186678.00 ns, 1.9504 ns/op
+OverheadActual  13: 95712 op, 186581.00 ns, 1.9494 ns/op
+OverheadActual  14: 95712 op, 186506.00 ns, 1.9486 ns/op
+OverheadActual  15: 95712 op, 186629.00 ns, 1.9499 ns/op
+
+WorkloadWarmup   1: 95712 op, 516260390.00 ns, 5.3939 us/op
+WorkloadWarmup   2: 95712 op, 532836297.00 ns, 5.5671 us/op
+WorkloadWarmup   3: 95712 op, 501013972.00 ns, 5.2346 us/op
+WorkloadWarmup   4: 95712 op, 498395960.00 ns, 5.2072 us/op
+WorkloadWarmup   5: 95712 op, 500988044.00 ns, 5.2343 us/op
+WorkloadWarmup   6: 95712 op, 497390941.00 ns, 5.1967 us/op
+WorkloadWarmup   7: 95712 op, 547121377.00 ns, 5.7163 us/op
+WorkloadWarmup   8: 95712 op, 541514583.00 ns, 5.6578 us/op
+WorkloadWarmup   9: 95712 op, 533743296.00 ns, 5.5766 us/op
+WorkloadWarmup  10: 95712 op, 496555996.00 ns, 5.1880 us/op
+WorkloadWarmup  11: 95712 op, 501403711.00 ns, 5.2387 us/op
+WorkloadWarmup  12: 95712 op, 497346886.00 ns, 5.1963 us/op
+WorkloadWarmup  13: 95712 op, 498846922.00 ns, 5.2120 us/op
+WorkloadWarmup  14: 95712 op, 497594723.00 ns, 5.1989 us/op
+WorkloadWarmup  15: 95712 op, 499691930.00 ns, 5.2208 us/op
+WorkloadWarmup  16: 95712 op, 499914059.00 ns, 5.2231 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 95712 op, 574160241.00 ns, 5.9988 us/op
+WorkloadActual   2: 95712 op, 500194647.00 ns, 5.2260 us/op
+WorkloadActual   3: 95712 op, 500786368.00 ns, 5.2322 us/op
+WorkloadActual   4: 95712 op, 499936800.00 ns, 5.2233 us/op
+WorkloadActual   5: 95712 op, 499877595.00 ns, 5.2227 us/op
+WorkloadActual   6: 95712 op, 502779046.00 ns, 5.2530 us/op
+WorkloadActual   7: 95712 op, 500947304.00 ns, 5.2339 us/op
+WorkloadActual   8: 95712 op, 500031870.00 ns, 5.2243 us/op
+WorkloadActual   9: 95712 op, 499896907.00 ns, 5.2229 us/op
+WorkloadActual  10: 95712 op, 498709083.00 ns, 5.2105 us/op
+WorkloadActual  11: 95712 op, 501602532.00 ns, 5.2407 us/op
+WorkloadActual  12: 95712 op, 500598765.00 ns, 5.2303 us/op
+
+// AfterActualRun
+WorkloadResult   1: 95712 op, 500007969.00 ns, 5.2241 us/op
+WorkloadResult   2: 95712 op, 500599690.00 ns, 5.2303 us/op
+WorkloadResult   3: 95712 op, 499750122.00 ns, 5.2214 us/op
+WorkloadResult   4: 95712 op, 499690917.00 ns, 5.2208 us/op
+WorkloadResult   5: 95712 op, 502592368.00 ns, 5.2511 us/op
+WorkloadResult   6: 95712 op, 500760626.00 ns, 5.2320 us/op
+WorkloadResult   7: 95712 op, 499845192.00 ns, 5.2224 us/op
+WorkloadResult   8: 95712 op, 499710229.00 ns, 5.2210 us/op
+WorkloadResult   9: 95712 op, 498522405.00 ns, 5.2086 us/op
+WorkloadResult  10: 95712 op, 501415854.00 ns, 5.2388 us/op
+WorkloadResult  11: 95712 op, 500412087.00 ns, 5.2283 us/op
+// GC:  94 1 0 790219552 95712
+// Threading:  0 0 95712
+
+// AfterAll
+// Benchmark Process 3666931 has exited with code 0.
+
+Mean = 5.227 us, StdErr = 0.003 us (0.06%), N = 11, StdDev = 0.011 us
+Min = 5.209 us, Q1 = 5.221 us, Median = 5.224 us, Q3 = 5.231 us, Max = 5.251 us
+IQR = 0.010 us, LowerFence = 5.206 us, UpperFence = 5.246 us
+ConfidenceInterval = [5.212 us; 5.242 us] (CI 99.9%), Margin = 0.015 us (0.29% of Mean)
+Skewness = 0.55, Kurtosis = 2.82, MValue = 2
+
+// ** Remained 1 (25.0 %) benchmark(s) to run. Estimated finish 2026-10-16 6:41 (0h 0m from now) **
+// **************************
+// Benchmark: HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=True]
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet DesignValidation-Job-ACOERQ-1.dll --anonymousPipes 148 149 --benchmarkName "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: True)" --job "Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16" --benchmarkId 3 in /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/bin/Release/net10.0
+// Failed to set up high priority (Permission denied). In order to run benchmarks with high priority, make sure you have the right permissions.
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.4
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL VectorSize=256
+// Job: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16)
+
+OverheadJitting  1: 1 op, 135698.00 ns, 135.6980 us/op
+WorkloadJitting  1: 1 op, 2052298.00 ns, 2.0523 ms/op
+
+OverheadJitting  2: 16 op, 225672.00 ns, 14.1045 us/op
+WorkloadJitting  2: 16 op, 1015074.00 ns, 63.4421 us/op
+
+WorkloadPilot    1: 16 op, 637194.00 ns, 39.8246 us/op
+WorkloadPilot    2: 12560 op, 510984618.00 ns, 40.6835 us/op
+WorkloadPilot    3: 12304 op, 387001326.00 ns, 31.4533 us/op
+WorkloadPilot    4: 15904 op, 250872474.00 ns, 15.7742 us/op
+WorkloadPilot    5: 31712 op, 197388124.00 ns, 6.2244 us/op
+WorkloadPilot    6: 80336 op, 433903063.00 ns, 5.4011 us/op
+WorkloadPilot    7: 92576 op, 498955998.00 ns, 5.3897 us/op
+WorkloadPilot    8: 92784 op, 500908236.00 ns, 5.3986 us/op
+WorkloadPilot    9: 92624 op, 499341444.00 ns, 5.3911 us/op
+WorkloadPilot   10: 92752 op, 499697898.00 ns, 5.3875 us/op
+WorkloadPilot   11: 92816 op, 501979696.00 ns, 5.4083 us/op
+
+OverheadWarmup   1: 92816 op, 190894.00 ns, 2.0567 ns/op
+OverheadWarmup   2: 92816 op, 179851.00 ns, 1.9377 ns/op
+OverheadWarmup   3: 92816 op, 179794.00 ns, 1.9371 ns/op
+OverheadWarmup   4: 92816 op, 186338.00 ns, 2.0076 ns/op
+OverheadWarmup   5: 92816 op, 179753.00 ns, 1.9367 ns/op
+OverheadWarmup   6: 92816 op, 179750.00 ns, 1.9366 ns/op
+OverheadWarmup   7: 92816 op, 191387.00 ns, 2.0620 ns/op
+OverheadWarmup   8: 92816 op, 192708.00 ns, 2.0762 ns/op
+OverheadWarmup   9: 92816 op, 203330.00 ns, 2.1907 ns/op
+OverheadWarmup  10: 92816 op, 179684.00 ns, 1.9359 ns/op
+
+OverheadActual   1: 92816 op, 214978.00 ns, 2.3162 ns/op
+OverheadActual   2: 92816 op, 179865.00 ns, 1.9379 ns/op
+OverheadActual   3: 92816 op, 179972.00 ns, 1.9390 ns/op
+OverheadActual   4: 92816 op, 179782.00 ns, 1.9370 ns/op
+OverheadActual   5: 92816 op, 179966.00 ns, 1.9390 ns/op
+OverheadActual   6: 92816 op, 179761.00 ns, 1.9367 ns/op
+OverheadActual   7: 92816 op, 183659.00 ns, 1.9787 ns/op
+OverheadActual   8: 92816 op, 179741.00 ns, 1.9365 ns/op
+OverheadActual   9: 92816 op, 180052.00 ns, 1.9399 ns/op
+OverheadActual  10: 92816 op, 200122.00 ns, 2.1561 ns/op
+OverheadActual  11: 92816 op, 200074.00 ns, 2.1556 ns/op
+OverheadActual  12: 92816 op, 183307.00 ns, 1.9750 ns/op
+OverheadActual  13: 92816 op, 179636.00 ns, 1.9354 ns/op
+OverheadActual  14: 92816 op, 179675.00 ns, 1.9358 ns/op
+OverheadActual  15: 92816 op, 179836.00 ns, 1.9376 ns/op
+
+WorkloadWarmup   1: 92816 op, 508786624.00 ns, 5.4817 us/op
+WorkloadWarmup   2: 92816 op, 504149370.00 ns, 5.4317 us/op
+WorkloadWarmup   3: 92816 op, 502669546.00 ns, 5.4158 us/op
+WorkloadWarmup   4: 92816 op, 500185910.00 ns, 5.3890 us/op
+WorkloadWarmup   5: 92816 op, 500585626.00 ns, 5.3933 us/op
+WorkloadWarmup   6: 92816 op, 499180245.00 ns, 5.3782 us/op
+WorkloadWarmup   7: 92816 op, 499192669.00 ns, 5.3783 us/op
+WorkloadWarmup   8: 92816 op, 498711536.00 ns, 5.3731 us/op
+WorkloadWarmup   9: 92816 op, 498991047.00 ns, 5.3761 us/op
+WorkloadWarmup  10: 92816 op, 499880427.00 ns, 5.3857 us/op
+WorkloadWarmup  11: 92816 op, 498539703.00 ns, 5.3713 us/op
+WorkloadWarmup  12: 92816 op, 498678377.00 ns, 5.3728 us/op
+WorkloadWarmup  13: 92816 op, 499114529.00 ns, 5.3775 us/op
+WorkloadWarmup  14: 92816 op, 503257833.00 ns, 5.4221 us/op
+WorkloadWarmup  15: 92816 op, 502069145.00 ns, 5.4093 us/op
+WorkloadWarmup  16: 92816 op, 501675603.00 ns, 5.4051 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 92816 op, 502377263.00 ns, 5.4126 us/op
+WorkloadActual   2: 92816 op, 500671646.00 ns, 5.3942 us/op
+WorkloadActual   3: 92816 op, 500212618.00 ns, 5.3893 us/op
+WorkloadActual   4: 92816 op, 500511122.00 ns, 5.3925 us/op
+WorkloadActual   5: 92816 op, 502084499.00 ns, 5.4095 us/op
+WorkloadActual   6: 92816 op, 500323673.00 ns, 5.3905 us/op
+WorkloadActual   7: 92816 op, 499930890.00 ns, 5.3863 us/op
+WorkloadActual   8: 92816 op, 505744685.00 ns, 5.4489 us/op
+WorkloadActual   9: 92816 op, 499664183.00 ns, 5.3834 us/op
+WorkloadActual  10: 92816 op, 499470561.00 ns, 5.3813 us/op
+WorkloadActual  11: 92816 op, 497177450.00 ns, 5.3566 us/op
+WorkloadActual  12: 92816 op, 497760845.00 ns, 5.3629 us/op
+
+// AfterActualRun
+WorkloadResult   1: 92816 op, 502197297.00 ns, 5.4107 us/op
+WorkloadResult   2: 92816 op, 500491680.00 ns, 5.3923 us/op
+WorkloadResult   3: 92816 op, 500032652.00 ns, 5.3874 us/op
+WorkloadResult   4: 92816 op, 500331156.00 ns, 5.3906 us/op
+WorkloadResult   5: 92816 op, 501904533.00 ns, 5.4075 us/op
+WorkloadResult   6: 92816 op, 500143707.00 ns, 5.3886 us/op
+WorkloadResult   7: 92816 op, 499750924.00 ns, 5.3843 us/op
+WorkloadResult   8: 92816 op, 499484217.00 ns, 5.3814 us/op
+WorkloadResult   9: 92816 op, 499290595.00 ns, 5.3794 us/op
+WorkloadResult  10: 92816 op, 496997484.00 ns, 5.3547 us/op
+WorkloadResult  11: 92816 op, 497580879.00 ns, 5.3609 us/op
+// GC:  91 1 0 766309504 92816
+// Threading:  0 0 92816
+
+// AfterAll
+// Benchmark Process 3667113 has exited with code 0.
+
+Mean = 5.385 us, StdErr = 0.005 us (0.09%), N = 11, StdDev = 0.017 us
+Min = 5.355 us, Q1 = 5.380 us, Median = 5.387 us, Q3 = 5.391 us, Max = 5.411 us
+IQR = 0.011 us, LowerFence = 5.364 us, UpperFence = 5.408 us
+ConfidenceInterval = [5.362 us; 5.408 us] (CI 99.9%), Margin = 0.023 us (0.43% of Mean)
+Skewness = -0.29, Kurtosis = 2.18, MValue = 2
+
+// ** Remained 0 (0.0 %) benchmark(s) to run. Estimated finish 2026-10-16 6:41 (0h 0m from now) **
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/results/round-2-prefix-revalidated/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report.csv
+  home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/results/round-2-prefix-revalidated/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-github.md
+  home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/results/round-2-prefix-revalidated/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report.html
+  home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/results/round-2-prefix-revalidated/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json
+
+// * Detailed results *
+HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=False]
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 5.222 us, StdErr = 0.003 us (0.05%), N = 12, StdDev = 0.009 us
+Min = 5.209 us, Q1 = 5.213 us, Median = 5.224 us, Q3 = 5.227 us, Max = 5.233 us
+IQR = 0.015 us, LowerFence = 5.190 us, UpperFence = 5.250 us
+ConfidenceInterval = [5.210 us; 5.233 us] (CI 99.9%), Margin = 0.011 us (0.22% of Mean)
+Skewness = -0.15, Kurtosis = 1.33, MValue = 2
+-------------------- Histogram --------------------
+[5.204 us ; 5.238 us) | @@@@@@@@@@@@
+---------------------------------------------------
+
+HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=False, AfterInvalidation=True]
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 5.492 us, StdErr = 0.004 us (0.08%), N = 12, StdDev = 0.015 us
+Min = 5.471 us, Q1 = 5.480 us, Median = 5.490 us, Q3 = 5.501 us, Max = 5.516 us
+IQR = 0.021 us, LowerFence = 5.448 us, UpperFence = 5.533 us
+ConfidenceInterval = [5.472 us; 5.512 us] (CI 99.9%), Margin = 0.020 us (0.36% of Mean)
+Skewness = 0.16, Kurtosis = 1.53, MValue = 2
+-------------------- Histogram --------------------
+[5.462 us ; 5.525 us) | @@@@@@@@@@@@
+---------------------------------------------------
+
+HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=False]
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 5.227 us, StdErr = 0.003 us (0.06%), N = 11, StdDev = 0.011 us
+Min = 5.209 us, Q1 = 5.221 us, Median = 5.224 us, Q3 = 5.231 us, Max = 5.251 us
+IQR = 0.010 us, LowerFence = 5.206 us, UpperFence = 5.246 us
+ConfidenceInterval = [5.212 us; 5.242 us] (CI 99.9%), Margin = 0.015 us (0.29% of Mean)
+Skewness = 0.55, Kurtosis = 2.82, MValue = 2
+-------------------- Histogram --------------------
+[5.202 us ; 5.258 us) | @@@@@@@@@@@
+---------------------------------------------------
+
+HttpResponsePathBenchmarks.Revalidated: Job-ACOERQ(Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16) [Listening=True, AfterInvalidation=True]
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 5.385 us, StdErr = 0.005 us (0.09%), N = 11, StdDev = 0.017 us
+Min = 5.355 us, Q1 = 5.380 us, Median = 5.387 us, Q3 = 5.391 us, Max = 5.411 us
+IQR = 0.011 us, LowerFence = 5.364 us, UpperFence = 5.408 us
+ConfidenceInterval = [5.362 us; 5.408 us] (CI 99.9%), Margin = 0.023 us (0.43% of Mean)
+Skewness = -0.29, Kurtosis = 2.18, MValue = 2
+-------------------- Histogram --------------------
+[5.345 us ; 5.421 us) | @@@@@@@@@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat) (container)
+11th Gen Intel Core i9-11900 2.50GHz (Max: 0.80GHz), 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.401
+  [Host]     : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+  Job-ACOERQ : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+
+Concurrent=True  Server=False  IterationCount=12
+IterationTime=500ms  LaunchCount=1  WarmupCount=16
+
+| Method      | Listening | AfterInvalidation | Mean     | Error     | StdDev    | Gen0   | Gen1   | Allocated |
+|------------ |---------- |------------------ |---------:|----------:|----------:|-------:|-------:|----------:|
+| Revalidated | False     | False             | 5.222 us | 0.0114 us | 0.0089 us | 0.9792 | 0.0104 |   8.06 KB |
+| Revalidated | False     | True              | 5.492 us | 0.0198 us | 0.0155 us | 0.9846 | 0.0109 |   8.06 KB |
+| Revalidated | True      | False             | 5.227 us | 0.0154 us | 0.0111 us | 0.9821 | 0.0104 |   8.06 KB |
+| Revalidated | True      | True              | 5.385 us | 0.0232 us | 0.0168 us | 0.9804 | 0.0108 |   8.06 KB |
+
+// * Hints *
+Outliers
+  HttpResponsePathBenchmarks.Revalidated: Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16 -> 1 outlier  was  removed (6.00 us)
+  HttpResponsePathBenchmarks.Revalidated: Concurrent=True, Server=False, IterationCount=12, IterationTime=500ms, LaunchCount=1, WarmupCount=16 -> 1 outlier  was  removed, 2 outliers were detected (5.36 us, 5.45 us)
+
+// * Legends *
+  Listening         : Value of the 'Listening' parameter
+  AfterInvalidation : Value of the 'AfterInvalidation' parameter
+  Mean              : Arithmetic mean of all measurements
+  Error             : Half of 99.9% confidence interval
+  StdDev            : Standard deviation of all measurements
+  Gen0              : GC Generation 0 collects per 1000 operations
+  Gen1              : GC Generation 1 collects per 1000 operations
+  Allocated         : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 us              : 1 Microsecond (0.000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:01:14 (74.13 sec), executed benchmarks: 4
+
+Global total time: 00:01:28 (88.37 sec), executed benchmarks: 4
+// * Artifacts cleanup *
+Artifacts cleanup is finished

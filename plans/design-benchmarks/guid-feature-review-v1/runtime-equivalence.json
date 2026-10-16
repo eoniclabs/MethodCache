@@ -1,0 +1,21 @@
+{
+  "frozen_runtime_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "current_product_sha": "dd6b1c6a7b7ca47396d2ac4a06fd0df4332a45b0",
+  "checked_paths": [
+    "src",
+    "global.json",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props"
+  ],
+  "changed_paths": [
+    "src/MethodCache.SourceGenerator/Generator/Utilities/MethodCacheGenerator.Utilities.cs"
+  ],
+  "only_source_change": "GetDecoratorHintName bounds Roslyn output filename. It does not change generated namespaces, types, method IDs, key text, runtime code or public API. The filename is passed only to AddSource; source text construction is separate.",
+  "review_utc": "2026-10-16T07:02:16.939194+00:00",
+  "diff_sha256": "b66e31c8de9c64091ca3821e8eda15391de44f07069c3929e75bbb6dfe081f1b",
+  "current_utility_sha256": "a219cc77b2921c96a2ddfdc9c11045d785c3bde3821f3355de7ad09a6ce65ef5",
+  "scope": "Source equivalence review. Not timing acceptance or latest-head CI substitution.",
+  "diff_source_file": "runtime-equivalence-patch.json",
+  "diff_encoding": "Decode unified_diff JSON string before checking diff_sha256"
+}

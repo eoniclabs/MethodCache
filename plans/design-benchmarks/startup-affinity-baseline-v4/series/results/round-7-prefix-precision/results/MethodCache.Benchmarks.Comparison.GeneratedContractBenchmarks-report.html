@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-20261016-063754</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat) (container)
+11th Gen Intel Core i9-11900 2.50GHz (Max: 0.80GHz), 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.401
+  [Host]     : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+  Job-ACOERQ : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Concurrent=True  Server=False  IterationCount=12
+IterationTime=500ms  LaunchCount=1  WarmupCount=16
+</code></pre>
+
+<table>
+<thead><tr><th>Method</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>SyncHit</td><td>37.67 ns</td><td>0.414 ns</td><td>0.299 ns</td><td>-</td>
+</tr><tr><td>GenericHit</td><td>53.02 ns</td><td>0.344 ns</td><td>0.249 ns</td><td>-</td>
+</tr><tr><td>TaskHit</td><td>42.01 ns</td><td>0.694 ns</td><td>0.459 ns</td><td>-</td>
+</tr><tr><td>ValueTaskHit</td><td>48.10 ns</td><td>0.345 ns</td><td>0.249 ns</td><td>-</td>
+</tr></tbody></table>
+</body>
+</html>

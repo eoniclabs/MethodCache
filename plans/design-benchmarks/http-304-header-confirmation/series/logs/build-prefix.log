@@ -1,0 +1,25 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-http-304-header-v1-build-prefix 2026-10-15T20:39:58.362478+00:00
+/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/DesignValidation.csproj
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/DesignValidation.csproj (in 450 ms).
+  8 of 9 projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  DesignValidation -> /home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/harness/prefix/bin/Release/net10.0/DesignValidation.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:07.14
+Verified 100 resident/304 operations, listener=False, invalidated=False
+Verified 100 resident/304 operations, listener=False, invalidated=True
+Verified 100 resident/304 operations, listener=True, invalidated=False
+Verified 100 resident/304 operations, listener=True, invalidated=True
+Releasing exclusive lease methodcache-design-20261015-01a13a93-http-304-header-v1-build-prefix exit 0 2026-10-15T20:40:06.597080+00:00

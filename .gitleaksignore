@@ -1,0 +1,13 @@
+# Exact SHA256 checksum false positives in the immutable HTTP affinity protocol.
+# UserSecrets/Tokens/Api are DLL filenames; every value was recomputed from the pinned binary.
+# Keep the frozen protocol byte-identical. No other file, rule or line is exempted.
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:64
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:89
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:93
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:95
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:104
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:204
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:229
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:233
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:235
+plans/design-benchmarks/http-304-header-affinity-protocol-v1/frozen-inputs.json:generic-api-key:244

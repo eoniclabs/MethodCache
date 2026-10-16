@@ -1,0 +1,158 @@
+{
+  "scope": "Fixed nine-launch older int baseline precision only. No change comparator, no GUID/HTTP pooling, no optimization acceptance.",
+  "rows": [
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "SyncHit",
+        ""
+      ],
+      "statistics": {
+        "means_ns": [
+          38.62996645274058,
+          38.98630322296847,
+          39.540654154896735,
+          37.67871146335527,
+          38.56316627768457,
+          38.69418812939413,
+          37.671378399232395,
+          38.93302134010758,
+          40.90998055140908
+        ],
+        "mean_ns": 38.84526333242098,
+        "lower_ns": 38.09301729524852,
+        "upper_ns": 39.59750936959343,
+        "relative_half_width": 0.019365193401704114,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "allocated_B": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "GenericHit",
+        ""
+      ],
+      "statistics": {
+        "means_ns": [
+          57.17716103318528,
+          55.06939508067094,
+          57.561020077175776,
+          55.132185066827674,
+          53.052306373078956,
+          54.47839912717082,
+          53.01519651983056,
+          62.4402612613761,
+          54.54894467870176
+        ],
+        "mean_ns": 55.8305410242242,
+        "lower_ns": 53.578348270039065,
+        "upper_ns": 58.08273377840934,
+        "relative_half_width": 0.040339798126046114,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "allocated_B": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "TaskHit",
+        ""
+      ],
+      "statistics": {
+        "means_ns": [
+          41.8171622313544,
+          41.58908326322175,
+          41.57419515448377,
+          40.90692826612729,
+          40.380589109880276,
+          41.05016968693759,
+          42.01418521949436,
+          40.158967701903926,
+          40.87815716540883
+        ],
+        "mean_ns": 41.152159755423575,
+        "lower_ns": 40.659844388065515,
+        "upper_ns": 41.644475122781635,
+        "relative_half_width": 0.011963293549694585,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "allocated_B": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Comparison",
+        "GeneratedContractBenchmarks",
+        "ValueTaskHit",
+        ""
+      ],
+      "statistics": {
+        "means_ns": [
+          56.4362325702679,
+          46.76429997743335,
+          46.86508010451529,
+          45.0794449304899,
+          47.29387739473725,
+          45.268344523508475,
+          48.10087901138357,
+          45.122107571754356,
+          44.5176860793005
+        ],
+        "mean_ns": 47.27199468482118,
+        "lower_ns": 44.47236156450345,
+        "upper_ns": 50.07162780513891,
+        "relative_half_width": 0.05922392611066777,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "allocated_B": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "actual_os_affinity": "Host and all four executed benchmark children on CPU2 in every launch."
+}

@@ -1,0 +1,115 @@
+=== unit
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+No test matches the given testcase filter `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` in /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 1 s - MethodCache.Redis.Tests.dll (net10.0)
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 2 s - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+
+Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 6 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+A total of 1 test files matched the specified pattern.
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 8 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+No test matches the given testcase filter `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` in /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Test run for /Users/johan/.cache/methodcache-ci/macos/runs/20261016-085559-dd6b1c6a7b7c/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 19 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 1 s - MethodCache.Samples.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 2 s - MethodCache.CompatTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 16 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 37 s - MethodCache.Analyzers.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 21 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 42 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   112, Skipped:     0, Total:   112, Duration: 27 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+[xUnit.net 00:01:03.69]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1039, Skipped:     1, Total:  1040, Duration: 57 s - MethodCache.Core.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   542, Skipped:     0, Total:   542, Duration: 2 m 26 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
