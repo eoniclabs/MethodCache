@@ -1,5 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace MethodCache.Infrastructure;
 
@@ -17,6 +19,13 @@ internal static class LosslessUtf16
     {
         for (var i = 0; i < value.Length; i++)
             BinaryPrimitives.WriteUInt16LittleEndian(destination.Slice(i * sizeof(char)), value[i]);
+    }
+
+    // The SHA-256 of GetBytes(value). Little-endian memory already holds those bytes, so nothing is copied.
+    internal static void Sha256(string value, Span<byte> destination)
+    {
+        if (BitConverter.IsLittleEndian) SHA256.HashData(MemoryMarshal.AsBytes(value.AsSpan()), destination);
+        else SHA256.HashData(GetBytes(value), destination);
     }
 
     internal static string Read(ReadOnlySequence<byte> bytes)

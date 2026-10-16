@@ -188,5 +188,7 @@ that revision's existing behavior when VerifyRoundTrip was absent; report them s
 into an external project targeting a chosen checkout. Its manifest records full runtime SHA and source SHA-256s;
 setup reflection only accommodates renamed options and the former telemetry registration. Measured calls use
 the common public APIs. Build the external project, run its DLL with `--verify-native` inside the standard native
-infrastructure wrapper, then use BenchmarkDotNet filters. Compare three independent alternating launches per
-revision and preserve all raw logs, environment metadata and confidence intervals as required by design-spec §10.
+infrastructure wrapper, then use BenchmarkDotNet filters.
+
+The §10 gate itself runs these workloads through [MethodCache.CostProfile](../MethodCache.CostProfile/README.md):
+allocations and Redis/SQL commands per operation for every change, and one paired timing comparison at the end.

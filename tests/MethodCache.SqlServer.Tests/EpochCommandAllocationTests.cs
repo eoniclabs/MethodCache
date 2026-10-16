@@ -19,6 +19,17 @@ public class EpochCommandAllocationTests
     }
 
     [Fact]
+    public void BatchShape_ReadsInitializedVectorWithoutLocks()
+    {
+        var sql = Cache("shape_a").EpochCommandText(3);
+        var read = sql[..sql.IndexOf("IF @@ROWCOUNT = 3 RETURN;", StringComparison.Ordinal)];
+        Assert.Contains("(2, @key2)) AS k", read);
+        Assert.DoesNotContain("@key3", read);
+        Assert.DoesNotContain("UPDLOCK", read);
+        Assert.Contains("UPDLOCK", sql);
+    }
+
+    [Fact]
     public void BatchShape_ChangesCountAndKeepsProvidersIsolated()
     {
         var a = Cache("shape_a");
