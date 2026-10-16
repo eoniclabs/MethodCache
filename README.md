@@ -138,6 +138,10 @@ dotnet add package MethodCache
 
 Details: [Getting started](docs/getting-started.md).
 
+Missing services require explicit `AutoRegister(lifetime)`, with exactly one accessible implementation in the
+selected generated module. Use `FromAssemblyOf<T>()` to select between modules; ambiguous module/candidate choices
+and unsupported cacheable bindings fail explicitly. Startup configuration uses `MethodCacheBuilder`.
+
 SQL Server backplane tables require a non-nullable `binary(32)` `Scope` column. Automatic initialization reports
 incompatible schemas without upgrading them; see the [SQL Server guide](src/MethodCache.SqlServer/README.md#required-backplane-schema).
 
@@ -168,7 +172,7 @@ unless an override calls `ClearTags()`.
 <!-- snippet: readme-configuration -->
 ```cs
 builder.Services.AddMethodCache(config =>
-    config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(5))));
+    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
 builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 ```
 <!-- endSnippet -->

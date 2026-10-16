@@ -5,28 +5,28 @@ using MethodCache.Policies;
 namespace MethodCache.Infrastructure
 {
     /// <summary>
-    /// The live policy of one cached method. Every decorator for the method shares the same handle and reads
-    /// <see cref="Current"/> on each call, so a runtime override or a configuration reload reaches services that
-    /// were already created, at the cost of one volatile read.
+    /// Publishes policy changes to the method slots of each bound registration. Generated decorators capture
+    /// the slot snapshot once per invocation; runtime changes also reach existing decorator instances.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class PolicyHandle
+    internal sealed class PolicyHandle
     {
         private readonly object _sync = new();
         private CacheRuntimePolicy _current;
         private long _version;
+        private Action<CacheRuntimePolicy>? _changed;
 
         internal PolicyHandle(PolicyResolutionResult result)
         {
             MethodId = result.MethodId;
-            _current = CacheRuntimePolicy.FromResolverResult(result);
+            _current = CacheRuntimePolicy.FromResolverResult(result) with { Generation = new PolicyGeneration() };
             _version = result.Version;
         }
 
         private PolicyHandle(CacheRuntimePolicy policy)
         {
             MethodId = policy.MethodId;
-            _current = policy;
+            _current = policy with { Generation = new PolicyGeneration() };
         }
 
         // The handle of one registration of an interface: the method's shared handle, plus what the registration adds
@@ -85,6 +85,15 @@ namespace MethodCache.Infrastructure
             return new PolicyHandle(policy);
         }
 
+        internal void Subscribe(Action<CacheRuntimePolicy> changed)
+        {
+            lock (_sync)
+            {
+                changed(_current);
+                _changed += changed;
+            }
+        }
+
         /// <summary>
         /// Publishes a newly resolved policy unless the handle already holds the same or a newer version.
         /// </summary>
@@ -98,7 +107,13 @@ namespace MethodCache.Infrastructure
                 }
 
                 _version = result.Version;
-                Volatile.Write(ref _current, CacheRuntimePolicy.FromResolverResult(result));
+                var next = CacheRuntimePolicy.FromResolverResult(result) with { Generation = new PolicyGeneration() };
+                lock (_current.Generation!.Gate)
+                {
+                    _current.Generation.Retire();
+                    Volatile.Write(ref _current, next);
+                    _changed?.Invoke(next);
+                }
             }
         }
     }

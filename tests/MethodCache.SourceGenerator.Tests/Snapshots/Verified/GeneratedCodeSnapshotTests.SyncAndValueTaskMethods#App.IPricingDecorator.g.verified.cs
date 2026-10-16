@@ -8,32 +8,24 @@ using global::System.Collections.Concurrent;
 using global::System.Linq;
 using global::System.Threading;
 using global::System.Threading.Tasks;
-using global::MethodCache;
-using global::MethodCache.Extensibility;
-using global::MethodCache.Infrastructure;
-using global::MethodCache.Policies;
 
 namespace App
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class IPricingDecorator : global::App.IPricing
     {
         private readonly global::App.IPricing _decorated;
-        private readonly global::MethodCache.ICacheManager _cacheManager;
-        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
-        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
+        private readonly global::MethodCache.Generated.GeneratedServices _services;
 
-        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
-        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method1;
+        private readonly global::MethodCache.Generated.CachedMethod _method_Method0;
+        private readonly global::MethodCache.Generated.CachedMethod _method_Method1;
 
-        public IPricingDecorator(global::App.IPricing decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public IPricingDecorator(global::App.IPricing decorated, global::MethodCache.Generated.GeneratedServices services)
         {
             _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
-            _cacheManager = services.CacheManager;
-            _keyGenerator = services.KeyGenerator;
-            _metricsProvider = services.MetricsProvider;
+            _services = services;
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
@@ -43,89 +35,78 @@ namespace App
 
         private sealed class CachedMethodSites
         {
-            public readonly global::MethodCache.Infrastructure.CachedMethod Method0;
-            public readonly global::MethodCache.Infrastructure.CachedMethod Method1;
+            public readonly global::MethodCache.Generated.CachedMethod Method0;
+            public readonly global::MethodCache.Generated.CachedMethod Method1;
 
-            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
+            public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.Price"), typeof(global::App.IPricing), "Price", "App.IPricing.Price");
-                Method1 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IPricing.FindAsync"), typeof(global::App.IPricing), "FindAsync", "App.IPricing.FindAsync");
+                Method0 = registry.Method("App.IPricing.Price", typeof(global::App.IPricing), "Price", "App.IPricing.Price");
+                Method1 = registry.Method("App.IPricing.FindAsync", typeof(global::App.IPricing), "FindAsync", "App.IPricing.FindAsync");
             }
         }
 
+        [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         decimal global::App.IPricing.Price(string __mcArgument0, int __mcArgument1)
         {
-            // Hits return without blocking. A miss blocks this thread while the value loads; the cache never
-            // resumes on the caller's SynchronizationContext, so this can't deadlock. With Redis or SQL Server
-            // the wait includes the network read, so prefer async methods on hot paths there.
-            var __mcSnapshot = this._method_Method0.Current;
+            var __mcCall = this._method_Method0.Capture();
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
-            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
+            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
             __mcKeyBuilder.AppendPart(__mcArgument1);
 
-            if (this._cacheManager.TryGetFast<decimal>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
+            if (__mcCall.TryGetValue<decimal>(ref __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedValue!;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0), global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument1));
+            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0), global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument1));
 
-            if (this._cacheManager.TryGetFast<decimal>(__mcKey, out var __mcCachedValue))
+            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
+            if (__mcCall.TryGetValue<decimal>(in __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
                 return __mcCachedValue!;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = __mcSnapshot.Policy;
-            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku", "quantity" }, new object?[] { __mcArgument0, __mcArgument1 });
-            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0!, __mcArgument1).ConfigureAwait(false).GetAwaiter().GetResult();
+            return __Load_Method0(__mcKey, __mcCall, __mcArgument0!, __mcArgument1);
         }
 
-        private global::System.Threading.Tasks.Task<decimal> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string __mcArgument0, int __mcArgument1)
-            => this._cacheManager.GetOrCreateFastAsync<decimal>(__cacheKey, this._method_Method0.Name, () => global::System.Threading.Tasks.Task.FromResult(((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).Price(__mcArgument0, __mcArgument1))!, __policy);
+        private decimal __Load_Method0(string __cacheKey, global::MethodCache.Generated.MethodCall __call, string __mcArgument0, int __mcArgument1)
+            => __call.Load(__cacheKey, (Inner: this._decorated, Arg0: __mcArgument0, Arg1: __mcArgument1), static (__invocation, __state) => ((global::App.IPricing)__invocation.ServiceForLoad(__state.Inner)).Price(__state.Arg0, __state.Arg1), (__call.NeedsTagArguments ? new object?[] { __mcArgument0, __mcArgument1 } : global::System.Array.Empty<object?>()), default);
 
+        [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         global::System.Threading.Tasks.ValueTask<string?> global::App.IPricing.FindAsync(string? __mcArgument0)
         {
-            var __mcSnapshot = this._method_Method1.Current;
+            var __mcCall = this._method_Method1.Capture();
 #if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
-            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
+            var __mcKeyBuilder = __mcCall.StartKey(stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (this._cacheManager.TryGetFast<string?>(__mcKeyBuilder.AsSpan(), out var __mcCachedValue))
+            if (__mcCall.TryGetValueTask<string?>(ref __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method1.Name);
-                return new global::System.Threading.Tasks.ValueTask<string?>(__mcCachedValue!);
+                return __mcCachedValue!;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
 #else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
+            var __mcKey = string.Concat(__mcCall.KeyPrefix, global::MethodCache.Generated.KeyParts.Separator, global::MethodCache.Generated.KeyParts.Part(__mcArgument0));
 
-            if (this._cacheManager.TryGetFast<string?>(__mcKey, out var __mcCachedValue))
+            var __mcKeyBuilder = __mcCall.BindTextKey(__mcKey);
+            if (__mcCall.TryGetValueTask<string?>(in __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method1.Name);
-                return new global::System.Threading.Tasks.ValueTask<string?>(__mcCachedValue!);
+                return __mcCachedValue!;
             }
 
 #endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = __mcSnapshot.Policy;
-            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "sku" }, new object?[] { __mcArgument0 });
-            return new global::System.Threading.Tasks.ValueTask<string?>(__Load_Method1(__mcKey, __mcPolicy, __mcArgument0!));
+            return __Load_Method1(__mcKey, __mcCall, __mcArgument0!);
         }
 
-        private global::System.Threading.Tasks.Task<string?> __Load_Method1(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, string? __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<string?>(__cacheKey, this._method_Method1.Name, () => ((global::App.IPricing)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method1, this._decorated)).FindAsync(__mcArgument0).AsTask()!, __policy);
+        private global::System.Threading.Tasks.ValueTask<string?> __Load_Method1(string __cacheKey, global::MethodCache.Generated.MethodCall __call, string? __mcArgument0)
+            => __call.LoadValueAsync(__cacheKey, (Inner: this._decorated, Arg0: __mcArgument0), static (__invocation, __state) => ((global::App.IPricing)__invocation.ServiceForLoad(__state.Inner)).FindAsync(__state.Arg0), (__call.NeedsTagArguments ? new object?[] { __mcArgument0 } : global::System.Array.Empty<object?>()), default);
 
     }
 }

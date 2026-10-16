@@ -48,6 +48,9 @@ public static class BenchmarkCommands
 
         switch (cleanedArgs[0].ToLowerInvariant())
         {
+            case "contract":
+                RunBenchmark<Comparison.GeneratedContractBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "engine":
                 RunBenchmark<Microbenchmarks.MemoryEngineBenchmarks>(
                     DefaultConfig.Instance.AddJob(Job.ShortRun.WithGcServer(true)), cleanedArgs.Skip(1).ToArray());
@@ -131,6 +134,7 @@ public static class BenchmarkCommands
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");
         Console.WriteLine("  engine       - Current memory engine latency compared with other caches");
         Console.WriteLine("  hitratio     - Hit ratio and read throughput on synthetic workloads");
         Console.WriteLine("  readme       - The README numbers: MethodCache vs IMemoryCache, HybridCache and FusionCache");

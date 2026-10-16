@@ -1,0 +1,13 @@
+<Project>
+  <!-- Integrations use Core internals and must restore with the exact matching Core package version. -->
+  <Target Name="PinMethodCacheProjectDependency"
+          AfterTargets="_GetProjectReferenceVersions"
+          Condition="'$(MSBuildProjectName)' != 'MethodCache.Core'">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)"
+                                      Condition="'%(_ProjectReferencesWithVersions.Filename)' == 'MethodCache.Core'">
+        <ProjectVersion>[%(_ProjectReferencesWithVersions.ProjectVersion)]</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+</Project>

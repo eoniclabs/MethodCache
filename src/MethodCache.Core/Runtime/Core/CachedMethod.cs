@@ -8,7 +8,7 @@ namespace MethodCache.Infrastructure
     /// when the policy changes, for example when a runtime override bumps the version.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class CachedMethod
+    internal sealed class CachedMethod
     {
         private readonly PolicyHandle _handle;
         private readonly Type _serviceType;

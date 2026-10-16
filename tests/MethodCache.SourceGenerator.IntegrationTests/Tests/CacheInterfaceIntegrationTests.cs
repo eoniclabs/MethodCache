@@ -1,3 +1,4 @@
+using MethodCache.Policies;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MethodCache;
@@ -34,15 +35,38 @@ namespace VendorApp
         public static void Configure(IServiceCollection services, FxVendorClient client)
         {
             services.AddSingleton<IFxVendorClient>(client);
-            services.AddMethodCache(config => config
-                .ForService<IFxVendorClient>()
-                .Method(c => c.GetCurrenciesAsync())
-                .Configure(o => o.WithDuration(TimeSpan.FromHours(1))));
+            services.AddMethodCache(config =>
+            {
+                config.FromAssembly(typeof(Startup).Assembly);
+                config.Method((IFxVendorClient c) => c.GetCurrenciesAsync()).Configure(o => o.WithDuration(TimeSpan.FromHours(1)));
+            });
         }
     }
 }";
 
     private readonly SourceGeneratorTestEngine _engine = new();
+
+    [Fact]
+    public async Task SelectedModule_OtherModuleAlsoBindsItsOwnService_DoesNotImportItsUnselectedPolicy()
+    {
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SelectedFx", "00:00:30"), "SelectedPolicyModule");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("OtherFx", "01:00:00") + """
+            namespace OtherFx {
+                public interface IAuxiliary { [MethodCache.Cache] int Read(int id); }
+                public sealed class Auxiliary : IAuxiliary { public int Read(int id) => id; }
+            }
+            """, "OtherPolicyModule");
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        services.AddSingleton(second.Assembly.GetType("OtherFx.IAuxiliary")!, second.Assembly.GetType("OtherFx.Auxiliary")!);
+        services.AddMethodCache(b => b.FromAssembly(first.Assembly));
+        await using var provider = services.BuildServiceProvider();
+        var snapshots = new List<PolicySnapshot>();
+        foreach (var source in provider.GetServices<PolicySourceRegistration>().Where(s => s.Source.SourceId == "attributes"))
+            snapshots.AddRange(await source.Source.GetSnapshotAsync());
+        var selected = Assert.Single(snapshots, s => s.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromSeconds(30), selected.Policy.Duration);
+    }
 
     [Fact]
     public async Task ListedMethods_AreCached_AndOthersCallTheClient()
@@ -146,10 +170,10 @@ namespace VendorApp
         var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
         Assert.Contains("SharedVendor_First", error.Message);
         Assert.Contains("SharedVendor_Second", error.Message);
-        Assert.Contains("AddMethodCache(configure, typeof(", error.Message);
+        Assert.Contains("FromAssemblyOf", error.Message);
 
         // Naming the assembly settles it
-        services.AddMethodCache(null, second.Assembly);
+        services.AddMethodCache(b => b.FromAssembly(second.Assembly));
         await using var provider = services.BuildServiceProvider();
         var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
             m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
@@ -167,7 +191,7 @@ namespace VendorApp
 
         var services = new ServiceCollection();
         services.AddSingleton<IFxVendorClient>(new FxVendorClient());
-        services.AddMethodCache(null, named.Assembly);
+        services.AddMethodCache(b => b.FromAssembly(named.Assembly));
         await using var provider = services.BuildServiceProvider();
 
         var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
@@ -186,7 +210,7 @@ namespace {ns}
 {{
     public static class Startup
     {{
-        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+        public static void Configure(IServiceCollection services) => services.AddMethodCache(b => b.FromAssembly(typeof(Startup).Assembly));
     }}
 }}";
 
@@ -362,22 +386,18 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
             """, "GatedLibrary_" + Guid.NewGuid().ToString("N"));
         Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IGatedVendorClient", StringComparison.Ordinal));
 
-        // The first lookup runs the library's initializer and is held inside it
-        var first = Task.Run(() => MethodCacheDecorators.TryGet(typeof(IGatedVendorClient), out _));
+        static bool Find(Assembly assembly) => MethodCache.Generated.GeneratedCode.Describe([assembly], [])
+            .Where(m => m.Module.GetType().Assembly == assembly).SelectMany(m => m.Decorators)
+            .Any(d => d.ServiceType == typeof(IGatedVendorClient));
+        var first = Task.Run(() => Find(library.Assembly));
         Assert.True(await ModuleInitializerGate.Entered.WaitAsync(TimeSpan.FromSeconds(30)), "the library's initializer did not run");
-
-        // A second lookup meanwhile must wait for the initializer, not skip the library as already handled
-        var open = Task.Run(async () =>
-        {
-            await Task.Delay(200);
-            ModuleInitializerGate.Open.Set();
-        });
-        var found = MethodCacheDecorators.TryGet(typeof(IGatedVendorClient), out var registration);
-        await open;
-
-        Assert.True(found, "the second lookup missed the decorator its library was registering");
-        Assert.Equal(typeof(IGatedVendorClient), registration!.ServiceType);
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = Task.Run(() => { secondStarted.SetResult(); return Find(library.Assembly); });
+        await secondStarted.Task;
+        try { Assert.False(first.IsCompleted); }
+        finally { ModuleInitializerGate.Open.Set(); }
         Assert.True(await first);
+        Assert.True(await second);
     }
 
     private async Task<string> GeneratorErrorsAsync(string source, string assemblyName)

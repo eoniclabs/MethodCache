@@ -1,5 +1,8 @@
 # MethodCache.AspNetCore
 
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 Admin endpoints and a health check for MethodCache's in-memory cache.
 
 ## Setup

@@ -37,6 +37,15 @@ base with `origin/main` ran. It prints each uncovered changed line. `DIFF_COVERA
 needs the full history and `origin/main` (the build servers clone both). It takes about 1.5 min
 (the net10.0 test run with coverage).
 
+## Native AOT contract checks
+
+`jobs.sh aot` publishes and executes the smoke app, including the frozen vendor DLLs. It also exports every
+supported SignatureCorpus case into `artifacts/aot-corpus`, publishes that project with Native AOT, and runs
+the resulting compilation check. Every scenario call remains reachable to the native compiler; normal execution
+of those cases is covered by the JIT corpus and by the smoke app's supported inline key forms. Reflection-based
+JSON fallback retains its documented Native AOT limitations and its compiler warnings. The exporter shares the
+actual corpus definitions rather than keeping a second list of signatures.
+
 ## Randomized, soak and mutation checks
 
 `properties` and `soak` are in the default `linux.sh` job list, so every pull request runs them with short settings.

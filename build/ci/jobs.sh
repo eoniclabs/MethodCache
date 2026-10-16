@@ -73,6 +73,10 @@ job_cultures() {
 job_aot() {
   dotnet publish tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output artifacts/aot-smoke
   artifacts/aot-smoke/MethodCache.AotSmokeTest
+  rm -rf artifacts/aot-corpus
+  dotnet run --project tests/MethodCache.SignatureCorpus.Export --configuration Release -- artifacts/aot-corpus
+  dotnet publish artifacts/aot-corpus/Corpus.csproj --configuration Release --runtime linux-x64 --output artifacts/aot-corpus-native
+  artifacts/aot-corpus-native/Corpus
 }
 
 job_packages() {
@@ -80,6 +84,8 @@ job_packages() {
   : "${METHODCACHE_SQLSERVER_CONNECTION:?set METHODCACHE_SQLSERVER_CONNECTION to a SQL Server the add-on apps can use}"
   rm -rf artifacts/packages
   dotnet pack "$solution" --configuration Release --output artifacts/packages
+  python3 build/ci/check_package_contracts.py artifacts/packages
+  python3 build/ci/check_package_restore.py artifacts/packages
 
   echo "== All 7 packages were packed"
   for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack \

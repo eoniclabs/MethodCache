@@ -29,7 +29,7 @@ namespace MethodCache.OpenTelemetry;
 /// manager counts their hits as usual.
 /// </para>
 /// </remarks>
-internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
+internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator, IGeneratedMemoryCache
 {
     private readonly ICacheManager _innerManager;
     private readonly ICacheActivitySource _activitySource;
@@ -50,6 +50,62 @@ internal class TelemetryCacheManager : ICacheManager, ICacheManagerDecorator
 
     /// <inheritdoc />
     public ICacheManager InnerManager => _innerManager;
+
+    InMemoryCacheManager? IGeneratedMemoryCache.Memory
+        => _innerManager as InMemoryCacheManager ?? (_innerManager as IGeneratedMemoryCache)?.Memory;
+
+    T IGeneratedMemoryCache.LoadSynchronously<T>(string key, string name, Func<T> factory, CacheRuntimePolicy policy, CancellationToken token)
+    {
+        using var activity = _activitySource.StartCacheOperation(name, TracingConstants.Operations.Get);
+        var started = Stopwatch.GetTimestamp();
+        var loaded = false;
+        try
+        {
+            _baggagePropagator.InjectBaggage(activity);
+            _activitySource.SetCacheKey(activity, key);
+            if (policy.Tags.Count > 0) _activitySource.SetCacheTags(activity, policy.Tags.ToArray());
+            SetActivityTagsFromPolicy(activity, policy);
+            T Load() { loaded = true; return factory(); }
+            var result = _innerManager is IGeneratedMemoryCache integration
+                ? integration.LoadSynchronously(key, name, Load, policy, token)
+                : ((InMemoryCacheManager)_innerManager).GetOrCreateSynchronously(key, name, Load, policy, token);
+            _activitySource.SetCacheHit(activity, !loaded);
+            return result;
+        }
+        catch (Exception exception)
+        {
+            _activitySource.SetCacheError(activity, exception);
+            throw;
+        }
+        finally
+        {
+            _meterProvider.RecordOperationDuration(name, Stopwatch.GetElapsedTime(started).TotalMilliseconds, CreateMetricTagsFromPolicy(policy));
+        }
+    }
+
+    void IGeneratedMemoryCache.InvalidateTagsSynchronously(string[] tags)
+    {
+        using var activity = _activitySource.StartCacheOperation("InvalidateByTags", TracingConstants.Operations.Delete);
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            _baggagePropagator.InjectBaggage(activity);
+            _activitySource.SetCacheTags(activity, tags);
+            if (_innerManager is IGeneratedMemoryCache integration) integration.InvalidateTagsSynchronously(tags);
+            else ((InMemoryCacheManager)_innerManager).InvalidateTagsSynchronously(tags);
+        }
+        catch (Exception exception)
+        {
+            _activitySource.SetCacheError(activity, exception);
+            _meterProvider.RecordCacheError("InvalidateByTags", exception.GetType().Name);
+            throw;
+        }
+        finally
+        {
+            _meterProvider.RecordOperationDuration("InvalidateByTags", Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                new Dictionary<string, object?> { ["operation"] = "invalidate_by_tags" });
+        }
+    }
 
     // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 

@@ -21,8 +21,7 @@ public class StartupValidationTests
     {
         var builder = NewHostBuilder();
         builder.Services.AddSingleton<IStartupProbe, StartupProbe>();
-        builder.Services.AddMethodCache(c => c.ForService<IStartupProbe>()
-            .Method(s => s.Get(Any<int>.Value))
+        builder.Services.AddMethodCache(c => c.Method((IStartupProbe s) => s.Get(Any<int>.Value))
             .Configure(o => o.OnHit(_ => { })));
         using var host = builder.Build();
 
@@ -35,8 +34,7 @@ public class StartupValidationTests
     {
         var services = new ServiceCollection();
         services.AddSingleton<IStartupProbe, StartupProbe>();
-        services.AddMethodCache(c => c.ForService<IStartupProbe>()
-            .Method(s => s.Get(Any<int>.Value))
+        services.AddMethodCache(c => c.Method((IStartupProbe s) => s.Get(Any<int>.Value))
             .Configure(o => o.OnHit(_ => { })));
         using var provider = services.BuildServiceProvider();
 

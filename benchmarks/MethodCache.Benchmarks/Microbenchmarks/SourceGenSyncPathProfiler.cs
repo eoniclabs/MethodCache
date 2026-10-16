@@ -31,7 +31,7 @@ public class SourceGenSyncPathProfiler
         services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         });
 
         services.Configure<MethodCache.MethodCacheMemoryOptions>(opts =>

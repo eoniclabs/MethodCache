@@ -25,8 +25,7 @@ public class CacheAdministratorTests
     private static ServiceProvider BuildProvider(TimeProvider? time = null) =>
         new ServiceCollection()
             .AddSingleton(time ?? TimeProvider.System)
-            .AddMethodCache(config => config.ForService<IAdminDocService>()
-                .Method(x => x.GetAsync(default))
+            .AddMethodCache(config => config.Method((IAdminDocService x) => x.GetAsync(default))
                 .Configure(options => options.WithDuration(TimeSpan.FromSeconds(30)).WithTags("docs")))
             .BuildServiceProvider();
 

@@ -68,6 +68,7 @@ Read this before changing the repository. It is written for human contributors a
 - A new CI job goes into `build/ci/jobs.sh` (or `build/ci/windows.ps1`) as a script or `dotnet` command. There is no GitHub Actions: our build servers run these scripts and post the `MethodCache CI` commit status, which is the merge gate (see `build/ci/README.md`).
 
 ## Developer docs
+- `docs/developer/design-spec.md`: design target and acceptance cases for the pre-1.0 implementation PRs; describes planned behavior, not the current API.
 - `docs/developer/RELEASE.md`: release checklist, tagging and publishing.
 - `docs/developer/INTEGRATION_TEST_STRATEGY.md`: the Docker-backed integration tests.
 - `docs/developer/RUNTIME_CONFIGURATION_OVERVIEW.md`: how policies are resolved from their sources and changed at runtime.

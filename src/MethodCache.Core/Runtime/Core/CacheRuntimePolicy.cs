@@ -13,6 +13,7 @@ namespace MethodCache.Infrastructure
     /// </remarks>
     public sealed record CacheRuntimePolicy
     {
+        internal PolicyGeneration? Generation { get; init; }
         private readonly IReadOnlyCollection<string> _tags = Array.Empty<string>();
         /// <summary>
         /// The unique identifier of the method this policy applies to.

@@ -12,7 +12,12 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
    for in-memory caching.
 2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
    interface methods that change the data. Don't change the implementation.
-3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them.
+3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable
+   registrations fail at host startup or first generated binding. Missing services require explicit
+   `AutoRegister(lifetime)` and exactly one accessible implementation in the selected generated module.
+4. Use `MethodCacheBuilder` for startup: `Defaults`, `Group`, typed `Method`, `Memory`, `FromConfiguration`,
+   `FromAssemblyOf<T>()` and the integrations' `UseRedis` / `UseSqlServer` / `UseMessagePack`. Choose a module
+   explicitly when multiple assemblies generate the same interface. Keep all add-on/Core versions identical.
 
 <!-- snippet: getting-started-interface -->
 ```cs

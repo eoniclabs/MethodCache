@@ -83,8 +83,8 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var services = new ServiceCollection();
         services.AddMethodCache(c =>
         {
-            c.ForGroup("g").Configure(o => o.WithDuration(TimeSpan.FromMinutes(10)));
-            c.ForService<IConfigMergeService>().Method(x => x.Get(0)).WithGroup("g").Configure(o => o.WithTags("t1"));
+            c.Group("g", o => o.WithDuration(TimeSpan.FromMinutes(10)));
+            c.Method((IConfigMergeService x) => x.Get(0)).WithGroup("g").Configure(o => o.WithTags("t1"));
         });
         return services.BuildServiceProvider();
     }
@@ -155,9 +155,9 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     public async Task TwoAddMethodCacheCalls_BothDefaultPoliciesApply()
     {
         var services = new ServiceCollection();
-        services.AddMethodCache(c => c.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-        services.AddMethodCache(c => c.DefaultPolicy(o => o.WithTags("from-second-call")));
-        services.AddMethodCache(c => c.ForService<IConfigMergeService>().Method(x => x.Get(0)).WithVersion(1));
+        services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
+        services.AddMethodCache(c => c.Defaults(o => o.WithTags("from-second-call")));
+        services.AddMethodCache(c => c.Method((IConfigMergeService x) => x.Get(0)).WithVersion(1));
         await using var sp = services.BuildServiceProvider();
 
         var policy = sp.GetRequiredService<IPolicyRegistry>().GetPolicy(Id).Policy;
@@ -198,7 +198,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         }).Build();
         var services = new ServiceCollection();
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
-        services.AddMethodCache(c => c.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1))));
+        services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1))));
         services.AddMethodCacheFromConfiguration(config);
         services.AddMethodCacheDistributedCache();
         var sp = services.BuildServiceProvider();

@@ -21,6 +21,46 @@ public class SignatureCorpusTests
 {
     private readonly SourceGeneratorTestEngine _engine = new();
 
+    internal static void ExportNativeAotSources(string outputDirectory)
+    {
+        Directory.CreateDirectory(outputDirectory);
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        // The exporter lives in tests/<project>/bin/Release/net10.0, just like the integration tests.
+        var core = Path.GetRelativePath(outputDirectory, Path.Combine(root, "src/MethodCache.Core/MethodCache.Core.csproj"));
+        var generator = Path.GetRelativePath(outputDirectory, Path.Combine(root, "src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj"));
+        var project = new System.Xml.Linq.XElement("Project", new System.Xml.Linq.XAttribute("Sdk", "Microsoft.NET.Sdk"),
+            new System.Xml.Linq.XElement("PropertyGroup",
+                new System.Xml.Linq.XElement("TargetFrameworks", ""),
+                new System.Xml.Linq.XElement("TargetFramework", "net10.0"),
+                new System.Xml.Linq.XElement("OutputType", "Exe"),
+                new System.Xml.Linq.XElement("PublishAot", "true"),
+                new System.Xml.Linq.XElement("AllowUnsafeBlocks", "true"),
+                new System.Xml.Linq.XElement("Nullable", "annotations"),
+                new System.Xml.Linq.XElement("IsPackable", "false"),
+                new System.Xml.Linq.XElement("LangVersion", "latest")),
+            new System.Xml.Linq.XElement("ItemGroup",
+                new System.Xml.Linq.XElement("ProjectReference", new System.Xml.Linq.XAttribute("Include", core)),
+                new System.Xml.Linq.XElement("ProjectReference", new System.Xml.Linq.XAttribute("Include", generator),
+                    new System.Xml.Linq.XAttribute("OutputItemType", "Analyzer"), new System.Xml.Linq.XAttribute("ReferenceOutputAssembly", "false")),
+                new System.Xml.Linq.XElement("PackageReference", new System.Xml.Linq.XAttribute("Include", "Microsoft.Extensions.DependencyInjection"),
+                    new System.Xml.Linq.XAttribute("Version", "9.0.9"))));
+        File.WriteAllText(Path.Combine(outputDirectory, "Corpus.csproj"), project.ToString());
+        var entry = new System.Text.StringBuilder("// All scenario calls remain reachable to the native compiler.\nif (args.Length > 0)\n{\n");
+        var index = 0;
+        foreach (var shape in Cases.Values)
+        {
+            var ns = "CorpusAot.Case" + index;
+            var source = System.Text.RegularExpressions.Regex.Replace(shape.ToSource(), @"\bCorpus\b", ns);
+            File.WriteAllText(Path.Combine(outputDirectory, "Case" + index + ".cs"), source);
+            entry.Append("    _ = await ").Append(ns).Append(".Scenario.RunAsync();\n");
+            index++;
+        }
+        // AOT execution is covered by the smoke app's supported inline shapes. Reflection-based JSON fallback
+        // cases are deliberately compiled here too, but remain unsupported at runtime as documented.
+        entry.Append("}\nSystem.Console.WriteLine(\"Native AOT compiled ").Append(index).Append(" signature corpus cases.\");\n");
+        File.WriteAllText(Path.Combine(outputDirectory, "Program.cs"), entry.ToString());
+    }
+
     public static TheoryData<string> CaseNames()
     {
         var data = new TheoryData<string>();
@@ -223,7 +263,7 @@ public class SignatureCorpusTests
             public class Svc : ISvc { public int Get(int id) => id; public int Get<T>(int id) => id; }
             public static class Scenario {
                 public static int Run() {
-                    var services = new ServiceCollection(); services.AddMethodCache();
+                    var services = new ServiceCollection(); services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                     using var provider = services.BuildServiceProvider();
                     return provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies().Count(p => p.MethodId.Contains("ISvc.Get"));
                 }
@@ -298,7 +338,7 @@ public class SignatureCorpusTests
                     public static async Task<int> RunAsync() {
                         var services = new ServiceCollection();
                         services.AddSingleton<ISvc>(_ => new Svc());
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using (var provider = services.BuildServiceProvider()) {
                             provider.GetRequiredService<ISvc>().Get(1);
                         }
@@ -411,7 +451,7 @@ public class SignatureCorpusTests
                         var manager = new CountingManager();
                         var services = new ServiceCollection();
                         services.AddSingleton<ICacheManager>(manager);
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using var provider = services.BuildServiceProvider();
                         var service = provider.GetRequiredService<ISvc>();
                         var value = 1;
@@ -498,7 +538,7 @@ public class SignatureCorpusTests
                     {
                         var services = new ServiceCollection();
                         {{Registrations}}
-                        services.AddMethodCache();
+                        services.AddMethodCache(b => b.FromAssembly(typeof(Scenario).Assembly).AutoRegister(ServiceLifetime.Singleton));
                         await using var provider = services.BuildServiceProvider();
                         var s = provider.GetRequiredService<{{Service}}>();
                         if (!s.GetType().Name.Contains("Decorator", StringComparison.Ordinal))
@@ -580,12 +620,12 @@ public class SignatureCorpusTests
             public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:2\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
         ["runtime tags retain ambiguous placeholders"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
             public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateByTagsAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.ForService<ISvc>().Method(x => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
 
         ["application types shadow framework and cache infrastructure"] = new("""
             public class Task { }
@@ -1311,6 +1351,13 @@ public class SignatureCorpusTests
             """, "ISvc", "await s.Get(new Microsoft.Graph.Models.User { Id = \"1\", DisplayName = \"a\" })", "await s.Get(new Microsoft.Graph.Models.User { Id = \"2\", DisplayName = \"a\" })"),
         ["read-only list result"] = Member("Task<IReadOnlyList<string>> Get(int id)", "Task<IReadOnlyList<string>> Get(int id) { Counter.Hit(); return Task.FromResult<IReadOnlyList<string>>(new[] { \"v\" }); }", "await s.Get(1)", "await s.Get(2)"),
     };
+}
+
+/// <summary>Exports the same signature cases used by the JIT tests for native compilation.</summary>
+public static class SignatureCorpusExporter
+{
+    /// <summary>Writes a standalone project whose scenario calls all remain reachable by the native compiler.</summary>
+    public static void Export(string outputDirectory) => SignatureCorpusTests.ExportNativeAotSources(outputDirectory);
 }
 
 /// <summary>An interface from another assembly, for <c>[assembly: CacheInterface]</c> cases.</summary>

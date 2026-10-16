@@ -30,7 +30,7 @@ public class StaticKeyMethodCacheAdapter : ICacheAdapter
         if (timeProvider != null) services.AddSingleton(timeProvider);
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }); // Don't scan assembly to avoid conflicts
 
         _serviceProvider = services.BuildServiceProvider();
