@@ -174,7 +174,8 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         }
         finally
         {
-            if (rented != null) System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+            // The frames hold key prefixes and tag addresses; the next renter must not see them
+            if (rented != null) System.Buffers.ArrayPool<byte>.Shared.Return(rented, clearArray: true);
         }
     }
 

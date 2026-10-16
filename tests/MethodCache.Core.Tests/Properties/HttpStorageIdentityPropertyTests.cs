@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using CsCheck;
@@ -46,5 +47,25 @@ public class HttpStorageIdentityPropertyTests
             }
             Assert.Equal(Convert.ToHexString(SHA256.HashData(frames.ToArray())), HttpResponseStore.VectorIdentity(addresses, epochs));
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
+    [Fact]
+    public void VectorIdentity_PooledFrames_AreClearedBeforeReuse()
+    {
+        // Two 600-unit addresses need 2 456 frame bytes, more than the stack buffer holds
+        string[] addresses = [new string('a', 600), new string('b', 600)];
+        CacheEpoch[] epochs = [new(Guid.NewGuid(), 1), new(Guid.NewGuid(), 2)];
+        _ = HttpResponseStore.VectorIdentity(addresses, epochs);
+
+        // The shared pool hands this thread the array it returned last for that size
+        var reused = ArrayPool<byte>.Shared.Rent(2 * (4 + 1200 + 24));
+        try
+        {
+            Assert.DoesNotContain(reused, b => b != 0);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(reused);
+        }
     }
 }

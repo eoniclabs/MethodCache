@@ -5,8 +5,9 @@ The gate fails when, compared with the base revision, a case
   - sends more Redis or SQL commands per operation,
   - writes to Redis on a hit, or
   - allocates more bytes per operation on a hit (more than 8 bytes and 0.5 %),
-unless accepted.json accepts that case with a reason and an upper bound the new value stays within. A case the base
-measured that the head did not run fails too, and so does a comparison of no cases.
+unless accepted.json accepts that case with a reason and an upper bound the new value stays within. A case that
+failed to run on either side fails, so does a case the base measured that the head did not run, and so does a
+comparison of no cases.
 
 usage: compare.py base.jsonl head.jsonl [--accepted accepted.json] [--markdown report.md]
 """
@@ -68,8 +69,11 @@ def main():
         if "error" in h:
             failures.append(f"{case}: failed to run: {h['error']}")
             continue
-        if b is None or "error" in b:
-            notes.append(f"{case}: no base value")
+        if b is None:
+            notes.append(f"{case}: new case, no base value")
+            continue
+        if "error" in b:
+            failures.append(f"{case}: failed to run on the base: {b['error']}")
             continue
         problems = []
         if redis_total(h) > redis_total(b) + 0.05:
