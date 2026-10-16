@@ -7,7 +7,7 @@ namespace MethodCache.Redis;
 
 internal sealed partial class RedisDistributedCache
 {
-    // Each script touches exactly one key, including on Redis Cluster. Batched ensures pipeline those operations.
+    // Each script touches exactly one key, including on Redis Cluster. Ensuring several keys pipelines those scripts.
     private const string EpochScript = """
         local current = redis.call('HMGET', KEYS[1], 'data', 'absexp', 'sldexp')
         local previous = current[1]
@@ -51,10 +51,10 @@ internal sealed partial class RedisDistributedCache
     public async ValueTask<DistributedRead> ReadEntryAsync(string valueKey, string removalKey, CancellationToken cancellationToken = default)
     {
         var connection = await _connection.GetAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
-        var batch = connection.GetDatabase().CreateBatch();
-        var value = batch.HashGetAsync(GetPhysicalKey(valueKey), "data");
-        var removal = batch.HashGetAsync(GetPhysicalKey(removalKey), "data");
-        batch.Execute();
+        var database = connection.GetDatabase();
+        // Both commands are written before either reply is awaited, so they share a round trip without a batch
+        var value = database.HashGetAsync(GetPhysicalKey(valueKey), "data");
+        var removal = database.HashGetAsync(GetPhysicalKey(removalKey), "data");
         await Task.WhenAll(value, removal).WaitAsync(cancellationToken).ConfigureAwait(false);
         return new DistributedRead((byte[]?)await value.ConfigureAwait(false), (byte[]?)await removal.ConfigureAwait(false));
     }
@@ -67,11 +67,10 @@ internal sealed partial class RedisDistributedCache
         foreach (var key in keys) ArgumentNullException.ThrowIfNull(key);
         if (keys.Count > 128) throw new ArgumentOutOfRangeException(nameof(keys), "A metadata batch may contain at most 128 keys.");
         var connection = await _connection.GetAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
-        var batch = connection.GetDatabase().CreateBatch();
+        var database = connection.GetDatabase();
         var pending = new Task<RedisResult>[keys.Count];
         for (var i = 0; i < keys.Count; i++)
-            pending[i] = batch.ScriptEvaluateAsync(EpochScript, new RedisKey[] { GetPhysicalKey(keys[i]) }, EpochArguments(advance: false));
-        batch.Execute();
+            pending[i] = database.ScriptEvaluateAsync(EpochScript, new RedisKey[] { GetPhysicalKey(keys[i]) }, EpochArguments(advance: false));
         var values = await Task.WhenAll(pending).WaitAsync(cancellationToken).ConfigureAwait(false);
         var result = new CacheEpoch[values.Length];
         for (var i = 0; i < values.Length; i++) result[i] = ReadEpoch(values[i]);
@@ -106,12 +105,10 @@ internal sealed partial class RedisDistributedCache
         return TimeSpan.FromTicks(ticks);
     }
 
-    private static RedisValue[] EpochArguments(bool advance)
-    {
-        var emptyStamp = new byte[8];
-        BinaryPrimitives.WriteInt64LittleEndian(emptyStamp, long.MinValue);
-        return [Guid.NewGuid().ToByteArray(), advance ? "advance" : "ensure", emptyStamp];
-    }
+    // A stamp of long.MinValue, little-endian. Redis only reads it, so every call can share it.
+    private static readonly byte[] EmptyStamp = [0, 0, 0, 0, 0, 0, 0, 0x80];
+
+    private static RedisValue[] EpochArguments(bool advance) => [Guid.NewGuid().ToByteArray(), advance ? "advance" : "ensure", EmptyStamp];
 
     private static CacheEpoch ReadEpoch(RedisResult result)
     {
