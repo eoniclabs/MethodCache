@@ -9,9 +9,15 @@ internal sealed partial class RedisDistributedCache
 {
     // Each script touches exactly one key, including on Redis Cluster. Batched ensures pipeline those operations.
     private const string EpochScript = """
-        local previous = redis.call('HGET', KEYS[1], 'data')
+        local current = redis.call('HMGET', KEYS[1], 'data', 'absexp', 'sldexp')
+        local previous = current[1]
         if previous and string.len(previous) ~= 8 and (string.len(previous) < 33 or string.byte(previous, 9) ~= 1) then
             return redis.error_reply('MethodCache epoch schema mismatch')
+        end
+        -- Reading an initialized, permanent epoch changes nothing, so it writes nothing.
+        if ARGV[2] ~= 'advance' and previous and string.len(previous) ~= 8
+            and current[2] == '-1' and current[3] == '-1' and redis.call('TTL', KEYS[1]) == -1 then
+            return previous
         end
         local data = previous
         if not data or string.len(data) == 8 then
