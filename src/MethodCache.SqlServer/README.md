@@ -120,6 +120,9 @@ builder.Services.Configure<DistributedCacheOptions>(options =>
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
 Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
+Initialized permanent HTTP epochs are read without rewriting their rows. Initialization and retention repair
+remain atomic, and each HTTP lookup still reads the shared generation records.
+
 Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
 are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
 have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
