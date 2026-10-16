@@ -15,6 +15,11 @@ public readonly struct MethodCall
 
     internal CallSnapshot Snapshot => _snapshot;
 
+    /// <summary>Starts an inline key bound to this invocation for previously generated contract-1 code.</summary>
+    /// <remarks>New generated code uses the <see cref="KeyBuilder"/> constructor to avoid copying a returned builder.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public KeyBuilder StartKey(Span<char> buffer) => new(this, buffer);
+
     /// <summary>Binds already formatted key text to this invocation.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public KeyBuilder BindKey(string key)

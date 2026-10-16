@@ -33,6 +33,15 @@ freezer refuses existing manifests. No shipped library source changes. Final-hea
 cross-platform CI remains required.
 [Exact provenance, sensitivity proof and native receipts](../../plans/design-benchmarks/net10-inline-vendor-baseline/).
 
+A separate full-surface guard captures all 103 Generated declarations from the
+original PR1 source and detects the StartKey member removed by #132. Its restoration
+keeps the constructor path used by current generated code. Ten compatibility facts,
+1,043 Core facts, 100% coverage of the changed executable line and native osx-arm64
+smoke pass. Neither frozen checkpoint is replaced. Existing constructor-path timing
+workloads remain unchanged; the legacy factory copy cost is a distinct caller path.
+Final-head CI remains required.
+[Frozen API declarations and exact red/green/coverage proof](../../plans/design-benchmarks/generated-api-preservation/).
+
 ## Whole-probe allocation warmup
 
 The 388050f Linux jobs and Windows build/unit checks pass, but macOS unit CI reports 272 bytes in

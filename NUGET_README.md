@@ -30,6 +30,7 @@ builder.Services.AddMethodCache();
   unambiguous generated module. Startup configuration uses `MethodCacheBuilder`.
 - **Fast.** A hit with simple arguments allocates nothing on .NET 10, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache.
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
+  Previously compiled contract-1 vendor decorators keep working without regeneration, with both inline and materialized keys.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches chosen methods of an SDK client's own interface, no wrapper needed.

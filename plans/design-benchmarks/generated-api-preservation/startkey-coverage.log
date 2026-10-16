@@ -1,0 +1,10 @@
+Test run for <worktree>/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 29 ms - MethodCache.Core.Tests.dll (net10.0)
+
+Attachments:
+  <receipt-root>/startkey-coverage/de88e857-c427-4ce2-8f59-98ee359bf7b7/coverage.cobertura.xml

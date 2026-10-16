@@ -14,6 +14,21 @@ namespace MethodCache.CompatTests;
 public partial class VendorCompatibilityTests
 {
     [Fact]
+    public void FrozenGeneratedPublicApi_PreservesEveryDeclaredContractMember()
+    {
+        using var baseline = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1GeneratedApi.json")));
+        Assert.Equal("9294adb3bd562b502d18a428d452b0bc40199515", baseline.RootElement.GetProperty("source_commit").GetString());
+        var current = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "CurrentGeneratedPublicAPI.txt"))
+            .Concat(File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "CurrentGeneratedPublicAPI.Shipped.txt")))
+            .ToHashSet(StringComparer.Ordinal);
+        var frozen = baseline.RootElement.GetProperty("declarations").EnumerateArray().Select(member => member.GetString()!).ToHashSet(StringComparer.Ordinal);
+        foreach (var member in frozen)
+            Assert.Contains(member, current);
+        foreach (var member in current.Where(member => member.StartsWith("abstract MethodCache.Generated.GeneratedModule.", StringComparison.Ordinal)))
+            Assert.Contains(member, frozen);
+    }
+
+    [Fact]
     public void FrozenImages_CoverInlineAndMaterializedKeyContracts()
     {
         var references = new HashSet<string>(StringComparer.Ordinal);

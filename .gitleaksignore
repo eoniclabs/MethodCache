@@ -177,3 +177,6 @@ plans/design-benchmarks/guid-full-preparation-v5/series/prepared-manifest.json:g
 plans/design-benchmarks/guid-full-preparation-v5/series/prepared-manifest.json:generic-api-key:2359
 plans/design-benchmarks/guid-full-preparation-v5/series/prepared-manifest.json:generic-api-key:2361
 plans/design-benchmarks/guid-full-preparation-v5/series/prepared-manifest.json:generic-api-key:2370
+
+# Original frozen Generated API source: independently verified Git commit provenance.
+plans/design-benchmarks/generated-api-preservation/manifest.json:generic-api-key:4

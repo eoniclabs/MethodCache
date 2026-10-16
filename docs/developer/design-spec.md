@@ -149,6 +149,10 @@ Fixtures täcker sync/Task/ValueTask, keyed/scoped tjänster, generiska metoder,
 CacheInterface. Källkod och fixtures som provar den nya fasaden kompileras före baseline-frysningen.
 Fixtures inkluderar KeyBuilder-konstruktorn/ref KeyBuilder och reservvägen, så att senare prefixhashning kan införas
 utan ändrade generator-signaturer eller omkompilering av vendor-DLL:en.
+Den ursprungliga baslinjens samtliga Generated-deklarationer bevaras också som separata testindata.
+Det innefattar MethodCall.StartKey för tidigare kompilerade inline-anrop; ny genererad kod använder
+KeyBuilder-konstruktorn. De ursprungliga .NET 8-bilderna och separata .NET 10-bilder täcker olika
+genererade anropsvägar och ska behållas oberoende av varandra.
 
 ### 2.4 Prefixhashning efter PR 5
 
