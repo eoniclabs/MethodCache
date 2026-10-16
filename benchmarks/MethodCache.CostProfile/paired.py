@@ -27,8 +27,16 @@ def t95(df):
 
 
 def load(path):
+    records = {}
     with open(path, encoding="utf-8") as lines:
-        return {r["case"]: r.get("ns") for r in map(json.loads, filter(str.strip, lines))}
+        for record in map(json.loads, filter(str.strip, lines)):
+            case, ns = record["case"], record.get("ns")
+            if case in records:
+                raise ValueError(f"{path}: duplicate case {case}")
+            if ns is not None and (isinstance(ns, bool) or not isinstance(ns, (int, float)) or not math.isfinite(ns) or ns <= 0):
+                raise ValueError(f"{path}: invalid time for {case}")
+            records[case] = ns
+    return records
 
 
 def main():
@@ -41,11 +49,14 @@ def main():
     if args.accepted:
         with open(args.accepted, encoding="utf-8") as file:
             accepted = {k: v for k, v in json.load(file).items() if not k.startswith("_") and "time" in v}
-    pairs = []
-    for base_path in sorted(glob.glob(os.path.join(args.directory, "base-*.jsonl"))):
-        head_path = base_path.replace("base-", "head-")
-        if os.path.exists(head_path):
-            pairs.append((load(base_path), load(head_path)))
+    base_paths = {os.path.basename(p)[5:]: p for p in glob.glob(os.path.join(args.directory, "base-*.jsonl"))}
+    head_paths = {os.path.basename(p)[5:]: p for p in glob.glob(os.path.join(args.directory, "head-*.jsonl"))}
+    if base_paths.keys() != head_paths.keys():
+        sys.exit("unpaired timing launches: base and head files must match")
+    try:
+        pairs = [(load(base_paths[name]), load(head_paths[name])) for name in sorted(base_paths)]
+    except ValueError as error:
+        sys.exit(str(error))
     if len(pairs) < 2:
         sys.exit("need at least two pairs")
     lines = ["| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |", "|---|---:|---:|---:|---|---|"]
@@ -60,14 +71,14 @@ def main():
         half = t95(len(logs) - 1) * statistics.stdev(logs) / math.sqrt(len(logs))
         low, estimate, high = math.exp(mean - half), math.exp(mean), math.exp(mean + half)
         rule = next((r for pattern, r in accepted.items() if pattern in case), None)
-        if low > 1 and estimate > 1.03 and rule and estimate <= rule["time"]:
+        if high - low > 0.06:
+            verdict, noisy = "**too noisy**", noisy + 1
+        elif low > 1 and estimate > 1.03 and rule and estimate <= rule["time"]:
             verdict = f"accepted: {rule['reason']}"
         elif low > 1 and estimate > 1.03:
             verdict, slower = "**slower**", slower + 1
         elif high < 1 and estimate < 0.97:
             verdict = "faster"
-        elif high - low > 0.06:
-            verdict, noisy = "**too noisy**", noisy + 1
         else:
             verdict = "same"
         base_ns = statistics.median(b[case] for b, _ in pairs)
