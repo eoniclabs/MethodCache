@@ -600,29 +600,44 @@ några observationer. Lokalt register ger ingen kvittens om alla noder och kan i
 
 ## 10. Prestandagrind
 
-Varje beteendeändrande PR jämför sin merge-base och ändringen på samma maskin/runtime/GC-inställningar,
-tre oberoende BenchmarkDotNet-körningar vardera med växlande bas/ändringsordning.
-Redovisa full SHA, SDK/runtime, CPU, GC, lyssnare, datamängd, medel och 95-procentigt konfidensintervall
-för körningsmedlen. L2 mäts separat med lika backend/latency, inte som ett nanosekundbenchmark.
+Grinden har två steg. Kostnadsprofilen är snabb och deterministisk och körs för varje beteendeändrande PR.
+Tidsmätningen körs en gång i slutgrinden (PR 7) mot f43854d, och för en PR som bara ändrar CPU-arbete.
+Båda finns i `benchmarks/MethodCache.CostProfile` (beslut av Johan 2026-10-16; ersätter tre
+BenchmarkDotNet-körningar per sida för varje jämförelse).
 
-Försämring stoppar PR om ändringens intervall ligger helt över basens och skillnaden är större än 3 %.
-Ett brett/osäkert intervall är otillräcklig evidens, inte ett pass; upprepa/mät isolerat.
-Allokeringar får inte öka på motsvarande träffvägar vid samma listener-inställning. 84 ns är historisk
-baslinje, inte ett universellt absolut gränsvärde. PR 7 jämför även helheten med f43854d för att upptäcka
-ackumulerade små försämringar. Nytt arbete mäts separat från befintliga jämförbara scenarier.
+**Steg 1, kostnadsprofil.** `cost-profile.sh <bas>` bygger basen och ändringen med exakt samma harness och
+mäter varje fall per operation: allokerade bytes (median av sju batcher), Redis-kommandon räknade av servern
+(INFO commandstats, så kommandon inuti Lua-skript räknas) och SQL-kommandon med textlängd och parametrar.
+Värdena är deterministiska, så en körning per sida räcker. Grinden stoppar PR:n om ett fall jämfört med basen
+
+- skickar fler Redis- eller SQL-kommandon per operation,
+- skriver till Redis på en träff, eller
+- allokerar mer på en träff (mer än 8 byte och 0,5 %),
+
+om inte `accepted.json` godkänner fallet med motivering och övre gränser som det nya värdet håller sig under.
+Ett godkännande är ett designbeslut och granskas som kod. `--stacks <sekunder>` fördelar ett falls
+allokeringar på anropsplatser (EventPipe), så en skillnad kan spåras till sin rad i båda revisionerna.
+
+**Steg 2, parad tidsmätning.** `cost-profile.sh --time <par> <bas>` startar bas och ändring växelvis
+(bas först i udda par, ändring först i jämna) med samma korta BenchmarkDotNet-jobb i processen. Kvoten
+ändring/bas per par medelvärdesbildas i logaritmen och får ett 95-procentigt intervall med Students t och
+n−1 frihetsgrader. Ett fall är långsammare om hela intervallet ligger över 1 och skattningen är mer än 3 %
+över. Ett intervall bredare än 6 % är otillräcklig evidens, inte ett pass: mät om på en lugnare maskin.
+Mät på en lugn maskin med samma runtime- och GC-inställningar för båda sidor och redovisa full SHA,
+SDK/runtime, CPU, GC och antal par.
+
+Steg 2 körs en gång i PR 7 för hela baslinjen mot f43854d, så att ackumulerade små försämringar syns.
+Det körs också, med filter på de berörda träffscenarierna, för en PR som ändrar CPU-arbete utan att ändra
+bytes eller kommandon (nyckelbygge, hashning, genererad kod): kostnadsprofilen ser inte en ren
+CPU-försämring som kopieringen av KeyBuilder i PR 1. L2 tidsmäts bara med lika backend och latens;
+kommandoantalet i steg 1 är L2-grinden. 84 ns är historisk baslinje, inte ett universellt absolut gränsvärde.
+Nytt arbete mäts separat från befintliga jämförbara scenarier.
 
 Obligatoriska scenarier: sync/Task/ValueTask hits och misses; simple/record/collection/fallback-key;
 L2 read/write och RoundTrip av/på; contention/single-flight/eviction/weighted pressure; HTTP local/L2
 inklusive generations-I/O; cookie-disabled caching och KeepCookies-bypass; telemetri utan/med lyssnare.
-Befintliga benchmarkkontrakt för setup/nycklar/cleanup ska fortsatt vara gröna.
-
-För varje PR dokumenteras vilka scenarier som berörs av dess kodändringar och därför ska jämföras.
-Urvalet bestäms före granskning av mätresultaten; utelämnade scenarier behöver en konkret motivering
-utifrån anropsvägen. Helhetsjämförelsen mot f43854d täcker samtliga obligatoriska scenarier.
-Tre oberoende körningar, oförändrade mätinställningar och acceptanskraven ovan gäller fortfarande
-för varje vald jämförelse. Ett snävare urval är inte skäl att bortse från en uppmätt försämring eller
-att redovisa en omätt jämförelse som godkänd. Kör gärna helhetsjämförelsen först så att den viktigaste
-återkopplingen inte behöver vänta på samtliga historiska PR-jämförelser.
+Kostnadsprofilen kör alla dessa fall som standard. Befintliga benchmarkkontrakt för setup/nycklar/cleanup
+ska fortsatt vara gröna.
 
 Prefixhash-PR:n mäter även nyckelbygge, hash/uppslag och hela genererade träffvägen separat, med korta och
 långa prefix, växande buffertar och reservnycklar. Efter PR 5 är inbyggda räknare alltid aktiva; mät
@@ -762,7 +777,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | V01 | Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required. | Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna. |
 | V02 | Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er. | Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer. |
 | V03 | mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API. | Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses. |
-| V04 | §10 per förändring och hela baslinjen mot f43854d. | Reproducerbara resultat; ingen dold ackumulerad försämring eller extra hit-allokeringar. |
+| V04 | §10 steg 1 per förändring; steg 1 och steg 2 för hela baslinjen mot f43854d. | Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen försämring i den parade tidsmätningen. |
 
 ## 12. PR-ordning och klart-kriterier
 

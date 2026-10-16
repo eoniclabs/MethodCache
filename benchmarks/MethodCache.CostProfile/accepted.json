@@ -1,0 +1,20 @@
+{
+  "_comment": "Cases whose extra cost is a deliberate design choice. A key matches every case whose name contains it. Each entry needs a reason and upper bounds (bytes, redis, redisWrites, sql) the new value must stay within. Measured against f43854d on 2026-10-16.",
+  "DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False)": {
+    "reason": "Design spec 9.2: every HTTP L2 lookup reads the shared generation vector (global clear, URL slot, tags) before the representation, so invalidation by another node applies at once. Each component is a read-only Lua script on one key (cluster-safe), so 3 EVALSHA, each HMGET + TTL, pipelined in one round trip, then the entry HMGET. Nothing is written. The bytes are those scripts and the bounded transport (timeout and breaker) around both reads.",
+    "redis": 10,
+    "bytes": 14800
+  },
+  "DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False)": {
+    "reason": "Same generation vector as a fresh hit (3 EVALSHA, each HMGET + TTL). A miss in a URL slot nobody has used yet also creates that slot's epoch (HSET + PERSIST), a share that depends on how many new slots the run reaches.",
+    "redis": 14.5
+  },
+  "DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False)": {
+    "reason": "Design spec 9.2: the generation vector is one parameterized SELECT without locks once the epochs exist, then the entry read, so still 2 commands per hit. The extra bytes are SqlClient's cost for that command with 4 parameters and the bounded transport around both reads.",
+    "bytes": 24500
+  },
+  "KeepCookies=True)": {
+    "reason": "Design spec 9.3: with KeepCookies the handler stays in the pipeline and bypasses the cache. f43854d had no KeepCookies, so its baseline runs without the handler. The bypass reads the request's Cache-Control for only-if-cached (48 B of request headers) and returns a completed Task (72 B).",
+    "bytes": 1940
+  }
+}
