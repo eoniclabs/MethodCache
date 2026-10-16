@@ -93,6 +93,31 @@ public class EpochContractTests(SqlServerFixture fixture)
     }
 
     [SkippableFact]
+    public async Task EnsureEpochs_InitializedVector_DoesNotWaitForAnotherReadersLock()
+    {
+        var options = new SqlServerOptions
+        { ConnectionString = fixture.RequireConnectionString(), SchemaName = "epoch_concurrent_" + Guid.NewGuid().ToString("N") };
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            var cache = new SqlServerDistributedCache(options);
+            string[] keys = ["epoch:a", "epoch:b"];
+            var first = await cache.EnsureEpochsAsync(keys);
+            await using var connection = new SqlConnection(options.ConnectionString);
+            await connection.OpenAsync();
+            await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+            // The update locks another reader of the same vector would hold until its transaction ends
+            await using (var hold = new SqlCommand($"SELECT [Value] FROM {options.QualifiedTableName} WITH (UPDLOCK, HOLDLOCK);", connection, transaction))
+            await using (var reader = await hold.ExecuteReaderAsync())
+                while (await reader.ReadAsync()) { }
+
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            Assert.Equal(first, await cache.EnsureEpochsAsync(keys, timeout.Token));
+        }
+        finally { await BackplaneIsolationTests.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task NativeAtomicEpochs_ConformAcrossIndependentInstances()
     {
         var options = new SqlServerOptions
