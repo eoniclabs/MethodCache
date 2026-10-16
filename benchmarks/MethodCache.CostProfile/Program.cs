@@ -9,10 +9,11 @@ using StackExchange.Redis;
 // server, so commands inside Lua scripts count too) and SQL commands with their text length. These counts are
 // deterministic, so comparing two revisions shows extra work in minutes, without a timing series.
 //
-// Usage: MethodCache.CostProfile [case filter] [--out results.jsonl] [--stacks seconds | --time]
+// Usage: MethodCache.CostProfile [case filter] [--exact] [--out results.jsonl] [--stacks seconds | --time | --list]
+// The filter selects the cases whose name contains it, or with --exact the one case with that name.
 // --stacks attributes the allocations of each matching case to call sites instead (EventPipe allocation ticks).
 // --time measures the median time per operation with BenchmarkDotNet in this process; cost-profile.sh --time runs
-// it alternately for two revisions and compares the pairs.
+// it for one case per process, alternately for two revisions, and compares the pairs. --list prints the case names.
 // Redis and SQL Server cases run when METHODCACHE_REDIS_URL and METHODCACHE_SQLSERVER_CONNECTION are set.
 internal static class Program
 {
@@ -33,13 +34,25 @@ internal static class Program
         var stacks = Option(args, "--stacks") is { } seconds ? double.Parse(seconds, CultureInfo.InvariantCulture) : (double?)null;
         var redisUrl = Environment.GetEnvironmentVariable("METHODCACHE_REDIS_URL");
         var hasSql = Environment.GetEnvironmentVariable("METHODCACHE_SQLSERVER_CONNECTION") != null;
-        if (args.Contains("--time")) return await Timing.RunAsync(Types, filter, redisUrl != null, hasSql, output);
+        var exact = args.Contains("--exact");
+        bool Matches(string name) => exact ? name == filter : name.Contains(filter, StringComparison.Ordinal);
+        if (args.Contains("--time")) return await Timing.RunAsync(Types, Matches, redisUrl != null, hasSql, output);
+        if (args.Contains("--list"))
+        {
+            foreach (var (type, parameters, method) in Cases())
+            {
+                var name = Name(type, parameters, method);
+                var available = (redisUrl != null || !parameters.Values.Any(v => Equals(v, "Redis"))) && (hasSql || !parameters.Values.Any(v => Equals(v, "SqlServer")));
+                if (available && Matches(name)) Console.WriteLine(name);
+            }
+            return 0;
+        }
         using var redis = redisUrl == null ? null : await ConnectionMultiplexer.ConnectAsync(redisUrl + ",allowAdmin=true");
         await using var writer = new StreamWriter(output, append: false);
         foreach (var (type, parameters, method) in Cases())
         {
-            var name = $"{type.Name}.{method.Name}({string.Join(",", parameters.Select(p => $"{p.Key}={p.Value}"))})";
-            if (!name.Contains(filter, StringComparison.Ordinal)) continue;
+            var name = Name(type, parameters, method);
+            if (!Matches(name)) continue;
             if ((redis == null && parameters.Values.Any(v => Equals(v, "Redis"))) || (!hasSql && parameters.Values.Any(v => Equals(v, "SqlServer"))))
             {
                 Console.WriteLine($"{name} skipped: no backend configured");
@@ -56,6 +69,9 @@ internal static class Program
         }
         return 0;
     }
+
+    private static string Name(Type type, Dictionary<string, object?> parameters, MethodInfo method)
+        => $"{type.Name}.{method.Name}({string.Join(",", parameters.Select(p => $"{p.Key}={p.Value}"))})";
 
     private static string? Option(string[] args, string name) => args.SkipWhile(a => a != name).Skip(1).FirstOrDefault();
 

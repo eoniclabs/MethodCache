@@ -5,9 +5,10 @@ Each pair is one base launch and one head launch run back to back, so slow phase
 The head/base ratio of each pair is averaged in log space; the 95 % interval uses Student's t with n-1 degrees
 of freedom. A case is slower when the whole interval lies above 1 and the estimate is more than 3 % above it.
 The comparison fails on a slower case, on an interval wider than 6 % (not enough evidence either way) and on a
-case without a time in some launch.
+case without a time in some launch. A slower case passes when accepted.json accepts it with a reason and a "time"
+bound its estimated head/base ratio stays within.
 
-usage: paired.py <directory with base-<i>.jsonl and head-<i>.jsonl> [--markdown report.md]
+usage: paired.py <directory with base-<i>.jsonl and head-<i>.jsonl> [--accepted accepted.json] [--markdown report.md]
 """
 import argparse
 import glob
@@ -33,8 +34,13 @@ def load(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("directory")
+    parser.add_argument("--accepted")
     parser.add_argument("--markdown")
     args = parser.parse_args()
+    accepted = {}
+    if args.accepted:
+        with open(args.accepted, encoding="utf-8") as file:
+            accepted = {k: v for k, v in json.load(file).items() if not k.startswith("_") and "time" in v}
     pairs = []
     for base_path in sorted(glob.glob(os.path.join(args.directory, "base-*.jsonl"))):
         head_path = base_path.replace("base-", "head-")
@@ -53,7 +59,10 @@ def main():
         mean = statistics.fmean(logs)
         half = t95(len(logs) - 1) * statistics.stdev(logs) / math.sqrt(len(logs))
         low, estimate, high = math.exp(mean - half), math.exp(mean), math.exp(mean + half)
-        if low > 1 and estimate > 1.03:
+        rule = next((r for pattern, r in accepted.items() if pattern in case), None)
+        if low > 1 and estimate > 1.03 and rule and estimate <= rule["time"]:
+            verdict = f"accepted: {rule['reason']}"
+        elif low > 1 and estimate > 1.03:
             verdict, slower = "**slower**", slower + 1
         elif high < 1 and estimate < 0.97:
             verdict = "faster"

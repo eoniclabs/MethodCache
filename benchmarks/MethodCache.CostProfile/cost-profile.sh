@@ -4,7 +4,8 @@
 #   benchmarks/MethodCache.CostProfile/cost-profile.sh <base-ref> [case filter]
 #       Allocations and Redis/SQL commands per operation for both, and the gate (compare.py).
 #   benchmarks/MethodCache.CostProfile/cost-profile.sh --time <pairs> <base-ref> [case filter]
-#       Time per operation from <pairs> alternating launches of both (paired.py). Run it on a quiet machine.
+#       Time per operation: each case in its own process, <pairs> times per side, alternating which side goes
+#       first (paired.py). About 6 seconds per case and launch, so filter it; run it on a quiet machine.
 #
 # Redis and SQL Server cases need METHODCACHE_REDIS_URL and METHODCACHE_SQLSERVER_CONNECTION. Results and the
 # report go to artifacts/cost-profile (COST_PROFILE_OUT).
@@ -45,16 +46,21 @@ done
 
 if [ "$pairs" -gt 0 ]; then
   rm -f "$out"/base-*.jsonl "$out"/head-*.jsonl
+  # One process per case: cases timed in one process shape each other's JIT and GC state
+  mapfile -t cases < <(dotnet "$out/head-bin/MethodCache.CostProfile.dll" "$filter" --list)
   for i in $(seq 1 "$pairs"); do
     # Alternate which side goes first, so a trend on the machine does not favor one side
     order="base head"
     [ $((i % 2)) -eq 0 ] && order="head base"
-    for side in $order; do
-      echo "Pair $i/$pairs: timing $side"
-      dotnet "$out/$side-bin/MethodCache.CostProfile.dll" "$filter" --time --out "$out/$side-$i.jsonl" >/dev/null
+    echo "Pair $i/$pairs: timing ${#cases[@]} cases"
+    for case in "${cases[@]}"; do
+      for side in $order; do
+        dotnet "$out/$side-bin/MethodCache.CostProfile.dll" "$case" --exact --time --out "$out/launch.jsonl" >/dev/null
+        cat "$out/launch.jsonl" >> "$out/$side-$i.jsonl"
+      done
     done
   done
-  python3 "$here/paired.py" "$out" --markdown "$out/timing.md"
+  python3 "$here/paired.py" "$out" --accepted "$here/accepted.json" --markdown "$out/timing.md"
   exit
 fi
 
