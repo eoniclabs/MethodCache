@@ -1,0 +1,208 @@
+=== build
+test_fetch_finishes_its_automatic_gc_before_the_clone (test_coordinator.CheckoutTests.test_fetch_finishes_its_automatic_gc_before_the_clone) ... ok
+test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts (test_coordinator.InstallTests.test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts) ... ok
+test_update_atomically_preserves_open_old_script_and_versions_helper (test_coordinator.InstallTests.test_update_atomically_preserves_open_old_script_and_versions_helper) ... ok
+test_linux_capacity_denial_prevents_remote_checkout (test_coordinator.RetryIntegrationTests.test_linux_capacity_denial_prevents_remote_checkout) ... ok
+test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition (test_coordinator.RetryIntegrationTests.test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition) ... ok
+test_linux_timeout_runs_on_server_with_local_cleanup_grace (test_coordinator.RetryIntegrationTests.test_linux_timeout_runs_on_server_with_local_cleanup_grace) ... ok
+test_remote_linux_results_recovered_without_any_build (test_coordinator.RetryIntegrationTests.test_remote_linux_results_recovered_without_any_build) ... ok
+test_retry_builds_only_missing_platform (test_coordinator.RetryIntegrationTests.test_retry_builds_only_missing_platform) ... ok
+test_background_command_receives_script_on_stdin (test_coordinator.TimeoutTests.test_background_command_receives_script_on_stdin) ... ok
+test_watchdog_does_not_hold_archive_stdout_open (test_coordinator.TimeoutTests.test_watchdog_does_not_hold_archive_stdout_open) ... ok
+test_active_checkout_keeps_build (test_coordinator_state.StateTests.test_active_checkout_keeps_build) ... ok
+test_budget_removes_completed_clone_but_not_report (test_coordinator_state.StateTests.test_budget_removes_completed_clone_but_not_report) ... ok
+test_build_with_database_preserved (test_coordinator_state.StateTests.test_build_with_database_preserved) ... ok
+test_dirty_checkout_preserved (test_coordinator_state.StateTests.test_dirty_checkout_preserved) ... ok
+test_expired_failed_checkout_removed_without_losing_reports (test_coordinator_state.StateTests.test_expired_failed_checkout_removed_without_losing_reports) ... ok
+test_failed_checkout_kept_for_diagnostic_window (test_coordinator_state.StateTests.test_failed_checkout_kept_for_diagnostic_window) ... ok
+test_failure_is_complete_but_not_reusable_success (test_coordinator_state.StateTests.test_failure_is_complete_but_not_reusable_success) ... ok
+test_finished_marker_with_missing_job_is_incomplete (test_coordinator_state.StateTests.test_finished_marker_with_missing_job_is_incomplete) ... ok
+test_full_collection_is_throttled_between_scheduled_passes (test_coordinator_state.StateTests.test_full_collection_is_throttled_between_scheduled_passes) ... ok
+test_invalid_job_exit_is_incomplete (test_coordinator_state.StateTests.test_invalid_job_exit_is_incomplete) ... ok
+test_passed_build_removed_and_reports_kept (test_coordinator_state.StateTests.test_passed_build_removed_and_reports_kept) ... ok
+test_redirected_macos_root_is_preserved (test_coordinator_state.StateTests.test_redirected_macos_root_is_preserved) ... ok
+test_result_destination_outside_reports_refused (test_coordinator_state.StateTests.test_result_destination_outside_reports_refused) ... ok
+test_retry_backoff_and_limit (test_coordinator_state.StateTests.test_retry_backoff_and_limit) ... ok
+test_same_prefix_different_full_sha_is_not_reused (test_coordinator_state.StateTests.test_same_prefix_different_full_sha_is_not_reused) ... ok
+test_successful_platform_reused_with_logs_without_build (test_coordinator_state.StateTests.test_successful_platform_reused_with_logs_without_build) ... ok
+test_symlinked_exit_file_is_not_a_result (test_coordinator_state.StateTests.test_symlinked_exit_file_is_not_a_result) ... ok
+test_terminal_failure_is_not_a_pass_even_with_zero_job_exits (test_coordinator_state.StateTests.test_terminal_failure_is_not_a_pass_even_with_zero_job_exits) ... ok
+test_unknown_checkout_and_symlink_preserved (test_coordinator_state.StateTests.test_unknown_checkout_and_symlink_preserved) ... ok
+test_remote_termination_cleans_only_run_owned_containers (test_linux.LinuxCleanupTests.test_remote_termination_cleans_only_run_owned_containers) ... ok
+test_different_exact_dependency_fails (test_package_contracts.PackageContractTests.test_different_exact_dependency_fails) ... ok
+test_extra_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_extra_older_runtime_asset_fails) ... ok
+test_matching_exact_bounds_pass (test_package_contracts.PackageContractTests.test_matching_exact_bounds_pass) ... ok
+test_minimum_only_dependency_fails (test_package_contracts.PackageContractTests.test_minimum_only_dependency_fails) ... ok
+test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) ... ok
+test_bws_failure_or_empty_value_never_pushes (test_publish.PublishTests.test_bws_failure_or_empty_value_never_pushes) ... ok
+test_default_is_nuget (test_publish.PublishTests.test_default_is_nuget) ... ok
+test_explicit_github_packages (test_publish.PublishTests.test_explicit_github_packages) ... ok
+test_failed_ci_never_builds_or_fetches_secret (test_publish.PublishTests.test_failed_ci_never_builds_or_fetches_secret) ... ok
+test_invalid_target_never_contacts_services (test_publish.PublishTests.test_invalid_target_never_contacts_services) ... ok
+test_local_secret_reference_and_existing_host_token_file (test_publish.PublishTests.test_local_secret_reference_and_existing_host_token_file) ... ok
+test_missing_dependencies_report_the_tool_and_never_build (test_publish.PublishTests.test_missing_dependencies_report_the_tool_and_never_build) ... ok
+test_missing_package_never_fetches_secret (test_publish.PublishTests.test_missing_package_never_fetches_secret) ... ok
+test_missing_secret_reference_stops_before_build (test_publish.PublishTests.test_missing_secret_reference_stops_before_build) ... ok
+test_missing_symbol_companion_never_fetches_secret (test_publish.PublishTests.test_missing_symbol_companion_never_fetches_secret) ... ok
+test_nuget_fetches_one_secret_after_pack_and_pushes_seven_without_key_arguments (test_publish.PublishTests.test_nuget_fetches_one_secret_after_pack_and_pushes_seven_without_key_arguments) ... ok
+test_old_or_prerelease_sdk_fails_before_build_or_secret_read (test_publish.PublishTests.test_old_or_prerelease_sdk_fails_before_build_or_secret_read) ... ok
+test_symbol_companions_receive_the_same_environment_key (test_publish.PublishTests.test_symbol_companions_receive_the_same_environment_key) ... ok
+test_explicit_symbol_environment_key_is_used (test_publish_sdk.PublishSdkTests.test_explicit_symbol_environment_key_is_used) ... skipped 'Set METHODCACHE_TEST_PUBLISH_DOTNET to a .NET SDK 10.0.300+ executable'
+test_primary_key_fallback_for_discovered_symbol_service (test_publish_sdk.PublishSdkTests.test_primary_key_fallback_for_discovered_symbol_service) ... skipped 'Set METHODCACHE_TEST_PUBLISH_DOTNET to a .NET SDK 10.0.300+ executable'
+
+----------------------------------------------------------------------
+Ran 50 tests in 5.383s
+
+OK (skipped=2)
+All seven packages target .NET 10; all six integrations require MethodCache [1.2.3].
+test_exported_missing_invalid_or_duplicate_masks_are_rejected (test_bdn_affinity.AffinityEvidenceTests.test_exported_missing_invalid_or_duplicate_masks_are_rejected) ... ok
+test_exported_padding_does_not_change_the_mask (test_bdn_affinity.AffinityEvidenceTests.test_exported_padding_does_not_change_the_mask) ... ok
+test_exported_short_binary_masks_match_actual_bdn_display (test_bdn_affinity.AffinityEvidenceTests.test_exported_short_binary_masks_match_actual_bdn_display) ... ok
+test_os_observation_covers_owned_dotnet_descendants_only (test_bdn_affinity.AffinityEvidenceTests.test_os_observation_covers_owned_dotnet_descendants_only) ... ok
+test_os_observation_ignores_a_process_that_exited_after_snapshot (test_bdn_affinity.AffinityEvidenceTests.test_os_observation_ignores_a_process_that_exited_after_snapshot) ... ok
+test_os_observation_preserves_an_unexpected_mask_for_rejection (test_bdn_affinity.AffinityEvidenceTests.test_os_observation_preserves_an_unexpected_mask_for_rejection) ... ok
+test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass (test_design_summary.DesignSummaryGuards.test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass) ... ok
+test_cookie_policy_addition_is_separate_from_ordinary_cached_hit (test_design_summary.DesignSummaryGuards.test_cookie_policy_addition_is_separate_from_ordinary_cached_hit) ... ok
+test_failed_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_failed_launch_is_rejected) ... ok
+test_generated_hits_and_unique_misses_have_distinct_allocation_roles (test_design_summary.DesignSummaryGuards.test_generated_hits_and_unique_misses_have_distinct_allocation_roles) ... ok
+test_missing_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_missing_launch_is_rejected) ... ok
+test_missing_pr_edges_are_rejected_after_complete_measurements (test_design_summary.DesignSummaryGuards.test_missing_pr_edges_are_rejected_after_complete_measurements) ... ok
+test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) ... ok
+test_roundtrip_disabled_is_comparable_after_option_exists (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_comparable_after_option_exists) ... ok
+test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) ... ok
+test_roundtrip_is_comparable_between_historical_revisions (test_design_summary.DesignSummaryGuards.test_roundtrip_is_comparable_between_historical_revisions) ... ok
+test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) ... ok
+test_same_count_duplicate_substitution_is_rejected (test_design_summary.DesignSummaryGuards.test_same_count_duplicate_substitution_is_rejected) ... ok
+test_component_project_is_discoverable_by_benchmark_assembly_name (test_harness_project_names.HarnessProjectNameTests.test_component_project_is_discoverable_by_benchmark_assembly_name) ... ok
+test_benchmark_build_descendants_are_excluded_but_other_tests_are_not (test_process_activity.ProcessActivityTests.test_benchmark_build_descendants_are_excluded_but_other_tests_are_not) ... ok
+test_dormant_old_orphan_is_not_active_but_its_cpu_work_is_detected (test_process_activity.ProcessActivityTests.test_dormant_old_orphan_is_not_active_but_its_cpu_work_is_detected) ... ok
+test_flutter_test_workers_are_competing_work (test_process_activity.ProcessActivityTests.test_flutter_test_workers_are_competing_work) ... ok
+test_javascript_and_python_test_runners_are_detected (test_process_activity.ProcessActivityTests.test_javascript_and_python_test_runners_are_detected) ... ok
+test_linux_and_mac_cpu_time_formats_are_supported (test_process_activity.ProcessActivityTests.test_linux_and_mac_cpu_time_formats_are_supported) ... ok
+test_multiline_arguments_are_not_parsed_as_process_ids (test_process_activity.ProcessActivityTests.test_multiline_arguments_are_not_parsed_as_process_ids) ... ok
+test_new_worker_and_busy_old_orphan_remain_active (test_process_activity.ProcessActivityTests.test_new_worker_and_busy_old_orphan_remain_active) ... ok
+test_normal_apps_and_backends_are_not_build_or_test_work (test_process_activity.ProcessActivityTests.test_normal_apps_and_backends_are_not_build_or_test_work) ... ok
+test_allocation_increase_is_preserved (test_summarize_pair.IndependentMeansTests.test_allocation_increase_is_preserved) ... ok
+test_base_change_launch_counts_must_match (test_summarize_pair.IndependentMeansTests.test_base_change_launch_counts_must_match) ... ok
+test_exact_three_independent_means (test_summarize_pair.IndependentMeansTests.test_exact_three_independent_means) ... ok
+test_mismatched_matrix_is_an_error (test_summarize_pair.IndependentMeansTests.test_mismatched_matrix_is_an_error) ... ok
+test_narrow_disjoint_regression_stops (test_summarize_pair.IndependentMeansTests.test_narrow_disjoint_regression_stops) ... ok
+test_narrow_is_review_not_automatic_acceptance (test_summarize_pair.IndependentMeansTests.test_narrow_is_review_not_automatic_acceptance) ... ok
+test_reject_missing_or_invalid_samples (test_summarize_pair.IndependentMeansTests.test_reject_missing_or_invalid_samples) ... ok
+test_six_and_nine_independent_means_use_correct_degrees_of_freedom (test_summarize_pair.IndependentMeansTests.test_six_and_nine_independent_means_use_correct_degrees_of_freedom) ... ok
+test_wide_overlapping_intervals_do_not_pass (test_summarize_pair.IndependentMeansTests.test_wide_overlapping_intervals_do_not_pass) ... ok
+test_duplicate_report_is_rejected (test_summarize_pair.ReportIntegrityTests.test_duplicate_report_is_rejected) ... ok
+test_missing_guard_is_not_quiet (test_summarize_pair.ReportIntegrityTests.test_missing_guard_is_not_quiet) ... ok
+test_missing_targeted_method_is_not_empty_success (test_summarize_pair.ReportIntegrityTests.test_missing_targeted_method_is_not_empty_success) ... ok
+test_overlap_is_rejected (test_summarize_pair.ReportIntegrityTests.test_overlap_is_rejected) ... ok
+test_requested_launch_count_requires_every_launch (test_summarize_pair.ReportIntegrityTests.test_requested_launch_count_requires_every_launch) ... ok
+test_targeted_supplement_preserves_full_case_integrity (test_summarize_pair.ReportIntegrityTests.test_targeted_supplement_preserves_full_case_integrity) ... ok
+test_three_complete_reports (test_summarize_pair.ReportIntegrityTests.test_three_complete_reports) ... ok
+test_warmup_only_is_not_measured_evidence (test_summarize_pair.ReportIntegrityTests.test_warmup_only_is_not_measured_evidence) ... ok
+test_complete_actual_samples_match_the_compiled_inventory (test_workload_inventory.WorkloadInventoryTests.test_complete_actual_samples_match_the_compiled_inventory) ... ok
+test_duplicate_replacing_a_required_case_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_duplicate_replacing_a_required_case_is_rejected) ... ok
+test_empty_or_duplicate_compiled_inventory_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_empty_or_duplicate_compiled_inventory_is_rejected) ... ok
+test_inventory_order_does_not_change_workloads (test_workload_inventory.WorkloadInventoryTests.test_inventory_order_does_not_change_workloads) ... ok
+test_missing_report_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_missing_report_is_rejected) ... ok
+test_same_count_wrong_case_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_same_count_wrong_case_is_rejected) ... ok
+test_same_names_different_report_type_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_same_names_different_report_type_is_rejected) ... ok
+test_same_size_different_key_shape_is_rejected (test_workload_inventory.WorkloadInventoryTests.test_same_size_different_key_shape_is_rejected) ... ok
+test_warmup_only_and_incomplete_actual_measurements_are_rejected (test_workload_inventory.WorkloadInventoryTests.test_warmup_only_and_incomplete_actual_measurements_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 53 tests in 0.047s
+
+OK
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Samples.Tests/MethodCache.Samples.Tests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SqlServer.Tests/MethodCache.SqlServer.Tests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SourceGenerator.IntegrationTests/MethodCache.SourceGenerator.IntegrationTests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SourceGenerator.Tests/MethodCache.SourceGenerator.Tests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.Demo/MethodCache.Demo.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Core/MethodCache.Core.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Redis.Tests/MethodCache.Redis.Tests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SqlServer.IntegrationTests/MethodCache.SqlServer.IntegrationTests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Redis.IntegrationTests/MethodCache.Redis.IntegrationTests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.AspNetCore.Tests/MethodCache.AspNetCore.Tests.csproj (in 572 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/benchmarks/MethodCache.Benchmarks/MethodCache.Benchmarks.csproj (in 575 ms).
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.Demo.FxVendor/MethodCache.Demo.FxVendor.csproj (in 2 ms).
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item. [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/MethodCache.sln]
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj (in 2 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 2 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Redis/MethodCache.Redis.csproj (in 4 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.CompatTests/MethodCache.CompatTests.csproj (in 4 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj (in 4 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj (in 11 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Analyzers.Tests/MethodCache.Analyzers.Tests.csproj (in 11 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.HttpCaching.IntegrationTests/MethodCache.HttpCaching.IntegrationTests.csproj (in 13 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj (in 18 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Docs.Tests/MethodCache.Docs.Tests.csproj (in 19 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj (in 23 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.OpenTelemetry.Tests/MethodCache.OpenTelemetry.Tests.csproj (in 35 ms).
+  Restored /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj (in 21 ms).
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Demo.FxVendor -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.Demo.FxVendor/bin/Release/net10.0/MethodCache.Demo.FxVendor.dll
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Samples.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll
+  MethodCache.Analyzers.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll
+  MethodCache.Redis -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SourceGenerator.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll
+  Copying EmptyFiles to /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/EmptyFiles
+  MethodCache.Serialization.MessagePack -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.SqlServer -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.AspNetCore -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.AspNetCore/bin/Release/net10.0/MethodCache.AspNetCore.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.OpenTelemetry.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll
+  MethodCache.Redis.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll
+  MethodCache.CompatTests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll
+  MethodCache.Demo -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.Demo/bin/Release/net10.0/MethodCache.Demo.dll
+  MethodCache.Redis.IntegrationTests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+  MethodCache.SqlServer.IntegrationTests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+  MethodCache.HttpCaching.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+  MethodCache.Benchmarks -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/benchmarks/MethodCache.Benchmarks/bin/Release/net10.0/MethodCache.Benchmarks.dll
+  MethodCache.Docs.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll
+  MethodCache.AspNetCore.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll
+  MethodCache.HttpCaching.IntegrationTests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll
+  MethodCache.Benchmarks.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+  MethodCache.WebDemo -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/samples/MethodCache.WebDemo/bin/Release/net10.0/MethodCache.WebDemo.dll
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+  MethodCache.Core.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+  MethodCache.SqlServer.Tests -> /home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll
+
+Build succeeded.
+
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. This package is automatically available and does not need to be referenced explicitly. Remove the PackageReference item.
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/home/agent-admin/methodcache-ci/runs/20261016-112256-908a94efa23f/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+    9 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:17.45

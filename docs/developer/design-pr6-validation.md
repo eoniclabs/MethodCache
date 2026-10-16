@@ -25,7 +25,9 @@ Snippets and generated LLM documentation were regenerated before coverage. Froze
 The first net8 run found 48 bytes of first-use state in one allocation worker; per-worker warmup fixes the probe
 without relaxing its equality assertion (the extra warmup requests are counted explicitly). One later run failed
 in Redis subscriber Ping with TaskCanceledException during new-container setup. This is retained as an unexplained
-infrastructure observation; a subsequent complete matrix passed. It is not evidence of a production fix.
+infrastructure observation at that checkpoint; a subsequent complete matrix passed. The later
+[CI investigation](design-final-validation.md#ci-startup-source-file-and-timeout-follow-up) explains
+the pub/sub readiness race and fixes bounded test setup. It is not evidence of a production fix.
 
 Red-before-green findings in the new implementation:
 

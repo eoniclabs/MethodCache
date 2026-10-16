@@ -24,7 +24,7 @@ A passing ancestor does not establish the latest head's result.
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint 453be95 passes all fourteen jobs/four statuses: 2,562 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 53 benchmark-validation Python guards pass on Nimbus. V5 preparation passes twenty actual generated-program builds, fourteen native setups and sixty compiled-family validations; timing starts at 09:10:18 UTC. Full timing/review and the following evidence batch's own CI remain required. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Exact head 908a94e passes all fourteen jobs/four statuses: 2,562 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 53 benchmark-validation Python guards pass on Nimbus. V5 preparation passes twenty actual generated-program builds, fourteen native setups and sixty compiled-family validations; V5 timing starts at 09:10:18 UTC and completes twelve families before an idle-boundary transition to the source-scoped V6 schedule at 11:21:08 UTC. Full timing/review and the following evidence batch's own CI remain required. |
 
 ## Remaining performance work
 
@@ -45,14 +45,20 @@ as a before/after optimization result. The full timing dispatcher starts on 2026
 08:30:54 UTC after input review, then stops at 08:32:09 before any benchmark executes:
 BDN rejects the asynchronous cold-HTTP iteration setup. A regression test fails before its
 correction; generated-program compilation is now a separate preflight gate. A fresh cohort,
-all 180 successful launches and statistical review remain required.
+the corrected schedule and statistical review remain required.
 [Rejected V4 preparation and dispatch evidence](../../plans/design-benchmarks/guid-full-preparation-v4/).
 
 V5 then compiles all twenty actual BDN-generated programs (67 primary cases including four
 untimed diagnostics; 102 component cases), passes all fourteen fresh native setups, and validates
 all sixty compiled families. Independent review rehashes 2,358 harness and seventeen runner DLLs
-before the explicit 09:10:18 UTC dispatch on 2026-10-16. The fixed 180-launch series is running;
-no partial run means are assessed.
+before the explicit 09:10:18 UTC dispatch on 2026-10-16. The first twelve family launches finish successfully. The original controller stops only at
+a verified idle boundary at 11:20:31 UTC; no worker or unrelated job is interrupted.
+The source-scoped replacement schedule starts at 11:21:08 UTC: 153 selected family
+launches / 3,690 cases, with eight whole launches reused and four preserved diagnostics.
+It retains all eleven original comparisons and all mandatory cumulative scenarios,
+with the same warmup, iterations, affinity, backend and statistical requirements.
+The cumulative baseline/final comparison runs first. No timing means were inspected
+to choose exclusions. [Selected families and transition proof](../../plans/design-benchmarks/focused-schedule-v6/).
 [Completed V5 preparation, native image receipts and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
 
 Complete all adjacent behavior-change comparisons and the cumulative f43854d comparison, plus prefix

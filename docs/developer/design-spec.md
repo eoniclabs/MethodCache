@@ -612,6 +612,14 @@ L2 read/write och RoundTrip av/på; contention/single-flight/eviction/weighted p
 inklusive generations-I/O; cookie-disabled caching och KeepCookies-bypass; telemetri utan/med lyssnare.
 Befintliga benchmarkkontrakt för setup/nycklar/cleanup ska fortsatt vara gröna.
 
+För varje PR dokumenteras vilka scenarier som berörs av dess kodändringar och därför ska jämföras.
+Urvalet bestäms före granskning av mätresultaten; utelämnade scenarier behöver en konkret motivering
+utifrån anropsvägen. Helhetsjämförelsen mot f43854d täcker samtliga obligatoriska scenarier.
+Tre oberoende körningar, oförändrade mätinställningar och acceptanskraven ovan gäller fortfarande
+för varje vald jämförelse. Ett snävare urval är inte skäl att bortse från en uppmätt försämring eller
+att redovisa en omätt jämförelse som godkänd. Kör gärna helhetsjämförelsen först så att den viktigaste
+återkopplingen inte behöver vänta på samtliga historiska PR-jämförelser.
+
 Prefixhash-PR:n mäter även nyckelbygge, hash/uppslag och hela genererade träffvägen separat, med korta och
 långa prefix, växande buffertar och reservnycklar. Efter PR 5 är inbyggda räknare alltid aktiva; mät
 lyssnare av/på utan att hitta på en borttagen statistik-switch. Äldre revisioners verkliga statistikläge

@@ -2,15 +2,15 @@
 
 ## Latest complete three-platform functional checkpoint
 
-Combined head `453be958abc7f57253341b8a43125404e180c551` passes all fourteen CI jobs
+Combined head `908a94efa23fe27629ed9f00070a6bbd116740d0` passes all fourteen CI jobs
 and all four commit statuses. Linux runs 2,562 facts across sixteen projects, with no failures
 and the single intentional opt-in soak skip. Required Redis/SQL, randomized properties,
 enabled soak, both cultures, demo, AOT175, all installed packages and docs pass; changed-line
 coverage is 3486/3708 (94.0%). The complete no-listener probe passes on all three platforms.
-The preceding 5dd27bb, dd6b1c6 and 6caa856 also pass all fourteen jobs. These results do not explain the historical
+The preceding 453be95, 5dd27bb, dd6b1c6 and 6caa856 also pass all fourteen jobs. These results do not explain the historical
 272-byte object's exact source or establish timing acceptance. Subsequent benchmark-tool, test and
 documentation edits require their own published-head CI.
-[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-453be95/).
+[Exact logs, exits, source hashes and commit statuses](../../plans/design-benchmarks/combined-functional-908a94e/).
 
 Source review before full timing also corrects the archived V4 analysis helper's L2 label:
 enabled round-trip validation already existed before PR4. The new opt-out changes writes;
@@ -20,6 +20,18 @@ Six assertion subtest failures reproduce the error before correction; all twelve
 and all 52 benchmark-validation Python tests pass afterward locally and on Nimbus. The deployed measurement protocol,
 workloads, process order and sample counts are unchanged. This correction grants no timing waiver.
 [Fourteen exact source checks, statistics defaults and red/green evidence](../../plans/design-benchmarks/guid-feature-review-v1/).
+
+## Frozen inline vendor coverage
+
+The historical contract-1 vendor images target .NET 8 and exercise materialized
+keys. A metadata coverage regression proves that those images do not reference the
+new inline KeyBuilder constructor. A separate .NET 10 checkpoint now covers that
+ABI without replacing any original image or manifest. All nine compatibility facts
+pass; a temporary removed-constructor mutation fails with MissingMethodException,
+and the extended native osx-arm64 smoke publishes and runs successfully. The explicit
+freezer refuses existing manifests. No shipped library source changes. Final-head
+cross-platform CI remains required.
+[Exact provenance, sensitivity proof and native receipts](../../plans/design-benchmarks/net10-inline-vendor-baseline/).
 
 ## Whole-probe allocation warmup
 
@@ -224,7 +236,16 @@ All sixty immutable compiled-family validations pass. Independent review at 09:0
 the actual generated build logs, fourteen native receipts, exact source/program bytes and
 2,358 harness plus seventeen native-runner DLLs. The fixed 180-launch series explicitly starts
 at 09:10:18 UTC on 2026-10-16. The first benchmark processes execute and exit successfully;
-no partial means are reviewed or pooled. All 180 launches and section-10 review remain required.
+no partial means are reviewed or pooled. Its first twelve family launches complete successfully.
+At 11:20:31 UTC the original controller is stopped only after the twelfth worker and
+owned cleanup have finished. The source-scoped V6 schedule starts at 11:21:08 UTC,
+reusing eight whole launches and preserving four others as diagnostics. It selects
+153 family launches / 3,690 cases, retaining all eleven original comparisons with
+unchanged measurement settings and acceptance criteria. The complete cumulative
+comparison is prioritized. Selection uses source changes before any timing means
+are assessed; missing or uncertain results are not passes.
+[Selected coverage, immutable controller and transition receipts](../../plans/design-benchmarks/focused-schedule-v6/).
+Full selected completion and section-10 review remain required.
 [Exact frozen inputs, native receipts, build logs, validation and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
 
 ## Remaining acceptance gates
@@ -239,8 +260,9 @@ no partial means are reviewed or pooled. All 180 launches and section-10 review 
 - Corrected primary workload bytes are frozen at 453be95 and component C# at bbff4a6.
   V5 preparation passes all twenty actual generated-program builds, fourteen native setups
   and sixty compiled family validations. The independent review rehashes 2,358 harness DLLs.
-  The fixed 180-launch dispatcher starts at 09:10:18 UTC on 2026-10-16; full completion and
-  review remain required. V4's zero-execution failure stays archived. Compare identical key
+  The initial 180-launch dispatcher starts at 09:10:18 UTC on 2026-10-16. After twelve
+  complete families it is superseded at an idle boundary by the source-scoped 153-launch
+  V6 schedule. Full selected completion and review remain required. V4's zero-execution failure stays archived. Compare identical key
   types and workloads across revisions; keep int and GUID results separate.
   [Completed V5 preparation and dispatch provenance](../../plans/design-benchmarks/guid-full-preparation-v5/).
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
