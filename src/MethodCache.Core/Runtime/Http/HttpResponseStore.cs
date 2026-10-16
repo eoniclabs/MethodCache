@@ -147,21 +147,35 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return identity;
     }
 
-    private static string VectorIdentity(string[] addresses, CacheEpoch[] epochs)
+    internal static string VectorIdentity(string[] addresses, CacheEpoch[] epochs)
     {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        Span<byte> frame = stackalloc byte[24];
-        for (var i = 0; i < epochs.Length; i++)
+        // Each component is framed as its address length, address code units, init-id and BE revision.
+        var length = 0;
+        for (var i = 0; i < epochs.Length; i++) length = checked(length + sizeof(int) + addresses[i].Length * sizeof(char) + 24);
+        byte[]? rented = null;
+        Span<byte> frames = length <= 1024 ? stackalloc byte[1024] : rented = System.Buffers.ArrayPool<byte>.Shared.Rent(length);
+        try
         {
-            // Include component addresses as well as values: two configured tag sets cannot share a vector.
-            var name = LosslessUtf16.GetBytes(addresses[i]);
-            BinaryPrimitives.WriteInt32LittleEndian(frame, name.Length);
-            hash.AppendData(frame[..4]); hash.AppendData(name);
-            epochs[i].Initialization.TryWriteBytes(frame);
-            BinaryPrimitives.WriteUInt64BigEndian(frame[16..], epochs[i].Revision);
-            hash.AppendData(frame);
+            var position = 0;
+            for (var i = 0; i < epochs.Length; i++)
+            {
+                // Include component addresses as well as values: two configured tag sets cannot share a vector.
+                var name = addresses[i].Length * sizeof(char);
+                BinaryPrimitives.WriteInt32LittleEndian(frames[position..], name);
+                LosslessUtf16.Write(addresses[i], frames[(position + sizeof(int))..]);
+                position += sizeof(int) + name;
+                epochs[i].Initialization.TryWriteBytes(frames[position..]);
+                BinaryPrimitives.WriteUInt64BigEndian(frames[(position + 16)..], epochs[i].Revision);
+                position += 24;
+            }
+            Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
+            SHA256.HashData(frames[..length], hash);
+            return Convert.ToHexString(hash);
         }
-        return Convert.ToHexString(hash.GetHashAndReset());
+        finally
+        {
+            if (rented != null) System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+        }
     }
 
     internal object? ReadLocal(string key)

@@ -104,14 +104,18 @@ internal sealed partial class SqlServerDistributedCache : IAtomicInvalidationSto
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static string GetPhysicalKey(string key)
+    internal static string GetPhysicalKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
         // SQL text comparisons can equate NULs, trailing spaces and normalized Unicode even with CS_AS.
         // Hash exact UTF-16 code units so data and stamp operations use the same ordinal identity. The ID is always
         // 67 characters, so a logical key of any length fits the nvarchar(449) column.
-        var bytes = MethodCache.Infrastructure.LosslessUtf16.GetBytes(key);
-        return "mc:" + Convert.ToHexString(SHA256.HashData(bytes));
+        Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
+        MethodCache.Infrastructure.LosslessUtf16.Sha256(key, hash);
+        Span<char> id = stackalloc char[3 + 2 * SHA256.HashSizeInBytes];
+        "mc:".CopyTo(id);
+        Convert.TryToHexString(hash, id[3..], out _);
+        return new string(id);
     }
 
 }

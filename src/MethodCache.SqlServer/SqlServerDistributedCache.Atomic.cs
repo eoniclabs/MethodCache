@@ -11,6 +11,7 @@ internal sealed partial class SqlServerDistributedCache
     // Only the latest bounded batch shape is retained, never a key or generation value.
     private sealed record EpochCommand(int Count, string Text);
     private EpochCommand? _epochCommand;
+    private string? _readEntryCommand;
 
     // The stamp of a key that was never invalidated: long.MinValue, little-endian.
     private const string EmptyStamp = "0x0000000000000080";
@@ -38,7 +39,8 @@ internal sealed partial class SqlServerDistributedCache
         var connection = new SqlConnection(_connectionString);
         await using var connectionScope = connection.ConfigureAwait(false);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var command = new SqlCommand($"SELECT [Id], [Value] FROM {_table} WHERE [Id] IN (@value, @removal) AND [ExpiresAtTime] > SYSDATETIMEOFFSET();", connection);
+        // Positions instead of IDs: reading an ID back would allocate a string per row
+        var command = new SqlCommand(_readEntryCommand ??= $"SELECT CASE [Id] WHEN @value THEN 0 ELSE 1 END, [Value] FROM {_table} WHERE [Id] IN (@value, @removal) AND [ExpiresAtTime] > SYSDATETIMEOFFSET();", connection);
         await using var commandScope = command.ConfigureAwait(false);
         command.Parameters.Add(new SqlParameter("@value", SqlDbType.NVarChar, 449) { Value = valueId });
         command.Parameters.Add(new SqlParameter("@removal", SqlDbType.NVarChar, 449) { Value = removalId });
@@ -48,7 +50,7 @@ internal sealed partial class SqlServerDistributedCache
         byte[]? removal = null;
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (reader.GetString(0) == valueId) value = (byte[])reader.GetValue(1);
+            if (reader.GetInt32(0) == 0) value = (byte[])reader.GetValue(1);
             else removal = (byte[])reader.GetValue(1);
         }
         return new DistributedRead(value, removal);
