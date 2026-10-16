@@ -18,18 +18,19 @@ A passing ancestor does not establish the latest head's result.
 | PR 4 | codex/transport-format-v1 / #126 | D01–D10 implemented; head 399e165 passes all three platforms. Native fault/state, format, retention and package evidence remains in the validation reports. Section-10 timing remains required. |
 | PR 5 | codex/core-telemetry-v1 / #127 | T01–T05 implemented; head 2f4a91d passes all three platforms. Listener/privacy/health coverage is retained. Timing gates remain required. |
 | Prefix hash | codex/prefix-hash-v1 / #128 | Marvin head 9c31e3b passes all three platforms; standalone runtime source 850cef8 has its own full functional receipt. Final algorithm is SipHash in #133; retain this revision as a separate comparison point. |
-| PR 6 | codex/http-core-store-v1 / #129 | Current f0dd6c2 optimizes 304 header copying after the earlier response-reuse candidate failed timing. All four current commit statuses pass. Its six-launch comparison has four insufficient intervals; a separate fixed eighteen-launch CPU2 comparison is now running. Full section-10 acceptance remains required. |
+| PR 6 | codex/http-core-store-v1 / #129 | Current f0dd6c2 optimizes 304 header copying after the earlier response-reuse candidate failed timing. All four current commit statuses pass. Its six-launch comparison has four insufficient intervals; the separate fixed eighteen-launch CPU2 comparison also completes with four insufficient intervals. Full section-10 acceptance remains required. |
 | .NET 10 only | codex/net10-only-v1 / #130 | Current 1bafff1 merges #129's header optimization and retains the .NET 10 minimum. All four current commit statuses pass; performance acceptance remains required. |
 | PR 7, standalone | codex/design-final-gates-v1 / #131 | Exact head 9767fec passes all 14 jobs across Linux/macOS/Windows: 2,519 Linux facts, zero failures, one intentional soak skip, required native backends, properties/soak/cultures, AOT172, packages and docs. Shipped source matches 12bf99d. This excludes constructor/SipHash changes and does not pass section 10. |
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint 5dd27bb passes all fourteen jobs/four statuses: 2,561 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 52 benchmark-validation Python guards pass on Nimbus. The strict allocation probe passes all platforms; the historical 272-byte source remains unproven. Full timing and the subsequent documentation/evidence batch's own CI remain required. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint 453be95 passes all fourteen jobs/four statuses: 2,562 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 53 benchmark-validation Python guards pass on Nimbus. V5 preparation passes twenty actual generated-program builds, fourteen native setups and sixty compiled-family validations; timing starts at 09:10:18 UTC. Full timing/review and the following evidence batch's own CI remain required. |
 
 ## Remaining performance work
 
-The common primary GUID workload is frozen at B925; genuine generated prefix workloads are frozen
-at bbff4a6. Their runtime source is unchanged in 8647bdc. The fourteen runtime points cover the actual
+The corrected common primary GUID workload is frozen at 453be95; genuine generated prefix C#
+remains frozen at bbff4a6. V5 changes only the cold-HTTP iteration boundary outside the measured
+call, and the component factory's project filename. Its fourteen runtime revisions remain unchanged. The fourteen runtime points cover the actual
 PR merge-base edges, including the constructor's older standalone base and isolated SipHash head.
 Primary workloads have 27 local-contract, 20 local-pressure and 16 native cases. Six component points
 have 18 lookup, 36 facade/reference and 48 actual generated-interface cases; Int and Guid remain
@@ -45,7 +46,14 @@ as a before/after optimization result. The full timing dispatcher starts on 2026
 BDN rejects the asynchronous cold-HTTP iteration setup. A regression test fails before its
 correction; generated-program compilation is now a separate preflight gate. A fresh cohort,
 all 180 successful launches and statistical review remain required.
-[Preparation and dispatch evidence](../../plans/design-benchmarks/guid-full-preparation-v4/).
+[Rejected V4 preparation and dispatch evidence](../../plans/design-benchmarks/guid-full-preparation-v4/).
+
+V5 then compiles all twenty actual BDN-generated programs (67 primary cases including four
+untimed diagnostics; 102 component cases), passes all fourteen fresh native setups, and validates
+all sixty compiled families. Independent review rehashes 2,358 harness and seventeen runner DLLs
+before the explicit 09:10:18 UTC dispatch on 2026-10-16. The fixed 180-launch series is running;
+no partial run means are assessed.
+[Completed V5 preparation, native image receipts and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
 
 Complete all adjacent behavior-change comparisons and the cumulative f43854d comparison, plus prefix
 components and the local/native L2 workloads specified in section 10. Use three independent alternating
