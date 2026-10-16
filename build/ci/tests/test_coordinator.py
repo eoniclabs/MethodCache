@@ -88,6 +88,53 @@ run_macos() { echo UNEXPECTED-BUILD-macos; return 1; }
         self.assertIn('recovered Linux results', output)
 
 
+def commits(count, tag, parent=None):
+    """A git fast-import stream of count commits on main, each changing one of 50 files."""
+    stream = []
+    for i in range(1, count + 1):
+        message, content = f'{tag}{i}', f'{tag}-{i}\n'
+        stream.append(f'commit refs/heads/main\ncommitter ci <ci@example.com> {1700000000 + i} +0000\n'
+                      f'data {len(message)}\n{message}\n')
+        if i == 1 and parent:
+            stream.append(f'from {parent}\n')
+        stream.append(f'M 644 inline f{i % 50}\ndata {len(content)}\n{content}\n')
+    return ''.join(stream)
+
+
+class CheckoutTests(unittest.TestCase):
+    def test_fetch_finishes_its_automatic_gc_before_the_clone(self):
+        # A gc that the fetch detaches packs and deletes loose objects while the clone copies them, so the clone
+        # can lack objects the mirror had a moment before
+        import os
+        import shlex
+        source = SCRIPT.read_text()
+        functions = source[source.index('checkout_script()'):source.index('run_linux()')]
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            origin, mirror = home / 'origin', home / 'ci' / 'mirror.git'
+
+            def git(*args, stream=None):
+                return subprocess.run(['git', *args], input=stream, text=True, capture_output=True, check=True).stdout
+
+            git('init', '--quiet', '--initial-branch=main', str(origin))
+            git('-C', str(origin), 'fast-import', '--quiet', stream=commits(10, 'a'))
+            git('clone', '--quiet', '--mirror', str(origin), str(mirror))
+            # A mirror that has been fetched often: an automatic gc is due, and it detaches as by default
+            for key, value in (('gc.auto', '100'), ('gc.autoDetach', 'true'), ('fetch.unpackLimit', '1000000')):
+                git('-C', str(mirror), 'config', key, value)
+            git('-C', str(origin), 'fast-import', '--quiet', stream=commits(3000, 'b', parent='refs/heads/main^0'))
+            sha = git('-C', str(origin), 'rev-parse', 'main').strip()
+
+            script = 'set -euo pipefail\n' + functions
+            script += f'\nclone_url={shlex.quote(str(origin))}; state=/nonexistent; keep_runs_days=3\n'
+            script += f'eval "$(checkout_script ci {sha} run)"\n'
+            script += 'if [ -e ../../mirror.git/gc.pid ]; then echo "gc still running after the fetch"; exit 1; fi\n'
+            script += 'git fsck --connectivity-only\n'
+            result = subprocess.run(['/bin/bash', '-c', script], text=True, capture_output=True, timeout=120,
+                                    env={**os.environ, 'HOME': str(home)})
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+
 class InstallTests(unittest.TestCase):
     def test_update_atomically_preserves_open_old_script_and_versions_helper(self):
         import shlex

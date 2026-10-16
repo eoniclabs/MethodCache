@@ -102,7 +102,10 @@ checkout_script() { # root sha run_id
 set -euo pipefail
 cd ~ && mkdir -p '$1/runs' && cd '$1'
 [ -d mirror.git ] || git clone --quiet --mirror '$clone_url' mirror.git
-git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+# A fetch may start an automatic gc. Detached, it would pack and delete loose objects while the clone below copies
+# them, and the clone would miss objects (git: "unable to read tree"; Nerdbank.GitVersioning: "tree ... could not be
+# found"). Run it before the fetch returns instead.
+git -C mirror.git -c gc.autoDetach=false -c maintenance.autoDetach=false fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
 # macOS is collected by the owned-checkout collector; never age-delete an active local checkout.
 if [ '$1' != '$state/macos' ]; then
   find runs -mindepth 1 -maxdepth 1 -mtime +$keep_runs_days -exec rm -rf {} +
@@ -170,7 +173,8 @@ $env:DOTNET_MULTILEVEL_LOOKUP = '0'
 $env:PATH = "$dotnet;$env:PATH"
 
 if (-not (Test-Path mirror.git)) { Invoke-Native git clone --quiet --mirror $CloneUrl mirror.git }
-Invoke-Native git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+# Any automatic gc finishes before the fetch returns, so the clone below copies a stable object store
+Invoke-Native git -C mirror.git -c gc.autoDetach=false -c maintenance.autoDetach=false fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
 Get-ChildItem runs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$KeepDays) } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 $run = Join-Path $Root "runs\$RunId"
