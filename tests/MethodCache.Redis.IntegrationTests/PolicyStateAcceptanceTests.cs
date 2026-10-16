@@ -37,7 +37,14 @@ public class PolicyStateAcceptanceTests(RedisFixture redis)
             var provider = services.BuildServiceProvider();
             try
             {
-                await (await provider.GetRequiredService<RedisConnection>().GetAsync()).GetSubscriber().PingAsync();
+                await RedisFixture.WaitForSubscriberAsync(await provider.GetRequiredService<RedisConnection>().GetAsync());
+                if (scenario != "custom")
+                {
+                    // A connected pub/sub socket alone does not acknowledge the manager's subscription.
+                    // Finish initial backplane setup before any factory/publication assertions begin.
+                    _ = provider.GetRequiredService<ICacheManager>();
+                    await provider.GetRequiredService<PolicyMessageGate>().Ready.Task.WaitAsync(TimeSpan.FromSeconds(20));
+                }
                 return provider;
             }
             catch { await provider.DisposeAsync(); throw; }

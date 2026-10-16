@@ -1,0 +1,55 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.07]   Discovered:  MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.08]   Starting:    MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.67]     MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long interface name") [FAIL]
+[xUnit.net 00:00:00.67]       Generated filename exceeds a portable filesystem component
+[xUnit.net 00:00:00.67]       Stack Trace:
+[xUnit.net 00:00:00.67]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs(99,0): at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name)
+[xUnit.net 00:00:00.67]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.75]     MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long Unicode namespace") [FAIL]
+[xUnit.net 00:00:00.75]       Generated filename exceeds a portable filesystem component
+[xUnit.net 00:00:00.75]       Stack Trace:
+[xUnit.net 00:00:00.75]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs(99,0): at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name)
+[xUnit.net 00:00:00.75]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.83]     MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long ASCII namespace") [FAIL]
+[xUnit.net 00:00:00.83]       Generated filename exceeds a portable filesystem component
+[xUnit.net 00:00:00.84]       Stack Trace:
+[xUnit.net 00:00:00.84]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs(99,0): at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name)
+[xUnit.net 00:00:00.84]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.84]   Finished:    MethodCache.SourceGenerator.IntegrationTests
+  Failed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long interface name") [583 ms]
+  Error Message:
+   Generated filename exceeds a portable filesystem component
+  Stack Trace:
+     at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs:line 99
+--- End of stack trace from previous location ---
+  Failed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long Unicode namespace") [83 ms]
+  Error Message:
+   Generated filename exceeds a portable filesystem component
+  Stack Trace:
+     at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs:line 99
+--- End of stack trace from previous location ---
+  Failed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long ASCII namespace") [81 ms]
+  Error Message:
+   Generated filename exceeds a portable filesystem component
+  Stack Trace:
+     at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs:line 99
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 3
+     Failed: 3
+ Total time: 1,0405 Seconds

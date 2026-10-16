@@ -51,7 +51,7 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         await WaitUntil(() => Task.FromResult(connection.IsConnected));
         // Establish pub/sub before the manager attaches its reconnect clear callback. These assertions
         // concern connected nodes, not a first pub/sub handshake retiring an in-flight initial load.
-        await connection.GetSubscriber().PingAsync();
+        await RedisFixture.WaitForSubscriberAsync(connection);
 
         return provider.GetRequiredService<ICacheManager>();
     }

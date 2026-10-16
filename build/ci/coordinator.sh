@@ -137,7 +137,11 @@ nice -n 10 build/ci/linux.sh || code=\$?
 echo "\$code" > artifacts/ci/finished
 exit "\$code"
 SCRIPT
-  } | with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$nimbus" bash -s > "$3/console.log" 2>&1
+  # An SSH disconnect does not reliably terminate its remote Docker client or daemon-owned containers.
+  # Enforce the deadline on Nimbus, killing the remote process group so linux.sh's EXIT cleanup runs.
+  # Keep the transport alive through the server's 30-second forced-exit grace and result delivery.
+  } | with_timeout "$((timeout_seconds + 60))" ssh "${ssh_options[@]}" "$nimbus" \
+      timeout --signal=TERM --kill-after=30s "$timeout_seconds" bash -s > "$3/console.log" 2>&1
   local code=$?
   # Preserve both SSH and extraction diagnostics: an empty archive must not look like a job that never ran.
   fetch_linux_results "$2" "$3" "$1" || return 75

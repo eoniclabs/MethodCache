@@ -1,5 +1,32 @@
 # Final design verification
 
+## CI startup, source-file and timeout follow-up
+
+The exact 8647bdc CI run fails compilation on all three platforms: the genuine long-prefix benchmark
+produces a decorator hint longer than a filesystem filename component. Three new corpus cases cover
+long ASCII namespaces, Unicode namespaces and interface names, including distinct interfaces with the
+same leading text. Their portable file-emission tests fail before bounded deterministic hint names are
+introduced. Generated types, method IDs, key text and the frozen contract are unchanged.
+
+The Redis subscriber-Ping failures are explained by the pub/sub connection still establishing after
+the interactive connection becomes ready under FailFast. The [PR131 investigation](https://github.com/eoniclabs/MethodCache/pull/131#issuecomment-6202008541)
+reports its reproduction. Test setup now retries only connection/cancellation failures within a bounded
+20-second deadline; deterministic FakeTimeProvider cases cover first-ping failure, success, hanging pings,
+deadline expiry and unrelated exceptions. A later full-suite coverage run also exposes the policy-state
+sync scenario beginning before its native subscription is acknowledged. That fixture now awaits its
+existing message gate before cache assertions; original value/factory assertions remain unchanged.
+
+The old B925 coordinator SSH call timed out after 3600 seconds, but the remote Docker client/testhost
+and run-owned containers survived for over eight hours. The next coordinator enforces the timeout on
+Nimbus itself and keeps SSH open through cleanup grace. A controlled actual-Nimbus fixture confirms
+that server timeout invokes exact-label cleanup without making real Docker calls. Nimbus uses uutils
+timeout and reports exit 125 in that fixture; no success or specific 124 code is assumed.
+
+The independent Git clone race has a [reproduced fix in PR136](https://github.com/eoniclabs/MethodCache/pull/136):
+automatic maintenance must finish before the mirror is cloned. Coordinator changes require installation
+with `--update-only`; source changes alone do not update the installed scheduler. No running job is
+stopped by publishing or atomically installing that fix. The old orphan requires separate cleanup.
+
 ## Native fault-fixture failure and bounded cleanup
 
 The b92553d Linux diff-coverage run stalled in the Redis policy-fault fixture. A private diagnostic
@@ -71,8 +98,9 @@ constructor/hash candidates and section-10 timing are excluded.
 Earlier [e84a549](../../plans/design-benchmarks/net10-functional-e84a549/) and
 [b518139](../../plans/design-benchmarks/net10-functional-b518139/) receipts remain historical.
 The earlier .NET-10-only #130 head befb50a also passes all three platform and aggregate
-statuses. Current #129 f793d0a and #130 1b43211 forward the existing final telemetry/null-key
-fixtures and require their own fresh statuses; the old 0dae335 macOS net9 failure is retained below.
+statuses. The telemetry/null-key fixture follow-ups f793d0a and 1b43211 are historical.
+Current #129 f0dd6c2 includes the 304 header-copy optimization; current #130 1bafff1 merges it.
+Both require fresh CI; the old 0dae335 macOS net9 failure is retained below.
 
 The pre-optimization runtime source `28ab9b22e02b0050a449c2bb1cfd977ec187ae25` passed the full required native-backend
 release pipeline: **2,475 tests, zero failures, one intentional opt-in soak skip across 16 projects**.
@@ -100,17 +128,23 @@ requirements. The four relevant facts pass again on .NET 10. Later source change
 subsequently corrected as described below; their evidence must use the same corrected sources on every revision.
 
 The preceding HTTP-only CI run at 8ffa85c passed Windows/macOS but failed Linux in those probes,
-and one net9 Redis contract setup failed in subscriber Ping with TaskCanceledException. The latter
-remains an unexplained historical startup observation; no production fix is claimed. Selected failing
+and one net9 Redis contract setup failed in subscriber Ping with TaskCanceledException. The latter is
+explained by the pub/sub startup race and addressed in test readiness as described above; no production change is claimed. Selected failing
 and updated-probe output is preserved alongside this final receipt.
 
 ## Remaining acceptance gates
 
-- Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 83b92c6 are now ready for
-  review, with SipHash chosen in the design notes. Johan reports that Claude is updating
-  the workloads to use GUID identifiers. Wait for that update before freezing the common
-  benchmark sources and complete timing matrix. Compare identical key types and workloads
-  across revisions; keep existing int diagnostics separate from GUID results.
+- Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 4f6cd73 pass current commit statuses.
+  The GUID-workload update #135 at 419c786 is integrated in the combined branch. Its Linux
+  and Windows jobs pass, but macOS fails before tests because the exact retained CI clone
+  lacks reachable Git objects. Native Git confirms that failure; the mirror itself is healthy.
+  PR136 reproduces the detached-maintenance race and supplies its fix. Preserve the [exact failure and
+  connectivity checks](../../plans/design-benchmarks/guid-macos-history-419c786/).
+- Primary workload bytes are frozen at B925 and component workload bytes at bbff4a6.
+  Complete Nimbus preparation of all fourteen runtime points and six component points,
+  including actual image-ID validation for the pinned Redis/SQL containers. Then validate
+  inputs and run the fixed 180-launch matrix. The full dispatcher has not started. Compare
+  identical key types and workloads across revisions; keep int and GUID results separate.
 - Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
   independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
   intervals are insufficient evidence. There is no accepted full-series timing result yet.
@@ -127,9 +161,10 @@ as unresolved evidence: [original output and diagnostic provenance](../../plans/
 
 The approved one-off Nimbus series uses the existing pinned .NET 10 image, frozen identical workloads,
 exclusive nonblocking capacity leases of at most 25 minutes per batch and exact task-owned cleanup.
-CI runs between batches; no external jobs are interrupted. The final runtime candidate replaces 8063e9a. The corrected cold-publication workloads and
-complete CI capacity boundary require a fresh nine-revision cohort, including the actual post-PR122
-merge-base of PR1 and the cumulative f43854d baseline. Earlier measurements remain separate
+CI runs between batches; no external jobs are interrupted. The final runtime candidate replaces 8063e9a.
+The corrected cold-publication workloads and complete CI capacity boundary require fourteen runtime
+points, including the actual post-PR122 merge-base of PR1, the constructor's older standalone base,
+the isolated SipHash head and the cumulative f43854d baseline. Earlier measurements remain separate
 diagnostics; they are not pooled into this cohort. Focused comparisons check generated hits and
 HTTP miss/304 behavior while the new identical harnesses are prepared.
 

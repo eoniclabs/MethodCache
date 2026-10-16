@@ -1,0 +1,14 @@
+....F....
+======================================================================
+FAIL: test_linux_timeout_runs_on_server_with_local_cleanup_grace (test_coordinator.RetryIntegrationTests.test_linux_timeout_runs_on_server_with_local_cleanup_grace)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_coordinator.py", line 73, in test_linux_timeout_runs_on_server_with_local_cleanup_grace
+    self.assertIn('timeout --signal=TERM --kill-after=30s 5 bash -s', console)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'timeout --signal=TERM --kill-after=30s 5 bash -s' not found in 'LOCAL_TIMEOUT=5\nREMOTE_COMMAND=-o BatchMode=yes unused bash -s\nCHECKOUT-EXECUTED\nMOCK-BUILD\n'
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.699s
+
+FAILED (failures=1)

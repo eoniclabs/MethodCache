@@ -1,0 +1,147 @@
+=== diffcoverage
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+VSTest version 18.0.1 (arm64)
+
+
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+A total of 1 test files matched the specified pattern.
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+VSTest version 18.0.1 (arm64)
+
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 165 ms - MethodCache.Redis.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 2 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 1 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 231 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+[xUnit.net 00:00:03.79]     MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [FAIL]
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+  Failed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [13 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 101
+Actual:   201
+  Stack Trace:
+     at MethodCache.TestSupport.PolicyBackendContract.SyncAsync(Func`3 create) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 218
+   at MethodCache.TestSupport.PolicyBackendContract.SyncAsync(Func`3 create) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 219
+   at MethodCache.TestSupport.PolicyBackendContract.SyncAsync(Func`3 create) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 219
+   at MethodCache.TestSupport.PolicyBackendContract.RunAcceptanceAsync(String scenario, Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 25
+   at MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(String scenario) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/PolicyStateAcceptanceTests.cs:line 45
+--- End of stack trace from previous location ---
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 3 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 5 s - MethodCache.Analyzers.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Failed!  - Failed:     1, Passed:    32, Skipped:     0, Total:    33, Duration: 6 s - MethodCache.Redis.IntegrationTests.dll (net10.0)
+Data collection : Unable to find a datacollector with friendly name 'XPlat Code Coverage'.
+Data collection : Could not find data collector 'XPlat Code Coverage'
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 118 ms - MethodCache.CompatTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 237 ms - MethodCache.Samples.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 10 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 3 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   112, Skipped:     0, Total:   112, Duration: 3 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 14 s - MethodCache.SqlServer.Tests.dll (net10.0)
+[xUnit.net 00:00:25.43]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1038, Skipped:     1, Total:  1039, Duration: 24 s - MethodCache.Core.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    63, Skipped:     0, Total:    63, Duration: 27 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   542, Skipped:     0, Total:   542, Duration: 37 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
+
+Attachments:
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/1e32ac17-bfa3-4691-bfc5-037e3a82a3fc/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/47e954a5-86d0-4490-a77d-3d2bfc956753/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/5c4fd052-ce8e-4f4e-8b0d-b22365f8911f/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/f15863f2-b699-4990-9958-5b4ab0a1a84e/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/b7e85dc3-fffa-4993-8766-c0aac6cdcf1d/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/fee79b27-3cf1-4238-ab96-39d7317d40dc/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/ffafa830-f0d7-4850-9b19-eb136c265636/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/90f0f49c-ff0e-4d95-a587-7403b63f791f/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/914730a9-4884-4331-84bd-e486a779b650/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/de4dd175-3a59-41fc-92b1-f3446d4883e5/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/cab4ac6c-c6ff-470d-af20-83e7c7e033a0/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/227ecd8b-c53b-49f5-baf8-b7693b98f50f/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/eb838981-48a6-45fa-bb71-b9a1c5ec2163/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/ed8a599e-47ce-4085-b540-fecf34fd1e9a/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/fac306a2-00e7-42c6-a7d9-67994a047b3f/coverage.cobertura.xml

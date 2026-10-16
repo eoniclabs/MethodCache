@@ -292,6 +292,8 @@ implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` mem
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
+Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generator gives those files
+short, stable names while preserving the declared types and cache identities.
 
 Unsupported cached method shapes receive a [generator diagnostic](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
@@ -3082,6 +3084,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Keep generated source filenames bounded for long namespace/type identifiers, including Unicode, when
+  `EmitCompilerGeneratedFiles` is enabled. Generated types and cache identities are unchanged.
 
 - **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
   their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.

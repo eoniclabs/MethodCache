@@ -1,0 +1,123 @@
+{
+  "base_head": "8647bdc2c1725e6bea1ba3d17fc39676fd339357",
+  "observed_utc": "2026-10-16T05:59:32.069209+00:00",
+  "logs": [
+    {
+      "file": "long-hint-red.log",
+      "original_sha256": "209c6ea37958e54357cd889e8f80f6a29886ccd13acb483822997f6d6e8c9fe4",
+      "stored_sha256": "209c6ea37958e54357cd889e8f80f6a29886ccd13acb483822997f6d6e8c9fe4"
+    },
+    {
+      "file": "long-hint-red-portable.log",
+      "original_sha256": "f9d82b58fb9e5077b3618fd1d619619913b4c89c3c9a69c51604d2626c75e473",
+      "stored_sha256": "f9d82b58fb9e5077b3618fd1d619619913b4c89c3c9a69c51604d2626c75e473"
+    },
+    {
+      "file": "long-hint-integration-green.log",
+      "original_sha256": "c9579fde291627dc79137d02c94fc97b58e3436b79e71768bb839914f6f36b14",
+      "stored_sha256": "c9579fde291627dc79137d02c94fc97b58e3436b79e71768bb839914f6f36b14"
+    },
+    {
+      "file": "long-hint-unit-green.log",
+      "original_sha256": "afba946e1851ba012893d090e6fc99d80b798ab1d8e02771b47bab01413b25b9",
+      "stored_sha256": "afba946e1851ba012893d090e6fc99d80b798ab1d8e02771b47bab01413b25b9"
+    },
+    {
+      "file": "long-hint-bench-green.log",
+      "original_sha256": "817f639a54dc2f12ecc95809bf9da81eaf8ee119cb84bcd81532695bdb8c9b32",
+      "stored_sha256": "817f639a54dc2f12ecc95809bf9da81eaf8ee119cb84bcd81532695bdb8c9b32"
+    },
+    {
+      "file": "redis-readiness-red.log",
+      "original_sha256": "f77b246acd6c1b6bda997145fe7d7f85892404545717523106e9b9ed1852595f",
+      "stored_sha256": "f77b246acd6c1b6bda997145fe7d7f85892404545717523106e9b9ed1852595f"
+    },
+    {
+      "file": "redis-readiness-green.log",
+      "original_sha256": "075991e1af0981eb1d9b598e3bce4dad19de4fac1a9cec5bae6b394a676479a2",
+      "stored_sha256": "075991e1af0981eb1d9b598e3bce4dad19de4fac1a9cec5bae6b394a676479a2"
+    },
+    {
+      "file": "redis-readiness-native-green.log",
+      "original_sha256": "85830df12ed0937141d8c80fb44be468bbbfc9a507974c6da607f84ce527d429",
+      "stored_sha256": "8a8438c3a4d7031d2e2ad581e0f2352cc75c706df5e861225a707414d1089026"
+    },
+    {
+      "file": "ci-remote-timeout-red.log",
+      "original_sha256": "9812243d45badcaee69edc6cd6d18b1f36aa6df774939b509dc3550ca274cb0b",
+      "stored_sha256": "9812243d45badcaee69edc6cd6d18b1f36aa6df774939b509dc3550ca274cb0b"
+    },
+    {
+      "file": "ci-timeout-cleanup-red.log",
+      "original_sha256": "d56aea3a002edcde172fa9a80d7b1fa311c2b860df8c503079c49058849be5d0",
+      "stored_sha256": "d56aea3a002edcde172fa9a80d7b1fa311c2b860df8c503079c49058849be5d0"
+    },
+    {
+      "file": "ci-timeout-all-green.log",
+      "original_sha256": "ad954ca5f17246a1304cde68f41ad986fa34eda1b5361310c7275d6256fdba6c",
+      "stored_sha256": "ad954ca5f17246a1304cde68f41ad986fa34eda1b5361310c7275d6256fdba6c"
+    },
+    {
+      "file": "ci-timeout-nimbus-proof.log",
+      "original_sha256": "d1aba1172c96402a52c1d58a0f15524009ac3a56adc12dd237e1ed6c9a8ea46f",
+      "stored_sha256": "d1aba1172c96402a52c1d58a0f15524009ac3a56adc12dd237e1ed6c9a8ea46f"
+    },
+    {
+      "file": "ci-followup-build.log",
+      "original_sha256": "e5a59b2beb3eb4f3ad1bad7273b57dc7e87089ed4b377cd3900fc1c407f17799",
+      "stored_sha256": "e5a59b2beb3eb4f3ad1bad7273b57dc7e87089ed4b377cd3900fc1c407f17799"
+    },
+    {
+      "file": "ci-followup-diffcoverage.log",
+      "original_sha256": "db077ef0d2f64e706a5607d21355644ec4f0cd2dc9d2a7bcd241cd7b4b77b1f3",
+      "stored_sha256": "db077ef0d2f64e706a5607d21355644ec4f0cd2dc9d2a7bcd241cd7b4b77b1f3"
+    },
+    {
+      "file": "ci-followup-diffcoverage-green.log",
+      "original_sha256": "261b7005a69443003cdf6870bd65420328e1e90ac18015a17b9dbe2cc905888b",
+      "stored_sha256": "261b7005a69443003cdf6870bd65420328e1e90ac18015a17b9dbe2cc905888b"
+    },
+    {
+      "file": "ci-followup-aot.log",
+      "original_sha256": "7cd196fc824ca2405dd9dc066f3b82b737967895537edd1cff1092bbd1aa6aec",
+      "stored_sha256": "7cd196fc824ca2405dd9dc066f3b82b737967895537edd1cff1092bbd1aa6aec"
+    },
+    {
+      "file": "ci-followup-aot-osx.log",
+      "original_sha256": "cab0d96380eed12cfa32168df8321afd14a866811cbdc19f1d05562ebb1d720d",
+      "stored_sha256": "cab0d96380eed12cfa32168df8321afd14a866811cbdc19f1d05562ebb1d720d"
+    },
+    {
+      "file": "ci-followup-aot-corpus-osx.log",
+      "original_sha256": "079f23a3e7cb06aec1cf1483968a1ca43a14cc1aefdf23a21b8d91350bf2d5ce",
+      "stored_sha256": "079f23a3e7cb06aec1cf1483968a1ca43a14cc1aefdf23a21b8d91350bf2d5ce"
+    },
+    {
+      "file": "ci-followup-aot-smoke-green.log",
+      "original_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df",
+      "stored_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df"
+    }
+  ],
+  "coverage_run": {
+    "passed": 2560,
+    "projects": 16,
+    "failed": 0,
+    "intentional_opt_in_soak_skip": 1,
+    "changed_covered": 3486,
+    "changed_executable": 3708
+  },
+  "scope": "Local macOS .NET 10 with required real Redis/SQL. Original failures retained. Actual Nimbus timeout proof uses fake Docker commands, not the stalled CI container. Coordinator installation and latest-head external CI remain separate.",
+  "local_ci_python": {
+    "tests": 49,
+    "passed": 47,
+    "skipped": 2,
+    "skip_reason": "Publishing SDK tests require .NET SDK 10.0.300+, current local SDK is 10.0.103"
+  },
+  "aot": {
+    "runtime": "osx-arm64",
+    "smoke_exit": 0,
+    "signature_corpus_exit": 0,
+    "compiled_cases": 175,
+    "limitations": "Known KeyArguments/KeyCollectionState trimming/AOT warnings retained. Initial Linux-only jobs.sh invocation on macOS and then external /tmp exporter path both failed as recorded; corrected native macOS smoke/corpus run passes."
+  }
+}

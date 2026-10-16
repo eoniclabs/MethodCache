@@ -1,0 +1,29 @@
+[
+  {
+    "platform": "linux",
+    "head": "8647bdc2c1725e6bea1ba3d17fc39676fd339357",
+    "build_exit": 1,
+    "original_build_log_sha256": "92eda60e3d5e61adf3751a08f74ed4b6f308210c933fb2e50409f5c2f7712f10",
+    "error_excerpts": [
+      "CSC : error CS0016: Could not write to output file '/home/agent-admin/methodcache-ci/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/obj/Generated/MethodCache.SourceGenerator/MethodCache.SourceGenerator.MethodCacheGenerator/MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs' -- 'The path '/home/agent-admin/methodcache-ci/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/obj/Generated/MethodCache.SourceGenerator/MethodCache.SourceGenerator.MethodCacheGenerator/MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs' is too long, or a component of the specified path is too long.' [/home/agent-admin/methodcache-ci/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/MethodCache.Benchmarks.csproj]"
+    ]
+  },
+  {
+    "platform": "macos",
+    "head": "8647bdc2c1725e6bea1ba3d17fc39676fd339357",
+    "build_exit": 1,
+    "original_build_log_sha256": "a7b27b13a50beea9f06ce37cc20c172b215a0c85c10262e791d61bbbe860305d",
+    "error_excerpts": [
+      "CSC : error CS0016: Could not write to output file '/Users/johan/.cache/methodcache-ci/macos/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/obj/Generated/MethodCache.SourceGenerator/MethodCache.SourceGenerator.MethodCacheGenerator/MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs' -- 'The path '/Users/johan/.cache/methodcache-ci/macos/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/obj/Generated/MethodCache.SourceGenerator/MethodCache.SourceGenerator.MethodCacheGenerator/MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs' is too long, or a component of the specified path is too long.' [/Users/johan/.cache/methodcache-ci/macos/runs/20261016-004413-8647bdc2c172/benchmarks/MethodCache.Benchmarks/MethodCache.Benchmarks.csproj]"
+    ]
+  },
+  {
+    "platform": "windows",
+    "head": "8647bdc2c1725e6bea1ba3d17fc39676fd339357",
+    "build_exit": 1,
+    "original_build_log_sha256": "f989e47f8b0ca47b8b38f921f49aa4eced54c5f8e0722cf9d35b57af1007007b",
+    "error_excerpts": [
+      "CSC : error CS0016: Could not write to output file 'C:\\mc\\runs\\20261016-004413-8647bdc2c172\\benchmarks\\MethodCache.Benchmarks\\obj\\Generated\\MethodCache.SourceGenerator\\MethodCache.SourceGenerator.MethodCacheGenerator\\MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs' -- 'The filename, directory name, or volume label syntax is incorrect. : 'C:\\mc\\runs\\20261016-004413-8647bdc2c172\\benchmarks\\MethodCache.Benchmarks\\obj\\Generated\\MethodCache.SourceGenerator\\MethodCache.SourceGenerator.MethodCacheGenerator\\MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixScenarios.WithAnIntentionallyLongNamespace.ForTestingTheGeneratedKeyPrefixAndTheGeneratorSelectedStackBuffer.WithStableNamesAcrossAllComparedRevisions.AndAdditionalSegmentsToCrossTheShortKeyBoundary.ILongPrefixSourceDecorator.g.cs'.' [C:\\mc\\runs\\20261016-004413-8647bdc2c172\\benchmarks\\MethodCache.Benchmarks\\MethodCache.Benchmarks.csproj]"
+    ]
+  }
+]

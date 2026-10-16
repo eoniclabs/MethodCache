@@ -1,0 +1,480 @@
+=== diffcoverage
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+Starting test execution, please wait...
+VSTest version 18.0.1 (arm64)
+
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Starting test execution, please wait...
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 252 ms - MethodCache.Redis.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+
+Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 1 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+Starting test execution, please wait...
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 2 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 295 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 3 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+A total of 1 test files matched the specified pattern.
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 5 s - MethodCache.Analyzers.Tests.dll (net10.0)
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Data collection : Unable to find a datacollector with friendly name 'XPlat Code Coverage'.
+Data collection : Could not find data collector 'XPlat Code Coverage'
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 149 ms - MethodCache.CompatTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    33, Skipped:     0, Total:    33, Duration: 6 s - MethodCache.Redis.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 72 ms - MethodCache.Samples.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 10 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 3 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   112, Skipped:     0, Total:   112, Duration: 3 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+[xUnit.net 00:00:20.76]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1038, Skipped:     1, Total:  1039, Duration: 19 s - MethodCache.Core.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 14 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    63, Skipped:     0, Total:    63, Duration: 24 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   542, Skipped:     0, Total:   542, Duration: 35 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
+
+Attachments:
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/8c577900-3a9f-4b17-9f8f-1c82d8b55447/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/1a4210d1-8b67-4cc0-a226-bf70304188b6/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/bb745b33-e21b-4258-bcb9-b9832532193c/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/dac89f76-a08b-4de2-8826-247651251b28/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/7e4d21d2-fe2d-40f7-a94e-8070c6356b2c/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/9b3d8a2c-34e1-4ff9-bb8a-d2309737115b/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/3c8f67d2-950f-4f6e-9375-8ce31f1ed4e5/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/2cb0c6dd-5fbd-4f1f-8379-8514c0954e46/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/830cd4b6-6bf3-43dc-8b2a-3e264ba42545/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/092e2b00-6c96-4500-8f9e-a3ac51572b7d/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/877d5b75-bb7c-4aab-885a-54ad9e71f889/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/8bfbfd08-668b-4942-bb76-30fa9e950c6c/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/6a9dcfcb-0784-43ae-9438-d127b8156cbb/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/843292fe-21c4-4af0-b587-895864237c9c/coverage.cobertura.xml
+  /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/artifacts/diff-coverage/fb2eb27e-24a0-470d-b4c0-53403aa81d89/coverage.cobertura.xml
+Changed C# lines under src/ since a023336088c0: 6841 in 149 file(s)
+  src/MethodCache.Analyzers/MethodCacheAnalyzer.cs: 17/17 changed lines covered
+  src/MethodCache.AspNetCore/MethodCacheAdminEndpoints.cs: 2/2 changed lines covered
+  src/MethodCache.AspNetCore/MethodCacheHealthCheck.cs: 41/42 changed lines covered
+         66 | return new HealthCheckResult(context.Registration.FailureStatus, "MethodCache did not answer.", data: new Dictionary<string, object> { ["error.type"] = ex.GetType().FullName ?? ex.GetType().Name });
+  src/MethodCache.AspNetCore/MethodCacheHealthChecksBuilderExtensions.cs: 1/1 changed lines covered
+  src/MethodCache.CodeFixes/FixTagParameterCodeFixProvider.cs: 1/1 changed lines covered
+  src/MethodCache.CodeFixes/RemoveCacheAttributeCodeFixProvider.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Abstractions/Policies/CachePolicy.cs: 3/3 changed lines covered
+  src/MethodCache.Core/Abstractions/Policies/PolicyContribution.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Abstractions/Resolution/PolicyResolutionResult.cs: 2/2 changed lines covered
+  src/MethodCache.Core/Configuration/DistributedCacheOptions.cs: 14/15 changed lines covered
+         22 | set { CheckMutable(); if (value < 1) throw new ArgumentOutOfRangeException(nameof(SerializerVersion)); _serializerVersion = value; }
+  src/MethodCache.Core/Configuration/MethodCacheBuilder.cs: 31/33 changed lines covered
+         89 | => Configuration.ForService<TService>().Method(method);
+         92 | => Configuration.ForService<TService>().Method(method);
+  src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs: 8/9 changed lines covered
+         40 | throw new ArgumentOutOfRangeException(nameof(SizeLimit), value, "SizeLimit must be greater than zero.");
+  src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheAttribute.cs: 5/6 changed lines covered
+        103 | public string? RetryAfter { get; set; }
+  src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheInterfaceAttribute.cs: 0/4 changed lines covered
+         60 | public string? RetryAfter { get; set; }
+         63 | public bool Enabled { get; set; } = true;
+         66 | public bool Distributed { get; set; } = true;
+         75 | public int Version { get; set; }
+  src/MethodCache.Core/Configuration/Surfaces/ConfigFile/ConfigFilePolicySourceBuilder.cs: 9/10 changed lines covered
+         98 | else builder.WithDistributed(value);
+  src/MethodCache.Core/Configuration/Surfaces/Fluent/CachePolicyBuilderFactory.cs: 3/3 changed lines covered
+  src/MethodCache.Core/Configuration/Surfaces/Fluent/FluentMethodCacheConfiguration.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfigurator.UserApi.cs: 22/27 changed lines covered
+         33 | cancellationToken.ThrowIfCancellationRequested();
+         34 | var methods = _store.GetSnapshots().Select(static snapshot => snapshot.MethodId).ToArray();
+         35 | await _store.ClearAsync().ConfigureAwait(false);
+         36 | await Task.WhenAll(methods.Select(method => WaitForInvalidation(method, cancellationToken))).ConfigureAwait(false);
+         37 | }
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfigurator.cs: 2/2 changed lines covered
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs: 3/8 changed lines covered
+         17 | => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
+         29 | => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
+         35 | => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
+         43 | => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
+         67 | => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeConfigurationExtensions.cs: 1/5 changed lines covered
+         12 | => ((IRuntimeConfiguration)configuration).UpsertBatchAsync(overrides);
+         14 | => ((IRuntimeConfiguration)configuration).ApplyAsync(configure);
+         16 | => ((IRuntimeConfiguration)configuration).GetOverrideAsync(id);
+         18 | => ((IRuntimeConfiguration)configuration).WatchAsync(token);
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverride.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverrideEntry.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimePolicyStore.cs: 7/7 changed lines covered
+  src/MethodCache.Core/Generated/GeneratedModule.cs: 102/102 changed lines covered
+  src/MethodCache.Core/Generated/GeneratedServices.cs: 45/46 changed lines covered
+         58 | else throw new NotSupportedException("The configured MethodCache manager does not support synchronous invalidation. Use an async mutation method.");
+  src/MethodCache.Core/Generated/KeyBuilder.cs: 97/114 changed lines covered
+         21 | internal readonly string? StoredText => _text;
+         47 | _chars = initialBuffer;
+         48 | _length = 0;
+         49 | _prefixLength = 0;
+         50 | _text = null;
+         51 | Binding = binding;
+         52 | }
+        194 | AppendFormatted(Unsafe.As<TEnum, sbyte>(ref value), default);
+        195 | return;
+        197 | AppendFormatted(Unsafe.As<TEnum, short>(ref value), default);
+        198 | return;
+        208 | EnsureWritable();
+        209 | AppendSeparator();
+        211 | while (!Enum.TryFormat(value, _chars[_length..], out written, "D"))
+        213 | Grow(1);
+        216 | _length += written;
+        217 | }
+  src/MethodCache.Core/Generated/KeyParts.cs: 27/42 changed lines covered
+         26 | public static string Part(bool value) => MethodCacheKeys.Part(value);
+         30 | public static string Part(char value) => MethodCacheKeys.Part(value);
+         34 | public static string Part(byte value) => MethodCacheKeys.Part(value);
+         38 | public static string Part(sbyte value) => MethodCacheKeys.Part(value);
+         42 | public static string Part(short value) => MethodCacheKeys.Part(value);
+         46 | public static string Part(ushort value) => MethodCacheKeys.Part(value);
+         54 | public static string Part(uint value) => MethodCacheKeys.Part(value);
+         58 | public static string Part(long value) => MethodCacheKeys.Part(value);
+         62 | public static string Part(ulong value) => MethodCacheKeys.Part(value);
+         66 | public static string Part(float value) => MethodCacheKeys.Part(value);
+         70 | public static string Part(double value) => MethodCacheKeys.Part(value);
+         74 | public static string Part(decimal value) => MethodCacheKeys.Part(value);
+         85 | public static string Part(DateTime value) => MethodCacheKeys.Part(value);
+         89 | public static string Part(DateTimeOffset value) => MethodCacheKeys.Part(value);
+        128 | public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => MethodCacheKeys.Part(value);
+  src/MethodCache.Core/Generated/MethodCall.cs: 82/83 changed lines covered
+        178 | return new ValueTask<T>(telemetry.CustomAsync(_snapshot.Services.CacheManager, key, policy, () => loader(call, state).AsTask(), cancellationToken));
+  src/MethodCache.Core/Generated/TextKey.cs: 6/6 changed lines covered
+  src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs: 98/106 changed lines covered
+         45 | ArgumentNullException.ThrowIfNull(factory);
+         46 | return GetOrCreateAsync(cacheManager, key, (_, token) => factory(token), configure, cancellationToken);
+        118 | throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
+        167 | throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+        180 | : cacheManager.GetOrCreateFastAsync(cacheKey, FluentMethodName, () => Task.FromResult(value!), policy, cancellationToken))
+        198 | var bypass = await factory(keys, new CacheContext(BulkMethodName), token).ConfigureAwait(false);
+        199 | foreach (var key in keys) results[key] = Candidate(bypass, key);
+        200 | return results;
+  src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs: 99/100 changed lines covered
+        390 | throw new InvalidOperationException($"MethodCache has no supported generated binding for {serviceType}. Register a concrete closed service with an implementation visible to its generated module; open generic and AnyKey registrations are unsupported.");
+  src/MethodCache.Core/Infrastructure/ICacheStats.cs: 5/5 changed lines covered
+  src/MethodCache.Core/Infrastructure/OwnedServices.cs: 4/4 changed lines covered
+  src/MethodCache.Core/Infrastructure/Registration/MethodCacheDecorators.cs: 2/2 changed lines covered
+  src/MethodCache.Core/Infrastructure/Serialization/JsonCacheSerializer.cs: 2/2 changed lines covered
+  src/MethodCache.Core/Management/CacheEntryInfo.cs: 7/7 changed lines covered
+  src/MethodCache.Core/Management/CachedMethodInfo.cs: 4/4 changed lines covered
+  src/MethodCache.Core/Management/HttpCacheAdministrator.cs: 14/18 changed lines covered
+         30 | public CacheEntryInfo? GetEntry(string key) => store.Find(key) is { } info ? store.Describe(info) : null;
+         35 | => store.InvalidateTagsAsync(tags, cancellationToken).AsTask();
+         37 | public ValueTask ClearAsync(CancellationToken cancellationToken = default) => store.ClearAsync(cancellationToken);
+         41 | public IReadOnlyList<CachedMethodInfo> GetMethods() => [];
+  src/MethodCache.Core/Management/ICacheAdministrator.cs: 0/1 changed lines covered
+         42 | InvalidationQueues GetInvalidationQueues() => new(0, 0);
+  src/MethodCache.Core/Management/InMemoryCacheAdministrator.cs: 18/18 changed lines covered
+  src/MethodCache.Core/Management/InvalidationQueues.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Options/CacheEntryOptions.cs: 26/26 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Diagnostics/PolicyDiagnosticsService.cs: 1/1 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Model/CachePolicyBuilder.cs: 7/9 changed lines covered
+        262 | _enabled = _enabled,
+        263 | _distributed = _distributed,
+  src/MethodCache.Core/PolicyPipeline/Model/CachePolicyMapper.cs: 2/2 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Model/PolicySnapshotBuilder.cs: 1/1 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistrationExtensions.cs: 6/6 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistry.cs: 15/15 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicyResolver.cs: 83/83 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicySourceRegistration.cs: 1/1 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicyStartupValidation.cs: 1/1 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Sources/ConfigFilePolicySource.cs: 36/36 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Sources/FluentPolicySource.cs: 4/4 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Sources/IImmediatePolicySource.cs: 0/1 changed lines covered
+         15 | (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots() => (GetSnapshot(), 0);
+  src/MethodCache.Core/PolicyPipeline/Sources/RuntimePolicySource.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Runtime/CacheRuntimeExtensions.cs: 12/25 changed lines covered
+         24 | => manager.TryGetAsync<T>(generator.GenerateKey(name, args, policy), default);
+         39 | value = default;
+         40 | return false;
+         45 | if (manager is ICacheRuntime runtime) return runtime.TryGetFast(key, out value);
+         46 | value = default;
+         47 | return false;
+         53 | if (manager is ICacheRuntime runtime) return runtime.TryGetFastTask(key, out value);
+         54 | value = null;
+         55 | return false;
+         61 | if (manager is ICacheRuntime runtime) return runtime.TryGetFastTask(key, out value);
+         62 | value = null;
+         63 | return false;
+         71 | => manager is ICacheRuntime runtime ? runtime.InvalidateByTagPatternAsync(pattern) : throw new NotSupportedException();
+  src/MethodCache.Core/Runtime/Core/CacheContext.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Runtime/Core/CacheRuntimePolicy.cs: 12/12 changed lines covered
+  src/MethodCache.Core/Runtime/Core/CacheTagTemplates.cs: 1/2 changed lines covered
+         60 | throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
+  src/MethodCache.Core/Runtime/Core/CanonicalTagPart.cs: 27/27 changed lines covered
+  src/MethodCache.Core/Runtime/Core/DecoratorServices.cs: 13/13 changed lines covered
+  src/MethodCache.Core/Runtime/Core/GeneratedDiagnostics.cs: 5/5 changed lines covered
+  src/MethodCache.Core/Runtime/Core/InvalidationResult.cs: 6/6 changed lines covered
+  src/MethodCache.Core/Runtime/Core/PolicyGeneration.cs: 4/4 changed lines covered
+  src/MethodCache.Core/Runtime/Core/PolicyHandle.cs: 36/36 changed lines covered
+  src/MethodCache.Core/Runtime/Core/PolicyIdentity.cs: 31/31 changed lines covered
+  src/MethodCache.Core/Runtime/Core/TypedCachePredicate.cs: 3/3 changed lines covered
+  src/MethodCache.Core/Runtime/Distributed/BackplaneWire.cs: 85/89 changed lines covered
+         24 | _ => throw new ArgumentOutOfRangeException(nameof(message))
+         27 | throw new ArgumentException("An invalidation needs a target.", nameof(message));
+        106 | catch (ArgumentOutOfRangeException) { return false; }
+        123 | }
+  src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.Http.cs: 55/55 changed lines covered
+  src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs: 202/213 changed lines covered
+        107 | internal int PendingPublications => _pendingPublications.Count;
+        691 | Queue(keys, tags);
+        692 | return new InvalidationResult { Requested = count, Local = count, Queued = count };
+        767 | refused.AddRange(items);
+        768 | return refused;
+        988 | throw new IncompatibleDistributedScopeException("The established scope retention must exceed ClockSkewTolerance. Use a new KeyPrefix for a new contract.");
+        995 | => ReadCoreAsync(layer, EscapedKey(key), cancellationToken);
+       1095 | throw new InvalidDataException("MethodCache invalidation metadata is malformed.");
+       1505 | _pendingPublications.Clear();
+       1506 | _pendingPublications[(true, ClearTag)] = Interlocked.Increment(ref _publicationTicket);
+       1607 | break;
+  src/MethodCache.Core/Runtime/Distributed/DistributedCacheStoreValidation.cs: 2/2 changed lines covered
+  src/MethodCache.Core/Runtime/Distributed/EpochMetadata.cs: 29/29 changed lines covered
+  src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.UserApi.cs: 65/65 changed lines covered
+  src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs: 263/293 changed lines covered
+        119 | outcome = RequestResult.Bypass;
+        120 | using var bypass = _telemetry?.BeginLoad("method", name, key, source.Tags);
+        121 | try { return factory(); } catch (Exception error) { bypass?.Fail(error); throw; }
+        144 | if (flight.OwnerThread == Environment.CurrentManagedThreadId || LoadingScope.Contains(flight))
+        145 | throw new InvalidOperationException($"The factory of '{name}' recursively requested its own key.");
+        146 | flight.Ready.Wait(token);
+        147 | if (flight.CancelledByCaller && !token.IsCancellationRequested) continue;
+        148 | flight.Error?.Throw();
+        149 | if (flight.Value is T joined) { RecordHit(name); outcome = flight.Outcome == RequestResult.Stale ? RequestResult.Stale : RequestResult.Hit; return joined; }
+        150 | if (flight.Value == null && default(T) == null) { RecordHit(name); outcome = flight.Outcome == RequestResult.Stale ? RequestResult.Stale : RequestResult.Hit; return default!; }
+        151 | outcome = RequestResult.Miss;
+        152 | using var independent = _telemetry?.BeginLoad("method", name, key, source.Tags);
+        153 | try { return factory(); } catch (Exception error) { independent?.Fail(error); throw; }
+        160 | flight.Value = hit;
+        161 | flight.Complete(hit);
+        162 | RecordHit(name);
+        163 | outcome = HitResult(racedNode);
+        164 | return hit!;
+        189 | outcome = flight.Outcome = RequestResult.Stale;
+        190 | flight.Value = stale;
+        191 | flight.Complete(stale);
+        192 | return stale!;
+        638 | return _telemetry?.Enabled == true ? _telemetry.BypassAsync(methodName, key, factory) : factory();
+        749 | if (shared == null && default(T) == null)
+        751 | return default!;
+        755 | outcome = RequestResult.Miss;
+        756 | return await InvokeOriginAsync(key, methodName, factory, policy.Tags).ConfigureAwait(false);
+        779 | outcome = flight.Outcome;
+        780 | return value;
+        875 | => _telemetry?.Enabled == true ? _telemetry.OriginAsync(name, key, tags, factory) : factory();
+  src/MethodCache.Core/Runtime/Execution/NoOpCacheManager.UserApi.cs: 8/13 changed lines covered
+         26 | => Invalidate(keys, cancellationToken);
+         30 | => Invalidate(tags, cancellationToken);
+         34 | var targets = InMemoryCacheManager.ValidateTargets(values);
+         35 | token.ThrowIfCancellationRequested();
+         36 | return new(new InvalidationResult { Requested = targets.Length, Local = targets.Length });
+  src/MethodCache.Core/Runtime/Execution/NoOpCacheManager.cs: 1/9 changed lines covered
+         17 | Task<T> ICacheRuntime.GetOrCreateAsync<T>(string name, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator generator) => GetOrCreateAsync(name, args, factory, policy, generator);
+         18 | ValueTask<T?> ICacheRuntime.TryGetAsync<T>(string name, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator generator) where T : default => TryGetAsync<T>(name, args, policy, generator);
+         19 | ValueTask<CacheLookupResult<T>> ICacheRuntime.LookupAsync<T>(string name, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator generator) => LookupAsync<T>(name, args, policy, generator);
+         20 | ValueTask<T?> ICacheRuntime.TryGetFastAsync<T>(string key) where T : default => TryGetFastAsync<T>(key);
+         21 | Task<T> ICacheRuntime.GetOrCreateFastAsync<T>(string key, string name, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken token) => GetOrCreateFastAsync(key, name, factory, policy, token);
+         22 | Task ICacheRuntime.InvalidateByKeysAsync(params string[] keys) => InvalidateByKeysAsync(keys);
+         23 | Task ICacheRuntime.InvalidateByTagsAsync(params string[] tags) => InvalidateByTagsAsync(tags);
+         24 | Task ICacheRuntime.InvalidateByTagPatternAsync(string pattern) => InvalidateByTagPatternAsync(pattern);
+  src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs: 298/303 changed lines covered
+        283 | catch { Queue(slot, pending); throw; }
+        325 | catch { /* Its bounded transport operation reports the type and retains this target for recovery. */ }
+        403 | => await _distributed!.CheckAvailableAsync(token).ConfigureAwait(false);
+        437 | HashIdentityUtf16Streaming(key, digest);
+        438 | }
+  src/MethodCache.Core/Runtime/ICacheRuntime.cs: 0/9 changed lines covered
+        105 | value = default;
+        106 | return false;
+        119 | if (TryGetFast<T>(cacheKey, out var value))
+        121 | task = Task.FromResult(value!);
+        122 | return true;
+        125 | task = null;
+        126 | return false;
+        138 | bool TryGetFast<T>(ReadOnlySpan<char> cacheKey, out T? value) => TryGetFast<T>(cacheKey.ToString(), out value);
+        149 | => TryGetFastTask<T>(cacheKey.ToString(), out task);
+  src/MethodCache.Core/Runtime/KeyGeneration/FastHashKeyGenerator.cs: 24/24 changed lines covered
+  src/MethodCache.Core/Runtime/Keys/KeyComparer.cs: 14/16 changed lines covered
+         22 | public string Create(ReadOnlySpan<char> alternate) => new(alternate);
+         28 | public string Create(PrehashedKey alternate) => new(alternate.Text);
+  src/MethodCache.Core/Runtime/Keys/SipHashState.cs: 81/82 changed lines covered
+         98 | return text | (ulong)Unsafe.Add(ref text, 1) << 16 | (ulong)Unsafe.Add(ref text, 2) << 32 | (ulong)Unsafe.Add(ref text, 3) << 48;
+  src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs: 13/13 changed lines covered
+  src/MethodCache.Core/Runtime/Memory/Node.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Storage/Abstractions/IBackplane.cs: 0/3 changed lines covered
+          9 | BackplaneState ConnectionState => BackplaneState.Unknown;
+         38 | => Task.FromException(new NotSupportedException("This backplane does not support method invalidation."));
+         41 | => Task.FromException(new NotSupportedException("This backplane does not support clear invalidation."));
+  src/MethodCache.Core/Storage/Abstractions/IBatchedDistributedStore.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Telemetry/CoreTelemetry.cs: 121/124 changed lines covered
+         58 | catch (Exception error) { operation?.Fail(error); throw; }
+         65 | catch { result = RequestResult.Error; throw; }
+         74 | catch (Exception error) { result = RequestResult.Error; origin?.Fail(error); throw; }
+  src/MethodCache.Core/Telemetry/MethodCacheTelemetry.cs: 3/3 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheEntry.cs: 30/30 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheInvalidationException.cs: 1/1 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheOptions.cs: 2/2 changed lines covered
+  src/MethodCache.HttpCaching/IHttpCacheStorage.cs: 5/6 changed lines covered
+         19 | => new(Task.WhenAll(keys.Select(key => InvalidateAsync(key, CancellationToken.None).AsTask())).WaitAsync(token));
+  src/MethodCache.HttpCaching/Internal/HttpCacheClientState.cs: 2/2 changed lines covered
+  src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs: 97/103 changed lines covered
+         69 | internal string ClientName => _keyName;
+         78 | catch
+         80 | _metrics?.Request("http", _keyName, RequestResult.Error);
+         81 | throw;
+        780 | await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+        791 | await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+  src/MethodCache.HttpCaching/Internal/HttpCacheKeys.cs: 76/85 changed lines covered
+        185 | Span<byte> length = stackalloc byte[4];
+        186 | BinaryPrimitives.WriteInt32LittleEndian(length, checked(value.Length * 2));
+        187 | hash.AppendData(length);
+        188 | Span<byte> character = stackalloc byte[2];
+        189 | foreach (var item in value)
+        191 | BinaryPrimitives.WriteUInt16LittleEndian(character, item);
+        192 | hash.AppendData(character);
+        194 | }
+        221 | for (var i = 0; i < value.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(destination[(i * 2)..], value[i]);
+  src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs: 81/89 changed lines covered
+         22 | private IHttpCacheStorage Default => ForClient(string.Empty, _default);
+         24 | public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => Default.GetGenerationAsync(key, cancellationToken);
+         26 | public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default) => Default.InvalidateAsync(key, cancellationToken);
+         28 | public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => Default.GetAsync(key, cancellationToken);
+         30 | public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default) => Default.SetAsync(key, entry, timeToLive, cancellationToken);
+         32 | public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => Default.RemoveAsync(key, cancellationToken);
+         34 | public ValueTask ClearAsync(CancellationToken cancellationToken = default) => core.ClearAsync(cancellationToken);
+         52 | throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
+  src/MethodCache.HttpCaching/Internal/HttpCacheTransportFilter.cs: 12/12 changed lines covered
+  src/MethodCache.HttpCaching/MethodCacheHttpClientBuilderExtensions.cs: 19/19 changed lines covered
+  src/MethodCache.OpenTelemetry/MethodCacheMeterProviderBuilderExtensions.cs: 1/1 changed lines covered
+  src/MethodCache.OpenTelemetry/MethodCacheTracerProviderBuilderExtensions.cs: 1/1 changed lines covered
+  src/MethodCache.Redis/MethodCacheRedisServiceCollectionExtensions.cs: 33/33 changed lines covered
+  src/MethodCache.Redis/RedisBackplane.cs: 66/73 changed lines covered
+         79 | => PublishAsync(BackplaneMessageType.ClearAll, string.Empty, cancellationToken);
+        218 | catch
+        220 | lock (_lifecycleLock)
+        222 | if (generation == _connectionGeneration)
+        223 | Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+        224 | }
+        225 | throw;
+  src/MethodCache.Redis/RedisDistributedCache.Atomic.cs: 52/53 changed lines covered
+        114 | throw new IncompatibleDistributedScopeException("The distributed epoch metadata has an incompatible schema.");
+  src/MethodCache.Redis/RedisDistributedCache.cs: 4/4 changed lines covered
+  src/MethodCache.Serialization.MessagePack/MethodCacheMessagePackServiceCollectionExtensions.cs: 8/8 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Diagnostics/MethodCacheGenerator.Diagnostics.cs: 60/60 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.Discovery.cs: 4/4 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.ExternalDiscovery.cs: 5/10 changed lines covered
+        172 | "MC0003" => "it returns void, so there is nothing to cache",
+        174 | "MC0005" => "ref, out and in parameters can't be part of a cache key",
+        175 | "MC0008" => "pointer parameters can't be part of a cache key",
+        176 | "MC0009" => "ref struct parameters such as Span<T> can't be part of a cache key",
+        177 | "MC0015" => "it returns a lazy sequence, which would run again on every enumeration",
+  src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitDecorators.cs: 87/94 changed lines covered
+        407 | SpecialType.System_Char => 2,
+        408 | SpecialType.System_Byte => 3,
+        409 | SpecialType.System_SByte => 4,
+        410 | SpecialType.System_Int16 => 6,
+        411 | SpecialType.System_UInt16 => 5,
+        413 | SpecialType.System_UInt32 => 10,
+        816 | sb.AppendLine("            var __mcKey = __mcCall.KeyPrefix;");
+  src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitPolicies.cs: 23/24 changed lines covered
+        152 | definition.PolicyStatements.Add($"policy = policy with {{ {name} = {(enabled ? "true" : "false")} }};");
+  src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitRegistrations.cs: 17/17 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.AttributeValidation.cs: 10/10 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.EquatableModels.cs: 2/2 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.ModelBuilders.cs: 6/6 changed lines covered
+  src/MethodCache.SourceGenerator/Generator/Utilities/MethodCacheGenerator.Utilities.cs: 9/9 changed lines covered
+  src/MethodCache.SqlServer/MethodCacheSqlServerServiceCollectionExtensions.cs: 42/42 changed lines covered
+  src/MethodCache.SqlServer/SqlServerBackplane.cs: 55/58 changed lines covered
+         88 | => PublishAsync(BackplaneMessageType.ClearAll, string.Empty, cancellationToken);
+        565 | BackplaneMessageType.MethodInvalidation => new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = target, InstanceId = instanceId, Timestamp = timestamp },
+        567 | BackplaneMessageType.ClearAll => new BackplaneMessage { Type = type, InstanceId = instanceId, Timestamp = timestamp },
+  src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs: 141/143 changed lines covered
+         98 | throw new IncompatibleDistributedScopeException("The distributed epoch metadata has an incompatible schema.");
+        192 | { throw new IncompatibleDistributedScopeException("The MethodCache SQL schema is incompatible. Apply its explicit migration before starting this version."); }
+  src/MethodCache.SqlServer/SqlServerDistributedCache.cs: 20/20 changed lines covered
+  src/MethodCache.SqlServer/SqlServerOptions.cs: 7/8 changed lines covered
+         75 | throw new InvalidOperationException("SQL Server table identifiers, including the schema-version table suffix, must fit 128 characters.");
+  src/MethodCache.SqlServer/SqlServerTables.cs: 77/77 changed lines covered
+  src/Shared/DurationParser.cs: 40/40 changed lines covered
+Diff coverage: 3486/3708 changed lines = 94.0% (minimum 80%)

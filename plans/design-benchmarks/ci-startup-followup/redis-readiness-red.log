@@ -1,0 +1,46 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.05]   Discovered:  MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.06]   Starting:    MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.07]     MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: False) [FAIL]
+[xUnit.net 00:00:00.07]       System.Threading.Tasks.TaskCanceledException : FailFast subscription backlog
+[xUnit.net 00:00:00.07]       Stack Trace:
+[xUnit.net 00:00:00.07]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/SubscriberReadinessTests.cs(24,0): at MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(Boolean disconnected)
+[xUnit.net 00:00:00.07]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.07]     MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: True) [FAIL]
+[xUnit.net 00:00:00.07]       StackExchange.Redis.RedisConnectionException : Subscription is connecting
+[xUnit.net 00:00:00.07]       Stack Trace:
+[xUnit.net 00:00:00.07]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/SubscriberReadinessTests.cs(24,0): at MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(Boolean disconnected)
+[xUnit.net 00:00:00.07]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.08]   Finished:    MethodCache.Redis.IntegrationTests
+  Failed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: False) [4 ms]
+  Error Message:
+   System.Threading.Tasks.TaskCanceledException : FailFast subscription backlog
+  Stack Trace:
+     at MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(Boolean disconnected) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/SubscriberReadinessTests.cs:line 24
+--- End of stack trace from previous location ---
+  Failed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: True) [< 1 ms]
+  Error Message:
+   StackExchange.Redis.RedisConnectionException : Subscription is connecting
+  Stack Trace:
+     at MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(Boolean disconnected) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/SubscriberReadinessTests.cs:line 24
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 2
+     Failed: 2
+ Total time: 0,2891 Seconds
