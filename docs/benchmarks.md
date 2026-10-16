@@ -18,7 +18,9 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
 | HybridCache `GetOrCreateAsync` | 551 ns | 272 B | 5.9x | 597 ns | 352 B | 5.2x |
 | FusionCache `GetOrSetAsync` | 354 ns | 344 B | 3.8x | 389 ns | 416 B | 3.4x |
 
-Each mean is the median of three runs of both id types. Single runs of the same benchmark differed by up to 14 %.
+Table values are medians across three benchmark runs of both id types. Single runs of the same benchmark differed by up to 14 %.
+Design-series acceptance uses separate baseline/PR comparisons and 95% intervals over independent run means;
+see the [current design verification](developer/design-final-validation.md).
 
 ```text
 BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat)

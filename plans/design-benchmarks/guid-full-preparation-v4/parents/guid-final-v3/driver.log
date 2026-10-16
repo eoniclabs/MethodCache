@@ -1,0 +1,21 @@
+Waiting for exclusive capacity: checkout 2026-10-16T08:23:52.143935+00:00
+Finished checkout 2026-10-16T08:23:53.482839+00:00
+Waiting for exclusive capacity: build-constructor-base 2026-10-16T08:24:03.483323+00:00
+Finished build-constructor-base 2026-10-16T08:24:12.139387+00:00
+Waiting for exclusive capacity: local-constructor-base 2026-10-16T08:24:22.139835+00:00
+Finished local-constructor-base 2026-10-16T08:24:25.384939+00:00
+Waiting for exclusive capacity: build-siphash 2026-10-16T08:24:35.385424+00:00
+Finished build-siphash 2026-10-16T08:24:44.031289+00:00
+Waiting for exclusive capacity: local-siphash 2026-10-16T08:24:54.031778+00:00
+Finished local-siphash 2026-10-16T08:24:57.487088+00:00
+Waiting for exclusive capacity: component-constructor-base 2026-10-16T08:25:07.487577+00:00
+Finished component-constructor-base 2026-10-16T08:25:12.139090+00:00
+Waiting for exclusive capacity: component-siphash 2026-10-16T08:25:22.139581+00:00
+Finished component-siphash 2026-10-16T08:25:26.892982+00:00
+Waiting for exclusive capacity: native-constructor-base 2026-10-16T08:25:36.893696+00:00
+Finished native-constructor-base 2026-10-16T08:25:50.848282+00:00
+Waiting for exclusive capacity: native-siphash 2026-10-16T08:26:00.848507+00:00
+Finished native-siphash 2026-10-16T08:26:15.093605+00:00
+Waiting for exclusive capacity: inventory 2026-10-16T08:26:25.093933+00:00
+Finished inventory 2026-10-16T08:26:33.327648+00:00
+All fourteen pinned GUID harnesses and six component revisions are prepared, including exact constructor/SipHash merge bases. Parent evidence preserved; no timing was started. 2026-10-16T08:26:43.327837+00:00

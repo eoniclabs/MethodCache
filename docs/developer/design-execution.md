@@ -23,8 +23,8 @@ A passing ancestor does not establish the latest head's result.
 | PR 7, standalone | codex/design-final-gates-v1 / #131 | Exact head 9767fec passes all 14 jobs across Linux/macOS/Windows: 2,519 Linux facts, zero failures, one intentional soak skip, required native backends, properties/soak/cultures, AOT172, packages and docs. Shipped source matches 12bf99d. This excludes constructor/SipHash changes and does not pass section 10. |
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
-| GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Head 419c786 is integrated in #134. Its historical macOS clone fails before tests with missing reachable objects. PR136 reproduces and fixes the detached-maintenance race, is integrated and installed atomically from 388050f, and was subsequently merged by Johan. The newer combined checkpoints pass actual macOS build/unit CI. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint dd6b1c6 passes all fourteen jobs and four statuses: 2,561 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. The complete strict allocation probe passes all three platforms; the historical 272-byte source remains unproven. A later analysis-only round-trip classification correction passes 52 Python guards locally and requires fresh CI on publication. Full timing remains required. |
+| GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Checkpoint 5dd27bb passes all fourteen jobs/four statuses: 2,561 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 52 benchmark-validation Python guards pass on Nimbus. The strict allocation probe passes all platforms; the historical 272-byte source remains unproven. Full timing and the subsequent documentation/evidence batch's own CI remain required. |
 
 ## Remaining performance work
 
@@ -34,12 +34,18 @@ PR merge-base edges, including the constructor's older standalone base and isola
 Primary workloads have 27 local-contract, 20 local-pressure and 16 native cases. Six component points
 have 18 lookup, 36 facade/reference and 48 actual generated-interface cases; Int and Guid remain
 separately labelled. Matching source/program hashes and setup guards pass locally. Nimbus preparation
-and digest-pinned Redis/SQL image validation must finish before full timing starts.
+and digest-pinned Redis/SQL image validation now pass on Nimbus, together with all sixty
+compiled-family preflights and an independent rehash of 2,358 harness DLLs.
 
 The fixed full matrix is 180 bounded launches: fourteen primary points × three families × three rounds,
 plus six component points × three families × three rounds. Each comparison uses identical workload
 bytes and key types. Existing int diagnostics remain separate; changing a key type cannot be presented
-as a before/after optimization result. The full timing dispatcher has not started.
+as a before/after optimization result. The full timing dispatcher starts on 2026-10-16 at
+08:30:54 UTC after input review, then stops at 08:32:09 before any benchmark executes:
+BDN rejects the asynchronous cold-HTTP iteration setup. A regression test fails before its
+correction; generated-program compilation is now a separate preflight gate. A fresh cohort,
+all 180 successful launches and statistical review remain required.
+[Preparation and dispatch evidence](../../plans/design-benchmarks/guid-full-preparation-v4/).
 
 Complete all adjacent behavior-change comparisons and the cumulative f43854d comparison, plus prefix
 components and the local/native L2 workloads specified in section 10. Use three independent alternating
@@ -47,7 +53,8 @@ launches, reviewed 95% intervals over run means and unchanged hit-allocation bud
 remain insufficient evidence. The completed HTTP response-reuse confirmation fails one comparable
 case by 9.36% with disjoint intervals. The completed six-launch header-copy comparison has four
 insufficient intervals despite lower allocations. A separate fixed nine-pair startup-affinity
-comparison is running; no samples are pooled and all eighteen launches are required. The completed
+comparison also completes all eighteen launches with four insufficient intervals; no samples
+are pooled and no timing pass is inferred. The completed
 older nine-launch int baseline still has two broad intervals and supplies no optimization pass.
 
 The authoritative receipts and remaining failures are in [design-final-validation.md](design-final-validation.md).

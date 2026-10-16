@@ -87,6 +87,9 @@ if any(value!=program_checksums[0] for value in program_checksums): raise System
 inventories={group:compiled_inventory(HARNESS/REVISIONS[0], GROUPS[group]['filters']) for group in GROUPS}
 for name in REVISIONS[1:]:
     for group in GROUPS:require_same_inventory(compiled_inventory(HARNESS/name, GROUPS[group]['filters']), inventories[group])
+for name in REVISIONS:
+    subprocess.run(['dotnet', str(HARNESS/name/'bin/Release/net10.0/DesignValidation.dll'),
+                    '--build-only', '*'], cwd=HARNESS/name, check=True)
 manifest_path=OUT/'metadata.json'
 if manifest_path.exists():
     manifest=json.loads(manifest_path.read_text())

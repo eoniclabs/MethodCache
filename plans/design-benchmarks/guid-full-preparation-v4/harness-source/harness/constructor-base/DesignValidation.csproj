@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+<ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
+<ServerGarbageCollection>false</ServerGarbageCollection><ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+<RestoreEnablePackagePruning>false</RestoreEnablePackagePruning></PropertyGroup>
+<ItemGroup><PackageReference Include="BenchmarkDotNet" Version="0.15.4" />
+<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.Core/MethodCache.Core.csproj" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.Redis/MethodCache.Redis.csproj" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj" />
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" /></ItemGroup></Project>

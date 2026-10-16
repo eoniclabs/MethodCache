@@ -1,0 +1,250 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Benchmarks.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.07]   Discovered:  MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.10]   Starting:    MethodCache.Benchmarks.Tests
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 7) [27 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.SimpleBenchmarkBase_Setup_CacheCanPopulateAndHit [32 ms]
+  Passed MethodCache.Benchmarks.Tests.SerializationCleanupTests.GlobalCleanup_DisposesEveryKeyGeneratorProvider [33 ms]
+  Passed MethodCache.Benchmarks.Tests.MemoryBaselineReviewTests.NoCachingBaseline_DoesNotPopulateTheCache [35 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 4, buffer: 512, listening: False) [8 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.MemoryScenarios_ProveResidentHitsEvictionAndSingleFlight(weighted: False, listening: False) [41 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 256, buffer: 128, listening: True) [3 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: False) [45 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 4, buffer: 128, listening: False) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.MemoryScenarios_ProveResidentHitsEvictionAndSingleFlight(weighted: False, listening: True) [4 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 256, buffer: 128, listening: False) [2 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 256, buffer: 512, listening: False) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 256, buffer: 512, listening: True) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: True) [5 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 4, buffer: 128, listening: True) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.MemoryScenarios_ProveResidentHitsEvictionAndSingleFlight(weighted: True, listening: True) [4 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.PrefixHitPath_SetupPopulatesAllShapes_AndMeasuredHitsNeverRunOrigins(prefix: 4, buffer: 512, listening: True) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: False) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.MemoryScenarioReviewTests.CacheFillUp_ActuallyFillsOnSuccessiveInvocations [52 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.MemoryScenarios_ProveResidentHitsEvictionAndSingleFlight(weighted: True, listening: False) [3 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: True) [3 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: False) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: True) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: False) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 6) [31 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: True) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_ResidentGuardRejectsUndecoratedService(argumentKind: Guid, longPrefix: True) [3 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_ResidentGuardRejectsUndecoratedService(argumentKind: Int, longPrefix: True) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 1) [4 ms]
+  Passed MethodCache.Benchmarks.Tests.MemoryScenarioReviewTests.FrequentInvalidation_ActuallyReloadsEachBatch [10 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_ResidentGuardRejectsUndecoratedService(argumentKind: Int, longPrefix: False) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 3) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_ResidentGuardRejectsUndecoratedService(argumentKind: Guid, longPrefix: False) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 5) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 8) [3 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 4) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 0) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SeparateInstances_ClearAndDispose_DoNotAffectAnotherAdapter(kind: 2) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 3) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 0) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 6) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 2) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 1) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 5) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 4) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 7) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.Set_ReadOverwriteRemoveAndClear_UseOneIdentity(kind: 8) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 5) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 3) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 2) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 6) [5 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 0) [1 ms]
+MethodCache Performance Benchmarks
+===================================
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 4) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.HttpPath_ActualHitsNeverCallOrigin_And304AndMissDo(listening: False) [38 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpHitScenarios_AfterInvalidationStillHitTheirRepopulatedNamespaces(listening: True) [34 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpHitScenarios_AfterInvalidationStillHitTheirRepopulatedNamespaces(listening: False) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 8) [2 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.HttpPath_ActualHitsNeverCallOrigin_And304AndMissDo(listening: True) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 7) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.ZeroValue_IsAHitAndAbsentValueIsAMiss(kind: 1) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 6) [11 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 7) [2 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 2) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 1) [1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 4) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 3) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 0) [4 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 8) [1 ms]
+MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.SyncHit
+MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.TaskHit
+MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.ValueTaskHit
+MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.KeyBuild
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncHit
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskHit
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskHit
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.SyncMiss
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.TaskMiss
+MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.ValueTaskMiss
+MethodCache Performance Benchmarks
+===================================
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.GetOrSet_UsesSetValueAndPublishesToTryGet(kind: 5) [2 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.SourceGenerator_ConcurrentDifferentKeys_KeepTheirOwnFactory [2 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.MethodCacheAdapters_RequestedDuration_ExpiresBothSetAndFactoryValues(kind: 8) [5 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.MethodCacheAdapters_RequestedDuration_ExpiresBothSetAndFactoryValues(kind: 1) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.MethodCacheAdapters_RequestedDuration_ExpiresBothSetAndFactoryValues(kind: 0) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.MethodCacheAdapters_RequestedDuration_ExpiresBothSetAndFactoryValues(kind: 3) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.AdapterContractTests.MethodCacheAdapters_RequestedDuration_ExpiresBothSetAndFactoryValues(kind: 2) [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "hitpath") [105 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "generated-hitpath") [2 ms]
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MethodCache_TryGetFast
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MemoryCache_TryGetValue
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.BitFaster_TryGet
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.FusionCache_TryGet
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MethodCache_GetOrCreate
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MemoryCache_GetOrCreate
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.BitFaster_GetOrAdd
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.FusionCache_GetOrSet
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.HybridCache_GetOrCreate
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MethodCache_Set
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.MemoryCache_Set
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.BitFaster_AddOrUpdate
+MethodCache.Benchmarks.Microbenchmarks.MemoryEngineBenchmarks.FusionCache_Set
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_RuntimeKey_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_ManualKey_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.FusionCache_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.LazyCache_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.EasyCaching_Hit
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_HitAsync
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_RuntimeKey_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_ManualKey_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.FusionCache_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.LazyCache_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.EasyCaching_Concurrent
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_ConcurrentHits
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.LazyCache_ConcurrentHits
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.FusionCache_ConcurrentHits
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_RuntimeKey_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_ManualKey_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.FusionCache_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.LazyCache_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.EasyCaching_MissAndSet
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_RuntimeKey_Stampede
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_ManualKey_Stampede
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.MethodCache_SourceGen_Stampede
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.FusionCache_Stampede
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.LazyCache_Stampede
+MethodCache.Benchmarks.Comparison.UnifiedCacheComparisonBenchmarks.EasyCaching_Stampede
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.GenericHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.StringHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.RecordHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.CollectionHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.FallbackHit
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncMiss
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskMiss
+MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskMiss
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MemoryCacheGuidHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MethodCacheGuidHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.HybridCacheGuidHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.FusionCacheGuidHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MemoryCacheGuidMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MethodCacheGuidMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.HybridCacheGuidMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.FusionCacheGuidMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MemoryCacheHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MethodCacheHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.HybridCacheHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.FusionCacheHit
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MemoryCacheMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.MethodCacheMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.HybridCacheMiss
+MethodCache.Benchmarks.Comparison.ReadmeComparisonBenchmarks.FusionCacheMiss
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.ReadyKeySync
+MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.BuiltKeySync
+MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.ReadyKeyTask
+MethodCache.Benchmarks.Microbenchmarks.MemoryCacheLookupReferenceBenchmarks.BuiltKeyTask
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.ReadyStringLookup
+MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.FullSpanLookup
+MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.PrefixLookup
+MethodCache Performance Benchmarks
+===================================
+MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit
+MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit
+MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated
+MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Miss
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "engine") [38 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "comparison") [30 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "contract") [3 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "readme") [8 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "httpcold") [32 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "memory-reference") [3 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "hashlookup") [3 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkCommand_List_ReturnsWithoutRunningBenchmarks(category: "httppath") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkBase_Setup_CacheCanPopulateAndHit [3 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.ReadmeComparison_HitsReturnOneUserPerKeyType_AndEveryMissUsesANewId [58 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 256, argument: "Guid") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 4, argument: "Int") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 4, argument: "Guid") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 80, argument: "Guid") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 80, argument: "Int") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.KeyHashLookup_AllPathsReadThePopulatedValue(length: 256, argument: "Int") [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.ComponentPaths_MatchReferencedCoreCapabilities [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.GeneratedContract_ResidentGuardRejectsUncachedService [10 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.BenchmarkBase_ActualRegistrationFactories_HaveNoCacheManagerCycle [1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.MemoryReference_AllFourPathsReturnTheResidentValue [< 1 ms]
+  Passed MethodCache.Benchmarks.Tests.BenchmarkSetupTests.GeneratedContract_AllHitShapesStayResident_AndEveryMissLoads [2 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpColdPublication_EveryOperationLoads_AndIterationResetReleasesResidents(listening: True, afterInvalidation: False) [446 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpColdPublication_EveryOperationLoads_AndIterationResetReleasesResidents(listening: False, afterInvalidation: True) [334 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpColdPublication_EveryOperationLoads_AndIterationResetReleasesResidents(listening: True, afterInvalidation: True) [306 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpColdPublication_EveryOperationLoads_AndIterationResetReleasesResidents(listening: False, afterInvalidation: False) [281 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpScenarios_ProveHitOrCookieBypassBeforeTiming(keepCookies: False) [11 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpScenarios_ProveHitOrCookieBypassBeforeTiming(keepCookies: True) [3 ms]
+[xUnit.net 00:00:01.66]   Finished:    MethodCache.Benchmarks.Tests
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms [7 ms]
+  Passed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.HttpColdPublication_UsesAnExplicitBoundedBatch_WithIterationReset [1 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.ConcurrentMisses_EveryInvocation_ExecutesEveryFactory [5 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.Stampede_ConsecutiveRuns_InvalidateAndLoadExactlyOnceEach [4 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.SourceGeneratorComparison_Setup_UsesTheExpectedPayload [3 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.ProviderMissAndBulkInvalidation_RemoveWarmValues [32 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.ConcurrentInvalidation_RemovesTheDataUsedByTheScenario [2 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.ProviderHitScenario_ConsecutiveRuns_ReuseThePopulatedValues [6 ms]
+  Passed MethodCache.Benchmarks.Tests.ScenarioContractTests.ProviderBenchmarks_OnlyImplementedProviders_AreMeasured [< 1 ms]
+
+Test Run Successful.
+Total tests: 113
+     Passed: 113
+ Total time: 1,8615 Seconds

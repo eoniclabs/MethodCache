@@ -30,4 +30,5 @@ A fresh supplementary cohort fixes startup affinity to CPU2 and predeclares nine
 pairs (eighteen launches), retaining all four cases and all runs. It reuses the exact same
 compiled inputs, checks all 138 DLLs per side, and requires actual host/four-child OS affinity
 samples. It has its own frozen protocol and results; no data is pooled with this series.
-The fresh cohort is pending, and whole-design timing remains separate.
+The fresh cohort has [completed all eighteen launches](../http-304-header-affinity-confirmation/),
+with insufficient precision in all four cases. Whole-design timing remains separate.

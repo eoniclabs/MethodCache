@@ -1,0 +1,34 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-guid-final-v4-native-image-setup 2026-10-16T08:29:08.919956+00:00
+[testcontainers.org 00:00:00.10] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 29.1.3
+  Kernel Version: 6.17.0-41-generic
+  API Version: 1.52
+  Operating System: Ubuntu 25.10
+  Total Memory: 61.40 GB
+[testcontainers.org 00:00:00.37] Docker container f4d535576b97 created
+[testcontainers.org 00:00:00.39] Docker container ba74f1d1c22d created
+[testcontainers.org 00:00:00.40] Start Docker container ba74f1d1c22d
+[testcontainers.org 00:00:00.40] Start Docker container f4d535576b97
+[testcontainers.org 00:00:00.63] Wait for Docker container f4d535576b97 to complete readiness checks
+[testcontainers.org 00:00:00.64] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container f4d535576b97
+[testcontainers.org 00:00:00.64] Wait for Docker container ba74f1d1c22d to complete readiness checks
+[testcontainers.org 00:00:00.64] Execute "redis-cli ping" at Docker container ba74f1d1c22d
+[testcontainers.org 00:00:00.69] Docker container ba74f1d1c22d ready
+[testcontainers.org 00:00:00.69] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container f4d535576b97
+[testcontainers.org 00:00:09.25] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container f4d535576b97
+[testcontainers.org 00:00:10.30] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container f4d535576b97
+[testcontainers.org 00:00:11.35] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container f4d535576b97
+[testcontainers.org 00:00:11.39] Docker container f4d535576b97 ready
+Verified Redis method read/write, roundTrip=False
+Verified Redis method read/write, roundTrip=True
+Verified Redis HTTP hit/miss, KeepCookies=False
+Verified Redis HTTP hit/miss, KeepCookies=True
+Verified SqlServer method read/write, roundTrip=False
+Verified SqlServer method read/write, roundTrip=True
+Verified SqlServer HTTP hit/miss, KeepCookies=False
+Verified SqlServer HTTP hit/miss, KeepCookies=True
+Verified both actual native container image IDs against their frozen digests; connection strings omitted.
+[testcontainers.org 00:00:12.85] Delete Docker container f4d535576b97
+[testcontainers.org 00:00:13.20] Delete Docker container ba74f1d1c22d
+Releasing exclusive lease methodcache-design-20261015-01a13a93-guid-final-v4-native-image-setup exit 0 2026-10-16T08:29:22.942181+00:00

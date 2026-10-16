@@ -1,0 +1,16 @@
+{
+  "at_utc": "2026-10-16T08:30:39.415966+00:00",
+  "protocol_sha256": "047c51a87c0437a40d005bf11b66b226db6cd6114bd170f45fc1a6acc705ba60",
+  "prepared_manifest_sha256": "d7ac2434c52a0e97efe4821a27b78244ab013c90eb8d471f7d6bf2bacad60166",
+  "validation_sha256": "5ce4491add94e82d853d4dc67635a267028669128e21368641ef31ed43c68cde",
+  "runtime_points": 14,
+  "component_points": 6,
+  "validated_families": 60,
+  "dll_files_rehashed": 2358,
+  "primary_cases": 63,
+  "component_cases": 102,
+  "planned_launches": 180,
+  "comparison_edges": 11,
+  "native_images_verified_before_and_after": true,
+  "measurement_started": false
+}

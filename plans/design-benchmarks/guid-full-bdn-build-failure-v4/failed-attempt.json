@@ -1,0 +1,8 @@
+{
+  "metadata_sha256": "d5b28d51e762eda10dde683fe25abae089445478f48d52233f87a0d33b68154e",
+  "protocol_sha256": "047c51a87c0437a40d005bf11b66b226db6cd6114bd170f45fc1a6acc705ba60",
+  "prepared_manifest_sha256": "d7ac2434c52a0e97efe4821a27b78244ab013c90eb8d471f7d6bf2bacad60166",
+  "successful_launches": 0,
+  "timing_results_retained_at": "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v4/timing-results",
+  "failure": "Generated BDN project cannot bind Task HttpColdMissBenchmarks.ResetBatch to its synchronous iteration-setup delegate. Worker exits 1 before benchmark execution. Its GC guard reports a secondary missing-execution symptom."
+}

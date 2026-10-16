@@ -1,0 +1,43 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 641 ms).
+  9 of 10 projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Benchmarks.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.08]   Discovered:  MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.09]   Starting:    MethodCache.Benchmarks.Tests
+[xUnit.net 00:00:00.10]     MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms [FAIL]
+[xUnit.net 00:00:00.10]       System.ArgumentException : Cannot bind to the target method because its signature is not compatible with that of the delegate type.
+[xUnit.net 00:00:00.10]       Stack Trace:
+[xUnit.net 00:00:00.10]            at System.Reflection.RuntimeMethodInfo.CreateDelegateInternal(Type delegateType, Object firstArgument, DelegateBindingFlags bindingFlags)
+[xUnit.net 00:00:00.10]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/DesignWorkloadSetupTests.cs(22,0): at MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms()
+[xUnit.net 00:00:00.10]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.10]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.11]   Finished:    MethodCache.Benchmarks.Tests
+  Failed MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms [2 ms]
+  Error Message:
+   System.ArgumentException : Cannot bind to the target method because its signature is not compatible with that of the delegate type.
+  Stack Trace:
+     at System.Reflection.RuntimeMethodInfo.CreateDelegateInternal(Type delegateType, Object firstArgument, DelegateBindingFlags bindingFlags)
+   at MethodCache.Benchmarks.Tests.DesignWorkloadSetupTests.IterationHooks_BindToTheActionUsedByGeneratedBenchmarkPrograms() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/DesignWorkloadSetupTests.cs:line 22
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Test Run Failed.
+Total tests: 1
+     Failed: 1
+ Total time: 0,3416 Seconds
