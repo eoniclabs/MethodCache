@@ -23,7 +23,9 @@ here="$root/benchmarks/MethodCache.CostProfile"
 out=${COST_PROFILE_OUT:-$root/artifacts/cost-profile}
 mkdir -p "$out"
 
-base_tree=$(mktemp -d)
+# The physical path: on macOS mktemp returns /var/folders, a symlink to /private/var, and restore then loses the
+# base's project references
+base_tree=$(cd "$(mktemp -d)" && pwd -P)
 cleanup() { git -C "$root" worktree remove --force "$base_tree" >/dev/null 2>&1 || rm -rf "$base_tree"; }
 trap cleanup EXIT
 git -C "$root" worktree add --detach "$base_tree" "$base_ref" >/dev/null
