@@ -1317,6 +1317,8 @@ namespace MethodCache.Extensibility
             return now >= expiresAt - window;
         }
 
+        // Inlined: the lookups that call it also inline the key hash, which otherwise used up their inlining budget
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool TryRead<T>(Node node, out T? value)
         {
             if (node is ValueNode<T> typed)

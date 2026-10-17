@@ -159,13 +159,20 @@ internal struct SipHashState
             count -= 8;
         }
         block |= PackAscii(ref next, count, ref high) | lengthByte;
+        // Also before the finalization, which costs more than a block: a short key that is not ASCII often has its
+        // first such code unit outside the loop above
+        if (!IsAscii(high))
+        {
+            hash = 0;
+            return false;
+        }
         Compress(ref v0, ref v1, ref v2, ref v3, block);
         v2 ^= 0xff;
         Round(ref v0, ref v1, ref v2, ref v3);
         Round(ref v0, ref v1, ref v2, ref v3);
         Round(ref v0, ref v1, ref v2, ref v3);
         hash = unchecked((int)(v0 ^ v1 ^ v2 ^ v3));
-        return IsAscii(high);
+        return true;
     }
 
     // Whether every code unit ORed into the four 16-bit lanes of units was below 0x80
