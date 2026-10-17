@@ -273,6 +273,15 @@ the existing build job discovers it automatically. The new published commit
 still requires all three platforms; running jobs and providers remain untouched.
 [Actual Windows errors and red/green proof](../../plans/design-benchmarks/windows-path-guard-v1/).
 
+The Windows console snapshot also exposes Git line-ending normalization: its
+working-file hash matches the manifest, but the initially staged log does not.
+Evidence paths now disable text conversion in `.gitattributes`; ordinary source
+rules stay in effect. A regression using Windows Git settings fails before that
+rule and passes afterward for logs, JSON/JSONL, Markdown, patches and PowerShell.
+The original console bytes are restored in Git. The complete published batch is
+also checked against Git objects, rather than working files alone.
+[Line-ending regression and complete Git-object verification](../../plans/design-benchmarks/evidence-line-endings-v1/).
+
 ## Historical checkpoints and investigations
 
 ## Historical 908a94e three-platform functional checkpoint
