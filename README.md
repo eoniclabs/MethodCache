@@ -1,8 +1,16 @@
-# MethodCache
+<p align="center">
+  <img src="assets/branding/icon.svg" alt="MethodCache logo: a lightning bolt between curly braces" width="128" height="128">
+</p>
 
-[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
-[![NuGet](https://img.shields.io/badge/NuGet-not%20yet%20published-lightgrey)](https://www.nuget.org/packages?q=MethodCache)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<h1 align="center">MethodCache</h1>
+
+<p align="center">
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10-FFB020?labelColor=1E1B3A" alt=".NET 10"></a>
+  <a href="docs/features/native-aot.md"><img src="https://img.shields.io/badge/Native%20AOT-ready-FFB020?labelColor=1E1B3A" alt="Native AOT ready"></a>
+  <a href="#performance"><img src="https://img.shields.io/badge/cache%20hit-0%20B%20allocated-FFB020?labelColor=1E1B3A" alt="A cache hit allocates 0 B"></a>
+  <a href="https://www.nuget.org/packages?q=MethodCache"><img src="https://img.shields.io/badge/NuGet-not%20yet%20published-F5F3FF?labelColor=1E1B3A" alt="NuGet: not yet published"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F5F3FF?labelColor=1E1B3A" alt="MIT license"></a>
+</p>
 
 **Cache any .NET method with one attribute.** MethodCache's source generator writes the caching code for you at
 compile time: no reflection, no hand-written keys, no `TryGetValue` boilerplate, and it works with Native AOT.

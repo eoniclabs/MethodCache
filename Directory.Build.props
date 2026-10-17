@@ -5,6 +5,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>cache;caching;performance;method-caching;source-generator;roslyn-analyzer</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon-128.png</PackageIcon>
     <Company>EonicLabs</Company>
     <PackageProjectUrl>https://github.com/eoniclabs/MethodCache</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
@@ -52,6 +53,11 @@
 
   <ItemGroup>
     <PackageReference Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The logo on nuget.org; build/ci/check_package_contracts.py checks that every package carries it -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)assets/branding/icon-128.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
   <!-- Items are evaluated after every property, so this sees a project's own PackageReadmeFile -->

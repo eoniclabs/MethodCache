@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Generated decorators
 
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation

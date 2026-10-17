@@ -191,8 +191,9 @@ public sealed class ProductService(Database db) : IProductService
 - `"product:{id}"` is a tag template: `GetAsync(42)` is tagged `product:42`.
 - `UpdateAsync(42, ...)` removes every entry tagged `products` or `product:42` once it has completed.
 
-The attributes must be on the interface. On a class they do nothing, and the analyzer reports
-[MC0001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0001) with a code fix that moves them.
+> [!IMPORTANT]
+> The attributes must be on the interface. On a class they do nothing, and the analyzer reports
+> [MC0001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0001) with a code fix that moves them.
 
 ## 3. Register it
 
@@ -614,8 +615,9 @@ Entries created at the same moment, for example right after a deploy, also expir
 
 ## Removing entries early
 
-Expiration is for data that may be a little old. When you know data changed, remove it right away with
-[invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
+> [!TIP]
+> Expiration is for data that may be a little old. When you know data changed, remove it right away with
+> [invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 
 
 ---
@@ -777,8 +779,9 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 
 ## Limits
 
-The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
-once.
+> [!NOTE]
+> The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
+> once.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
 
@@ -814,7 +817,8 @@ builder.Services.AddMethodCache(config =>
 - The predicate runs once per load, never on a cache hit. If it throws, the result is returned and not stored.
 - It is set in startup code only, so it can't come from `appsettings.json`. `Any<T>.Value` stands for any argument.
 
-To stop caching `null` everywhere, set `CacheNullValues = false` on the [memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md) instead.
+> [!TIP]
+> To stop caching `null` everywhere, set `CacheNullValues = false` on the [memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md) instead.
 
 ## Skipping the cache for one call
 
@@ -1426,6 +1430,30 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
 
 ## How it works
 
+```mermaid
+flowchart LR
+    A([Call a cached method]):::dark --> B{In memory?<br/>L1}
+    B -- yes --> R([Return the value]):::amber
+    B -- no --> C{In Redis or<br/>SQL Server? L2}
+    C -- yes --> D[Keep it in memory]:::light --> R
+    C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
+    classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
+    classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
+    classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
+```
+
+```mermaid
+sequenceDiagram
+    participant A as Instance A
+    participant L2 as Redis / SQL Server
+    participant B as Instance B
+    A->>A: [CacheInvalidate] or InvalidateTagsAsync
+    A->>L2: Remove the key, or stamp the tag
+    A-->>B: Backplane message (pub/sub, or the next poll)
+    B->>B: Drop the in-memory copy
+    Note over B: The next call reads L2 or runs the method
+```
+
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
@@ -1436,8 +1464,9 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
-Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
-are ignored with one warning.
+> [!IMPORTANT]
+> Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
+> are ignored with one warning.
 
 ## Policy isolation
 
@@ -1583,12 +1612,13 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 
 ## Keep invalidations from being evicted
 
-Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
-stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
-it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
-noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
-them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
-as down and answers from memory. SQL Server removes rows only once they expired.
+> [!WARNING]
+> Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
+> stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
+> it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+> noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
+> them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
+> as down and answers from memory. SQL Server removes rows only once they expired.
 
 ## Limits
 
@@ -1791,6 +1821,21 @@ Method defaults are set with `Defaults.WithDuration`; unset defaults use five mi
 the generated fast path are always enabled. `MaxHttpBytes` (32 MiB by default) is reserved for the separate HTTP store in design PR 6;
 it does not yet limit the current HTTP storage path.
 
+## How a call is answered
+
+```mermaid
+flowchart LR
+    A([Call a cached method]):::dark --> B{In memory?}
+    B -- yes --> R([Return the same instance]):::amber
+    B -- no --> C[Concurrent callers with the<br/>same key share one call]:::light
+    C --> E[Run your method]:::dark
+    E -- returns --> F[Store it, unless CacheWhen<br/>or CacheNullValues rejects it]:::light --> R
+    E -- throws --> X(["Nothing is stored: the caller gets<br/>the exception or a fail-safe value"]):::dark
+    classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
+    classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
+    classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
+```
+
 ## Bounding by size
 
 Object sizes can't be measured reliably at runtime, so to bound the cache by memory you say what an entry costs:
@@ -1831,8 +1876,9 @@ Moments after the writes stop, the cache is back within the bound.
 
 ## Cached objects are shared
 
-The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
-object; return immutable types such as records, or copies.
+> [!WARNING]
+> The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
+> object; return immutable types such as records, or copies.
 
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 
@@ -1951,10 +1997,11 @@ independent. Configure HTTP caching separately and use its administrator for inv
 
 ## Time
 
-The cache reads the time from the `TimeProvider` registered in the container, if there is one. Register a fake
-`TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
-This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
-eviction and the background revalidation timeout.
+> [!TIP]
+> The cache reads the time from the `TimeProvider` registered in the container, if there is one. Register a fake
+> `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
+> This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
+> eviction and the background revalidation timeout.
 
 The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
 
@@ -2119,8 +2166,9 @@ invalidation; `PrefixCollisionTests` forces collisions through all lookup/public
 
 # Troubleshooting
 
-To see what is actually cached, list the entries with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`,
-and the effective policy of every method with `GetMethods()` or `GET /methodcache/methods` ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
+> [!TIP]
+> To see what is actually cached, list the entries with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`,
+> and the effective policy of every method with `GetMethods()` or `GET /methodcache/methods` ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
 ## The method runs on every call
 
@@ -2187,8 +2235,9 @@ a key.
 
 ## A caller changed a cached object, and others see the change
 
-The cache hands the same instance to every caller. Return immutable types such as records, or copies
-([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared)).
+> [!WARNING]
+> The cache hands the same instance to every caller. Return immutable types such as records, or copies
+> ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared)).
 
 ## Build errors and warnings
 

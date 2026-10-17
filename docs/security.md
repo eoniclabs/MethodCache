@@ -1,3 +1,5 @@
+[← MethodCache documentation](README.md)
+
 # Security
 
 What each package protects against, what it leaves to you, and the tests that hold it to that.

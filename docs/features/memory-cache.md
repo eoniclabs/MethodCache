@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Memory cache
 
 The in-memory cache uses W-TinyLFU eviction: when it is full, it keeps the entries that are read often and
@@ -28,6 +30,21 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 Method defaults are set with `Defaults.WithDuration`; unset defaults use five minutes. Cleanup, statistics and
 the generated fast path are always enabled. `MaxHttpBytes` (32 MiB by default) is reserved for the separate HTTP store in design PR 6;
 it does not yet limit the current HTTP storage path.
+
+## How a call is answered
+
+```mermaid
+flowchart LR
+    A([Call a cached method]):::dark --> B{In memory?}
+    B -- yes --> R([Return the same instance]):::amber
+    B -- no --> C[Concurrent callers with the<br/>same key share one call]:::light
+    C --> E[Run your method]:::dark
+    E -- returns --> F[Store it, unless CacheWhen<br/>or CacheNullValues rejects it]:::light --> R
+    E -- throws --> X(["Nothing is stored: the caller gets<br/>the exception or a fail-safe value"]):::dark
+    classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
+    classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
+    classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
+```
 
 ## Bounding by size
 
@@ -71,8 +88,9 @@ Moments after the writes stop, the cache is back within the bound.
 
 ## Cached objects are shared
 
-The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
-object; return immutable types such as records, or copies.
+> [!WARNING]
+> The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
+> object; return immutable types such as records, or copies.
 
 Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
 

@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Caching third-party code
 
 MethodCache can cache calls to code you don't own, such as API clients, cloud SDKs or payment gateways, to cut API

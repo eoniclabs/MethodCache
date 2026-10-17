@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Native AOT
 
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
