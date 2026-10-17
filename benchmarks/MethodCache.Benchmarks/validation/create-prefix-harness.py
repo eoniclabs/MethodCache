@@ -11,14 +11,17 @@ core=root/'src/MethodCache.Core/MethodCache.Core.csproj';generator=root/'src/Met
 keys=root/'src/MethodCache.Core/Runtime/Keys'
 sip=(keys/'SipHashState.cs').is_file();marvin=(keys/'MarvinState.cs').is_file()
 if sip and marvin:raise SystemExit('Ambiguous prefix hash implementations in the runtime checkout.')
+# Older SipHash checkouts expose SipHashState.FinishUtf16 only; KeyPrefixHash adds the ASCII form
+ascii=sip and any('struct KeyPrefixHash' in file.read_text() for file in keys.glob('*.cs'))
 builder=(root/'src/MethodCache.Core/Generated/KeyBuilder.cs').read_text()
 constructor=bool(re.search(r'public\s+KeyBuilder\s*\(\s*MethodCall\s+\w+\s*,\s*Span<char>\s+\w+\s*\)',builder))
 features=[]
 if sip or marvin:features.append('METHODCACHE_PREFIX_HASH')
 if sip:features.append('METHODCACHE_SIPHASH')
+if ascii:features.append('METHODCACHE_ASCII_HASH')
 if constructor:features.append('METHODCACHE_KEY_BUILDER_CONSTRUCTOR')
 symbol=''.join(';'+feature for feature in features)
-capabilities={'prefix_hash':sip or marvin,'hash_algorithm':'SipHash-1-3' if sip else 'Marvin32' if marvin else 'runtime string hash','in_place_key_builder':constructor}
+capabilities={'prefix_hash':sip or marvin,'hash_algorithm':'SipHash-1-3' if sip else 'Marvin32' if marvin else 'runtime string hash','ascii_key_hash':ascii,'in_place_key_builder':constructor}
 (out/'MethodCache.Benchmarks.csproj').write_text(f'''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
 <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><AssemblyName>MethodCache.Benchmarks</AssemblyName>
 <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
@@ -60,15 +63,17 @@ if (args.Contains("--verify-components"))
     var core = typeof(CachedMethod).Assembly;
     var expectedPrefixHash = core.GetType("MethodCache.Core.Runtime.Keys.PrehashedKey") != null;
     var expectedSipHash = core.GetType("MethodCache.Core.Runtime.Keys.SipHashState") != null;
+    var expectedAsciiHash = core.GetType("MethodCache.Core.Runtime.Keys.KeyPrefixHash") != null;
     var expectedConstructor = typeof(KeyBuilder).GetConstructors().Any(constructor =>
     {
         var parameters = constructor.GetParameters();
         return parameters.Length == 2 && parameters[0].ParameterType == typeof(MethodCall) && parameters[1].ParameterType == typeof(Span<char>);
     });
     if (KeyHashLookupBenchmarks.UsesPrefixHash != expectedPrefixHash || KeyHashLookupBenchmarks.UsesSipHash != expectedSipHash ||
+        KeyHashLookupBenchmarks.UsesAsciiHash != expectedAsciiHash ||
         PrefixHitPathBenchmarks.UsesInPlaceKeyBuilder != expectedConstructor)
         throw new Exception("Compiled component paths do not match the referenced Core implementation.");
-    Console.WriteLine($"Verified compiled capabilities: prefix={expectedPrefixHash}, SipHash={expectedSipHash}, in-place builder={expectedConstructor}.");
+    Console.WriteLine($"Verified compiled capabilities: prefix={expectedPrefixHash}, SipHash={expectedSipHash}, ASCII={expectedAsciiHash}, in-place builder={expectedConstructor}.");
     foreach (var length in new[] { 4, 80, 256 })
     foreach (var argument in new[] { "Int", "Guid" })
     {
