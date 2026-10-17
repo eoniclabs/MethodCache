@@ -73,7 +73,9 @@ internal static class HttpNativeContract
         Assert.True(await admin.RemoveEntryAsync(known.Key));
         Assert.Equal("removed:alice", await Read(a, url));
         Assert.Equal("removed:alice", await Read(c, url));
-        Assert.False(await admin.RemoveEntryAsync("http:" + new string('0', 64)));
+        // An unobserved id can also be a manual method key held only in L2. The public admin
+        // contract confirms its distributed invalidation rather than asserting global absence.
+        Assert.True(await admin.RemoveEntryAsync("http:" + new string('0', 64)));
 
         foreach (var method in new[] { HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete })
         {
