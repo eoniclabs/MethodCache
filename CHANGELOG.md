@@ -47,6 +47,9 @@ release.
 
 ### Core-owned HTTP storage
 
+- Derive local HTTP administration IDs when first inspected, avoiding the hash and ID allocation on cold publication.
+  IDs, removal behavior and conservative response-budget accounting remain unchanged.
+
 - Merge 304 response headers directly into the replacement representation, avoiding a temporary dictionary
   and per-response filter allocations when no Connection options are present.
 
