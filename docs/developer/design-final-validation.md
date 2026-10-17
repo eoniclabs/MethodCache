@@ -121,6 +121,13 @@ not adopted. The implementation retains its existing lookup-helper attributes;
 no new time limit is inferred from the estimates.
 [Complete unadopted trial](../../plans/design-benchmarks/hit-inlining-trial-v1/).
 
+A second complete isolated trial caches immutable snapshot inputs to reduce
+dependency-chain reads, preserving binding and live generation checks. All sixty
+launches verify; sync is unchanged and the other two intervals are too wide.
+This prototype is also not adopted. Neither experiment clears the GUID regression
+or changes the precision criterion.
+[Complete unadopted snapshot-input trial](../../plans/design-benchmarks/hit-snapshot-inputs-trial-v1/).
+
 The completed five-case Nimbus PR128 CPU comparison retains all ten pairs per case.
 Its two generated sync/int controls are faster, but the three GUID return shapes
 have interval widths greater than 6%, so this comparison **does not pass** the time
