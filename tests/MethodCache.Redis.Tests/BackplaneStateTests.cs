@@ -89,6 +89,37 @@ public class BackplaneStateTests
         Assert.Equal(BackplaneState.Disconnected, backplane.ConnectionState);
     }
 
+    [Fact]
+    public async Task RepeatedRecovery_KeepsOneDeliveryAndUnsubscribesBorrowedConnection()
+    {
+        var connection = Substitute.For<IConnectionMultiplexer>();
+        var subscriber = Substitute.For<ISubscriber>();
+        connection.GetSubscriber(Arg.Any<object>()).Returns(subscriber);
+        Action<RedisChannel, RedisValue>? handlers = null;
+        subscriber.SubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>())
+            .Returns(call => { handlers += call.ArgAt<Action<RedisChannel, RedisValue>>(1); return Task.CompletedTask; });
+        subscriber.UnsubscribeAsync(Arg.Any<RedisChannel>(), Arg.Any<Action<RedisChannel, RedisValue>>(), Arg.Any<CommandFlags>())
+            .Returns(call => { handlers -= call.ArgAt<Action<RedisChannel, RedisValue>>(1); return Task.CompletedTask; });
+        await using var backplane = new RedisBackplane(() => Task.FromResult(connection), "channel");
+        var deliveries = 0;
+        await backplane.SubscribeAsync(message =>
+        {
+            if (message.Type == BackplaneMessageType.KeyInvalidation) deliveries++;
+            return Task.CompletedTask;
+        });
+        for (var i = 0; i < 2; i++)
+        {
+            connection.ConnectionFailed += Raise.EventWith(Failure(connection, ConnectionType.Subscription));
+            connection.ConnectionRestored += Raise.EventWith(Failure(connection, ConnectionType.Subscription));
+            await backplane.RecoveryCompletion;
+        }
+        handlers!(RedisChannel.Literal("channel"), RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "other", "key"));
+        Assert.Equal(1, deliveries);
+        await backplane.UnsubscribeAsync();
+        Assert.Null(handlers);
+        connection.DidNotReceive().Dispose();
+    }
+
     private static ConnectionFailedEventArgs Failure(object connection, ConnectionType type)
         => new(connection, new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 6379), type,
             ConnectionFailureType.SocketFailure, new InvalidOperationException("offline"), "test");

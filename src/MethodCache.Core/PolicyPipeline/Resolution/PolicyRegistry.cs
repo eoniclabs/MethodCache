@@ -12,6 +12,8 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     private readonly Func<string, Task>? _invalidate;
     private readonly ConcurrentDictionary<string, Task> _invalidations = new(StringComparer.Ordinal);
     internal Task Invalidation(string methodId) => _invalidations.GetValueOrDefault(methodId) ?? Task.CompletedTask;
+    internal void ForgetInvalidation(string methodId, Task completed)
+        => _invalidations.TryRemove(new KeyValuePair<string, Task>(methodId, completed));
 
     public PolicyRegistry(PolicyResolver resolver, Func<string, Task>? invalidate = null)
     {

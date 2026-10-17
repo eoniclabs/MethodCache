@@ -18,11 +18,11 @@ public readonly struct MethodCall
     /// <summary>Starts an inline key bound to this invocation for previously generated contract-1 code.</summary>
     /// <remarks>New generated code uses the <see cref="KeyBuilder"/> constructor to avoid copying a returned builder.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public KeyBuilder StartKey(Span<char> buffer) => new(this, buffer);
+    internal KeyBuilder StartKey(Span<char> buffer) => new(this, buffer);
 
     /// <summary>Binds already formatted key text to this invocation.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public KeyBuilder BindKey(string key)
+    internal KeyBuilder BindKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
         return new KeyBuilder(key, _snapshot);
@@ -30,7 +30,7 @@ public readonly struct MethodCall
 
     /// <summary>Binds owned key text without carrying an unused writable span.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TextKey BindTextKey(string key)
+    internal TextKey BindTextKey(string key)
     {
         ArgumentNullException.ThrowIfNull(key);
         return new TextKey(key, _snapshot);
@@ -46,7 +46,7 @@ public readonly struct MethodCall
 
     /// <summary>Looks up a task from snapshot-bound owned key text.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetTask<T>(in TextKey key, [NotNullWhen(true)] out Task<T>? task)
+    internal bool TryGetTask<T>(in TextKey key, [NotNullWhen(true)] out Task<T>? task)
     {
         if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextTask(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out task))
         {
@@ -58,7 +58,7 @@ public readonly struct MethodCall
 
     /// <summary>Looks up a value from snapshot-bound owned key text.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetValue<T>(in TextKey key, out T? value)
+    internal bool TryGetValue<T>(in TextKey key, out T? value)
     {
         if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextValue(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out value))
         {
@@ -70,7 +70,7 @@ public readonly struct MethodCall
 
     /// <summary>Looks up a value task from snapshot-bound owned key text.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetValueTask<T>(in TextKey key, out ValueTask<T> value)
+    internal bool TryGetValueTask<T>(in TextKey key, out ValueTask<T> value)
     {
         if (TryGetValue(in key, out T? found)) { value = new ValueTask<T>(found!); return true; }
         value = default;
@@ -78,7 +78,7 @@ public readonly struct MethodCall
     }
 
     /// <summary>Returns this invocation's prefix for complex inline argument formatting.</summary>
-    public string KeyPrefix => _snapshot.Prefix;
+    internal string KeyPrefix => _snapshot.Prefix;
 
     /// <summary>Whether this captured policy needs argument values for its parameterized tags.</summary>
     public bool NeedsTagArguments => _snapshot.HasParameterizedTags;

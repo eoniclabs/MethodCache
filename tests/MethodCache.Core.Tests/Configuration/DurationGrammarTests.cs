@@ -17,7 +17,7 @@ public class DurationGrammarTests
         services.AddMethodCache(builder => builder.FromAssemblyOf<DurationGrammarTests>().FromConfiguration(configuration, "MethodCache"));
         using var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<MethodCache.Policies.IPolicyRegistry>();
-        Assert.Equal(TimeSpan.FromTicks(ticks), registry.GetPolicy(typeof(IReader).FullName!.Replace('+', '.') + ".Read").Policy.Duration);
+        Assert.Equal(TimeSpan.FromTicks(ticks), registry.GetPolicy(global::MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IReader), "Read")).Policy.Duration);
     }
     [Theory]
     [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.Invalid), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
@@ -30,6 +30,22 @@ public class DurationGrammarTests
         using var provider = services.BuildServiceProvider();
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<MethodCache.Policies.IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
         Assert.Contains("MethodCache:Defaults:Duration", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Duration", "")]
+    [InlineData("Duration", " ")]
+    [InlineData("Version", "")]
+    [InlineData("Version", " ")]
+    public void Configuration_EmptyExplicitSetting_IsRejected(string setting, string value)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["MethodCache:Defaults:" + setting] = value }).Build();
+        var services = new ServiceCollection();
+        services.AddMethodCache(builder => builder.FromConfiguration(configuration, "MethodCache"));
+        using var provider = services.BuildServiceProvider();
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<MethodCache.Policies.IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
+        Assert.Contains("MethodCache:Defaults:" + setting, error.Message, StringComparison.Ordinal);
     }
 
     public interface IReader { [Cache] int Read(); }

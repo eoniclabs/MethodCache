@@ -11,7 +11,7 @@ using global::System.Threading.Tasks;
 
 namespace App
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class IUserServiceDecorator : global::App.IUserService
     {
@@ -37,7 +37,7 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = registry.Method("App.IUserService.GetUserAsync", typeof(global::App.IUserService), "GetUserAsync", "App.IUserService.GetUserAsync");
+                Method0 = registry.Method("[SnapshotApp]App.IUserService.GetUserAsync", typeof(global::App.IUserService), "GetUserAsync", "[SnapshotApp]App.IUserService.GetUserAsync");
             }
         }
 
@@ -45,7 +45,7 @@ namespace App
         global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, __mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[66]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<global::App.User>(ref __mcKeyBuilder, out var __mcCachedValue))

@@ -61,7 +61,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#nullable enable");
                 sb.AppendLine("namespace MethodCache.Generated");
                 sb.AppendLine("{");
-                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(typeof(MethodCacheGenerator).Assembly.GetName().Version!.ToString())})]");
+                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(ThisAssembly.AssemblyInformationalVersion)})]");
                 sb.AppendLine("    internal static partial class MethodCacheDecoratorRegistrations");
                 sb.AppendLine("    {");
                 sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
@@ -86,7 +86,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("                builder.Decorator(");
                     sb.AppendLine($"                    typeof({interfaceFqn}),");
                     sb.AppendLine($"                    static (inner, services) => new {decoratorFqn}(({interfaceFqn})inner, services),");
-                    sb.AppendLine($"                    new string[] {{ {string.Join(", ", info.Policies.Select(p => Utils.Literal(p.MethodId)))} }});");
+                    sb.AppendLine($"                    new string[] {{ {string.Join(", ", info.Policies.Select(p => Utils.Literal(p.MethodId)))} }},");
+                    sb.AppendLine($"                    new string[] {{ {string.Join(", ", info.Policies.Select(p => Utils.Literal(p.KeyMethod)))} }});");
                     foreach (var candidate in candidates.Where(c => c.HasPublicConstructor && c.Interfaces.Any(i => i.AssemblyIdentity == info.AssemblyIdentity && i.Fqn == interfaceFqn)))
                         sb.AppendLine($"                builder.ImplementationCandidate(typeof({interfaceFqn}), typeof({candidate.Fqn}));");
                 }

@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
-using FrozenVendor.Contract1Net10;
+using FrozenVendor.Contract1Final;
 using MethodCache;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -16,7 +16,7 @@ public partial class VendorCompatibilityTests
     [Fact]
     public void FrozenNet10Images_MatchRecordedHashesAndTarget()
     {
-        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Net10/manifest.json")));
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Final/manifest.json")));
         Assert.Equal("net10.0", manifest.RootElement.GetProperty("target_framework").GetString());
         Assert.Matches("^[0-9a-f]{40}$", manifest.RootElement.GetProperty("source_commit").GetString()!);
         Assert.DoesNotContain("candidate", manifest.RootElement.GetProperty("package_version").GetString()!, StringComparison.OrdinalIgnoreCase);
@@ -26,7 +26,7 @@ public partial class VendorCompatibilityTests
         {
             var name = image.GetProperty("file").GetString()!;
             var path = Path.Combine(AppContext.BaseDirectory, name);
-            if (!File.Exists(path)) path = Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Net10", name);
+            if (!File.Exists(path)) path = Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Final", name);
             Assert.Equal(image.GetProperty("sha256").GetString(), Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant());
         }
     }
@@ -34,15 +34,24 @@ public partial class VendorCompatibilityTests
     [Fact]
     public void FrozenNet10Module_UnknownContract_FailsBeforeDescribe()
     {
-        var assembly = Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Net10/FrozenVendor.Contract99Net10.dll"));
-        var module = assembly.GetType("FrozenVendor.Contract99Net10.IncompatibleModule")!;
+        var assembly = Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Baselines/Contract1Final/FrozenVendor.Contract99Final.dll"));
+        var module = assembly.GetType("FrozenVendor.Contract99Final.IncompatibleModule")!;
         var calls = module.GetField("DescribeCalls")!;
         try
         {
             RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
             Assert.Equal(0, calls.GetValue(null));
+            var validServices = new ServiceCollection();
+            validServices.AddSingleton<IService, Service>();
+            validServices.AddMethodCache(builder => builder.FromAssemblyOf<Marker>());
+            using (var valid = validServices.BuildServiceProvider())
+            {
+                Assert.Equal(1, valid.GetRequiredService<IService>().Read(1));
+                Assert.Equal(1, valid.GetRequiredService<IService>().Read(1));
+            }
+            Assert.Equal(0, calls.GetValue(null));
             var error = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddMethodCache());
-            Assert.Contains("FrozenVendor.Contract99Net10", error.Message);
+            Assert.Contains("FrozenVendor.Contract99Final", error.Message);
             Assert.Contains("contract 99", error.Message);
             Assert.Equal(0, calls.GetValue(null));
         }
@@ -57,10 +66,10 @@ public partial class VendorCompatibilityTests
     public async Task FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes()
     {
         var inner = new Service();
-        var sdk = new FrozenVendor.ThirdPartyNet10.Client();
+        var sdk = new FrozenVendor.ThirdPartyFinal.Client();
         var services = new ServiceCollection();
         services.AddSingleton<IService>(inner);
-        services.AddSingleton<FrozenVendor.ThirdPartyNet10.IClient>(sdk);
+        services.AddSingleton<FrozenVendor.ThirdPartyFinal.IClient>(sdk);
         services.AddScoped<IRepository<string>, StringRepository>();
         services.AddMethodCache(b => b.FromAssemblyOf<Marker>());
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
@@ -79,7 +88,13 @@ public partial class VendorCompatibilityTests
         Assert.Equal(5, inner.Calls);
         await service.UpdateAsync(42);
         Assert.Equal(6, service.Read(42));
-        var client = provider.GetRequiredService<FrozenVendor.ThirdPartyNet10.IClient>();
+        Assert.Equal(7, service.Collection([1, 2]));
+        Assert.Equal(7, service.Collection([1, 2]));
+        Assert.Equal(8, service.Record(new Point(1, "a:b")));
+        Assert.Equal(8, service.Record(new Point(1, "a:b")));
+        Assert.Equal(9, service.Provider(new Token("a:b")));
+        Assert.Equal(9, service.Provider(new Token("a:b")));
+        var client = provider.GetRequiredService<FrozenVendor.ThirdPartyFinal.IClient>();
         Assert.Equal(1, await client.ReadAsync(42));
         Assert.Equal(1, await client.ReadAsync(42));
         Assert.Equal(2, await client.UncachedAsync(42));
@@ -87,6 +102,37 @@ public partial class VendorCompatibilityTests
         var repository = scope.ServiceProvider.GetRequiredService<IRepository<string>>();
         Assert.Equal("1", await repository.ReadAsync(42));
         Assert.Equal("1", await repository.ReadAsync(42));
+    }
+
+    [Fact]
+    public async Task FrozenVendor_TwoContainers_KeepManagersOverridesAndDisposalSeparate()
+    {
+        ServiceProvider Build()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<IService, Service>();
+            services.AddMethodCache(b => b.FromAssemblyOf<Marker>());
+            return services.BuildServiceProvider();
+        }
+        var first = Build();
+        await using var second = Build();
+        try
+        {
+            var a = first.GetRequiredService<IService>();
+            var b = second.GetRequiredService<IService>();
+            Assert.NotSame(first.GetRequiredService<ICacheManager>(), second.GetRequiredService<ICacheManager>());
+            Assert.Equal(1, a.Read(42));
+            Assert.Equal(1, b.Read(42));
+            await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync<IService, int>(
+                service => service.Read(0), options => options.WithEnabled(false));
+            Assert.Equal(2, a.Read(42));
+            Assert.Equal(3, a.Read(42));
+            Assert.Equal(1, b.Read(42));
+            await first.DisposeAsync();
+            Assert.Equal(1, b.Read(42));
+            Assert.Equal(2, b.Read(43));
+        }
+        finally { await first.DisposeAsync(); }
     }
 
     [Fact]

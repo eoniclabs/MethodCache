@@ -17,7 +17,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IUserService), "GetUser");
 
-            Assert.Equal("MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
+            Assert.Equal("[MethodCache.Core.Tests]MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
         }
 
         [Fact]
@@ -31,7 +31,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IRepository<int>), "Get");
 
-            Assert.Contains("[System.Int32]", prefix);
+            Assert.Contains("[" + Generated.KeyParts.TypeIdentity(typeof(int)) + "]", prefix);
             Assert.DoesNotContain("Version=", prefix);
             Assert.NotEqual(prefix, MethodCacheKeys.Prefix(typeof(IRepository<long>), "Get"));
         }

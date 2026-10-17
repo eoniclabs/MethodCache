@@ -11,7 +11,7 @@ namespace MethodCache.Docs.Tests;
 /// </summary>
 public class PolicyPrecedenceTests
 {
-    private static readonly string GetId = typeof(IPrecedenceOrders).FullName!.Replace('+', '.') + ".GetAsync";
+    private static readonly string GetId = $"[{typeof(IPrecedenceOrders).Assembly.GetName().Name}]{typeof(IPrecedenceOrders).FullName!.Replace('+', '.')}.GetAsync";
 
     [Fact]
     public async Task RuntimeTagOverride_KeepsTheAttributeTags_SoCacheInvalidateStillReachesTheEntry()
@@ -88,7 +88,7 @@ public class PolicyPrecedenceTests
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromSeconds(30)).WithSlidingExpiration(TimeSpan.FromSeconds(10))));
         if (settings != null)
         {
-            services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+            services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(settings).Build()));
         }
 
         return services.BuildServiceProvider();

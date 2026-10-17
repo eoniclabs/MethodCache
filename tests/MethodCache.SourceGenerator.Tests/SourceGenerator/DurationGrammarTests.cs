@@ -23,11 +23,16 @@ public class DurationGrammarTests
         Assert.Contains(result.Results.SelectMany(r => r.GeneratedSources), source => source.SourceText.ToString().Contains("FromTicks(" + ticks + "L)", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void DurationDiagnostic_PreservesExistingMC0004Meaning()
+        => Assert.Contains(Generate("using MethodCache; public interface IReader { [Cache(Duration = \"0s\")] int Read(); }").Diagnostics,
+            diagnostic => diagnostic.Id == "MC0004");
+
     [Theory]
     [InlineData("Version = -1", "MC0021")]
-    [InlineData("FailSafeTimeout = \"0s\"", "MC0002")]
-    [InlineData("RetryAfter = \"0s\"", "MC0002")]
-    [InlineData("Duration = null", "MC0002")]
+    [InlineData("FailSafeTimeout = \"0s\"", "MC0004")]
+    [InlineData("RetryAfter = \"0s\"", "MC0004")]
+    [InlineData("Duration = null", "MC0004")]
     public void InvalidSettings_AreGeneratorErrors(string setting, string id)
         => Assert.Contains(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == id);
 

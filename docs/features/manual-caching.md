@@ -55,7 +55,9 @@ var list = await cache.GetOrCreateAsync(
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
 `InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
 A custom manager uses `options.GetCacheKey(key)` to apply versions once and `options.CanCache(value)` to evaluate the
-result predicate. Generated calls already carry complete keys; the same helper handles them without adding another version.
+result predicate. Its lookup and key-invalidation methods normalize their logical keys with
+`CacheManagerExtensions.GetCacheKey(key, version)`, using the optional version unchanged when forwarding calls.
+Generated calls already carry complete keys; the same helper handles them without adding another version.
 Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
 synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
 
@@ -77,9 +79,10 @@ if (lookup.Found)
 
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
 shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `CacheContext.Key`
-always holds the key you passed. To invalidate or look up such an entry directly, for example with
-`InvalidateKeysAsync` or `ICacheAdministrator`, use `InvalidateKeyAsync(key, version)` or get the stored key from `CacheManagerExtensions.GetCacheKey(key,
-version)` instead of building it by hand.
+always holds the key you passed. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
+version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
+`ICacheAdministrator` accepts the physical stored key from `CacheManagerExtensions.GetCacheKey(key, version)`;
+do not construct that internal format yourself.
 
 ## Many keys at once
 

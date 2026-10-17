@@ -30,6 +30,7 @@ internal static class MethodIds
         ArgumentException.ThrowIfNullOrEmpty(methodName);
 
         var builder = new StringBuilder();
+        builder.Append(Internal.AssemblyIdentity.PolicyPrefix(serviceType.Assembly.GetName().Name!));
         AppendType(builder, serviceType.IsGenericType ? serviceType.GetGenericTypeDefinition() : serviceType);
         return builder.Append('.').Append(methodName).ToString();
     }
@@ -42,6 +43,7 @@ internal static class MethodIds
         var definitionType = declaringType.IsGenericType ? declaringType.GetGenericTypeDefinition() : declaringType;
 
         var builder = new StringBuilder();
+        builder.Append(Internal.AssemblyIdentity.PolicyPrefix(definitionType.Assembly.GetName().Name!));
         AppendType(builder, definitionType);
         builder.Append('.').Append(method.Name);
 

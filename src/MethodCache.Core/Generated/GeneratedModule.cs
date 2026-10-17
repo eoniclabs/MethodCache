@@ -24,7 +24,8 @@ public static class GeneratedCode
 
     internal static GeneratedModuleBuilder[] Describe(IEnumerable<Assembly> explicitAssemblies, IEnumerable<Type> services)
     {
-        foreach (var assembly in explicitAssemblies.Concat(services.Select(static t => t.Assembly)).Distinct())
+        var requested = explicitAssemblies.Distinct().ToArray();
+        foreach (var assembly in requested.Concat(services.Select(static t => t.Assembly)).Distinct())
             RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
         if (RuntimeFeature.IsDynamicCodeSupported)
         {
@@ -34,7 +35,7 @@ public static class GeneratedCode
                     RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
         }
 
-        var modules = Modules.Values.ToArray();
+        var modules = Modules.Values.Where(entry => requested.Length == 0 || requested.Contains(entry.Module.GetType().Assembly)).ToArray();
         // Validate the entire selected bootstrap before executing any descriptor or factory.
         foreach (var (version, module) in modules)
             if (version != 1)
@@ -111,16 +112,20 @@ public sealed class GeneratedModuleBuilder
     }
 
     /// <summary>Describes a factory wrapping the exact inner registration with its bound runtime services.</summary>
-    public void Decorator(Type serviceType, Func<object, GeneratedServices, object> factory, string[] methodIds)
+    public void Decorator(Type serviceType, Func<object, GeneratedServices, object> factory, string[] methodIds, string[]? keyMethods = null)
     {
         ArgumentNullException.ThrowIfNull(serviceType);
         ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(methodIds);
+        if (keyMethods != null && keyMethods.Length != methodIds.Length) throw new ArgumentException("Each method identity needs a key method name.", nameof(keyMethods));
         var ids = methodIds.ToHashSet(StringComparer.Ordinal);
         Decorators.Add(new DecoratorRegistration(serviceType,
             (provider, inner) => factory(inner, GeneratedServices.From(provider)),
             services => AddPolicies(services, serviceType, ids))
-        { GeneratedIn = Module.GetType().Assembly });
+        {
+            GeneratedIn = Module.GetType().Assembly,
+            MethodKeys = keyMethods == null ? [] : methodIds.Select((id, index) => (Id: id, Key: keyMethods[index])).ToArray()
+        });
     }
 
     /// <summary>Describes an accessible concrete implementation eligible for explicit auto-registration.</summary>

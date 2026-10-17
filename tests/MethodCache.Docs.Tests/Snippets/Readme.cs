@@ -102,7 +102,7 @@ namespace Docs.Readme
             // begin-snippet: readme-configuration
             builder.Services.AddMethodCache(config =>
                 config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-            builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+            builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
             // end-snippet
         }
 

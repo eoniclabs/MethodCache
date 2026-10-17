@@ -15,7 +15,7 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         {
             var ids = new MethodCacheAnalyzer().SupportedDiagnostics.Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal);
 
-            Assert.Equal(new[] { "MC0001", "MC0002", "MC0021" }, ids);
+            Assert.Equal(new[] { "MC0001", "MC0004", "MC0021" }, ids);
         }
 
         [Theory]
@@ -30,7 +30,7 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.Invalid), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
         public async Task SharedDurationCorpus_InvalidValues(string text)
         {
-            Assert.Equal("MC0002", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Duration = \"" + text + "\")] int Read(); }")).Id);
+            Assert.Equal("MC0004", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Duration = \"" + text + "\")] int Read(); }")).Id);
         }
 
         [Fact]
@@ -180,7 +180,7 @@ public class Generated
         [InlineData("RefreshAhead", "-00:01:00")]
         [InlineData("FailSafe", "1 hour")]
         [InlineData("FailSafeTimeout", "00:00:00")]
-        public async Task CacheWithInvalidTimeSpan_ReportsMC0002(string property, string value)
+        public async Task CacheWithInvalidTimeSpan_ReportsMC0004(string property, string value)
         {
             var source = $@"
 using MethodCache;
@@ -218,7 +218,7 @@ public interface IService
         [Theory]
         [InlineData("Duration", "5 minutes")]
         [InlineData("RefreshAhead", "00:00:00")]
-        public async Task CacheInterfaceWithInvalidTimeSpan_ReportsMC0002(string property, string value)
+        public async Task CacheInterfaceWithInvalidTimeSpan_ReportsMC0004(string property, string value)
         {
             var source = $@"
 using MethodCache;
@@ -248,6 +248,19 @@ using MethodCache;
             var diagnostics = await withAnalyzers.GetAnalyzerSemanticDiagnosticsAsync(compilation.GetSemanticModel(tree), filterSpan: null, CancellationToken.None);
 
             Assert.Equal(MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId, Assert.Single(diagnostics).Id);
+        }
+
+        [Theory]
+        [InlineData("Duration = \"0s\"", "MC0004")]
+        [InlineData("Version = -1", "MC0021")]
+        public async Task GeneratorAndAnalyzer_ReportInvalidSettingOnce(string setting, string id)
+        {
+            var input = CreateCompilation("using MethodCache; public interface IReader { [Cache(" + setting + ")] int Read(); }");
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(new SourceGenerator.MethodCacheGenerator());
+            driver.RunGeneratorsAndUpdateCompilation(input, out var generated, out var generatorDiagnostics);
+            var analyzerDiagnostics = await generated.WithAnalyzers(
+                ImmutableArray.Create<DiagnosticAnalyzer>(new MethodCacheAnalyzer())).GetAnalyzerDiagnosticsAsync();
+            Assert.Single(generatorDiagnostics.Concat(analyzerDiagnostics), diagnostic => diagnostic.Id == id);
         }
 
         private static CSharpCompilation CreateCompilation(string source)

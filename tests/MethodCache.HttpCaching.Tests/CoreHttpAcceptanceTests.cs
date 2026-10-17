@@ -132,6 +132,32 @@ public class CoreHttpAcceptanceTests
     }
 
     [Fact]
+    public async Task AdminIdCollision_RemovesTheSameKindThatGetEntryReports()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache();
+        var origin = new Origin();
+        services.AddHttpClient("api").AddHttpCaching(options => options.AllowUnverifiedTransport = true)
+            .ConfigurePrimaryHttpMessageHandler(() => origin);
+        await using var provider = services.BuildServiceProvider();
+        using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
+        await client.GetStringAsync("https://example.test/a");
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
+        var id = Assert.Single(admin.ListEntries()).Key;
+        var memory = provider.GetRequiredService<MethodCache.Core.Storage.Abstractions.IMemoryCache>();
+        await memory.SetAsync(id, 42, TimeSpan.FromMinutes(1));
+        Assert.Equal(CacheEntryKind.Method, admin.GetEntry(id)!.Kind);
+        Assert.True(await admin.RemoveEntryAsync(id));
+        Assert.False((await provider.GetRequiredService<ICacheManager>().TryGetAsync<int>(id)).Found);
+        Assert.Equal(CacheEntryKind.Http, admin.GetEntry(id)!.Kind);
+        await client.GetStringAsync("https://example.test/a");
+        Assert.Equal(1, origin.Calls);
+        Assert.True(await admin.RemoveEntryAsync(id));
+        await client.GetStringAsync("https://example.test/a");
+        Assert.Equal(2, origin.Calls);
+    }
+
+    [Fact]
     public async Task HttpAndMethodBudgets_EvictIndependently()
     {
         var services = new ServiceCollection();
@@ -176,15 +202,16 @@ public class CoreHttpAcceptanceTests
     }
 
     [Fact]
-    public async Task ClientNameLimit_RejectsOversizedNamesBeforeOrigin_AndKeepsAcceptedIdsBounded()
+    public async Task LongClientNames_AreAcceptedAndKeepAdministrationBounded()
     {
         using var store = new TestHttpStore(); var origin = new Origin();
         using var accepted = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, store, clientName: new string('a', 1024)));
         await accepted.GetStringAsync("https://example.test/a?private=canary");
         Assert.All(store.Core.List(), entry => Assert.Equal(69, entry.Id.Length));
-        using var rejected = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, store, clientName: new string('a', 1025)));
-        await Assert.ThrowsAsync<ArgumentException>(() => rejected.GetStringAsync("https://example.test/a"));
-        Assert.Equal(1, origin.Calls);
+        using var longer = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, store, clientName: new string('a', 1025)));
+        await longer.GetStringAsync("https://example.test/a");
+        Assert.Equal(2, origin.Calls);
+        Assert.All(store.Core.List(), entry => Assert.True(entry.Client.Length <= 256));
     }
 
     private sealed class Origin : HttpMessageHandler

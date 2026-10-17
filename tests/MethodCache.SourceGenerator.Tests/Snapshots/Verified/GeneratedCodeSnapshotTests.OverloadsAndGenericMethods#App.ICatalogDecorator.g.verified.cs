@@ -11,7 +11,7 @@ using global::System.Threading.Tasks;
 
 namespace App
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class ICatalogDecorator : global::App.ICatalog
     {
@@ -43,9 +43,9 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = registry.Method("App.ICatalog.Get(int)", typeof(global::App.ICatalog), "Get(int)", "App.ICatalog.Get(int)");
-                Method1 = registry.Method("App.ICatalog.Get(string)", typeof(global::App.ICatalog), "Get(string)", "App.ICatalog.Get(string)");
-                Method2 = registry.Method("App.ICatalog.Load", typeof(global::App.ICatalog), "Load", "App.ICatalog.Load");
+                Method0 = registry.Method("[SnapshotApp]App.ICatalog.Get(int)", typeof(global::App.ICatalog), "Get(int)", "[SnapshotApp]App.ICatalog.Get(int)");
+                Method1 = registry.Method("[SnapshotApp]App.ICatalog.Get(string)", typeof(global::App.ICatalog), "Get(string)", "[SnapshotApp]App.ICatalog.Get(string)");
+                Method2 = registry.Method("[SnapshotApp]App.ICatalog.Load", typeof(global::App.ICatalog), "Load", "[SnapshotApp]App.ICatalog.Load");
             }
         }
 
@@ -53,7 +53,7 @@ namespace App
         global::System.Threading.Tasks.Task<string> global::App.ICatalog.Get(int __mcArgument0)
         {
             var __mcCall = this._method_Method0.Capture();
-            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, __mcCall.KeyPrefix.Length + 12 <= 64 ? stackalloc char[64] : stackalloc char[256]);
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[64]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
             if (__mcCall.TryGetTask<string>(ref __mcKeyBuilder, out var __mcCachedValue))
@@ -115,7 +115,7 @@ namespace App
         private static class TypeArguments_Method2<__mcTypeArgument0>
             where __mcTypeArgument0 : class
         {
-            internal static readonly string Value = string.Concat("<", typeof(__mcTypeArgument0).ToString(), ">");
+            internal static readonly string Value = string.Concat("<", global::MethodCache.Generated.KeyParts.TypeIdentity(typeof(__mcTypeArgument0)), ">");
         }
 
     }

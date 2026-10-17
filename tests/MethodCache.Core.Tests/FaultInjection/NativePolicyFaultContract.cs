@@ -46,7 +46,7 @@ internal static class NativePolicyFaultContract
                     store.Hold = true;
                     using (var cancellation = new CancellationTokenSource())
                     {
-                        var invalidating = cache.InvalidateKeysAsync(["held"], cancellation.Token).AsTask();
+                        var invalidating = cache.InvalidateKeysAsync(["held"], cancellationToken: cancellation.Token).AsTask();
                         await store.Started.Task.WaitAsync(TimeSpan.FromSeconds(20));
                         afterHold?.Invoke();
                         Assert.False(memory.TryGetFreshForLookup<int>("held").Found);
@@ -62,7 +62,7 @@ internal static class NativePolicyFaultContract
                 case "validation":
                     await cache.GetOrCreateAsync("retained", (_, _) => ValueTask.FromResult(1));
                     await Assert.ThrowsAsync<ArgumentException>(() => cache.InvalidateKeysAsync(["retained", " "]).AsTask());
-                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.InvalidateKeysAsync(["retained"], new CancellationToken(true)).AsTask());
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.InvalidateKeysAsync(["retained"], cancellationToken: new CancellationToken(true)).AsTask());
                     Assert.True(memory.TryGetFreshForLookup<int>("retained").Found);
                     Assert.True((await cache.TryGetAsync<int>("retained")).Found);
                     Assert.Empty(store.Confirmed);

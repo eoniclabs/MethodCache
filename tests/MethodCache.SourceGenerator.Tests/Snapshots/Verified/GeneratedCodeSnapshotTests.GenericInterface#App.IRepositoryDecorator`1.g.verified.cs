@@ -20,7 +20,7 @@ namespace App
     /// for high-throughput scenarios due to runtime type resolution for cache keys.
     /// For maximum performance in critical paths, consider using non-generic interfaces.
     /// </remarks>
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class IRepositoryDecorator<__mcClassArgument0> : global::App.IRepository<__mcClassArgument0>
     {
@@ -46,7 +46,7 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = registry.Method("App.IRepository<T>.GetAsync", typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
+                Method0 = registry.Method("[SnapshotApp]App.IRepository<T>.GetAsync", typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
             }
         }
 

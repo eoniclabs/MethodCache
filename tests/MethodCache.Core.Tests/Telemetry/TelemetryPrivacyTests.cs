@@ -132,7 +132,7 @@ public class TelemetryPrivacyTests
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddProvider(logs));
         services.AddMethodCache();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         await using var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);

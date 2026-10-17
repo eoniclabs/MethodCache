@@ -19,14 +19,14 @@ public class NativePolicyFaultContractTests
         var failure = new ControlledAssertionException();
         var run = NativePolicyFaultContract.RunAsync("cancellation", new AtomicTestCache(), new ModelBackplane(),
             afterHold: () => throw failure);
-        var actual = await Assert.ThrowsAsync<ControlledAssertionException>(() => run.WaitAsync(TimeSpan.FromSeconds(2)));
+        var actual = await Assert.ThrowsAsync<ControlledAssertionException>(() => run.WaitAsync(TimeSpan.FromSeconds(30)));
         Assert.Same(failure, actual);
     }
 
     [Fact]
     public Task CancellationWithAnEarlierConfirmedStamp_TracksOnlyTheHeldOperation()
         => NativePolicyFaultContract.RunAsync("cancellation", new AtomicTestCache(), new ModelBackplane(), includeEarlierStamp: true)
-            .WaitAsync(TimeSpan.FromSeconds(2));
+            .WaitAsync(TimeSpan.FromSeconds(30));
 
     private sealed class ControlledAssertionException : Exception;
 

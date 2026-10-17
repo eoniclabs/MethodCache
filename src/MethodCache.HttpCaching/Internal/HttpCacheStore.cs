@@ -45,13 +45,15 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         private const string Unavailable = "|generation:unavailable:";
         internal View(HttpResponseStore core, TimeProvider time, string client, HttpCacheOptions options)
         {
-            if (client.Length > 1024) throw new ArgumentException("HTTP cache client names cannot exceed 1024 UTF-16 code units.", nameof(client));
-            _core = core; _time = time; _client = client;
-            _slotPrefix = new(HttpCacheKeys.ClientIdentity(client) + ":");
+            var identity = HttpCacheKeys.ClientIdentity(client);
+            _core = core; _time = time;
+            _client = client.Length <= 128 ? client : client[..128] + "…#" + identity;
+            _slotPrefix = new(identity + ":");
             _defaultTags = options.Tags.Count == 0;
             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
-            var clientTag = "http:" + MethodCacheKeys.Part(client);
+            var clientTag = "http:" + (client.Length <= 128 ? MethodCacheKeys.Part(client) : "#:" + identity);
+            _core.RegisterClientTag(clientTag);
             _tags = options.Tags.Append(clientTag).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             _clientTagIndex = Array.IndexOf(_tags, clientTag);
         }
@@ -103,7 +105,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
                 _core.ForgetUrl(Target(key));
                 return null;
             }
-            _core.ObserveRepresentation(Info(key, valid.Entry, valid.ExpiresAt));
+            _core.ObserveRepresentation(key, Info(key, valid.Entry, valid.ExpiresAt));
             return valid.Entry;
         }
         /// <inheritdoc />
@@ -113,12 +115,13 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         public async ValueTask<bool> TrySetAsync(string key, HttpCacheEntry entry, TimeSpan lifetime, CancellationToken token)
         {
             if (lifetime <= TimeSpan.Zero || key.Contains(Unavailable, StringComparison.Ordinal)) return false;
-            var deadline = _time.GetUtcNow() + lifetime;
+            var now = _time.GetUtcNow();
+            var deadline = lifetime > DateTimeOffset.MaxValue - now ? DateTimeOffset.MaxValue : now + lifetime;
             var info = Info(key, entry, deadline);
             if (!_core.Distributed) return _core.StoreLocal(key, entry, info, _clientTagIndex);
             var data = HttpCacheEntrySerializer.Serialize(entry, deadline);
             if (!await _core.WriteBytesAsync(key, data, deadline, token).ConfigureAwait(false)) return false;
-            _core.ObserveRepresentation(info);
+            _core.ObserveRepresentation(key, info);
             return true;
         }
         /// <inheritdoc />
@@ -127,8 +130,12 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         public ValueTask ClearAsync(CancellationToken cancellationToken = default) => _core.ClearAsync(cancellationToken);
         private HttpStorageInfo Info(string key, HttpCacheEntry entry, DateTimeOffset deadline)
         {
-            if (!_core.Distributed && _core.FindLocalInfo(key) is { } previous && previous.Client == _client &&
+            var known = _core.Distributed ? _core.FindObservationInfo(key) : _core.FindLocalInfo(key);
+            if (known is { } previous && previous.Client == _client &&
                 previous.Format == _core.Format && (ReferenceEquals(previous.Tags, _tags) || previous.Tags.SequenceEqual(_tags, StringComparer.Ordinal)))
+            {
+                var cost = EntryCost(key, entry, previous.LocalTargetLength >= 0 ? previous.LocalTargetLength : previous.UrlTarget.Length);
+                if (previous.Cost == cost && previous.CreatedAt == entry.StoredAt && previous.Deadline == deadline && previous.Selector == (entry.VariantGeneration != null)) return previous;
                 return previous with
                 {
                     Cost = EntryCost(key, entry, previous.LocalTargetLength >= 0 ? previous.LocalTargetLength : previous.UrlTarget.Length),
@@ -136,6 +143,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
                     Deadline = deadline,
                     Selector = entry.VariantGeneration != null
                 };
+            }
             if (!_core.Distributed)
             {
                 var target = TargetSpan(key);

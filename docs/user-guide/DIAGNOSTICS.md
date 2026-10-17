@@ -7,9 +7,9 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
 | [MC0001](#mc0001) | Warning | `[Cache]` or `[CacheInvalidate]` on a class member | Move to the interface |
-| [MC0002](#mc0002) | Error | A time span that is not a positive `TimeSpan` | |
+| [MC0004](#mc0004) | Error | A time span that is not a positive `TimeSpan` | |
 | [MC0003](#mc0003) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
-| [MC0004](#mc0004) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
+| [MC0022](#mc0022) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
 | [MC0005](#mc0005) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
 | [MC0006](#mc0006) | Error | `[Cache]` and `[CacheInvalidate]` on the same method | |
 | [MC0007](#mc0007) | Warning | `[CacheInvalidate]` without tags | |
@@ -26,7 +26,6 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MC0018](#mc0018) | Warning | `[Cache]` or `[CacheInvalidate]` on a `static`, non-public or `sealed` interface member | |
 | [MC0019](#mc0019) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
-
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 
 ## MC0001
@@ -51,7 +50,7 @@ public class UserService : IUserService
 removes it when the member implements no interface. To cache an interface you don't own, see the
 [third-party caching page](../features/third-party.md).
 
-## MC0002
+## MC0004
 
 `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` or `FailSafeTimeout` on `[Cache]` or
 `[assembly: CacheInterface]` is not a positive time span. Use the `TimeSpan` format: `"00:05:00"` (five minutes),
@@ -62,7 +61,7 @@ removes it when the member implements no interface. To cache an interface you do
 `[Cache]` on a `void` method: there is no result to cache. Return the value, or remove `[Cache]`. If the method
 changes data, you probably want `[CacheInvalidate(Tags = ...)]` instead.
 
-## MC0004
+## MC0022
 
 `[Cache]` on a method returning `Task` or `ValueTask` without a result. Return `Task<T>` or `ValueTask<T>`, or remove
 `[Cache]`. A write method usually wants `[CacheInvalidate(Tags = ...)]` instead.
@@ -208,9 +207,9 @@ The pre-1.0 diagnostic IDs have been consolidated. Update `.editorconfig` severi
 | Previous ID | Current ID |
 |-------------|------------|
 | MC0001 | MC0001 |
-| MC0004 (duration) | MC0002 |
+| MC0004 (duration) | MC0004 (unchanged) |
 | MCG001 | MC0003 |
-| MCG002 | MC0004 |
+| MCG002 | MC0022 |
 | MCG003 | MC0005 |
 | MCG004 | MC0006 |
 | MCG005 | MC0007 |
@@ -227,3 +226,8 @@ The pre-1.0 diagnostic IDs have been consolidated. Update `.editorconfig` severi
 | MCG017 | MC0018 |
 | MCG018 | MC0019 |
 | MCG019 | MC0020 |
+
+When generator and analyzer run together, the generator owns interface/assembly
+attribute validation; the analyzer recognizes its assembly-local generated marker
+and reports those settings only when used independently. Class-attribute feedback
+remains in the analyzer. MC0004 keeps its duration meaning; MC0022 replaces MCG002.

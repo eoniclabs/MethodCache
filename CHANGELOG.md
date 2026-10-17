@@ -6,6 +6,21 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Keep logical-key framing consistent across storage, lookups and invalidation, including leading NUL.
+  Custom managers now accept and forward the optional version on `TryGetAsync` and `InvalidateKeysAsync`.
+- Use SipHash-1-3 with a secret 128-bit key kept for the process lifetime for memory-key lookups.
+  Prefix reuse preserves exact UTF-16 key text, equality, L2 addresses and invalidation identities.
+- Keep one Redis callback per subscription after repeated reconnects. Incompatible L2 scopes fall back
+  to memory, retain invalidations and report an actionable unhealthy status.
+- Reject durations that contain fractional ticks, preserve MC0004 for invalid durations, and report
+  each shared attribute error once when generator and analyzer run together.
+- Report HTTP/admin invalidations awaiting distributed confirmation as 503; accept long client
+  names through bounded hashed identities and validate static tags at startup.
+- Before release, narrow and refreeze generated contract 1: all inline key shapes use a bound builder.
+  Rebuild applications using earlier development snapshots together with this Core.
+
+Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 → MC0003; MCG002 → MC0022; MCG003–MCG007 → MC0005–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.
+
 - Avoid the implicit client-tag index on local HTTP publication. Client-tag invalidation scans resident HTTP
   entries and physically reclaims matching bodies; URL and other application-tag indexes remain.
 
@@ -28,14 +43,11 @@ release.
 - Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
   expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.
 
-- Preserve `MethodCall.StartKey` in generated contract 1 for already compiled inline callers. Add a
-  separate frozen .NET 10 vendor checkpoint and a complete contract-member guard; original images stay unchanged.
-
 - Keep generated source filenames bounded for long namespace/type identifiers, including Unicode, when
   `EmitCompilerGeneratedFiles` is enabled. Generated types and cache identities are unchanged.
 
 - **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
-  their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.
+  their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Generated contract 1 is refrozen before the first release.
 
 ### Core telemetry and attribute diagnostics
 
@@ -265,5 +277,3 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
   `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
-
-Diagnostic migration: MC0001 stays MC0001; old duration MC0004 → MC0002; MCG001–MCG007 → MC0003–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.

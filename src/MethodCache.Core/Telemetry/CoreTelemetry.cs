@@ -27,6 +27,21 @@ internal sealed class CoreTelemetry : IDisposable
     private Func<CacheObservation>? _observeHttp;
     private Func<InvalidationQueues>? _observeQueues;
     private int _disposed;
+    private readonly AsyncLocal<CustomRequest?> _customRequest = new();
+    private class CustomRequest { internal bool OwnedByMemory; }
+    private sealed class CustomRequest<T>(CoreTelemetry telemetry, string key, CacheRuntimePolicy policy, Func<Task<T>> factory) : CustomRequest
+    {
+        internal bool Ran;
+        internal Task<T> Invoke()
+        {
+            Ran = true;
+            return OwnedByMemory ? factory() : telemetry.OriginAsync(policy.MethodId, key, policy.Tags, factory);
+        }
+    }
+    internal void ClaimCustomRequest()
+    {
+        if (_customRequest.Value is { } request) request.OwnedByMemory = true;
+    }
     internal ActivitySource Source { get; }
 
     internal CoreTelemetry(IMeterFactory factory, IOptions<MethodCacheTelemetryOptions> options, TimeProvider? time = null)
@@ -78,20 +93,22 @@ internal sealed class CoreTelemetry : IDisposable
     internal async Task<T> CustomAsync<T>(ICacheManager manager, string key, CacheRuntimePolicy policy,
         Func<Task<T>> factory, CancellationToken token)
     {
-        var ran = false;
         var outcome = RequestResult.Error;
+        var previous = _customRequest.Value;
+        var request = new CustomRequest<T>(this, key, policy, factory);
+        _customRequest.Value = request;
         try
         {
-            var value = await manager.GetOrCreateFastAsync(key, policy.MethodId, () =>
-            {
-                ran = true;
-                return OriginAsync(policy.MethodId, key, policy.Tags, factory);
-            }, policy, token).ConfigureAwait(false);
-            outcome = manager.GetType() == typeof(MethodCache.Extensibility.NoOpCacheManager) ? RequestResult.Bypass
-                : ran ? RequestResult.Miss : RequestResult.Hit;
+            var value = await manager.GetOrCreateFastAsync(key, policy.MethodId, request.Invoke, policy, token).ConfigureAwait(false);
+            outcome = manager is MethodCache.Extensibility.NoOpCacheManager ? RequestResult.Bypass
+                : request.Ran ? RequestResult.Miss : RequestResult.Hit;
             return value;
         }
-        finally { Request("method", policy.MethodId, outcome); }
+        finally
+        {
+            _customRequest.Value = previous;
+            if (!request.OwnedByMemory) Request("method", policy.MethodId, outcome);
+        }
     }
 
     internal void ObserveMethods(Func<CacheObservation> observe) => Volatile.Write(ref _observeMethods, observe);

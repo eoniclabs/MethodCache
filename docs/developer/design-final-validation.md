@@ -1,4 +1,11 @@
-# Final design verification
+# Design verification status
+
+The completion claim below is historical and superseded by the 2026-10-17 PR review.
+Review fixes change runtime behavior and the unreleased generated contract. Final acceptance,
+performance and full CI must be repeated against the resulting source. Johan requires a complete
+independent self-review of the entire PR before another CI run is started. Targeted local tests
+remain allowed; no new CI has been started for these changes.
+
 
 The complete design series is reviewed in [PR #134](https://github.com/eoniclabs/MethodCache/pull/134)
 against main. Source history is retained with raw artifact paths removed. Implementation,
@@ -56,4 +63,4 @@ The artifact cleanup changes storage/documentation and this guard only; the fina
 runtime/workloads and all numerical accepted limits remain unchanged.
 
 Merge, package publication, PublicAPI promotion and the separate ASCII-hash PR #138
-remain outside this implementation's completed scope.
+remain outside this implementation scope.

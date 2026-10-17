@@ -85,11 +85,12 @@ internal sealed partial class DistributedCacheLayer
         {
             var result = await TryRunAsync(static async (layer, state, ct) =>
             {
+                if (state.Deadline <= layer._time.GetUtcNow()) return false;
                 await layer._cache.SetAsync(state.Key, state.Bytes,
                     new DistributedCacheEntryOptions { AbsoluteExpiration = state.Deadline }, ct).ConfigureAwait(false);
                 return true;
             }, (Key: _httpEntryPrefix + format.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + key, Bytes: bytes, Deadline: deadline), "write", probe, token).ConfigureAwait(false);
-            return result.Succeeded;
+            return result.Succeeded && result.Value;
         }
         finally { EndWrite(); }
     }

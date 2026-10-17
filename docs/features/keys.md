@@ -9,13 +9,19 @@ public sealed record UserQuery(string Name, int Page);
 
 public interface IUserService
 {
-    [Cache] Task<User> GetAsync(int id);                     // MyApp.IUserService.GetAsync:42
-    [Cache] Task<List<User>> SearchAsync(UserQuery query);   // MyApp.IUserService.SearchAsync:(alice:2)
-    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // MyApp.IUserService.ByIdsAsync:[3:1:2:3]
-    [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // MyApp.IUserService.CountAsync:fc08ab0d… (hashed)
+    [Cache] Task<User> GetAsync(int id);                     // [MyApp]MyApp.IUserService.GetAsync:42
+    [Cache] Task<List<User>> SearchAsync(UserQuery query);   // [MyApp]MyApp.IUserService.SearchAsync:(alice:2)
+    [Cache] Task<List<User>> ByIdsAsync(int[] ids);          // [MyApp]MyApp.IUserService.ByIdsAsync:[3:1:2:3]
+    [Cache] Task<int> CountAsync(Dictionary<string, int[]> filters); // [MyApp]MyApp.IUserService.CountAsync:{hash} (hashed)
 }
 ```
 <!-- endSnippet -->
+
+Examples below assume the service assembly is named `MyApp`. Its simple name prefixes every key as `[MyApp]`;
+assembly versions are excluded, so redeploying a new version preserves key identity. Closed generic argument types
+also include their assembly identity. Assemblies with the same namespace/type names therefore keep separate entries.
+Assembly-name characters outside letters, digits, `.`, `_` and `-` are escaped as `%XXXX` UTF-16 code units.
+Use `MethodCacheKeys` to construct exact keys and the admin method list for configuration ids.
 
 ## How arguments become keys
 
@@ -101,7 +107,7 @@ builder.Services.AddMethodCache(cache => cache.UseJson());
 
 ## Method scope
 
-Generated keys always include the interface, method, version, closed generic types and keyed-service identity where applicable. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
+Generated keys always include the assembly simple name, interface, method, version, closed generic types and keyed-service identity where applicable. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
 
 <!-- snippet: keys-scoped -->
 ```cs
@@ -121,7 +127,7 @@ format:
 <!-- snippet: invalidation-by-key -->
 ```cs
 var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 
@@ -130,11 +136,11 @@ For a method with a `Version`, use `MethodCacheKeys.ForVersion`. For an overload
 
 <!-- snippet: keys-versioned-and-overloaded -->
 ```cs
-// A method with a Version: "MyApp.IInvoiceService.GetAsync:v2:42"
+// A method with a Version: "[MyApp]MyApp.IInvoiceService.GetAsync:v2:42"
 var versioned = MethodCacheKeys.ForVersion(
     typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
 
-// An overloaded method: pass its method id. "MyApp.IInvoiceService.FindAsync(string):INV-7"
+// An overloaded method: pass its method id. "[MyApp]MyApp.IInvoiceService.FindAsync(string):INV-7"
 var overload = MethodCacheKeys.For(
     typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
 ```
@@ -154,13 +160,13 @@ var overload = MethodCacheKeys.For(
   [method ids](configuration.md#appsettingsjson).
 - **A method name that another interface in the hierarchy also declares** gets the same treatment. Keys start with
   the decorated interface, so for `ICatalog : ILookup` with `ILookup.Find(int)` and `ICatalog.Find(string)` the keys
-  are `MyApp.ICatalog.Find(int):7` and `MyApp.ICatalog.Find(string):7`. When two base interfaces declare the same
+  are `[MyApp]MyApp.ICatalog.Find(int):7` and `[MyApp]MyApp.ICatalog.Find(string):7`. When two base interfaces declare the same
   signature, the declaring interface is added too: for `IC : IA, IB` that both declare `Get(int)`, the keys are
-  `MyApp.IC.MyApp.IA.Get(int):1` and `MyApp.IC.MyApp.IB.Get(int):1`. Policy ids don't change; each
+  `[MyApp]MyApp.IC.[MyApp]MyApp.IA.Get(int):1` and `[MyApp]MyApp.IC.[MyApp]MyApp.IB.Get(int):1`. Policy ids don't change; each
   method keeps the id of the interface that declares it.
 - **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
-  and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `MyApp.IRates.Get@ecb:1` and
-  `MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
+  and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `[MyApp]MyApp.IRates.Get@ecb:1` and
+  `[MyApp]MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
   `Prefix` or `Pattern`. Other keys carry their type (`Get@MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
   `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
   throws for a keyed registration of a cached interface with any other key. A `KeyedService.AnyKey` registration is
@@ -173,3 +179,8 @@ var overload = MethodCacheKeys.For(
 MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+
+For a closed generic method, include `<` + `MethodCacheKeys.TypePart(typeof(T))` + `>` after the method name,
+before any keyed-service suffix and version. Pass that same method name to `ForVersion`, `Prefix` and `Pattern`;
+it matches both inline and fallback keys. A pattern with the plain method name and no version matches all its
+specializations. A version-specific pattern requires the closed type arguments.

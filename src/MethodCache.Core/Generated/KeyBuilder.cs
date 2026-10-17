@@ -14,7 +14,7 @@ namespace MethodCache.Generated;
 public ref struct KeyBuilder
 {
     /// <summary>A buffer size, in characters, that fits typical keys without growing.</summary>
-    public const int StackBufferSize = 256;
+    internal const int StackBufferSize = 256;
 
     internal CallSnapshot Binding { get; }
     private string? _text;
@@ -35,10 +35,14 @@ public ref struct KeyBuilder
         var binding = call.Snapshot;
         _chars = buffer;
         _length = 0;
-        _text = null;
+        _text = buffer.IsEmpty ? binding.Prefix : null;
         Binding = binding;
-        Append(binding.Prefix.AsSpan());
-        _prefixLength = _length;
+        _prefixLength = 0;
+        if (!buffer.IsEmpty)
+        {
+            Append(binding.Prefix.AsSpan());
+            _prefixLength = _length;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -77,15 +81,26 @@ public ref struct KeyBuilder
     {
         if (_text is { } owned) return owned;
         var text = new string(_chars[.._length]);
-        if (Binding != null) ProcessKeyHash.Remember(text, Binding.HashKey(text));
+        if (Binding?.Services.FastMemory != null) ProcessKeyHash.Remember(text, Binding.HashKey(text));
         return text;
     }
 
     /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
-    public void Append(string value)
+    internal void Append(string value)
     {
         EnsureWritable();
         Append(value.AsSpan());
+    }
+
+    /// <summary>Appends one complex argument using the generator's canonical part formatter.</summary>
+    /// <param name="value">The argument to format, including null when its declared type allows it.</param>
+    /// <param name="format">Formats one complete canonical record, collection or provider part.</param>
+    public void AppendPart<T>(T value, Func<T, string> format)
+    {
+        ArgumentNullException.ThrowIfNull(format);
+        EnsureWritable();
+        AppendSeparator();
+        Append(format(value).AsSpan());
     }
 
     /// <summary>Appends a separator and a string argument, escaped as <see cref="MethodCacheKeys.Part(string)"/> does.</summary>

@@ -57,7 +57,18 @@ public static class MethodCacheHttpClientBuilderExtensions
         services.TryAddSingleton<HttpCacheClientStates>();
         services.TryAddKeyedSingleton(name, (sp, _) => sp.GetRequiredService<HttpCacheClientStates>().For(name));
 
-        var options = services.AddOptions<HttpCacheOptions>(name);
+        var options = services.AddOptions<HttpCacheOptions>(name)
+            .Validate(static options => options.Tags.Count <= 125 && options.Tags.All(static tag => !string.IsNullOrWhiteSpace(tag) && tag.Length <= 1024),
+                "HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.")
+            .Validate(static options => options.MaxResponseSize >= 0 &&
+                (options.DefaultMaxAge == null || options.DefaultMaxAge >= TimeSpan.Zero) &&
+                options.MaxHeuristicFreshness >= TimeSpan.Zero && options.StaleRetention >= TimeSpan.Zero &&
+                options.MaxStaleIfError >= TimeSpan.Zero,
+                "HTTP response size and freshness/retention durations must be non-negative; zero response size means no limit.")
+            .Validate(static options => options.BackgroundRevalidationTimeout > TimeSpan.Zero &&
+                options.BackgroundRevalidationTimeout <= TimeSpan.FromMilliseconds(uint.MaxValue - 1),
+                "HTTP background revalidation timeout must be positive and fit the platform timer range.")
+            .ValidateOnStart();
         if (configure != null)
         {
             if (builder.Name == null) services.ConfigureAll(configure);

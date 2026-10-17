@@ -22,8 +22,7 @@ internal static class PolicyRegistrationExtensions
             var resolver = provider.GetRequiredService<PolicyResolver>();
             return new PolicyRegistry(resolver, id =>
             {
-                var manager = provider.GetRequiredService<ICacheManager>();
-                var memory = manager as MethodCache.Extensibility.InMemoryCacheManager;
+                var memory = provider.GetService<MethodCache.Extensibility.InMemoryCacheManager>();
                 return memory?.InvalidateMethodAsync(id) ?? Task.CompletedTask;
             });
         });

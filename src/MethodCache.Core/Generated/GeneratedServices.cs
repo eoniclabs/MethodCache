@@ -19,7 +19,7 @@ public sealed class GeneratedServices
     internal GeneratedServices(DecoratorServices services) => _services = services;
     internal static GeneratedServices From(IServiceProvider provider)
     {
-        provider.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidation>()?.Validate();
+        provider.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidationState>()?.Validate();
         return provider.GetRequiredService<GeneratedServices>();
     }
 
@@ -50,6 +50,13 @@ public sealed class GeneratedServices
         return _services.CacheManager.InvalidateByTagsAsync(tags);
     }
 
+    /// <summary>Rejects a synchronous mutation binding whose manager cannot confirm local invalidation synchronously.</summary>
+    public void ValidateSynchronousInvalidation()
+    {
+        if (_services.CacheManager is not InMemoryCacheManager)
+            throw new NotSupportedException("The configured MethodCache manager does not support synchronous invalidation. Use an async mutation method.");
+    }
+
     /// <summary>Invalidates tags on the synchronous mutation path.</summary>
     public void InvalidateTags(string[] tags)
     {
@@ -71,16 +78,24 @@ public sealed class CachedMethod
         var background = handle.Background;
         var parameterNames = services.ParameterNames.GetValueOrDefault(handle.MethodId) ?? [];
         (handle.Shared ?? handle).Subscribe(policy => Volatile.Write(ref _snapshot,
-            new CallSnapshot(services, policy, MethodCacheKeys.Prefix(serviceType, keyMethod, policy.Version), unversioned, displayName, background, parameterNames)));
+            new CallSnapshot(services, policy, MethodCacheKeys.Prefix(serviceType, keyMethod, policy.Version), unversioned, displayName, background, parameterNames, handle.KeySuffix)));
     }
 
     /// <summary>Captures the current snapshot with one volatile read.</summary>
     public MethodCall Capture() => new(Volatile.Read(ref _snapshot));
 }
 
-internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePolicy Policy, string Prefix,
-    string KeyMethod, string Name, BackgroundLoadTarget? Background, string[] ParameterNames)
+internal sealed class CallSnapshot(DecoratorServices services, CacheRuntimePolicy policy, string prefix,
+    string keyMethod, string name, BackgroundLoadTarget? background, string[] parameterNames, string? keySuffix = null)
 {
+    internal DecoratorServices Services { get; } = services;
+    internal CacheRuntimePolicy Policy { get; } = policy;
+    internal string Prefix { get; } = prefix;
+    internal string KeyMethod { get; } = keyMethod;
+    internal string? KeySuffix { get; } = keySuffix;
+    internal string Name { get; } = name;
+    internal BackgroundLoadTarget? Background { get; } = background;
+    internal string[] ParameterNames { get; } = parameterNames;
     private ConditionalWeakTable<string, CallSnapshot>? _specializations;
     private FastHashKeyGenerator.PreparedPrefix? _fallbackPrefix;
     internal FastHashKeyGenerator.PreparedPrefix FallbackPrefix
@@ -93,7 +108,7 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
         }
     }
     // A field, not a property: a lookup finishes the hash from it in place instead of copying the state first
-    internal readonly SipHashState PrefixHash = ProcessKeyHash.Prefix(Prefix);
+    internal readonly SipHashState PrefixHash = ProcessKeyHash.Prefix(prefix);
 
     internal int HashKey(ReadOnlySpan<char> text)
     {
@@ -101,8 +116,8 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
         return PrefixHash.FinishUtf16(text[Prefix.Length..]);
     }
 
-    internal PolicyGeneration Generation { get; } = Policy.Generation!;
-    internal bool HasParameterizedTags { get; } = Policy.Tags.Any(static tag => tag.Contains('{'));
+    internal PolicyGeneration Generation { get; } = policy.Generation!;
+    internal bool HasParameterizedTags { get; } = policy.Tags.Any(static tag => tag.Contains('{'));
 
     internal CallSnapshot Specialize(string arguments)
     {
@@ -113,7 +128,13 @@ internal sealed record CallSnapshot(DecoratorServices Services, CacheRuntimePoli
             table = Interlocked.CompareExchange(ref _specializations, created, null) ?? created;
         }
         if (table.TryGetValue(arguments, out var existing)) return existing;
-        return table.GetValue(arguments, value => new CallSnapshot(Services, Policy, Prefix + value,
-            KeyMethod + value, Name, Background, ParameterNames));
+        return table.GetValue(arguments, value =>
+        {
+            var baseMethod = KeySuffix is { Length: > 0 } suffix ? KeyMethod[..^suffix.Length] : KeyMethod;
+            var specializedMethod = baseMethod + value + KeySuffix;
+            var prefix = specializedMethod + (Policy.Version is { } version
+                ? ":v" + version.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty);
+            return new CallSnapshot(Services, Policy, prefix, specializedMethod, Name, Background, ParameterNames, KeySuffix);
+        });
     }
 }

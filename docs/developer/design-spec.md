@@ -1,8 +1,8 @@
 # PR 0: Designspecifikation för MethodCache före 1.0
 
-> Beslut 2026-10-15: samtliga bibliotek och slutgater kräver .NET 10/SDK 10. Stöd för .NET 8 och 9 tas bort i en separat PR efter HTTP-steget. Frysta kontrakt-1-filer ändras inte.
+> Johans beslut 2026-10-15 är implementerat: samtliga bibliotek och slutgrindar kräver .NET 10/SDK 10. Stöd för .NET 8 och 9 är borttaget. Kontrakt 1 korrigeras och fryses om under förhandsgranskningen före första release.
 
-Revision 3, 2026-10-14. Historisk gransknings- och prestandabaslinje:
+Revision 4, 2026-10-17. Historisk gransknings- och prestandabaslinje:
 f43854dbcd3646893f490e78a0a1d9651e9c4521. PR 1 startar från main efter att
 [PR 122](https://github.com/eoniclabs/MethodCache/pull/122) blivit grön och mergad; exakt start-SHA
 registreras i implementations-PR:n. Regressionstesterna från PR 122 ska bevaras.
@@ -93,8 +93,7 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 | GeneratedServices.InvalidateTagsAsync | Tar tags och caller-token. Samma återhämtningskontrakt som användar-API:t. |
 | CachedMethod.Capture | Returnerar MethodCall; inga oberoende läsningar av KeyPrefix/Enabled/policy får göras. |
 | new KeyBuilder(MethodCall, Span<char>) | Tar anropet och anroparens stackbuffer och skapar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. En konstruktor, inte en fabriksmetod: en byggare som returneras från en metod kopieras till anroparens lokala variabel, vilket på x64 kostar cirka 12 ns per träff. |
-| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder eller in TextKey och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
-| MethodCall.BindTextKey / TextKey | Binder redan ägd strängtext till samma snapshot. En readonly TextKey bär bara text och bindning, utan oanvänd skrivbar span; samma felbindnings- och stale-regler gäller. |
+| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
 | MethodCall.LoadAsync / LoadValueAsync | Tar strängnyckel, generiskt state, statisk loader, taggvärden och token. Snapshoten följer laddningen. |
 | MethodCall.Load | Verklig synkron exekveringsväg för synkrona metoder; se §4.3. |
 | MethodCall.ServiceForLoad | Återanvänder inner-instansen eller löser rätt registrering i ett nytt scope för arbete som outlever anroparen. |
@@ -103,7 +102,7 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 
 Exakta C#-signaturer fastställs och kompileras i PR 1 innan kompatibilitetsbaslinjen skapas. De ska uppfylla
 tabellen, ha fullständiga nullable-kontrakt och inga läckor av interna typer. De ursprungliga separata
-KeyPrefix/Enabled-properties är ersatta av MethodCall, och span-uppslaget av en bunden KeyBuilder; befintlig strängtext använder en bunden TextKey.
+KeyPrefix/Enabled-properties är ersatta av MethodCall, och span-uppslaget av en bunden KeyBuilder; även komplexa inline-delar skrivs genom den bundna KeyBuilder-instansen.
 Formen får justeras för att uppfylla kontraktet och
 prestandagrinden; en ofullständig skiss ska inte låsas som API.
 
@@ -149,12 +148,17 @@ Fixtures täcker sync/Task/ValueTask, keyed/scoped tjänster, generiska metoder,
 CacheInterface. Källkod och fixtures som provar den nya fasaden kompileras före baseline-frysningen.
 Fixtures inkluderar KeyBuilder-konstruktorn/ref KeyBuilder och reservvägen, så att senare prefixhashning kan införas
 utan ändrade generator-signaturer eller omkompilering av vendor-DLL:en.
-Den ursprungliga baslinjens samtliga Generated-deklarationer bevaras också som separata testindata.
-Det innefattar MethodCall.StartKey för tidigare kompilerade inline-anrop; ny genererad kod använder
-KeyBuilder-konstruktorn. De ursprungliga .NET 8-bilderna och separata .NET 10-bilder täcker olika
-genererade anropsvägar och ska behållas oberoende av varandra.
+Förhandsgranskningen korrigerar det ännu opublicerade kontraktet och fryser en ny `Contract1Final`-baslinje.
+Äldre utvecklingsbilder bevaras som historiskt underlag, utan kompatibilitetslöfte. `StartKey`, `BindKey`,
+`KeyPrefix`, rå `Append` och den fasta buffertkonstanten är interna. Alla inline-former använder
+KeyBuilder-konstruktorn och AppendPart; användare av äldre utvecklingspaket bygger om samtidigt.
+Den publicerade 1.0-baslinjen blir därefter oföränderlig.
 
 ### 2.4 Prefixhashning efter PR 5
+
+Den implementerade funktionen är SipHash-1-3 med en kryptografiskt slumpad hemlig 128-bitarsnyckel
+som behålls under processens livstid. UTF-16 och alla jämförarvägar använder samma hemlighet.
+Se [algoritm- och hotgranskningen](prefix-hash-security.md); hashvärden lämnar aldrig processen.
 
 En separat prestanda-PR efter PR 5 och före slutverifieringen i PR 7 kan återanvända hashtillståndet efter
 snapshotens fasta prefix. PR 1 inför kontraktsformen och buffertvalet; den behöver inte införa den nya
@@ -226,8 +230,8 @@ MaxExpiration är ett metodtak; det kapar inte HTTP:s freshness- eller stale-ret
 | ICacheManager | Retur och parametrar |
 |---|---|
 | GetOrCreateAsync | ValueTask med typat resultat; key, factory med CacheContext och token, immutable CacheEntryOptions eller null, caller-token sist. |
-| TryGetAsync | ValueTask med CacheLookupResult (Found och Value); key och token. Default/null/false/0 är giltiga hits. |
-| InvalidateKeysAsync | ValueTask med InvalidationResult; IEnumerable av logiska nycklar och token. |
+| TryGetAsync | ValueTask med CacheLookupResult (Found och Value); logisk key, token och valfri icke-negativ version; samma NUL-framing som GetOrCreateAsync. Default/null/false/0 är giltiga hits. |
+| InvalidateKeysAsync | ValueTask med InvalidationResult; IEnumerable av logiska nycklar, token och valfri icke-negativ version. Samma NUL-framing som GetOrCreateAsync. |
 | InvalidateTagsAsync | ValueTask med InvalidationResult; IEnumerable av applikationstaggar och token. |
 
 Extensions erbjuder enkla explicit-key-anrop, builder-konfiguration, versionerade uppslag/invalidation,
@@ -405,7 +409,7 @@ i Core; standard false. Hashed keys är standard när nyckelregistrering aktiver
 | methodcache.load.duration | Histogram, s | kind/name, error.type; bara faktiskt körda laddningar från datakällan, inte flight-joiners eller rena L2-hits. |
 | methodcache.entries | ObservableUpDownCounter, {entry} | kind; bara faktiskt lokalt lagrade svar/resultat, inte observationsregistret eller uppskattad global L2. |
 | methodcache.http.size | ObservableUpDownCounter, By | Lokalt lagrade HTTP-bytes enligt §9.1. Noll body-storage i L2-läge; observerad L2-storlek läggs inte till. |
-| methodcache.invalidations | Counter, {invalidation} | type=key/tag/method, stage=local/distributed/queued/published/publication_queued; räknar targets per stage från §4.2. Stages summeras inte till operationsantal. |
+| methodcache.invalidations | Counter, {invalidation} | type=key/tag/method/clear, stage=local/distributed/queued/published/publication_queued; räknar targets per stage från §4.2. Stages summeras inte till operationsantal. |
 | methodcache.distributed.duration | Histogram, s | operation=get/set/remove/invalidate, error.type; individuella transportoperationer. |
 | methodcache.distributed.queue | ObservableUpDownCounter, {invalidation} | stage=storage/publication; distinct pending targets. |
 
@@ -672,6 +676,10 @@ denna sektion; den förs inte in i README som ett uppmätt produktlöfte.
 
 ## 11. Konkreta acceptanstester
 
+.NET 10-steget ingår uttryckligen: alla runtime-/testprojekt, paketprov, Native AOT och CI-matrisen
+ska använda .NET 10; .NET 8/9 och deras reservvägar ska saknas. Generatorns Roslyn-target kan
+fortsätta vara netstandard2.0 eftersom den laddas av kompilatorn.
+
 Test-id:n nedan är stabila spårnings-id:n; metoderna följer repositoryts vanliga Method_State_Expected-namn.
 Varje test visar input, styrd interleaving och observerbart utfall. Tidsberoende använder FakeTimeProvider;
 TaskCompletionSource/barriärer styr samtidighet, inga sleeps som bevis. Fel/tappade meddelanden använder
@@ -803,6 +811,9 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 
 ## 12. PR-ordning och klart-kriterier
 
+Efter HTTP-steget ingick borttagningen av .NET 8/9 enligt Johans beslut. Slutverifieringen i PR 7
+körs mot endast .NET 10 efter granskningens rättningar och avsiktlig frysning av det korrigerade kontraktet.
+
 | PR | Leverans | Testgrind |
 |---|---|---|
 | 0 | Detta versionshanterade dokument och länken från AGENTS.md. Ingen runtimeändring. | Markdown/länkar, contradictions/dependency-granskning, llms-regenerering utan drift. |
@@ -834,3 +845,7 @@ S7 är avgränsat till senare release och ska inte smygas in som en prestandafö
 Repositoryts vanliga [teststrategi](INTEGRATION_TEST_STRATEGY.md),
 [runtime-konfigurationsöversikt](RUNTIME_CONFIGURATION_OVERVIEW.md) och [releasechecklista](RELEASE.md)
 gäller fortsatt; deras nuvarande beteendebeskrivningar uppdateras i implementationen.
+
+### Förtydligande efter PR-granskning: assemblyidentitet
+
+Genererade metodnycklar och policy-id:n börjar med `[AssemblySimpleName]`. Versionsnummer ingår inte. Slutna generiska typargument identifieras rekursivt med assemblynamn. Assemblynamn escape:ar varje UTF-16-kodenhet utanför ASCII-bokstäver, siffror och `._-` som `%XXXX`. Samma fullständiga tjänstenamn i olika assemblies får varken dela cachade värden eller runtime overrides. Acceptans: två separat kompilerade bibliotek med `Collision.IService` och olika TTL i samma container; båda värdena hålls separata och override för det ena ändrar inte det andra.

@@ -72,6 +72,52 @@ public class AdminDistributedRemovalTests
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(false, "remove")]
+    [InlineData(false, "tag")]
+    [InlineData(false, "clear")]
+    [InlineData(true, "remove")]
+    [InlineData(true, "tag")]
+    [InlineData(true, "clear")]
+    public async Task UnconfirmedMutation_Answers503AndRetainsRecovery(bool httpOnly, string operation)
+    {
+        var backend = HttpEpochTestCache.Create();
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        if (httpOnly) builder.Services.AddSingleton<ICacheManager>(new MethodCache.Extensibility.NoOpCacheManager());
+        builder.Services.AddMethodCache();
+        builder.Services.AddMethodCacheDistributedCache(_ => backend);
+        if (httpOnly) builder.Services.AddHttpClient("admin").AddHttpCaching();
+        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+        builder.Services.AddAuthorization(options => options.AddPolicy("CacheAdmins", policy => policy.RequireUserName("admin")));
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapMethodCacheAdmin("CacheAdmins");
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Add(AuthHeader, "admin");
+        var key = "method-key";
+        if (httpOnly && operation == "remove")
+        {
+            var store = app.Services.GetRequiredService<MethodCache.Core.Runtime.Http.HttpResponseStore>();
+            key = MethodCache.Core.Runtime.Http.HttpResponseStore.Identity("representation");
+            store.ObserveRepresentation("representation", new(key, "url-target", "admin", 2, 100, [], DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(1), false));
+        }
+        backend.FailStamp = true;
+        backend.FailAdvance = true;
+        using var response = operation switch
+        {
+            "remove" => await client.DeleteAsync("/methodcache/entry?key=" + Uri.EscapeDataString(key)),
+            "clear" => await client.DeleteAsync("/methodcache/entries"),
+            _ => await client.PostAsync("/methodcache/invalidate", new StringContent("{\"tags\":[\"users\"]}", System.Text.Encoding.UTF8, "application/json"))
+        };
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Distributed > 0);
+    }
+
     private sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
         public const string SchemeName = "Test";

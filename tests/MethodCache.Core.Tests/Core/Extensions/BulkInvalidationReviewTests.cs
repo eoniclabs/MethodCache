@@ -68,8 +68,8 @@ public class BulkInvalidationReviewTests
     {
         public async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
         { Calls++; await Task.Yield(); return await inner.GetOrCreateAsync(key, factory, options, token); }
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => inner.TryGetAsync<T>(key, token);
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token) => inner.InvalidateKeysAsync(keys, token);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => inner.TryGetAsync<T>(key, version, token);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default) => inner.InvalidateKeysAsync(keys, version, token);
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token) => inner.InvalidateTagsAsync(tags, token);
 
         public int Calls;

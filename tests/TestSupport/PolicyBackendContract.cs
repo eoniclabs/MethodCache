@@ -10,7 +10,7 @@ namespace MethodCache.TestSupport;
 // Shared assertions run unchanged against both real providers. Each factory creates an isolated container.
 public static partial class PolicyBackendContract
 {
-    private static readonly string MethodId = typeof(IOrigin).FullName!.Replace('+', '.') + ".ReadAsync";
+    private static readonly string MethodId = $"[{typeof(IOrigin).Assembly.GetName().Name}]{typeof(IOrigin).FullName!.Replace('+', '.')}.ReadAsync";
 
     public static async Task RunAsync(Func<Origin, Action<MethodCacheBuilder>?, Task<ServiceProvider>> create, FakeTimeProvider time)
     {

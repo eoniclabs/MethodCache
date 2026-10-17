@@ -8,6 +8,9 @@ namespace MethodCache.Generated;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class KeyParts
 {
+    /// <summary>Formats a version-independent type identity including its assembly and generic arguments.</summary>
+    public static string TypeIdentity(Type type) => MethodCacheKeys.TypePart(type);
+
     /// <summary>Formats a dynamic tag argument using the canonical scalar key-part rules.</summary>
     public static string TagPart(object? value) => Infrastructure.CanonicalTagPart.Format(value);
 

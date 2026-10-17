@@ -11,7 +11,7 @@ namespace MethodCache.Core.Tests.Core;
 
 public class PolicyTransitionTests
 {
-    private static readonly string MethodId = typeof(IReader).FullName!.Replace('+', '.') + ".ReadAsync";
+    private static readonly string MethodId = global::MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IReader), "ReadAsync");
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
     private readonly MethodCache.TestSupport.AtomicTestCache _store = new();
 

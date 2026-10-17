@@ -14,7 +14,7 @@ internal sealed class PolicyStartupValidation
     {
         public ValidateOptionsResult Validate(string? name, PolicyStartupValidation options)
         {
-            services.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidation>()?.Validate();
+            services.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidationState>()?.Validate();
             // Exceptions propagate unchanged, so startup fails with the same exception a first call would throw
             _ = services.GetService<IOptions<MethodCacheMemoryOptions>>()?.Value;
             services.GetRequiredService<PolicyRegistry>().GetAllPolicies();

@@ -50,6 +50,7 @@ namespace MethodCache.Infrastructure
         public Type? ImplementationType { get; }
 
         /// <summary>The assembly whose generated code created this registration.</summary>
+        internal IReadOnlyList<(string Id, string Key)> MethodKeys { get; init; } = [];
         internal Assembly GeneratedIn { get; set; } = null!;
     }
 }

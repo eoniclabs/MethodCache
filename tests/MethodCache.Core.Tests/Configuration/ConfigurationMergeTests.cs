@@ -25,6 +25,27 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     public sealed class ConfigMergeService : IConfigMergeService { public Task<int> Get(int id) => Task.FromResult(id); }
     private static readonly string Id = MethodIds.For(typeof(IConfigMergeService), nameof(IConfigMergeService.Get));
 
+    [Fact]
+    public async Task FailedInvalidation_DoesNotPoisonALaterNoOpOverride()
+    {
+        var services = new ServiceCollection();
+        var attempts = 0;
+        var failure = new InvalidOperationException("controlled invalidation failure");
+        services.AddSingleton<PolicyRegistry>(provider => new PolicyRegistry(provider.GetRequiredService<PolicyResolver>(), _ =>
+        {
+            attempts++;
+            return Task.FromException(failure);
+        }));
+        services.AddSingleton<IConfigMergeService, ConfigMergeService>();
+        services.AddMethodCache(builder => builder.FromAssemblyOf<ConfigurationMergeTests>());
+        await using var provider = services.BuildServiceProvider();
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => configurator.UpsertAsync(Id, options => options.WithDuration(TimeSpan.FromMinutes(2))));
+        Assert.Same(failure, actual);
+        await configurator.UpsertAsync(Id, options => options.WithDuration(TimeSpan.FromMinutes(2)));
+        Assert.Equal(1, attempts);
+    }
+
     // ---------- 1. RuntimePolicySource registered once per EnsureCoreServices call ----------
     [Fact]
     public async Task RuntimeSource_IsRegisteredOnce_EvenWhenSeveralAddMethodsAreCalled()
@@ -33,7 +54,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
-        services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().Build());
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().Build()));
         services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>());
 
         await using var sp = services.BuildServiceProvider();
@@ -185,8 +206,8 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var services = new ServiceCollection();
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache();
-        services.AddMethodCacheFromConfiguration(a, "A");
-        services.AddMethodCacheFromConfiguration(b, "B");
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(a, "A"));
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(b, "B"));
         await using var sp = services.BuildServiceProvider();
         var policy = sp.GetRequiredService<IPolicyRegistry>().GetPolicy(Id).Policy;
         output.WriteLine($"duration={policy.Duration}, tags=[{string.Join(",", policy.Tags)}]");
@@ -206,7 +227,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1))));
-        services.AddMethodCacheFromConfiguration(config);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(config));
         services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>());
         var sp = services.BuildServiceProvider();
         sp.GetRequiredService<ICacheManager>();

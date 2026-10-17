@@ -96,3 +96,10 @@ Dictionary hashes are process-local implementation metadata. Canonical key text,
 invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
 
 Memory-only asynchronous misses avoid allocating closures for inactive fail-safe and distributed-write branches.
+
+Logical-key lookups and invalidations use the same framing and optional version as storage, including keys starting
+with NUL. Admin mutations return 503 while distributed invalidation awaits confirmation; recovery remains owned by
+the cache. Incompatible distributed scope contracts use memory only and report an actionable unhealthy status.
+See [manual keys](docs/features/manual-caching.md#versions-and-the-stored-key) and [monitoring](docs/features/monitoring.md).
+
+Generated method keys and policy ids include the service assembly simple name (without its version), so equally named interfaces in different assemblies stay isolated. Build keys with `MethodCacheKeys`; read policy ids from the admin method list.

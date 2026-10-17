@@ -13,9 +13,9 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
             return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
         }
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => new(!ForceCacheMiss && _cache.TryGetValue(key, out var value) ? CacheLookupResult<T>.Hit((T)value) : CacheLookupResult<T>.Miss);
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token)
-        { var values = keys.Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(!ForceCacheMiss && _cache.TryGetValue(CacheManagerExtensions.GetCacheKey(key, version), out var value) ? CacheLookupResult<T>.Hit((T)value) : CacheLookupResult<T>.Miss);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)
+        { var values = keys.Select(key => CacheManagerExtensions.GetCacheKey(key, version)).Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token)
         { var values = tags.Distinct().ToArray(); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
 

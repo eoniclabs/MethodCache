@@ -9,6 +9,7 @@ namespace MethodCache.Redis.IntegrationTests;
 public class PolicyStateAcceptanceTests(RedisFixture redis)
 {
     [SkippableTheory]
+    [InlineData("lookup")]
     [InlineData("equivalent")]
     [InlineData("reload")]
     [InlineData("specificity")]

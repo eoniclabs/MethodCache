@@ -133,7 +133,7 @@ namespace FailSafe
                     .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:FailSafe:Duration"] = "01:00:00" })
                     .Build();
                 startup.GetMethod("ConfigureForSettings")!.Invoke(null, new object[] { services });
-                services.AddMethodCacheFromConfiguration(configuration);
+                services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
                 break;
             default:
                 startup.GetMethod("ConfigureAttributeOnly")!.Invoke(null, new object[] { services });

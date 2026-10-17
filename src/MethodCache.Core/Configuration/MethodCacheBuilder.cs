@@ -57,7 +57,7 @@ public sealed class MethodCacheBuilder
         return this;
     }
     /// <summary>Reads and watches the application's configuration section.</summary>
-    public MethodCacheBuilder FromConfiguration(IConfiguration configuration, string sectionName)
+    public MethodCacheBuilder FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
     { Services.AddMethodCacheFromConfiguration(configuration, sectionName); return this; }
     /// <summary>Selects JSON value serialization with the serializer's defaults.</summary>
     public MethodCacheBuilder UseJson()

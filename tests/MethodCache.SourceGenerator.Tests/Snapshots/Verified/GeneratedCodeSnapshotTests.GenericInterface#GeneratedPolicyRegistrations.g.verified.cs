@@ -11,12 +11,12 @@ namespace MethodCache.Generated
 {
     internal static partial class MethodCacheDecoratorRegistrations
     {
-        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
         private static class GeneratedPolicyRegistrations
         {
             public static void Describe(global::MethodCache.Generated.GeneratedModuleBuilder builder)
             {
-                builder.Method("App.IRepository<T>.GetAsync", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
+                builder.Method("[SnapshotApp]App.IRepository<T>.GetAsync", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
                     Tags = new[] { "repo" },

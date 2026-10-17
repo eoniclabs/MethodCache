@@ -146,7 +146,7 @@ public class CacheAdministratorTests
     {
         await using var provider = BuildProvider();
         var admin = provider.GetRequiredService<ICacheAdministrator>();
-        var methodId = typeof(IAdminDocService).FullName!.Replace('+', '.') + "." + nameof(IAdminDocService.GetAsync);
+        var methodId = global::MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IAdminDocService), nameof(IAdminDocService.GetAsync));
 
         var method = Assert.Single(admin.GetMethods(), m => m.MethodId == methodId);
 

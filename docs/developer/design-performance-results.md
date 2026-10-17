@@ -1,5 +1,10 @@
 # Design performance results and external evidence
 
+These measurements describe the pre-review checkpoint. Runtime and generated-contract corrections
+are underway; they require a fresh cost/time cohort against f43854d. The existing accepted limits
+remain unchanged and do not by themselves approve the new source.
+
+
 The design series is reviewed together in PR #134 against main. On 2026-10-17 Johan
 approved five exact HTTP time limits in
 [accepted.json](../../benchmarks/MethodCache.CostProfile/accepted.json), retaining

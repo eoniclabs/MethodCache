@@ -21,7 +21,9 @@ internal static class CacheRuntimeExtensions
 
     internal static ValueTask<CacheLookupResult<T>> LookupAsync<T>(this ICacheManager manager, string name, object[] args,
         CacheRuntimePolicy policy, MethodCache.Extensibility.ICacheKeyGenerator generator)
-        => manager.TryGetAsync<T>(generator.GenerateKey(name, args, policy), default);
+        => manager is MethodCache.Extensibility.InMemoryCacheManager memory
+            ? memory.TryGetPreparedAsync<T>(generator.GenerateKey(name, args, policy), default)
+            : manager.TryGetAsync<T>(generator.GenerateKey(name, args, policy), default);
 
     internal static ValueTask<T?> TryGetAsync<T>(this ICacheManager manager, string name, object[] args,
         CacheRuntimePolicy policy, MethodCache.Extensibility.ICacheKeyGenerator generator)
@@ -64,7 +66,8 @@ internal static class CacheRuntimeExtensions
     }
 
     internal static Task InvalidateByKeysAsync(this ICacheManager manager, params string[] keys)
-        => manager.InvalidateKeysAsync(keys, default).AsTask();
+        => manager is MethodCache.Extensibility.InMemoryCacheManager memory
+            ? memory.InvalidatePreparedKeysAsync(keys, default).AsTask() : manager.InvalidateKeysAsync(keys, default).AsTask();
     internal static Task InvalidateByTagsAsync(this ICacheManager manager, params string[] tags)
         => manager.InvalidateTagsAsync(tags, default).AsTask();
     internal static Task InvalidateByTagPatternAsync(this ICacheManager manager, string pattern)

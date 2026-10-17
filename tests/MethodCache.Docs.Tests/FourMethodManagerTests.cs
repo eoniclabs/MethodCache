@@ -98,8 +98,8 @@ public class FourMethodManagerTests
             await Task.Yield();
             return await inner.GetOrCreateAsync(key, factory, options, token);
         }
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => inner.TryGetAsync<T>(key, token);
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token) => inner.InvalidateKeysAsync(keys, token);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => inner.TryGetAsync<T>(key, version, token);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default) => inner.InvalidateKeysAsync(keys, version, token);
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token) => inner.InvalidateTagsAsync(tags, token);
     }
 
@@ -134,15 +134,15 @@ public class FourMethodManagerTests
             if (options.CanCache(value)) _values[storedKey] = value;
             return value;
         }
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken)
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new(_values.TryGetValue(key, out var value) ? CacheLookupResult<T>.Hit((T)value!) : CacheLookupResult<T>.Miss);
+            return new(_values.TryGetValue(CacheManagerExtensions.GetCacheKey(key, version), out var value) ? CacheLookupResult<T>.Hit((T)value!) : CacheLookupResult<T>.Miss);
         }
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var targets = keys.Distinct(StringComparer.Ordinal).ToArray();
+            var targets = keys.Select(key => CacheManagerExtensions.GetCacheKey(key, version)).Distinct(StringComparer.Ordinal).ToArray();
             foreach (var key in targets) _values.Remove(key);
             return new(new InvalidationResult { Requested = targets.Length, Local = targets.Length });
         }

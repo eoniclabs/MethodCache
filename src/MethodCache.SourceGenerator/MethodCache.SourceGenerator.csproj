@@ -27,6 +27,7 @@
 
 
   <ItemGroup>
+    <Compile Include="../Shared/AssemblyIdentity.cs" Link="Internal/AssemblyIdentity.cs" />
     <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
   </ItemGroup>
 </Project>

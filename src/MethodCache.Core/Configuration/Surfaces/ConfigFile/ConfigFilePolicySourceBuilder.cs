@@ -131,7 +131,7 @@ internal static class ConfigFilePolicySourceBuilder
             builder.SetTags(tags);
         }
 
-        if (ReadValue(section, "Version") is { } versionValue)
+        if (section["Version"] is { } versionValue)
         {
             if (!int.TryParse(versionValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version) || version < 0)
             {

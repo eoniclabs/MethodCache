@@ -559,7 +559,7 @@ namespace TestApp
             AssertContainsIgnoreWhitespace(decoratorSource, "string global::TestApp.ITestService.GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "void global::TestApp.ITestService.ClearAll()");
             // Zero-parameter methods use the key prefix as the whole key
-            AssertContainsIgnoreWhitespace(decoratorSource, "var __mcKey = __mcCall.KeyPrefix;");
+            AssertContainsIgnoreWhitespace(decoratorSource, "var __mcKey = __mcKeyBuilder.ToString();");
             AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)__invocation.ServiceForLoad(__state)).GetConstantValue()");
             AssertContainsIgnoreWhitespace(decoratorSource, "((global::TestApp.ITestService)this._decorated).ClearAll()");
         }

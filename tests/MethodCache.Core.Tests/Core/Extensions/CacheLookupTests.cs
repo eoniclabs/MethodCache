@@ -112,8 +112,8 @@ public class CacheLookupTests
             var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
             return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
         }
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken token) => new(key == "present" ? CacheLookupResult<T>.Hit(default!) : CacheLookupResult<T>.Miss);
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken token)
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(key == "present" ? CacheLookupResult<T>.Hit(default!) : CacheLookupResult<T>.Miss);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)
         { var values = keys.Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token)
         { var values = tags.Distinct().ToArray(); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }

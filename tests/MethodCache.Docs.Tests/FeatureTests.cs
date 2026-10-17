@@ -35,16 +35,16 @@ public class FeatureTests(ITestOutputHelper output)
         await users.ByIdsAsync([1, 2, 3]);
         await users.CountAsync(new Dictionary<string, int[]> { ["age"] = [30, 40] });
 
-        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.").Select(e => e.Key).ToList();
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "[MethodCache.Docs.Tests]MyApp.").Select(e => e.Key).ToList();
         foreach (var key in keys)
         {
             output.WriteLine(key);
         }
 
-        Assert.Contains("MyApp.IUserService.GetAsync:42", keys);
-        Assert.Contains("MyApp.IUserService.SearchAsync:(alice:2)", keys);
-        Assert.Contains("MyApp.IUserService.ByIdsAsync:[3:1:2:3]", keys);
-        Assert.Contains(keys, k => k.StartsWith("MyApp.IUserService.CountAsync:fc08ab0d", StringComparison.Ordinal) && !k.Contains("age"));
+        Assert.Contains("[MethodCache.Docs.Tests]MyApp.IUserService.GetAsync:42", keys);
+        Assert.Contains("[MethodCache.Docs.Tests]MyApp.IUserService.SearchAsync:(alice:2)", keys);
+        Assert.Contains("[MethodCache.Docs.Tests]MyApp.IUserService.ByIdsAsync:[3:1:2:3]", keys);
+        Assert.Matches(@"^\[MethodCache\.Docs\.Tests\]MyApp\.IUserService\.CountAsync:[0-9a-f]{32}$", Assert.Single(keys, key => key.Contains(".CountAsync:", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -90,10 +90,10 @@ public class FeatureTests(ITestOutputHelper output)
         await invoices.GetAsync(42);
         await invoices.FindAsync("INV-7");
 
-        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "MyApp.IInvoiceService").Select(e => e.Key).ToList();
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.Key).ToList();
         var (versioned, overload) = KeyExamples.Build();
-        Assert.Equal("MyApp.IInvoiceService.GetAsync:v2:42", versioned);
-        Assert.Equal("MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
+        Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.GetAsync:v2:42", versioned);
+        Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
         Assert.Contains(versioned, keys);
         Assert.Contains(overload, keys);
     }

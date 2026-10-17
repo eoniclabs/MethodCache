@@ -128,8 +128,10 @@ repeat the origin mutation. Core owns bounded invalidation recovery after caller
 L2 observations. `ObservedDistributed` is not verified presence or a global inventory. No bodies, credentials,
 cookies or raw queries are kept in that register. Known-id removal retires all URL variants; an unknown id is
 NotFound. `Clear` retires the shared generation without enumerating L2 values. Static `HttpCacheOptions.Tags`
-and `http:` plus `MethodCacheKeys.Part(clientName)` support tag invalidation. Client names support at most 1024 UTF-16
-code units; configure at most 125 nonblank custom tags of at most 1024 code units each.
+and the implicit client tag support tag invalidation. For client names up to 128 UTF-16 code units, that tag is
+`http:` plus `MethodCacheKeys.Part(clientName)`; longer names use `http:#:` plus the complete client SHA-256 identity.
+Long client names are accepted. Administration shows a bounded prefix plus their hash. Configure at most 125
+nonblank custom tags of at most 1024 code units each; invalid tag settings fail host startup.
 
 Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
 URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
@@ -159,3 +161,5 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
 
 Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
+
+Named options are validated at host startup: sizes and freshness/retention durations must be non-negative (zero response size remains unlimited), and background revalidation timeout must be positive and at most 4,294,967,294 milliseconds. Stale-if-error respects the caller’s `max-age`, `min-fresh` and `max-stale` constraints.

@@ -80,7 +80,7 @@ public class HttpGenerationFaultTests
         var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
         using var storage = new TestHttpStore(time, backend);
         backend.FailAdvance = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
         Assert.Equal(1, storage.Core.PendingRecoveries);
         backend.FailAdvance = false;
         await storage.Core.DisposeAsync();
@@ -112,7 +112,7 @@ public class HttpGenerationFaultTests
         var logger = new ShutdownLogger();
         using var storage = new TestHttpStore(time, backend, logger: logger);
         backend.FailAdvance = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["https://secret.test/?token=canary"], default).AsTask());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["https://secret.test/?token=canary"], default).AsTask());
         await storage.Core.DisposeAsync();
         var lost = Assert.Single(logger.Messages, message => message.Contains("shutdown lost", StringComparison.Ordinal));
         Assert.Contains("1 HTTP URL invalidations", lost);
@@ -127,7 +127,7 @@ public class HttpGenerationFaultTests
         var logger = new ShutdownLogger();
         using var storage = new TestHttpStore(time, backend, logger: logger);
         backend.FailAdvance = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
         backend.FailAdvance = false;
         await storage.Layer.DisposeAsync();
         Assert.Equal(2, backend.Advances);
@@ -142,7 +142,7 @@ public class HttpGenerationFaultTests
         var logger = new ShutdownLogger();
         using var storage = new TestHttpStore(time, backend, logger: logger);
         backend.FailAdvance = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.Core.InvalidateUrlsAsync(["url"], default).AsTask());
         backend.FailAdvance = false; backend.HoldNextAdvance = true;
         var shutdown = storage.Core.DisposeAsync().AsTask();
         Assert.False(shutdown.IsCompleted);

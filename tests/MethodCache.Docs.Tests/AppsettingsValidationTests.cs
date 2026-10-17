@@ -58,16 +58,16 @@ public class AppsettingsValidationTests
     public void MethodIdProperty_FromEnvironmentVariables_ConfiguresAnOverload()
     {
         const string prefix = "MCDOCS_METHODID_";
-        Environment.SetEnvironmentVariable(prefix + "MethodCache__Services__0__MethodId", "MyApp.IUserService.FindAsync(int)");
+        Environment.SetEnvironmentVariable(prefix + "MethodCache__Services__0__MethodId", "[MethodCache.Docs.Tests]MyApp.IUserService.FindAsync(int)");
         Environment.SetEnvironmentVariable(prefix + "MethodCache__Services__0__Duration", "00:02:00");
         try
         {
             var configuration = new ConfigurationBuilder().AddEnvironmentVariables(prefix).Build();
             var services = new ServiceCollection();
-            services.AddMethodCacheFromConfiguration(configuration);
+            services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
             using var provider = services.BuildServiceProvider();
 
-            var policy = provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "MyApp.IUserService.FindAsync(int)").Options;
+            var policy = provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "[MethodCache.Docs.Tests]MyApp.IUserService.FindAsync(int)").Options;
             Assert.Equal(TimeSpan.FromMinutes(2), policy.Duration);
         }
         finally
@@ -81,7 +81,7 @@ public class AppsettingsValidationTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         return services.BuildServiceProvider();
     }
 }

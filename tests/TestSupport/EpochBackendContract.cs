@@ -68,7 +68,9 @@ public static class EpochBackendContract
         await writer.WriteAsync("long", 1, null, writer.Now, TimeSpan.FromDays(2));
         await using var shorter = new MethodCache.Core.Runtime.Distributed.DistributedCacheLayer((IDistributedCache)secondProvider,
             new MethodCache.Extensibility.JsonCacheSerializer(), new DistributedCacheOptions { KeyPrefix = prefix + "core:", TagRetention = TimeSpan.FromDays(1) });
-        await Assert.ThrowsAsync<IncompatibleDistributedScopeException>(() => shorter.RemoveAsync(["long"]));
+        await shorter.RemoveAsync(["long"]);
+        Assert.True(shorter.HasIncompatibleScope);
+        Assert.Equal(1, shorter.GetInvalidationQueues().Distributed);
 
         var floor = await first.EnsureRetentionContractAsync(prefix + "retention", TimeSpan.FromDays(2));
         Assert.Equal(TimeSpan.FromDays(2), floor);

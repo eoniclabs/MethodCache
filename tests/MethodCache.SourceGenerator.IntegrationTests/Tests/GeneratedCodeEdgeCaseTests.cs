@@ -430,8 +430,8 @@ public static class Probe { public static async Task<string> Go(ISvc s, Svc impl
         var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
         // Separate entries; invalidating "ints" reloads only Get(int)
         Assert.Equal("int:1|string:1|2|3", text);
-        Assert.Contains("\"App.ISvc.Get(int)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
-        Assert.Contains("\"App.ISvc.Get(string)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
+        Assert.Contains($"\"[{r.Input.AssemblyName}]App.ISvc.Get(int)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
+        Assert.Contains($"\"[{r.Input.AssemblyName}]App.ISvc.Get(string)\"", r.Sources["GeneratedPolicyRegistrations.g.cs"]);
     }
 
 
@@ -447,9 +447,9 @@ public interface IOrders {
 }}", nameof(OverloadIds_MatchTheRuntimeFormat));
         AssertCompiles(r);
         var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
-        Assert.Contains("\"App.IOrders.Find(int)\"", policies);
-        Assert.Contains("\"App.IOrders.Find(string, System.Threading.CancellationToken)\"", policies);
-        Assert.Contains("\"App.IOrders.Find``1(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
+        Assert.Contains($"\"[{r.Input.AssemblyName}]App.IOrders.Find(int)\"", policies);
+        Assert.Contains($"\"[{r.Input.AssemblyName}]App.IOrders.Find(string, System.Threading.CancellationToken)\"", policies);
+        Assert.Contains($"\"[{r.Input.AssemblyName}]App.IOrders.Find``1(int?, string[], System.Collections.Generic.List<System.Guid>, T)\"", policies);
     }
 
     [Fact]
@@ -495,7 +495,7 @@ public interface IRepo<T> {
 }}", nameof(OverloadIds_EqualMethodIdsFor_ForEveryParameterShape), load: true);
         AssertCompiles(r);
         var policies = r.Sources["GeneratedPolicyRegistrations.g.cs"];
-        var generated = System.Text.RegularExpressions.Regex.Matches(policies, "\"(App\\.I[A-Za-z]+(?:<T>)?\\.[A-Za-z]+(?:``[0-9]+)?\\([^\"]*\\))\"")
+        var generated = System.Text.RegularExpressions.Regex.Matches(policies, "\"(\\[[^\"]+\\]App\\.I[A-Za-z]+(?:<T>)?\\.[A-Za-z]+(?:``[0-9]+)?\\([^\"]*\\))\"")
             .Select(m => m.Groups[1].Value)
             .ToHashSet();
 

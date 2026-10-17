@@ -19,6 +19,43 @@ public class HealthCapabilityTests
         Assert.Equal(HealthStatus.Unhealthy, result.Status);
     }
 
+    [Fact]
+    public async Task RetentionWarning_DoesNotHideConfiguredTransportFailureSeverity()
+    {
+        var backend = MethodCache.TestSupport.HttpEpochTestCache.Create();
+        backend.EstablishedRetention = TimeSpan.FromHours(1);
+        backend.FailDataRead = true;
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMethodCache();
+        services.AddMethodCacheDistributedCache(_ => backend);
+        services.AddHealthChecks().AddMethodCache(failureStatus: HealthStatus.Unhealthy);
+        await using var provider = services.BuildServiceProvider();
+        var result = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+        Assert.Equal(HealthStatus.Unhealthy, result.Status);
+    }
+
+    [Theory]
+    [InlineData(true, HealthStatus.Unhealthy)]
+    [InlineData(false, HealthStatus.Degraded)]
+    public async Task ScopeContract_ReportsSafeActionableHealth(bool incompatible, HealthStatus expected)
+    {
+        var backend = MethodCache.TestSupport.HttpEpochTestCache.Create();
+        backend.IncompatibleScope = incompatible;
+        backend.EstablishedRetention = TimeSpan.FromHours(1);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMethodCache();
+        services.AddMethodCacheDistributedCache(_ => backend);
+        services.AddHealthChecks().AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var result = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+        Assert.Equal(expected, result.Status);
+        var description = Assert.Single(result.Entries).Value.Description!;
+        Assert.DoesNotContain("secret-canary", description, StringComparison.Ordinal);
+        Assert.Contains(incompatible ? "scope" : "TagRetention", description, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData((int)BackplaneState.Unknown, "unknown")]
     [InlineData((int)BackplaneState.Connecting, "connecting")]
@@ -108,8 +145,8 @@ public class HealthCapabilityTests
     {
         private readonly NoOpCacheManager _inner = new();
         public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken cancellationToken) => _inner.GetOrCreateAsync(key, factory, options, cancellationToken);
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken) => _inner.TryGetAsync<T>(key, cancellationToken);
-        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken) => _inner.InvalidateKeysAsync(keys, cancellationToken);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default) => _inner.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default) => _inner.InvalidateKeysAsync(keys, version, cancellationToken);
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken) => _inner.InvalidateTagsAsync(tags, cancellationToken);
     }
 

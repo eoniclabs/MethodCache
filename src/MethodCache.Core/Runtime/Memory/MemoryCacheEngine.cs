@@ -88,6 +88,9 @@ internal sealed class MemoryCacheEngine
     private long _expirationCount;
     private int _maintenanceScheduled;
     private long _entryCount;
+    private long _observedEntries;
+    internal Func<Node, bool>? ObservationFilter { get; init; }
+    internal long ObservedEntries => Volatile.Read(ref _observedEntries);
     private long _sketchCapacity = InitialSketchCapacity;
     private long _maintenanceScheduledAt;
 
@@ -529,6 +532,7 @@ internal sealed class MemoryCacheEngine
         }
 
         _entryCount++;
+        if (ObservationFilter?.Invoke(node) == true) _observedEntries++;
         if (_mode == EngineEvictionMode.TinyLfu)
         {
             if (_entryCount > _sketchCapacity)
@@ -635,6 +639,7 @@ internal sealed class MemoryCacheEngine
         {
             node.Queue = QueueType.None;
             _entryCount--;
+            if (ObservationFilter?.Invoke(node) == true) _observedEntries--;
             Volatile.Write(ref _totalWeight, _totalWeight - node.Weight);
         }
 

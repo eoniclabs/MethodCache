@@ -36,7 +36,7 @@ namespace Docs.Invalidation
         {
             // begin-snippet: invalidation-by-key
             var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-            await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+            await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
             // end-snippet
         }
 

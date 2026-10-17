@@ -27,7 +27,7 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
             var http = _services.GetService<HttpResponseStore>();
             var data = new Dictionary<string, object>
             {
-                ["managerCapability"] = builtIn ? "built_in" : manager.GetType() == typeof(NoOpCacheManager) ? "noop" : "custom",
+                ["managerCapability"] = builtIn ? "built_in" : manager is NoOpCacheManager ? "noop" : "custom",
                 ["statisticsAvailable"] = (builtIn || http != null) && admin != null,
                 ["methodStatisticsAvailable"] = builtIn && admin != null,
                 ["httpCapability"] = http == null ? "not_configured" : http.Distributed ? "distributed" : "local"
@@ -54,8 +54,12 @@ public sealed class MethodCacheHealthCheck : IHealthCheck
                 ? await transport.CheckAvailableAsync(cancellationToken).ConfigureAwait(false)
                 : admin != null ? await admin.CheckDistributedCacheAsync(cancellationToken).ConfigureAwait(false) : null;
             if (distributed.HasValue) data["distributedCacheAvailable"] = distributed.Value;
+            if (transport?.HasIncompatibleScope == true)
+                return HealthCheckResult.Unhealthy("The distributed cache scope has an incompatible schema or retention contract. This node uses memory only; repair the configuration and restart, or use a new KeyPrefix.", data: data);
             var degraded = distributed == false || queues.Distributed != 0 || queues.Publication != 0 ||
                 state is BackplaneState.Unknown or BackplaneState.Connecting or BackplaneState.Disconnected;
+            if (!degraded && transport?.HasRetentionMismatch == true)
+                return HealthCheckResult.Degraded("TagRetention differs from the established scope contract; MethodCache uses the established retention.", data: data);
             return degraded
                 ? new HealthCheckResult(context.Registration.FailureStatus, "Cache transport or invalidation delivery is unavailable or recovering.", data: data)
                 : HealthCheckResult.Healthy("MethodCache is available.", data);

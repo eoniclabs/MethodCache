@@ -170,7 +170,7 @@ namespace MethodCache.SourceGenerator
         private static string UncacheableReason(DiagnosticInfo diagnostic) => diagnostic.Id switch
         {
             "MC0003" => "it returns void, so there is nothing to cache",
-            "MC0004" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
+            "MC0022" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
             "MC0005" => "ref, out and in parameters can't be part of a cache key",
             "MC0008" => "pointer parameters can't be part of a cache key",
             "MC0009" => "ref struct parameters such as Span<T> can't be part of a cache key",

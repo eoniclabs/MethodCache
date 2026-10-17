@@ -61,7 +61,15 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly IDistributedEpochStore? _epochStore;
         private readonly string _scopeKey;
         private long _retentionMilliseconds;
-        private int _scopeVerified;
+        private long _scopeRevision;
+        private long _verifiedScopeRevision = -1;
+        private bool ScopeVerified => Volatile.Read(ref _verifiedScopeRevision) == Volatile.Read(ref _scopeRevision);
+        private int _incompatibleScope;
+        private int _retentionWarning;
+        private int _retentionMismatch;
+        private long _establishedRetention;
+        internal bool HasIncompatibleScope => Volatile.Read(ref _incompatibleScope) != 0;
+        internal bool HasRetentionMismatch => Volatile.Read(ref _retentionMismatch) != 0;
 
         // Written into every entry, so values another serializer wrote read as misses instead of wrong values
         private readonly byte[] _contentType;
@@ -100,7 +108,9 @@ namespace MethodCache.Core.Runtime.Distributed
         // Invalidations the distributed cache didn't accept yet, retried by _retryTimer
         private readonly object _pendingLock = new();
         private readonly HashSet<string> _pendingKeys = new(StringComparer.Ordinal);
-        private readonly ConcurrentDictionary<(bool IsTag, string Value), long> _pendingPublications = new();
+        private readonly HashSet<string> _pendingRepairKeys = new(StringComparer.Ordinal);
+        private bool _pendingRepairClear;
+        private readonly ConcurrentDictionary<(bool IsTag, string Value), (long Ticket, bool Report)> _pendingPublications = new();
         private long _publicationTicket;
         private ITimer? _publicationTimer;
         private readonly SemaphoreSlim _publicationGate = new(1, 1);
@@ -194,7 +204,7 @@ namespace MethodCache.Core.Runtime.Distributed
         internal BackplaneState BackplaneStatus => _backplane?.ConnectionState ?? BackplaneState.NotConfigured;
 
         /// <summary>False while the breaker is open or invalidations wait to be stored.</summary>
-        internal bool IsAvailable => Volatile.Read(ref _openUntil) == 0 && !_hasPending;
+        internal bool IsAvailable => !HasIncompatibleScope && Volatile.Read(ref _openUntil) == 0 && !_hasPending;
 
         /// <summary>
         /// Whether the distributed cache answers now. It is asked once, bounded by the operation timeout, so an outage
@@ -326,7 +336,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     if (replaces)
                     {
                         // Removed with the queue if shutdown hasn't flushed it yet, else logged as lost
-                        Queue(new[] { key }, Array.Empty<string>());
+                        Queue(new[] { key }, Array.Empty<string>(), repair: true);
                     }
 
                     return;
@@ -352,9 +362,13 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName, string? identity, string? methodId, long? publishedAt)
         {
-            if (_epochStore != null && Volatile.Read(ref _scopeVerified) == 0)
+            if (HasIncompatibleScope || _epochStore != null && !ScopeVerified)
             {
-                if (!TryEnter(out var scopeProbe) || !await EnsureScopeAsync(scopeProbe, default).ConfigureAwait(false)) return;
+                if (!TryEnter(out var scopeProbe) || !await EnsureScopeAsync(scopeProbe, default).ConfigureAwait(false))
+                {
+                    if (replaces) Queue(new[] { key }, Array.Empty<string>(), repair: true);
+                    return;
+                }
             }
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
@@ -366,7 +380,7 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 if (replaces)
                 {
-                    await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                    await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
                 }
                 return;
             }
@@ -377,7 +391,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 // removed everywhere once the cache answers, as after a write that failed
                 if (replaces)
                 {
-                    Queue(new[] { key }, Array.Empty<string>());
+                    Queue(new[] { key }, Array.Empty<string>(), repair: true);
                 }
 
                 return;
@@ -395,7 +409,7 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 if (MayHoldAnEarlierValue(replaces, methodName))
                 {
-                    await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                    await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
                 }
 
                 return;
@@ -426,7 +440,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     // Other nodes must not keep the value this one replaced
                     if (MayHoldAnEarlierValue(replaces, methodName))
                     {
-                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                        await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
                     }
 
                     return;
@@ -438,7 +452,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     // An earlier value of the method (an Animal before this Dog, say) may still be there for the key
                     if (MayHoldAnEarlierValue(replaces, methodName))
                     {
-                        await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                        await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
                     }
 
                     return;
@@ -452,7 +466,7 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 if (replaces)
                 {
-                    Queue(new[] { key }, Array.Empty<string>());
+                    Queue(new[] { key }, Array.Empty<string>(), repair: true);
                 }
 
                 return;
@@ -460,6 +474,14 @@ namespace MethodCache.Core.Runtime.Distributed
 
             var entry = new Entry(EntryKey(key, identity), buffer.WrittenMemory, expiresAt, identity != null);
             var written = await TryRunAsync(StoreAsync, entry, "write", probe, tripOnTimeout: false).ConfigureAwait(false);
+            if (written.Succeeded && !written.Value)
+            {
+                // Serialization can consume the remaining lifetime. Never leave an older value
+                // behind when this publication replaces it or the method may already be shared.
+                if (MayHoldAnEarlierValue(replaces, methodName))
+                    await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
+                return;
+            }
             if (written.TimedOut)
             {
                 // Says more about this value (a large one, say) than about the cache, which other operations may
@@ -474,7 +496,7 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 // A failed write may still land later, after a removal it never saw, so the key is removed again
                 // once the cache answers
-                Queue(new[] { key }, Array.Empty<string>());
+                Queue(new[] { key }, Array.Empty<string>(), repair: true);
                 return;
             }
 
@@ -491,7 +513,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 // Removed since, or unknown: then the value comes out once the cache answers again
                 if (!removedAt.Succeeded || !(await TryRunAsync(DeleteAsync, key, "remove a key", probe).ConfigureAwait(false)).Succeeded)
                 {
-                    Queue(new[] { key }, Array.Empty<string>());
+                    Queue(new[] { key }, Array.Empty<string>(), repair: true);
                 }
 
                 return;
@@ -502,7 +524,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
             if (invalidated?.Invoke() == true)
             {
-                await RemoveAsync(new[] { key }).ConfigureAwait(false);
+                await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
             }
         }
 
@@ -632,7 +654,7 @@ namespace MethodCache.Core.Runtime.Distributed
                         {
                             if (_lateRemovals.TryRemove(new KeyValuePair<string, long>(key, due)))
                             {
-                                await InvalidateCoreAsync(new[] { key }, Array.Empty<string>()).ConfigureAwait(false);
+                                await InvalidateCoreAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
                                 return;
                             }
                         }
@@ -651,7 +673,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 {
                     if (_lateRemovals.TryRemove(key, out _))
                     {
-                        AddPending(new[] { key }, Array.Empty<string>());
+                        AddPending(new[] { key }, Array.Empty<string>(), repair: true);
                         _hasPending = true;
                     }
                 }
@@ -706,20 +728,20 @@ namespace MethodCache.Core.Runtime.Distributed
             finally { EndWrite(); }
         }
 
-        private async Task InvalidateAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
+        private async Task InvalidateAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, bool repair = false)
         {
             if (keys.Count == 0 && tags.Count == 0)
             {
                 return;
             }
 
-            using var activity = InvalidationActivity(keys, tags);
+            using var activity = repair ? null : InvalidationActivity(keys, tags);
             // Like a write, waited for at shutdown, so what the cache refuses is flushed with the queue (a removal
             // after a late write, say, that started just before shutdown)
             BeginWrite();
             try
             {
-                await InvalidateCoreAsync(keys, tags).ConfigureAwait(false);
+                await InvalidateCoreAsync(keys, tags, repair).ConfigureAwait(false);
             }
             finally
             {
@@ -727,7 +749,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task InvalidateCoreAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
+        private async Task InvalidateCoreAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, bool repair = false)
         {
 
             // Stamps are remembered at once, so this node's reads respect the invalidation whatever the cache says
@@ -739,14 +761,14 @@ namespace MethodCache.Core.Runtime.Distributed
 
             if (_hasPending || !TryEnter(out var probe))
             {
-                Queue(keys, tags);
+                Queue(keys, tags, repair);
                 return;
             }
 
-            var refused = await StoreInvalidationsAsync(keys, tags, now, probe, force: false).ConfigureAwait(false);
+            var refused = await StoreInvalidationsAsync(keys, tags, now, probe, force: false, repairs: repair ? keys.ToHashSet(StringComparer.Ordinal) : null).ConfigureAwait(false);
             if (refused.Count > 0)
             {
-                Queue(refused.Keys, refused.Tags);
+                Queue(refused.Keys, refused.Tags, repair);
             }
         }
 
@@ -757,8 +779,9 @@ namespace MethodCache.Core.Runtime.Distributed
         /// stores the rest itself, within its deadline). <paramref name="force"/> ignores the breaker and starts no
         /// batch after one operation timeout (at shutdown). Returns what wasn't stored.
         /// </summary>
-        private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force, bool acknowledgeMetadata = false)
+        private async Task<Refused> StoreInvalidationsAsync(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags, long now, long probe, bool force, bool acknowledgeMetadata = false, IReadOnlySet<string>? repairs = null, bool repairClear = false)
         {
+            bool Report((bool IsTag, string Value) item) => item.IsTag ? !repairClear : repairs?.Contains(item.Value) != true;
             var deadline = force ? Now + (long)_timeout.TotalMilliseconds : long.MaxValue;
             var items = tags.Select(static tag => (IsTag: true, Value: tag)).Concat(keys.Select(static key => (IsTag: false, Value: key))).ToList();
             var refused = new Refused();
@@ -789,7 +812,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 var stored = new List<(bool IsTag, string Value)>(batch.Count);
                 for (var i = 0; i < batch.Count; i++)
                 {
-                    if (stamped[i].Succeeded) _telemetry?.Invalidations(InvalidationType(batch[i]), "distributed", 1);
+                    if (stamped[i].Succeeded && Report(batch[i])) _telemetry?.Invalidations(InvalidationType(batch[i]), "distributed", 1);
                     if (acknowledgeMetadata ? stamped[i].Succeeded : removed[i].Succeeded)
                     {
                         stored.Add(batch[i]);
@@ -804,12 +827,12 @@ namespace MethodCache.Core.Runtime.Distributed
                 refused.Answered = refused.Count > 0 && stored.Count > 0;
 
                 // Published together, so a hung backplane holds the caller for one timeout, not one per key or tag
-                var publications = await Task.WhenAll(stored.Select(PublishTargetAsync)).ConfigureAwait(false);
+                var publications = await Task.WhenAll(stored.Select(item => PublishTargetAsync(item, Report(item)))).ConfigureAwait(false);
                 if (_backplane != null)
                     for (var i = 0; i < stored.Count; i++)
                     {
                         if (publications[i]) refused.Published++;
-                        else { refused.PublicationQueued++; QueuePublication(stored[i]); }
+                        else { refused.PublicationQueued++; QueuePublication(stored[i], Report(stored[i])); }
                     }
             }
 
@@ -820,6 +843,8 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Makes every entry written so far count as missing. The distributed cache cannot enumerate keys, so this
         /// invalidates a tag that every entry implicitly carries.
         /// </summary>
+        internal Task<InvalidationResult> ClearWithResultAsync() => InvalidateWithResultAsync([], [ClearTag]);
+
         public Task ClearAsync() => InvalidateAsync(Array.Empty<string>(), new[] { ClearTag });
 
         /// <summary>
@@ -860,7 +885,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     {
                         if (_lateRemovals.TryRemove(key, out _))
                         {
-                            AddPending(new[] { key }, Array.Empty<string>());
+                            AddPending(new[] { key }, Array.Empty<string>(), repair: true);
                             _hasPending = true;
                         }
                     }
@@ -979,16 +1004,26 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private async ValueTask<bool> EnsureScopeAsync(long probe, CancellationToken cancellationToken)
         {
-            if (_epochStore == null || Volatile.Read(ref _scopeVerified) != 0) return true;
+            if (HasIncompatibleScope) return false;
+            var revision = Volatile.Read(ref _scopeRevision);
+            if (_epochStore == null || Volatile.Read(ref _verifiedScopeRevision) == revision) return true;
             var contract = await TryRunAsync(static (layer, _, ct) => layer._epochStore!.EnsureRetentionContractAsync(layer._scopeKey, layer._tagRetention, ct).AsTask(),
                 0, "validate scope retention", probe, cancellationToken).ConfigureAwait(false);
-            if (!contract.Succeeded) return false;
+            if (!contract.Succeeded || revision != Volatile.Read(ref _scopeRevision)) return false;
             var milliseconds = contract.Value.Ticks / TimeSpan.TicksPerMillisecond;
-            if (milliseconds <= _clockSkewMilliseconds)
-                throw new IncompatibleDistributedScopeException("The established scope retention must exceed ClockSkewTolerance. Use a new KeyPrefix for a new contract.");
+            if (milliseconds <= _clockSkewMilliseconds || (Volatile.Read(ref _establishedRetention) is > 0 and var established && milliseconds < established))
+            {
+                MarkIncompatibleScope();
+                return false;
+            }
+            var mismatch = contract.Value != _tagRetention;
+            Volatile.Write(ref _retentionMismatch, mismatch ? 1 : 0);
+            if (mismatch && Interlocked.Exchange(ref _retentionWarning, 1) == 0)
+                _logger.LogWarning("Configured MethodCache TagRetention {ConfiguredRetention} differs from the established scope retention {EstablishedRetention}; the established contract is used. Use a new KeyPrefix to change the contract.", _tagRetention, contract.Value);
+            Volatile.Write(ref _establishedRetention, milliseconds);
             Volatile.Write(ref _retentionMilliseconds, milliseconds);
-            Volatile.Write(ref _scopeVerified, 1);
-            return true;
+            Volatile.Write(ref _verifiedScopeRevision, revision);
+            return revision == Volatile.Read(ref _scopeRevision);
         }
 
         private static Task<ReadOnlyMemory<byte>?> ReadAsync(DistributedCacheLayer layer, string key, CancellationToken cancellationToken)
@@ -1010,6 +1045,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private static async Task<bool> StoreAsync(DistributedCacheLayer layer, Entry entry, CancellationToken cancellationToken)
         {
+            if (entry.Deadline <= layer.Now) return false;
             var options = new DistributedCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.FromUnixTimeMilliseconds(entry.Deadline) };
             if (layer._bufferCache != null)
             {
@@ -1147,12 +1183,12 @@ namespace MethodCache.Core.Runtime.Distributed
                 : description.StartsWith("remove", StringComparison.Ordinal) ? "remove" : description == "write" ? "set" : "get";
 
         private static string InvalidationType((bool IsTag, string Value) target)
-            => !target.IsTag ? "key" : target.Value.StartsWith("\0method:", StringComparison.Ordinal) ? "method" : "tag";
+            => !target.IsTag ? "key" : target.Value == ClearTag ? "clear" : target.Value.StartsWith("\0method:", StringComparison.Ordinal) ? "method" : "tag";
 
         private System.Diagnostics.Activity? InvalidationActivity(IReadOnlyCollection<string> keys, IReadOnlyCollection<string> tags)
         {
             if (_telemetry?.Source.HasListeners() != true) return null;
-            var type = keys.Count > 0 ? "key" : tags.Any(tag => InvalidationType((true, tag)) == "method") ? "method" : "tag";
+            var type = keys.Count > 0 ? "key" : tags.Contains(ClearTag) ? "clear" : tags.Any(tag => InvalidationType((true, tag)) == "method") ? "method" : "tag";
             var applicationTags = tags.Where(tag => tag != ClearTag && InvalidationType((true, tag)) == "tag").Select(ApplicationTag).ToArray();
             return _telemetry.BeginInvalidation(type, keys.ToArray(), applicationTags);
         }
@@ -1167,6 +1203,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private bool TryEnter(out long probe)
         {
             probe = NotProbing;
+            if (HasIncompatibleScope) return false;
             if (Volatile.Read(ref _openUntil) == 0)
             {
                 return true;
@@ -1202,6 +1239,7 @@ namespace MethodCache.Core.Runtime.Distributed
             CancellationToken cancellationToken = default,
             bool tripOnTimeout = true)
         {
+            if (HasIncompatibleScope) return (false, default!, false);
             using var observed = _telemetry?.BeginDistributed(TransportOperation(description));
             try
             {
@@ -1226,7 +1264,8 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 observed?.Fail(error);
                 ReleaseProbe(probe);
-                throw; // Invalid settings/schema must not silently behave like an available compatible scope.
+                MarkIncompatibleScope();
+                return (false, default!, false);
             }
             catch (OperationCanceledException error) when (cancellationToken.IsCancellationRequested)
             {
@@ -1262,12 +1301,19 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
+        private void MarkIncompatibleScope()
+        {
+            if (Interlocked.Exchange(ref _incompatibleScope, 1) == 0)
+                _logger.LogError("The MethodCache distributed scope has an incompatible schema or retention contract. This node uses memory only and retains invalidations. Repair the scope configuration and restart, or use a new KeyPrefix.");
+        }
+
         private void Trip(Exception exception, string operation)
         {
             bool wasClosed;
             lock (_breakerLock)
             {
                 wasClosed = _openUntil == 0;
+                Interlocked.Increment(ref _scopeRevision);
                 _trips++;
                 Volatile.Write(ref _openUntil, Now + (long)_breakDuration.TotalMilliseconds);
                 _probing = 0;
@@ -1300,14 +1346,17 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- invalidations the distributed cache didn't accept ----------
 
-        private void Queue(IEnumerable<string> keys, IEnumerable<string> tags)
+        private void Queue(IEnumerable<string> keys, IEnumerable<string> tags, bool repair = false)
         {
-            _telemetry?.Invalidations("key", "queued", keys.Count());
-            foreach (var tag in tags) _telemetry?.Invalidations(InvalidationType((true, tag)), "queued", 1);
+            if (!repair)
+            {
+                _telemetry?.Invalidations("key", "queued", keys.Count());
+                foreach (var tag in tags) _telemetry?.Invalidations(InvalidationType((true, tag)), "queued", 1);
+            }
             lock (_pendingLock)
             {
                 // Also while shutting down: shutdown flushes the queue (AddPending counts what comes after as lost)
-                AddPending(keys, tags);
+                AddPending(keys, tags, repair);
 
                 _hasPending = true;
                 if (_retryTimer == null && Volatile.Read(ref _disposed) == 0)
@@ -1322,7 +1371,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// Adds to the queue (under <see cref="_pendingLock"/>). A queued clear stands for everything else, since it is
         /// stamped when it is stored: so a queue that grew too long becomes one clear.
         /// </summary>
-        private void AddPending(IEnumerable<string> keys, IEnumerable<string> tags)
+        private void AddPending(IEnumerable<string> keys, IEnumerable<string> tags, bool repair = false)
         {
             if (_flushedForShutdown)
             {
@@ -1338,11 +1387,19 @@ namespace MethodCache.Core.Runtime.Distributed
 
             if (_pendingTags.Contains(ClearTag))
             {
+                if (!repair && (keys.Any() || tags.Any())) _pendingRepairClear = false;
                 return;
             }
 
+            foreach (var key in keys)
+            {
+                if (repair && !_pendingKeys.Contains(key)) _pendingRepairKeys.Add(key);
+                else if (!repair) _pendingRepairKeys.Remove(key);
+            }
             _pendingKeys.UnionWith(keys);
             _pendingTags.UnionWith(tags);
+            if (repair && _pendingTags.Contains(ClearTag))
+                _pendingRepairClear = _pendingKeys.Count == _pendingRepairKeys.Count && _pendingTags.All(static tag => tag == ClearTag);
             if (_pendingTags.Contains(ClearTag) || _pendingKeys.Count + _pendingTags.Count > MaxQueuedInvalidations)
             {
                 if (!_pendingTags.Contains(ClearTag))
@@ -1356,6 +1413,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private void ReplaceQueueWithClear()
         {
+            _pendingRepairClear = _pendingRepairClear || (_pendingKeys.Count > 0 && _pendingKeys.Count == _pendingRepairKeys.Count && _pendingTags.Count == 0);
+            _pendingRepairKeys.Clear();
             _pendingKeys.Clear();
             _pendingTags.Clear();
             _pendingTags.Add(ClearTag);
@@ -1381,6 +1440,8 @@ namespace MethodCache.Core.Runtime.Distributed
             {
                 string[] keys;
                 string[] tags;
+                HashSet<string> repairs;
+                bool repairClear;
                 lock (_pendingLock)
                 {
                     if (!_hasPending)
@@ -1392,6 +1453,10 @@ namespace MethodCache.Core.Runtime.Distributed
                     // from the distributed cache until the queue is empty
                     keys = _pendingKeys.ToArray();
                     tags = _pendingTags.ToArray();
+                    repairs = new HashSet<string>(_pendingRepairKeys, StringComparer.Ordinal);
+                    repairClear = _pendingRepairClear;
+                    _pendingRepairKeys.Clear();
+                    _pendingRepairClear = false;
                     _pendingKeys.Clear();
                     _pendingTags.Clear();
                 }
@@ -1410,7 +1475,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
                 else
                 {
-                    refused = await StoreInvalidationsAsync(keys, tags, Now, probe, force).ConfigureAwait(false);
+                    refused = await StoreInvalidationsAsync(keys, tags, Now, probe, force, repairs: repairs, repairClear: repairClear).ConfigureAwait(false);
 
                     // Refused while the cache still answers a read: it refuses these invalidations, not everything
                     if (refused.Count > 0 && !refused.Answered && !force && !_disposing.IsCancellationRequested)
@@ -1421,7 +1486,8 @@ namespace MethodCache.Core.Runtime.Distributed
 
                 lock (_pendingLock)
                 {
-                    AddPending(refused.Keys, refused.Tags);
+                    AddPending(refused.Keys.Where(key => !repairs.Contains(key)), repairClear ? [] : refused.Tags);
+                    AddPending(refused.Keys.Where(repairs.Contains), repairClear ? refused.Tags : [], repair: true);
                     _refusedFlushes = refused.Answered ? _refusedFlushes + 1 : refused.Count == 0 ? 0 : _refusedFlushes;
                     if (_refusedFlushes >= MaxRefusedFlushes && !_pendingTags.Contains(ClearTag))
                     {
@@ -1482,7 +1548,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         // ---------- backplane ----------
 
-        private async Task<bool> PublishTargetAsync((bool IsTag, string Value) item)
+        private async Task<bool> PublishTargetAsync((bool IsTag, string Value) item, bool report = true)
         {
             var published = await (item.IsTag && item.Value == ClearTag
                 ? PublishAsync(static (backplane, _, ct) => backplane.PublishClearAsync(ct), string.Empty)
@@ -1491,21 +1557,27 @@ namespace MethodCache.Core.Runtime.Distributed
                 : item.IsTag
                 ? PublishAsync(static (backplane, tag, ct) => backplane.PublishTagInvalidationAsync(tag, ct), ApplicationTag(item.Value))
                 : PublishAsync(static (backplane, key, ct) => backplane.PublishInvalidationAsync(key, ct), item.Value)).ConfigureAwait(false);
-            if (published && _backplane != null) _telemetry?.Invalidations(InvalidationType(item), "published", 1);
+            if (report && published && _backplane != null) _telemetry?.Invalidations(InvalidationType(item), "published", 1);
             return published;
         }
 
-        private void QueuePublication((bool IsTag, string Value) target)
+        private void QueuePublication((bool IsTag, string Value) target, bool report = true)
         {
-            _telemetry?.Invalidations(InvalidationType(target), "publication_queued", 1);
+            if (report) _telemetry?.Invalidations(InvalidationType(target), "publication_queued", 1);
             lock (_pendingLock)
             {
                 if (_pendingPublications.Count >= MaxQueuedInvalidations)
                 {
+                    report |= _pendingPublications.Values.Any(static value => value.Report);
                     _pendingPublications.Clear();
-                    _pendingPublications[(true, ClearTag)] = Interlocked.Increment(ref _publicationTicket);
+                    _pendingPublications[(true, ClearTag)] = (Interlocked.Increment(ref _publicationTicket), report);
                 }
-                else if (!_pendingPublications.ContainsKey((true, ClearTag))) _pendingPublications[target] = Interlocked.Increment(ref _publicationTicket);
+                else if (!_pendingPublications.ContainsKey((true, ClearTag)))
+                    _pendingPublications.AddOrUpdate(target, (Interlocked.Increment(ref _publicationTicket), report),
+                        (_, previous) => (Interlocked.Increment(ref _publicationTicket), report || previous.Report));
+                else if (report)
+                    _pendingPublications.AddOrUpdate((true, ClearTag), (Interlocked.Increment(ref _publicationTicket), true),
+                        (_, _) => (Interlocked.Increment(ref _publicationTicket), true));
                 if (_publicationTimer == null && Volatile.Read(ref _disposed) == 0)
                     _publicationTimer = _time.CreateTimer(static state => _ = ((DistributedCacheLayer)state!).FlushPublicationsAsync(),
                         this, _breakDuration, _breakDuration);
@@ -1530,7 +1602,7 @@ namespace MethodCache.Core.Runtime.Distributed
             try
             {
                 foreach (var pending in _pendingPublications)
-                    if (await PublishTargetAsync(pending.Key).ConfigureAwait(false)) _pendingPublications.TryRemove(pending);
+                    if (await PublishTargetAsync(pending.Key, pending.Value.Report).ConfigureAwait(false)) _pendingPublications.TryRemove(pending);
                 lock (_pendingLock)
                     if (_pendingPublications.IsEmpty) { _publicationTimer?.Dispose(); _publicationTimer = null; }
             }
@@ -1600,6 +1672,7 @@ namespace MethodCache.Core.Runtime.Distributed
                         // Stamp reads still on the wire may predate the message: counted first, so they aren't
                         // remembered (see ReadStampAsync)
                         case BackplaneMessageType.ClearAll:
+                            Interlocked.Increment(ref _scopeRevision);
                             Interlocked.Increment(ref _remoteInvalidations);
                             _tagStamps.Clear();
                             _onRemoteCleared?.Invoke();

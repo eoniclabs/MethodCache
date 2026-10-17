@@ -74,6 +74,11 @@ probe does not prove that invalidation subscription is established. Reports incl
 `statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `invalidationQueued` and
 `publicationQueued`, plus local storage statistics for the built-in manager. Backend exception text is omitted.
 
+An incompatible distributed schema or retention contract reports `Unhealthy` with an actionable safe reason,
+uses local memory only, and retains invalidations. A safe established retention differing from the configured
+value reports `Degraded`. Admin mutations return 503 when distributed storage has not confirmed invalidation;
+the cache continues owning retries.
+
 An empty queue and a connected subscription do not acknowledge delivery to every node; backplane delivery remains
 best effort.
 

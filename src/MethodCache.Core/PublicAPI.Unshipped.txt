@@ -209,7 +209,7 @@ MethodCache.Generated.GeneratedModule
 MethodCache.Generated.GeneratedModule.GeneratedModule() -> void
 MethodCache.Generated.GeneratedModuleBuilder
 MethodCache.Generated.GeneratedModuleBuilder.DeclareService(System.Type! serviceType) -> void
-MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds) -> void
+MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds, string![]? keyMethods = null) -> void
 MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void
 MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void
 MethodCache.Generated.GeneratedServices
@@ -218,7 +218,6 @@ MethodCache.Generated.GeneratedServices.InvalidateTags(string![]! tags) -> void
 MethodCache.Generated.GeneratedServices.InvalidateTagsAsync(string![]! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 MethodCache.Generated.GeneratedServices.Method(string! methodId, System.Type! serviceType, string! methodName, string! displayName) -> MethodCache.Generated.CachedMethod!
 MethodCache.Generated.KeyBuilder
-MethodCache.Generated.KeyBuilder.Append(string! value) -> void
 MethodCache.Generated.KeyBuilder.KeyBuilder(MethodCache.Generated.MethodCall call, System.Span<char> buffer) -> void
 MethodCache.Generated.KeyBuilder.AppendNullPart() -> void
 MethodCache.Generated.KeyBuilder.AppendPart(System.DateTime value) -> void
@@ -243,26 +242,17 @@ MethodCache.Generated.KeyBuilder.AsSpan() -> System.ReadOnlySpan<char>
 MethodCache.Generated.KeyBuilder.KeyBuilder() -> void
 MethodCache.Generated.KeyParts
 MethodCache.Generated.MethodCall
-MethodCache.Generated.MethodCall.BindKey(string! key) -> MethodCache.Generated.KeyBuilder
-MethodCache.Generated.MethodCall.BindTextKey(string! key) -> MethodCache.Generated.TextKey
 MethodCache.Generated.MethodCall.CreateFallbackKey(object?[]! arguments) -> MethodCache.Generated.KeyBuilder
-MethodCache.Generated.MethodCall.KeyPrefix.get -> string!
 MethodCache.Generated.MethodCall.Load<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, T>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> T
 MethodCache.Generated.MethodCall.LoadAsync<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, System.Threading.Tasks.Task<T>!>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
 MethodCache.Generated.MethodCall.LoadValueAsync<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, System.Threading.Tasks.ValueTask<T>>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T>
 MethodCache.Generated.MethodCall.MethodCall() -> void
 MethodCache.Generated.MethodCall.NeedsTagArguments.get -> bool
 MethodCache.Generated.MethodCall.ServiceForLoad<TService>(TService! service) -> TService!
-MethodCache.Generated.MethodCall.StartKey(System.Span<char> buffer) -> MethodCache.Generated.KeyBuilder
-MethodCache.Generated.MethodCall.TryGetTask<T>(in MethodCache.Generated.TextKey key, out System.Threading.Tasks.Task<T>? task) -> bool
 MethodCache.Generated.MethodCall.TryGetTask<T>(ref MethodCache.Generated.KeyBuilder key, out System.Threading.Tasks.Task<T>? task) -> bool
-MethodCache.Generated.MethodCall.TryGetValue<T>(in MethodCache.Generated.TextKey key, out T? value) -> bool
 MethodCache.Generated.MethodCall.TryGetValue<T>(ref MethodCache.Generated.KeyBuilder key, out T? value) -> bool
-MethodCache.Generated.MethodCall.TryGetValueTask<T>(in MethodCache.Generated.TextKey key, out System.Threading.Tasks.ValueTask<T> value) -> bool
 MethodCache.Generated.MethodCall.TryGetValueTask<T>(ref MethodCache.Generated.KeyBuilder key, out System.Threading.Tasks.ValueTask<T> value) -> bool
 MethodCache.Generated.MethodCall.WithTypeArguments(string! typeArguments) -> MethodCache.Generated.MethodCall
-MethodCache.Generated.TextKey
-MethodCache.Generated.TextKey.TextKey() -> void
 MethodCache.ICacheAdministrator
 MethodCache.ICacheAdministrator.CheckDistributedCacheAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool?>
 MethodCache.ICacheAdministrator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
@@ -277,9 +267,9 @@ MethodCache.ICacheKeyProvider
 MethodCache.ICacheKeyProvider.CacheKeyPart.get -> string!
 MethodCache.ICacheManager
 MethodCache.ICacheManager.GetOrCreateAsync<T>(string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
-MethodCache.ICacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+MethodCache.ICacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 MethodCache.ICacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
-MethodCache.ICacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+MethodCache.ICacheManager.TryGetAsync<T>(string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.ICacheStats
 MethodCache.ICacheStats.Evictions.get -> long
 MethodCache.ICacheStats.Hits.get -> long
@@ -327,7 +317,7 @@ MethodCache.MethodCacheBuilder.AutoRegister(Microsoft.Extensions.DependencyInjec
 MethodCache.MethodCacheBuilder.Defaults(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.FromAssembly(System.Reflection.Assembly! assembly) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.FromAssemblyOf<T>() -> MethodCache.MethodCacheBuilder!
-MethodCache.MethodCacheBuilder.FromConfiguration(Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.FromConfiguration(Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.Group(string! name, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.Memory(System.Action<MethodCache.MethodCacheMemoryOptions!>! configure) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
@@ -387,14 +377,12 @@ MethodCache.RuntimeOverrideMetadata.Ticket.get -> string?
 MethodCache.RuntimeOverrideMetadata.Ticket.init -> void
 Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions
 abstract MethodCache.Generated.GeneratedModule.Describe(MethodCache.Generated.GeneratedModuleBuilder! builder) -> void
-const MethodCache.Generated.KeyBuilder.StackBufferSize = 256 -> int
 const MethodCache.Generated.KeyParts.Null = "\\0" -> string!
 const MethodCache.Generated.KeyParts.Separator = ":" -> string!
 const MethodCache.MethodCacheKeys.Null = "\\0" -> string!
 const MethodCache.MethodCacheKeys.Separator = ":" -> string!
 const MethodCache.MethodCacheTelemetry.Name = "MethodCache" -> string!
 override MethodCache.Generated.KeyBuilder.ToString() -> string!
-override MethodCache.Generated.TextKey.ToString() -> string!
 static MethodCache.Any<T>.Value.get -> T
 static MethodCache.CacheLookupResult<T>.Hit(T value) -> MethodCache.CacheLookupResult<T>
 static MethodCache.CacheLookupResult<T>.Miss.get -> MethodCache.CacheLookupResult<T>
@@ -461,8 +449,11 @@ static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this
 static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.MethodCacheBuilder!>! configureBuilder) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheFromConfiguration(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 virtual MethodCache.Extensibility.NoOpCacheManager.GetOrCreateAsync<T>(string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions? options, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T>
-virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
-virtual MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+virtual MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
+MethodCache.Generated.KeyBuilder.AppendPart<T>(T value, System.Func<T, string!>! format) -> void
+MethodCache.Generated.GeneratedServices.ValidateSynchronousInvalidation() -> void
+static MethodCache.Generated.KeyParts.TypeIdentity(System.Type! type) -> string!
+static MethodCache.MethodCacheKeys.TypePart(System.Type! type) -> string!

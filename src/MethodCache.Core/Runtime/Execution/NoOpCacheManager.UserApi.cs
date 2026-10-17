@@ -14,16 +14,20 @@ public partial class NoOpCacheManager
     }
 
     /// <inheritdoc />
-    public virtual ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken)
+    public virtual ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
     {
+        if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("A cache key must be provided.", nameof(key));
         return new(CacheLookupResult<T>.Miss);
     }
 
     /// <inheritdoc />
-    public virtual ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
-        => Invalidate(keys, cancellationToken);
+    public virtual ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+    {
+        if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
+        return Invalidate(keys, cancellationToken);
+    }
 
     /// <inheritdoc />
     public virtual ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken)

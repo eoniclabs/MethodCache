@@ -208,9 +208,20 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
         try
         {
             // A restored socket is not proof that Redis acknowledged this channel subscription.
-            // Reuse the same handler, so the multiplexer retains only one callback registration.
+            // SubscribeAsync adds a delegate even when it is the same instance. Replace the
+            // retained registration, serializing concurrent restored events to keep one delegate.
             if (subscriptionConnection && subscription.Connection is { } connection && subscription.Handler is { } handler)
-                await connection.GetSubscriber().SubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+            {
+                await subscription.RecoveryGate.WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+                try
+                {
+                    var subscriber = connection.GetSubscriber();
+                    await subscriber.UnsubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+                    subscription.Cancellation.Token.ThrowIfCancellationRequested();
+                    await subscriber.SubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+                }
+                finally { subscription.RecoveryGate.Release(); }
+            }
             if (Volatile.Read(ref subscription.Callback) is { } callback)
                 await callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
             if (subscriptionConnection) CompleteRecovery(subscription, generation);
@@ -257,6 +268,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     {
         try { await subscription.Completion.Task.ConfigureAwait(false); }
         catch (Exception) { /* Failed or cancelled subscriptions still need their registrations removed. */ }
+        await subscription.RecoveryGate.WaitAsync().ConfigureAwait(false);
         try
         {
             if (subscription.Connection is { } connection)
@@ -273,7 +285,11 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
                 }
             }
         }
-        finally { subscription.Cancellation.Dispose(); }
+        finally
+        {
+            subscription.RecoveryGate.Release();
+            subscription.Cancellation.Dispose();
+        }
     }
 
     /// <inheritdoc />
@@ -300,6 +316,7 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     private sealed class Subscription(Func<BackplaneMessage, Task> callback, CancellationToken cancellationToken)
     {
         public readonly CancellationTokenSource Cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        public readonly SemaphoreSlim RecoveryGate = new(1, 1);
         public readonly TaskCompletionSource Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Func<BackplaneMessage, Task>? Callback = callback;
         public IConnectionMultiplexer? Connection;

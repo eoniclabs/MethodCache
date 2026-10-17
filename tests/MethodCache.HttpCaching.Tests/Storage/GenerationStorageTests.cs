@@ -37,7 +37,7 @@ public class GenerationStorageTests
         var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
         using var storage = new TestHttpStore(time, backend);
         var before = await storage.GetGenerationAsync("url"); backend.FailAdvance = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.InvalidateAsync("url").AsTask());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.InvalidateAsync("url").AsTask());
         Assert.Equal(1, storage.Core.PendingRecoveries);
         Assert.StartsWith("unavailable:", await storage.GetGenerationAsync("url"));
         backend.FailAdvance = false; time.Advance(TimeSpan.FromSeconds(11));

@@ -12,8 +12,8 @@ namespace MethodCache.SourceGenerator
             private static string HelpLink(string id) => "https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#" + id.ToLowerInvariant();
 
             internal static readonly DiagnosticDescriptor InvalidDuration = new(
-                "MC0002", "Invalid time span", "{0} = \"{1}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"",
-                "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0002"));
+                "MC0004", "Invalid time span", "{0} = \"{1}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"",
+                "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0004"));
 
             internal static readonly DiagnosticDescriptor InvalidVersion = new(
                 "MC0021", "Invalid cache version", "Version must be non-negative when explicitly specified",
@@ -29,13 +29,13 @@ namespace MethodCache.SourceGenerator
                 helpLinkUri: HelpLink("MC0003"));
 
             internal static readonly DiagnosticDescriptor UnsupportedTaskCache = new(
-                id: "MC0004",
+                id: "MC0022",
                 title: "Caching not supported on non-generic Task/ValueTask",
                 messageFormat: "[Cache] on '{0}' does nothing: a Task or ValueTask without a result has nothing to cache. Return Task<T> or ValueTask<T>, or remove [Cache].",
                 category: "Design",
                 defaultSeverity: DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                helpLinkUri: HelpLink("MC0004"));
+                helpLinkUri: HelpLink("MC0022"));
 
             internal static readonly DiagnosticDescriptor UnsupportedRefParams = new(
                 id: "MC0005",

@@ -119,7 +119,7 @@ namespace Monitoring
             await (Task<string>)get.Invoke(service, new object[] { 1 })!; // hit
         }
 
-        Assert.Equal(new[] { "Monitoring.IRepository<T>.GetAsync" }, metrics.Names.Distinct().Order());
+        Assert.Equal(new[] { "[MonitoringGenericBaseNames]Monitoring.IRepository<T>.GetAsync" }, metrics.Names.Distinct().Order());
     }
 
     [Fact]
@@ -164,7 +164,7 @@ namespace Monitoring
         }
 
         // The id the admin endpoints and appsettings.json use, so dashboards and policies name the same method
-        Assert.Equal(new[] { "Monitoring.IOrderService.GetAsync", "Monitoring.IUserService.GetAsync" }, metrics.Names.Distinct().Order());
+        Assert.Equal(new[] { "[MonitoringMethodNames]Monitoring.IOrderService.GetAsync", "[MonitoringMethodNames]Monitoring.IUserService.GetAsync" }, metrics.Names.Distinct().Order());
     }
 
     private sealed class CountingMetrics : IDisposable

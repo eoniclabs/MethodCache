@@ -31,7 +31,7 @@ public sealed class JsonPolicySourceTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
 
         var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -57,7 +57,7 @@ public sealed class JsonPolicySourceTests
         };
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
         var registry = services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>();
 
         // Methods without settings of their own get the section through the defaults; the source generator
@@ -78,7 +78,7 @@ public sealed class JsonPolicySourceTests
 
         var error = Assert.Throws<InvalidOperationException>(() =>
         {
-            services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+            services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
             services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Other");
         });
         Assert.Contains("MethodCache:FailSafe", error.Message);
@@ -98,7 +98,7 @@ public sealed class JsonPolicySourceTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
 
         var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -235,7 +235,7 @@ public sealed class JsonPolicySourceTests
     private static ServiceProvider BuildProvider(IConfiguration configuration)
     {
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         return services.BuildServiceProvider();
     }
 

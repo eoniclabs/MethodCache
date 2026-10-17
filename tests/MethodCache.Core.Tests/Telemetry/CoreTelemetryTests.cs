@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
 using MethodCache.Core.Telemetry;
+using NSubstitute;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
@@ -44,6 +45,68 @@ public class CoreTelemetryTests
         Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.entries" && row.Value == 3 && Equals(row.Tags["kind"], "http"));
         Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.http.size" && row.Value == 4096);
         Assert.Equal(2, measurements.Count(row => row.Name == "methodcache.requests"));
+    }
+
+    [Fact]
+    public async Task DecoratedBuiltInManager_EmitsOneRequestAndOneOriginLoad()
+    {
+        using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
+        var factory = provider.GetRequiredService<IMeterFactory>();
+        var requests = 0L;
+        var loads = 0;
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, self) =>
+            {
+                if (ReferenceEquals(instrument.Meter.Scope, factory)) self.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
+        { if (instrument.Name == "methodcache.requests") requests += value; });
+        listener.SetMeasurementEventCallback<double>((instrument, _, _, _) =>
+        { if (instrument.Name == "methodcache.load.duration") loads++; });
+        listener.Start();
+        var telemetry = provider.GetRequiredService<CoreTelemetry>();
+        var wrapper = new ForwardingManager(provider.GetRequiredService<ICacheManager>());
+        var policy = MethodCache.Infrastructure.CacheRuntimePolicy.Empty("wrapped");
+        Assert.Equal(42, await telemetry.CustomAsync(wrapper, "key", policy, () => Task.FromResult(42), default));
+        Assert.Equal(42, await telemetry.CustomAsync(wrapper, "key", policy, () => Task.FromResult(0), default));
+        Assert.Equal(2, requests);
+        Assert.Equal(1, loads);
+    }
+
+    [Fact]
+    public async Task FailedWriteRepair_DoesNotCountAsAnApplicationInvalidation()
+    {
+        using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
+        var factory = provider.GetRequiredService<IMeterFactory>();
+        var invalidations = new List<string>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, self) =>
+            {
+                if (ReferenceEquals(instrument.Meter.Scope, factory) && instrument.Name == "methodcache.invalidations") self.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        { if (value != 0) invalidations.Add(tags.ToArray().Single(tag => tag.Key == "stage").Value!.ToString()!); });
+        listener.Start();
+        var backend = NSubstitute.Substitute.For<MethodCache.Extensibility.IAtomicInvalidationStore>();
+        backend.SetAsync(NSubstitute.Arg.Any<string>(), NSubstitute.Arg.Any<byte[]>(), NSubstitute.Arg.Any<Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions>(), NSubstitute.Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new IOException("offline")));
+        await using var layer = new MethodCache.Core.Runtime.Distributed.DistributedCacheLayer(backend,
+            new MethodCache.Extensibility.JsonCacheSerializer(), new DistributedCacheOptions(), telemetry: provider.GetRequiredService<CoreTelemetry>());
+        await layer.WriteAsync("write", 42, null, layer.Now, TimeSpan.FromMinutes(1));
+        Assert.Equal(1, layer.GetInvalidationQueues().Distributed);
+        await layer.FlushAsync(force: true);
+        Assert.Equal(0, layer.GetInvalidationQueues().Distributed);
+        Assert.Empty(invalidations);
+    }
+
+    private sealed class ForwardingManager(ICacheManager inner) : MethodCache.Extensibility.NoOpCacheManager
+    {
+        public override ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options, CancellationToken token) => inner.GetOrCreateAsync(key, factory, options, token);
     }
 
     [Fact]

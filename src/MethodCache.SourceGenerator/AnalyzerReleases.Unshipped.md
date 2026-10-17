@@ -2,7 +2,7 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|------
 MC0003 | Design | Error | Reports [Cache] usage on void-returning methods.
-MC0004 | Design | Error | Reports [Cache] on non-generic Task/ValueTask methods.
+MC0022 | Design | Error | Reports [Cache] on non-generic Task/ValueTask methods.
 MC0005 | Design | Error | Reports [Cache] usage with reference parameters or returns.
 MC0006 | Usage | Error | Reports conflicting [Cache] and [CacheInvalidate] attributes.
 MC0007 | Usage | Warning | Reports missing tags for [CacheInvalidate].
@@ -19,5 +19,5 @@ MC0017 | Usage | Warning | Reports a tag placeholder matching multiple parameter
 MC0018 | Usage | Warning | Reports [Cache] or [CacheInvalidate] on a static, non-public or sealed interface member, which the decorator can't intercept.
 MC0019 | Design | Error | Reports a cache key argument, element or member whose framework type has no key form, such as StringBuilder.
 MC0020 | Performance | Warning | Reports a cached result type of object, an interface or an abstract class, which a distributed cache can't restore.
-MC0002 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
+MC0004 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
 MC0021 | Usage | Error | Reports a negative explicit cache version.

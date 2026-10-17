@@ -25,11 +25,21 @@ namespace MethodCache.Internal
             }
             var number = text.Substring(0, text.Length - 1);
             if (!DecimalDigits(number)) return false;
+            // A nonzero digit beyond these limits cannot yield whole ticks. Reject before
+            // decimal.TryParse can round a higher-precision fraction into an integer value.
+            var fractionalLimit = suffix == 's' ? 7 : suffix == 'm' ? 9 : suffix == 'h' ? 11 : 14;
+            var point = number.IndexOf('.');
+            if (point >= 0)
+            {
+                var last = number.Length - 1;
+                while (last > point && number[last] == '0') last--;
+                if (last - point > fractionalLimit) return false;
+            }
             if (!decimal.TryParse(number, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var amount)) return false;
             try
             {
-                var ticks = decimal.Truncate(amount * scale);
-                if (ticks < 1 || ticks > long.MaxValue) return false;
+                var ticks = amount * scale;
+                if (ticks != decimal.Truncate(ticks) || ticks < 1 || ticks > long.MaxValue) return false;
                 value = TimeSpan.FromTicks((long)ticks);
                 return true;
             }

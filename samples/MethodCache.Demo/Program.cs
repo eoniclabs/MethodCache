@@ -31,8 +31,8 @@ try
     services.AddSingleton<IUserProfiles, UserProfiles>();
     services.AddSingleton<IProductCatalog, ProductCatalog>();
 
-    services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-    services.AddMethodCacheFromConfiguration(configuration);
+    services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10)))
+        .FromConfiguration(configuration));
     // ─────────────────────────────────────────────────────────────────────────
 
     await using var provider = services.BuildServiceProvider();
@@ -150,7 +150,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
     Ui.Chapter(4, "Change policies without touching code", "Durations can come from the attribute, a global default, appsettings.json (reloaded live) or a runtime override.");
     Ui.Code("""
         services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-        services.AddMethodCacheFromConfiguration(configuration);   // the "MethodCache" section
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));   // the "MethodCache" section
         """);
 
     var admin = provider.GetRequiredService<ICacheAdministrator>();

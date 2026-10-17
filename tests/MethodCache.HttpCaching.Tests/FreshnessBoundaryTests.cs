@@ -38,6 +38,32 @@ public class FreshnessBoundaryTests
         response.Headers.TryGetValues("X-Cache", out var values) ? values.FirstOrDefault() : null;
 
     [Theory]
+    [InlineData("max-age=0", false)]
+    [InlineData("min-fresh=60", false)]
+    [InlineData("max-stale=0", false)]
+    [InlineData("max-age=0", true)]
+    [InlineData("min-fresh=60", true)]
+    [InlineData("max-stale=0", true)]
+    public async Task StaleIfError_RespectsExplicitRequestFreshness(string directive, bool originThrows)
+    {
+        var (client, origin) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { EnableStaleIfError = true }, timeProvider: _time);
+        using var owner = client;
+        origin.SetResponse(Response("cached", TimeSpan.FromSeconds(1), "stale-if-error=3600"));
+        using var first = await client.GetAsync(Url);
+        _time.Advance(TimeSpan.FromSeconds(2));
+        origin.ShouldThrowException = originThrows;
+        if (!originThrows) origin.SetResponse(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        using var request = new HttpRequestMessage(HttpMethod.Get, Url);
+        request.Headers.CacheControl = CacheControlHeaderValue.Parse(directive);
+        if (originThrows) await Assert.ThrowsAsync<HttpRequestException>(() => client.SendAsync(request));
+        else
+        {
+            using var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        }
+    }
+
+    [Theory]
     [InlineData(-1)]
     [InlineData(0)]
     public async Task ExpiredExpires_DoesNotFallBackToHeuristicOrDefaultFreshness(int seconds)

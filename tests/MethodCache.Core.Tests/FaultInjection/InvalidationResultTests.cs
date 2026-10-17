@@ -60,7 +60,7 @@ public class InvalidationResultTests
         await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
         await Assert.ThrowsAsync<ArgumentException>(async () => await cache.InvalidateKeysAsync(["key", " "]));
         Assert.True((await cache.TryGetAsync<int>("key")).Found);
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cache.InvalidateKeysAsync(["key"], new CancellationToken(true)));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cache.InvalidateKeysAsync(["key"], cancellationToken: new CancellationToken(true)));
         Assert.True((await cache.TryGetAsync<int>("key")).Found);
         Assert.Equal(new InvalidationResult(), await cache.InvalidateKeysAsync([]));
         var result = await cache.InvalidateKeysAsync(["key", "key", "absent"]);
@@ -79,7 +79,7 @@ public class InvalidationResultTests
         ICacheManager cache = memory;
         await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
         using var cancellation = new CancellationTokenSource();
-        var invalidating = cache.InvalidateKeysAsync(["key"], cancellation.Token).AsTask();
+        var invalidating = cache.InvalidateKeysAsync(["key"], cancellationToken: cancellation.Token).AsTask();
         await backend.Started.Task;
         Assert.False(memory.TryGetFreshForLookup<int>("key").Found);
         cancellation.Cancel();

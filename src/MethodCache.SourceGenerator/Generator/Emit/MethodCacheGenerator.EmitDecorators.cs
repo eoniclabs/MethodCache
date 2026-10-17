@@ -111,7 +111,7 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("    /// </remarks>");
                 }
 
-                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(typeof(MethodCacheGenerator).Assembly.GetName().Version!.ToString())})]");
+                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(ThisAssembly.AssemblyInformationalVersion)})]");
                 sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
                 // Internal: generated code in the application's assembly, never part of its public API
                 // Disposable only when the interface is: the container keeps every disposable transient it creates.
@@ -251,6 +251,10 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            if (services == null) throw new global::System.ArgumentNullException(nameof(services));");
                 sb.AppendLine("            _services = services;");
+                if (interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Concat(interfaceSymbol.AllInterfaces.SelectMany(static type => type.GetMembers().OfType<IMethodSymbol>()))
+                    .Any(static method => method.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() == "MethodCache.CacheInvalidateAttribute" && ExtractTags(attribute).Count > 0) &&
+                        !Utils.IsTask(method.ReturnType, out _) && !Utils.IsValueTask(method.ReturnType, out _)))
+                    sb.AppendLine("            services.ValidateSynchronousInvalidation();");
                 if (cachedMethods.Length > 0)
                 {
                     sb.AppendLine();
@@ -313,32 +317,40 @@ namespace MethodCache.SourceGenerator
 
                 // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
                 // through the key generator.
-                var stackKeyLookup = false;
                 if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
                 {
                     EmitStackKeyLookup(sb, keyParams, kind, valueType, safeFieldName, serviceType, method);
-                    stackKeyLookup = true;
                 }
-                else if (TryBuildInlineKey(keyParams, out var inlineKey, out var exactTypeChecks))
+                else if (TryBuildInlineParts(keyParams, out _, out var exactTypeChecks))
                 {
-                    if (exactTypeChecks.Count == 0)
-                        sb.AppendLine($"            var __mcKey = {inlineKey};");
-                    else
+                    sb.AppendLine(keyParams.Count == 0
+                        ? "            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, default);"
+                        : "            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);");
+                    if (exactTypeChecks.Count > 0)
                     {
-                        sb.AppendLine($"            var __mcKey = {string.Join(" && ", exactTypeChecks)}");
-                        sb.AppendLine($"                ? {inlineKey}");
-                        sb.AppendLine($"                : {GeneratedKeyExpression(safeFieldName, keyParams)};");
+                        sb.AppendLine($"            if (!({string.Join(" && ", exactTypeChecks)}))");
+                        sb.AppendLine($"                __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                        sb.AppendLine("            else");
+                        sb.AppendLine("            {");
                     }
+                    foreach (var parameter in keyParams)
+                    {
+                        if (IsSimpleType(parameter.Type)) sb.AppendLine(AppendSimpleValue(Utils.ParameterIdentifier(parameter), parameter.Type));
+                        else
+                        {
+                            TryBuildInlineParts(new List<IParameterSymbol> { parameter }, out var expression, out _, "__mcPart");
+                            sb.AppendLine($"            __mcKeyBuilder.AppendPart({Utils.ParameterIdentifier(parameter)}, static __mcPart => {expression});");
+                        }
+                    }
+                    if (exactTypeChecks.Count > 0) sb.AppendLine("            }");
+                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
+                    sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
                 }
                 else
                 {
-                    EmitGeneratedKey(sb, safeFieldName, keyParams);
-                }
-
-                if (!stackKeyLookup)
-                {
-                    sb.AppendLine();
-                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKey");
+                    sb.AppendLine($"            var __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
+                    sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
                 }
 
                 EmitMiss(sb, method, safeFieldName);
@@ -349,7 +361,7 @@ namespace MethodCache.SourceGenerator
                 if (method.IsGenericMethod)
                 {
                     var parameters = string.Join(", ", method.TypeParameters.Select(Utils.TypeParameterIdentifier));
-                    var values = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"typeof({Utils.TypeParameterIdentifier(tp)}).ToString()"));
+                    var values = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"global::MethodCache.Generated.KeyParts.TypeIdentity(typeof({Utils.TypeParameterIdentifier(tp)}))"));
                     sb.AppendLine($"        private static class TypeArguments_{safeFieldName}<{parameters}>");
                     foreach (var tp in method.TypeParameters)
                     {
@@ -380,10 +392,9 @@ namespace MethodCache.SourceGenerator
                 // Strings and generic prefixes are unbounded; retain their previous 256-char capacity.
                 var bounded = !serviceType.IsGenericType && !method.IsGenericMethod && keyParams.All(p => p.Type.SpecialType != SpecialType.System_String);
                 var argumentsBound = keyParams.Sum(p => MaxPartLength(p.Type) + 1);
-                var prefixBound = Utils.GetFullyQualifiedName(serviceType).Replace("global::", "").Length + 1 + Utils.GetKeyMethodName(method, serviceType).Length + 12;
+                var prefixBound = MethodCache.Internal.AssemblyIdentity.Prefix(serviceType.ContainingAssembly.Name).Length + Utils.GetFullyQualifiedName(serviceType).Replace("global::", "").Length + 1 + Utils.GetKeyMethodName(method, serviceType).Length + 12;
                 var bufferSize = bounded ? Math.Min(256, Math.Max(64, prefixBound + argumentsBound)) : 256;
-                var buffer = bufferSize == 256 ? "stackalloc char[256]"
-                    : $"__mcCall.KeyPrefix.Length + {argumentsBound} <= {bufferSize} ? stackalloc char[{bufferSize}] : stackalloc char[256]";
+                var buffer = $"stackalloc char[{bufferSize}]";
                 // Constructed in place: a builder returned from a helper is copied, which costs ~12 ns per hit on x64
                 sb.AppendLine($"            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, {buffer});");
                 foreach (var param in keyParams)
@@ -490,20 +501,20 @@ namespace MethodCache.SourceGenerator
             /// simple values. <paramref name="exactTypeChecks"/> lists the conditions under which the expression is
             /// valid; when one fails at runtime, the caller uses the key generator instead.
             /// </summary>
-            private static bool TryBuildInlineKey(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks)
+            private static bool TryBuildInlineParts(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks, string? parameterName = null)
             {
-                expression = "__mcCall.KeyPrefix";
+                expression = "string.Empty";
                 exactTypeChecks = new List<string>();
                 if (keyParams.Count == 0)
                 {
                     return true;
                 }
 
-                var pieces = new List<string> { "__mcCall.KeyPrefix" };
+                var pieces = new List<string>();
                 foreach (var param in keyParams)
                 {
-                    pieces.Add("global::MethodCache.Generated.KeyParts.Separator");
-                    var name = Utils.ParameterIdentifier(param);
+                    if (pieces.Count != 0) pieces.Add("global::MethodCache.Generated.KeyParts.Separator");
+                    var name = parameterName ?? Utils.ParameterIdentifier(param);
                     if (IsSimpleType(param.Type))
                     {
                         pieces.Add(FormatSimpleValue(name, param.Type));
@@ -559,7 +570,7 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                expression = $"string.Concat({string.Join(", ", pieces)})";
+                expression = pieces.Count == 1 ? pieces[0] : $"string.Concat({string.Join(", ", pieces)})";
                 return true;
             }
 
@@ -808,22 +819,6 @@ namespace MethodCache.SourceGenerator
                 return type.ContainingNamespace?.ToDisplayString() == "System" &&
                        type.Name is "Guid" or "DateTimeOffset";
             }
-
-            private static void EmitGeneratedKey(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams)
-            {
-                if (keyParams.Count == 0)
-                {
-                    sb.AppendLine("            var __mcKey = __mcCall.KeyPrefix;");
-                    return;
-                }
-
-                // Arguments that have no inline key format go through the registered key generator,
-                // which keeps the service and method prefix so keys stay recognizable.
-                sb.AppendLine($"            var __mcKey = {GeneratedKeyExpression(safeFieldName, keyParams)};");
-            }
-
-            private static string GeneratedKeyExpression(string safeFieldName, List<IParameterSymbol> keyParams)
-                => $"__mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(p => Utils.ParameterIdentifier(p)))} }}).ToString()";
 
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {

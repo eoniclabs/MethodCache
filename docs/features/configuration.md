@@ -59,7 +59,7 @@ Runtime overrides use the same immutable options builder as startup and manual c
 <!-- snippet: configuration-appsettings -->
 ```cs
 builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // the "MethodCache" section
+builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));   // the "MethodCache" section
 ```
 <!-- endSnippet -->
 
@@ -69,7 +69,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
     "Defaults": { "Duration": "00:15:00" },
     "FailSafe": { "Duration": "01:00:00" },
     "Services": {
-      "MyApp.IUserService.GetProfileAsync": {
+      "[MyApp]MyApp.IUserService.GetProfileAsync": {
         "Duration": "01:00:00",
         "SlidingExpiration": "00:10:00",
         "RefreshAhead": "00:05:00",
@@ -83,7 +83,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
 }
 ```
 
-- Each key under `Services` is the **method id**: the full name of the interface, a dot and the method name. A generic
+- Each key under `Services` is the **method id**: the escaped assembly simple name in brackets, the full interface name, a dot and the method name (for example `[MyApp]MyApp.IUserService.GetProfileAsync`). Assembly versions do not participate. A generic
   interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its
   parameter types (`MyApp.IUserService.FindAsync(int)`). Parameter types other than built-in ones are qualified by
   namespace (`MyApp.IUsers.Find(MyApp.Request)`), so overloads taking `A.Request` and `B.Request` stay separate. Types
@@ -103,7 +103,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);   // th
   `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:
 
   ```bash
-  MethodCache__Services__0__MethodId="MyApp.IUserService.FindAsync(int)"
+  MethodCache__Services__0__MethodId="[MyApp]MyApp.IUserService.FindAsync(int)"
   MethodCache__Services__0__Duration="00:02:00"
   ```
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](fail-safe.md).
@@ -137,7 +137,7 @@ await configurator.UpsertAsync<IOrdersService, Order>(
     new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
 
 // By method id, for example from an admin form
-await configurator.UpsertAsync("Docs.Configuration.IUserService.GetProfileAsync",
+await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}]Docs.Configuration.IUserService.GetProfileAsync",
     o => o.WithDuration(TimeSpan.FromMinutes(10)));
 
 // Back to the lower layers
@@ -192,8 +192,8 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 | Setting | Rule | Checked |
 |---------|------|---------|
-| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0002](../user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0002](../user-guide/DIAGNOSTICS.md#mc0002)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` and `RetryAfter`): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
 

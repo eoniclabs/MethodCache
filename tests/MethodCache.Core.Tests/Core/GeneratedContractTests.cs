@@ -230,6 +230,19 @@ public class GeneratedContractTests
     private sealed class Counter { internal int Calls; }
 
     [Fact]
+    public void GenericVersion_KeyGrammarMatchesPublicPrefixAndFallback()
+    {
+        var (method, _, memory) = Create();
+        using var owned = memory;
+        var specialized = method.Capture().WithTypeArguments("<System.Int32>");
+        var expected = MethodCacheKeys.Prefix(typeof(IService), "Get<System.Int32>", 1);
+        var key = new KeyBuilder(specialized, stackalloc char[256]);
+        Assert.Equal(expected, key.ToString());
+        Assert.StartsWith(expected + ":", specialized.CreateFallbackKey([new object()]).ToString(), StringComparison.Ordinal);
+        Assert.StartsWith(MethodCacheKeys.Pattern(typeof(IService), "Get<System.Int32>", 1).TrimEnd('*'), key.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TypeArguments_StaticIdentity_ReusesBoundSnapshotAndRejectsDifferentTypes()
     {
         var (method, _, memory) = Create();

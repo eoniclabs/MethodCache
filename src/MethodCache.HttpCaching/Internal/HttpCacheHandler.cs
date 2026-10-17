@@ -216,7 +216,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
             upstreamResponse = await SendOriginAsync(request, cancellationToken).ConfigureAwait(false);
         }
         // An HttpClient timeout surfaces as TaskCanceledException; only the caller's own cancellation skips stale-if-error
-        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && !requestDirectives.NoCache && cachedEntry != null && freshness.CanUseStaleIfError(cachedEntry))
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested && !requestDirectives.NoCache && cachedEntry != null && CanServeStaleIfError(requestDirectives, cachedEntry, freshness))
         {
             _logger.LogWarning("HTTP origin failed; serving stale content. Error type: {ErrorType}", ex.GetType().FullName);
             return Record(RequestResult.Stale, CreateCachedResponse(request, cachedEntry, "STALE-IF-ERROR", options, freshness));
@@ -259,7 +259,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         try
         {
-            if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && freshness.CanUseStaleIfError(cachedEntry))
+            if (cachedEntry != null && !requestDirectives.NoCache && (int)upstreamResponse.StatusCode >= 500 && CanServeStaleIfError(requestDirectives, cachedEntry, freshness))
             {
                 _logger.LogWarning("HTTP origin returned {StatusCode}; serving stale content.", (int)upstreamResponse.StatusCode);
                 upstreamResponse.Dispose();
@@ -479,6 +479,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     private sealed class StoreAttempt { public bool Retired; }
 
+    private static bool CanServeStaleIfError(RequestCacheDirectives directives, HttpCacheEntry entry, FreshnessCalculator freshness)
+        => directives.AcceptsStale(freshness.GetCurrentAge(entry), freshness.GetFreshnessLifetime(entry) ?? TimeSpan.Zero)
+            && freshness.CanUseStaleIfError(entry);
+
     private enum StoreResult { NotStored, Stored, Retired }
 
     /// <returns>Whether the entry was stored, rejected, or its old schema was already retired.</returns>
@@ -563,7 +567,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         }
 
         var usableWhenStale = entry.CanValidate() || options.EnableStaleWhileRevalidate || options.EnableStaleIfError;
-        var timeToLive = usableWhenStale ? remaining + options.StaleRetention : remaining;
+        var timeToLive = usableWhenStale
+            ? remaining > TimeSpan.Zero && options.StaleRetention > TimeSpan.MaxValue - remaining
+                ? TimeSpan.MaxValue : remaining + options.StaleRetention
+            : remaining;
 
         // Expires: 31 Dec 9999 means "forever"; keep the expiry representable
         return timeToLive > MaxTimeToLive ? MaxTimeToLive : timeToLive;

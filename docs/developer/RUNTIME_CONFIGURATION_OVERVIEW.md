@@ -47,7 +47,7 @@ await configurator.UpsertAsync<IOrdersService, Order>(
     new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
 
 // By method id, for example from an admin form
-await configurator.UpsertAsync("Docs.Configuration.IUserService.GetProfileAsync",
+await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}]Docs.Configuration.IUserService.GetProfileAsync",
     o => o.WithDuration(TimeSpan.FromMinutes(10)));
 
 // Back to the lower layers

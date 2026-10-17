@@ -20,9 +20,9 @@ namespace MethodCache.Analyzers
         public const string AttributeOnClassDiagnosticId = "MC0001";
 
         /// <summary>
-        /// The id of the diagnostic for a time span that is not a positive duration (MC0002).
+        /// The id of the diagnostic for a time span that is not a positive duration (MC0004).
         /// </summary>
-        public const string InvalidTimeSpanDiagnosticId = "MC0002";
+        public const string InvalidTimeSpanDiagnosticId = "MC0004";
 
         private const string Category = "Usage";
         private const string AttributeNamespace = "MethodCache";
@@ -88,7 +88,7 @@ namespace MethodCache.Analyzers
                     Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], AttributeOnClassRule, name, method.Name);
                 }
 
-                if (isCache)
+                if (isCache && (!onInterface || !GeneratorOwnsValidation(context.Compilation)))
                 {
                     if (HasNegativeVersion(attribute))
                         Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidVersionRule);
@@ -102,6 +102,7 @@ namespace MethodCache.Analyzers
 
         private static void AnalyzeAssemblyAttributes(SyntaxNodeAnalysisContext context)
         {
+            if (GeneratorOwnsValidation(context.Compilation)) return;
             // [assembly: CacheInterface] carries the same time spans as [Cache], on the assembly instead of a method.
             // Read per attribute list, so the error shows while typing and not only in a full build.
             var list = (AttributeListSyntax)context.Node;
@@ -141,6 +142,11 @@ namespace MethodCache.Analyzers
                 }
             }
         }
+
+        private static bool GeneratorOwnsValidation(Compilation compilation)
+            => SymbolEqualityComparer.Default.Equals(
+                compilation.GetTypeByMetadataName("MethodCache.Generated.AttributeValidationOwner")?.ContainingAssembly,
+                compilation.Assembly);
 
         private static bool HasNegativeVersion(AttributeData attribute)
         {

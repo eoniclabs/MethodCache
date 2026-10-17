@@ -38,19 +38,19 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
         {
             cancellationToken.ThrowIfCancellationRequested();
             var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName) with { Duration = options?.Duration };
-            return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(new CacheContext(key), cancellationToken).AsTask(), policy, cancellationToken));
+            return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? CacheManagerExtensions.GetCacheKey(key), policy.MethodId, () => factory(new CacheContext(key), cancellationToken).AsTask(), policy, cancellationToken));
         }
 
-        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken)
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new(_cache.TryGetValue(key, out var entry) && !IsExpired(entry)
+            return new(_cache.TryGetValue(CacheManagerExtensions.GetCacheKey(key, version), out var entry) && !IsExpired(entry)
                 ? CacheLookupResult<T>.Hit((T)entry.Value) : CacheLookupResult<T>.Miss);
         }
 
-        public async ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
+        public async ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
         {
-            var targets = InMemoryCacheManager.ValidateTargets(keys);
+            var targets = InMemoryCacheManager.ValidateTargets(keys).Select(key => CacheManagerExtensions.GetCacheKey(key, version)).ToArray();
             cancellationToken.ThrowIfCancellationRequested();
             await InvalidateByKeysAsync(targets);
             return new InvalidationResult { Requested = targets.Length, Local = targets.Length };

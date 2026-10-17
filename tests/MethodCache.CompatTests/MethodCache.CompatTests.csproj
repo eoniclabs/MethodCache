@@ -12,16 +12,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
     <ProjectReference Include="../../src/MethodCache.Core/MethodCache.Core.csproj" />
     <!-- Deliberately binary references: ordinary builds/tests never rebuild the vendor baseline. -->
-    <Reference Include="FrozenVendor.Contract1" HintPath="Baselines/Contract1/FrozenVendor.Contract1.dll" />
-    <Reference Include="FrozenVendor.ThirdParty" HintPath="Baselines/Contract1/FrozenVendor.ThirdParty.dll" />
-    <Reference Include="FrozenVendor.Contract1Net10" HintPath="Baselines/Contract1Net10/FrozenVendor.Contract1Net10.dll" />
-    <Reference Include="FrozenVendor.ThirdPartyNet10" HintPath="Baselines/Contract1Net10/FrozenVendor.ThirdPartyNet10.dll" />
+    <Reference Include="FrozenVendor.Contract1Final" HintPath="Baselines/Contract1Final/FrozenVendor.Contract1Final.dll" />
+    <Reference Include="FrozenVendor.ThirdPartyFinal" HintPath="Baselines/Contract1Final/FrozenVendor.ThirdPartyFinal.dll" />
     <Compile Remove="Baselines/**/*.cs" />
-    <Content Include="Baselines/Contract1/manifest.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Baselines/Contract1/FrozenVendor.Contract99.dll" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Baselines/Contract1Net10/manifest.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Baselines/Contract1Net10/FrozenVendor.Contract99Net10.dll" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Baselines/Contract1GeneratedApi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1FinalGeneratedApi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1Final/manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Baselines/Contract1Final/FrozenVendor.Contract99Final.dll" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../src/MethodCache.Core/PublicAPI.Unshipped.txt" Link="CurrentGeneratedPublicAPI.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../src/MethodCache.Core/PublicAPI.Shipped.txt" Link="CurrentGeneratedPublicAPI.Shipped.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

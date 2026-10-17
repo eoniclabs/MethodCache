@@ -15,6 +15,7 @@ internal partial class InMemoryCacheManager
         cancellationToken.ThrowIfCancellationRequested();
         options ??= CacheEntryOptions.Default;
         var cacheKey = options.GetCacheKey(key);
+        _telemetry?.ClaimCustomRequest();
         if (options.Enabled != false && options.Runtime == null && options.CacheWhen == null && TryGetFastNode<T>(cacheKey, out var cached, out var cachedNode))
         {
             RecordHitTelemetry(CacheKeyLookup.MethodName, cachedNode);
@@ -40,7 +41,10 @@ internal partial class InMemoryCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken)
+    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+        => TryGetPreparedAsync<T>(CacheManagerExtensions.GetCacheKey(key, version), cancellationToken);
+
+    internal ValueTask<CacheLookupResult<T>> TryGetPreparedAsync<T>(string key, CancellationToken cancellationToken)
     {
         ValidateTarget(key, nameof(key));
         cancellationToken.ThrowIfCancellationRequested();
@@ -60,8 +64,9 @@ internal partial class InMemoryCacheManager
         var outcome = RequestResult.Error;
         try
         {
+            var policy = _lookupPolicy?.Invoke(key) ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
             var result = await TryGetDistributedAsync<T>(key, CacheKeyLookup.MethodName,
-                CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName), token).ConfigureAwait(false);
+                policy, token).ConfigureAwait(false);
             outcome = result.Found ? RequestResult.Hit : RequestResult.Miss;
             return result.Found ? CacheLookupResult<T>.Hit(result.Value!) : CacheLookupResult<T>.Miss;
         }
@@ -69,8 +74,14 @@ internal partial class InMemoryCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
-        => InvalidateTargetsAsync(keys, false, cancellationToken);
+    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+    {
+        if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
+        return InvalidateTargetsAsync(ValidateTargets(keys).Select(key => CacheManagerExtensions.GetCacheKey(key, version)), false, cancellationToken);
+    }
+
+    internal ValueTask<InvalidationResult> InvalidatePreparedKeysAsync(IEnumerable<string> keys, CancellationToken token)
+        => InvalidateTargetsAsync(keys, false, token);
 
     /// <inheritdoc />
     public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken)

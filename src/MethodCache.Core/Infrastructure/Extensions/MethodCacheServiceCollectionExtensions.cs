@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="configuration">The application's configuration</param>
         /// <param name="sectionName">The section to read policies from</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
+        internal static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
         {
             if (services == null)
             {
@@ -104,6 +104,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
                 sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>()));
             services.TryAddSingleton(new GeneratedParameters());
+            services.TryAddSingleton(static provider => new RegistrationValidationState(provider.GetService<RegistrationValidation>()));
             AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
             services.TryAddSingleton(static sp => new DecoratorServices(
@@ -157,7 +158,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<DistributedCacheLayer>(),
                 methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
                 sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
-                sp.GetService<HttpResponseStore>()));
+                sp.GetService<HttpResponseStore>(),
+                sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>())));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);
@@ -167,7 +169,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
         internal static ICacheAdministrator CreateAdministrator(IServiceProvider services)
         {
-            var method = services.GetRequiredService<ICacheManager>() as InMemoryCacheManager;
+            var method = services.GetService<InMemoryCacheManager>();
             var http = services.GetService<HttpResponseStore>();
             if (method != null) return new InMemoryCacheAdministrator(method, services.GetService<IPolicyRegistry>(), http);
             return http != null ? new HttpCacheAdministrator(http) : null!;
@@ -297,6 +299,9 @@ namespace Microsoft.Extensions.DependencyInjection
                     "a string, enum, bool, char, integer or Guid. Use a key with a supported stable representation."));
             }
 
+            var bindings = services.First(d => d.ServiceType == typeof(GeneratedParameters)).ImplementationInstance as GeneratedParameters;
+            foreach (var method in registration.MethodKeys)
+                bindings!.KeyBindings.Add((MethodCacheKeys.Prefix(serviceType, method.Key), keySuffix ?? string.Empty, method.Id));
             var background = descriptor.Lifetime != ServiceLifetime.Singleton;
             var slot = new RegistrationServicesKey();
             Func<IServiceProvider, object> decorate = provider => registration.Decorate(
@@ -405,6 +410,35 @@ namespace Microsoft.Extensions.DependencyInjection
         internal sealed class GeneratedParameters
         {
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+            internal List<(string Prefix, string Suffix, string Method)> KeyBindings { get; } = [];
+            internal Func<string, CacheRuntimePolicy?> CreateLookup(Func<IPolicyRegistry> registry)
+            {
+                var bindings = KeyBindings.OrderByDescending(static item => item.Prefix.Length).ThenByDescending(static item => item.Suffix.Length).ToArray();
+                return key => Resolve(key, registry(), bindings);
+            }
+            private static CacheRuntimePolicy? Resolve(string key, IPolicyRegistry registry, (string Prefix, string Suffix, string Method)[] bindings)
+            {
+                foreach (var binding in bindings)
+                {
+                    if (!key.StartsWith(binding.Prefix, StringComparison.Ordinal)) continue;
+                    var rest = key.AsSpan(binding.Prefix.Length);
+                    if (!rest.IsEmpty && rest[0] is not ':' and not '<' and not '@') continue;
+                    if (!rest.IsEmpty && rest[0] == '<')
+                    {
+                        var end = rest.IndexOf('>');
+                        if (end < 0) continue;
+                        rest = rest[(end + 1)..];
+                    }
+                    if (!rest.StartsWith(binding.Suffix, StringComparison.Ordinal)) continue;
+                    rest = rest[binding.Suffix.Length..];
+                    var policy = PolicyHandle.For(registry, binding.Method).Current;
+                    var version = policy.Version is { } number ? ":v" + number.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+                    if (!rest.StartsWith(version, StringComparison.Ordinal)) continue;
+                    var tail = rest[version.Length..];
+                    if (tail.IsEmpty || tail[0] == ':') return policy;
+                }
+                return null;
+            }
         }
 
         internal sealed class RegistrationValidation(IServiceCollection services)
@@ -420,6 +454,21 @@ namespace Microsoft.Extensions.DependencyInjection
                         throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache.");
             }
         }
+        internal sealed class RegistrationValidationState(RegistrationValidation? specification)
+        {
+            private readonly object _gate = new();
+            private bool _validated;
+            internal void Validate()
+            {
+                lock (_gate)
+                {
+                    if (_validated) return;
+                    specification?.Validate();
+                    _validated = true;
+                }
+            }
+        }
+
         private static RegistrationValidation GetRegistrationValidation(IServiceCollection services)
         {
             var existing = services.FirstOrDefault(d => d.ServiceType == typeof(RegistrationValidation))?.ImplementationInstance as RegistrationValidation;

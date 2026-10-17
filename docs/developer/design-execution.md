@@ -1,3 +1,7 @@
+> Reopened after PR review, 2026-10-17. The previous completion checkpoint is historical.
+> Runtime corrections, a reviewed pre-release contract freeze, a complete independent PR self-review,
+> fresh cost/time evidence and final CI are required. Johan requires the self-review before any new CI run.
+
 # Design implementation tracking
 
 All implementation steps in [design-spec.md](design-spec.md) are delivered together

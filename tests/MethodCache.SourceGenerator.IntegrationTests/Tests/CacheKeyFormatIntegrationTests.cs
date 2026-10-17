@@ -497,8 +497,8 @@ namespace KeyFormat
         // The keys docs/features/keys.md shows
         Assert.Equal("id7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(int)", MethodCacheKeys.Part(7))));
         Assert.Equal("code7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(string)", MethodCacheKeys.Part("7"))));
-        Assert.Equal("a1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "KeyFormat.IA.Get(int)", MethodCacheKeys.Part(1))));
-        Assert.Equal("b1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "KeyFormat.IB.Get(int)", MethodCacheKeys.Part(1))));
+        Assert.Equal("a1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IA.Get(int)", MethodCacheKeys.Part(1))));
+        Assert.Equal("b1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IB.Get(int)", MethodCacheKeys.Part(1))));
     }
 
     private async Task<(IServiceProvider Provider, Assembly Assembly)> BuildAsync()

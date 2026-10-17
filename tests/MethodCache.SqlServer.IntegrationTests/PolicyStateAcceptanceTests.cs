@@ -10,6 +10,7 @@ namespace MethodCache.SqlServer.IntegrationTests;
 public class PolicyStateAcceptanceTests(SqlServerFixture sql)
 {
     [SkippableTheory]
+    [InlineData("lookup")]
     [InlineData("equivalent")]
     [InlineData("reload")]
     [InlineData("specificity")]

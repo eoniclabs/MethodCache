@@ -1,4 +1,5 @@
 using MethodCache;
+using MethodCache.Core.Runtime.Http;
 using MethodCache.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -39,6 +40,16 @@ public static class MethodCacheAdminEndpoints
         var group = endpoints.MapGroup(prefix);
         group.RequireAuthorization(policyName);
         group.WithTags("MethodCache");
+        group.AddEndpointFilter(async (context, next) =>
+        {
+            try { return await next(context).ConfigureAwait(false); }
+            catch (CacheInvalidationUnavailableException)
+            {
+                return TypedResults.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Cache invalidation is awaiting distributed confirmation.",
+                    detail: "Local invalidation has completed. The cache retains the operation for recovery.");
+            }
+        });
 
         group.MapGet("/stats", GetStatsAsync);
         group.MapGet("/methods", (ICacheAdministrator admin) => TypedResults.Ok(admin.GetMethods()));

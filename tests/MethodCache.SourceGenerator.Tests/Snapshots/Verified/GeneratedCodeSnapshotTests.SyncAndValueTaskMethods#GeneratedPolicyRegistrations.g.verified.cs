@@ -11,16 +11,16 @@ namespace MethodCache.Generated
 {
     internal static partial class MethodCacheDecoratorRegistrations
     {
-        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
         private static class GeneratedPolicyRegistrations
         {
             public static void Describe(global::MethodCache.Generated.GeneratedModuleBuilder builder)
             {
-                builder.Method("App.IPricing.Price", new string[] { "sku", "quantity" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
+                builder.Method("[SnapshotApp]App.IPricing.Price", new string[] { "sku", "quantity" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
                 });
-                builder.Method("App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
+                builder.Method("[SnapshotApp]App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
                 });

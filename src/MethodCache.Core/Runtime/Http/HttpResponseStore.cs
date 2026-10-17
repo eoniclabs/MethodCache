@@ -84,7 +84,8 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         { ForegroundMaintenance = true };
         if (distributed == null)
         {
-            _local = new MemoryCacheEngine(MaximumBytes, EngineEvictionMode.TinyLfu, clock, 128, useRuntimeStringComparer: true);
+            _local = new MemoryCacheEngine(MaximumBytes, EngineEvictionMode.TinyLfu, clock, 128, useRuntimeStringComparer: true)
+            { ObservationFilter = static node => node.Policy is HttpStorageInfo { Selector: false } };
             _slots = new LocalEpoch?[GenerationSlots];
             _localSlotTags = new string?[GenerationSlots];
             _tagEpochs = new(StringComparer.Ordinal);
@@ -117,7 +118,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         token.ThrowIfCancellationRequested();
         if (_distributed == null) return new(CaptureLocal(slot, tags, allowInitialNamespace));
         // Native mode always reads fresh shared epochs; it never uses a local vector or epoch copy.
-        if (!_pending.IsEmpty) return new((string?)null);
+        if (_pending.ContainsKey(slot) || (!_pending.IsEmpty && PendingRecoveries != 0)) return new((string?)null);
         return CaptureDistributedAsync(slot, tags, token);
     }
 
@@ -241,12 +242,16 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         return true;
     }
 
-    internal void ObserveRepresentation(HttpStorageInfo info)
+    internal HttpStorageInfo? FindObservationInfo(string key)
+        => _observations.Map.TryGetValue(key, out var node) && !node.IsPhysicallyExpired(_observations.Now) ? node.BoxedValue as HttpStorageInfo : null;
+
+    internal void ObserveRepresentation(string key, HttpStorageInfo info)
     {
         if (!Distributed || info.Selector || info.Deadline <= _time.GetUtcNow()) return;
+        if (ReferenceEquals(FindObservationInfo(key), info)) return;
         var now = _observations.Now;
         var deadline = Deadline(now, info.Deadline - _time.GetUtcNow());
-        _observations.Add(new ValueNode<HttpStorageInfo>(info.Id, info)
+        _observations.Add(new ValueNode<HttpStorageInfo>(key, info)
         { Tags = IndexTags(info, local: false), LogicalExpiresAt = deadline, PhysicalExpiresAt = deadline, AbsoluteExpiresAt = deadline });
     }
 
@@ -303,7 +308,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static async Task ConfirmAsync(Task<bool>[] operations)
     {
         if ((await Task.WhenAll(operations).ConfigureAwait(false)).Any(static confirmed => !confirmed))
-            throw new InvalidOperationException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
+            throw new CacheInvalidationUnavailableException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
     }
 
     private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending, bool shutdown = false)
@@ -365,11 +370,14 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         finally { _recoveryGate.Release(); }
     }
 
+    internal void RegisterClientTag(string tag) => _tagEpochs?.TryAdd(tag, LocalEpoch.Fresh(initial: true));
+
     internal void InvalidateLocalTag(string tag)
     {
-        if (_tagEpochs?.ContainsKey(tag) == true) _tagEpochs.AddOrUpdate(tag, static _ => LocalEpoch.Fresh(), static (_, _) => LocalEpoch.Fresh());
+        var captured = _tagEpochs?.ContainsKey(tag) == true;
+        if (captured) _tagEpochs!.AddOrUpdate(tag, static _ => LocalEpoch.Fresh(), static (_, _) => LocalEpoch.Fresh());
         _local?.RemoveByTag(ApplicationTag(tag));
-        if (_local != null && tag.StartsWith("http:", StringComparison.Ordinal))
+        if (captured && _local != null && tag.StartsWith("http:", StringComparison.Ordinal))
         {
             // The implicit client tag is common to every response from that client. Avoid
             // indexing it on every publication; client invalidation visits resident nodes.
@@ -391,7 +399,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     {
         if (Volatile.Read(ref _disposed) != 0) return default;
         _local?.Maintain(); _observations.Maintain();
-        var localCount = _local?.Map.Count(pair => pair.Value.Policy is HttpStorageInfo { Selector: false } && !pair.Value.IsPhysicallyExpired(_local.Now)) ?? 0;
+        var localCount = _local?.ObservedEntries ?? 0;
         return new CacheObservation(0, localCount, _local?.TotalWeight ?? 0, _observations.Count, 0);
     }
 
@@ -452,14 +460,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     {
         foreach (var tag in tags) InvalidateLocalTag(tag);
         _telemetry.Invalidations("tag", "local", tags.Distinct(StringComparer.Ordinal).LongCount());
-        if (_distributed != null) _ = await _distributed.InvalidateTargetsAsync(tags.Distinct(StringComparer.Ordinal).ToArray(), tags: true).WaitAsync(token).ConfigureAwait(false);
+        if (_distributed != null)
+            RequireConfirmed(await _distributed.InvalidateTargetsAsync(tags.Distinct(StringComparer.Ordinal).ToArray(), tags: true).WaitAsync(token).ConfigureAwait(false));
     }
 
     internal async ValueTask ClearAsync(CancellationToken token)
     {
         ClearLocal();
-        _telemetry.Invalidations("tag", "local", 1);
-        if (_distributed != null) await _distributed.ClearAsync().WaitAsync(token).ConfigureAwait(false);
+        _telemetry.Invalidations("clear", "local", 1);
+        if (_distributed != null) RequireConfirmed(await _distributed.ClearWithResultAsync().WaitAsync(token).ConfigureAwait(false));
     }
     internal ValueTask<bool?> CheckDistributedAsync(CancellationToken token)
         => _distributed == null ? new ValueTask<bool?>((bool?)null) : CheckAsync(token);
@@ -467,7 +476,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         => await _distributed!.CheckAvailableAsync(token).ConfigureAwait(false);
     internal InvalidationQueues RecoveryQueues => _distributed?.GetInvalidationQueues() ?? new(0, 0);
 
-    internal HttpStorageInfo? Find(string id) => List().FirstOrDefault(info => info.Id == id);
+    internal static bool IsObservationId(string id)
+        => id.Length == 69 && id.StartsWith("http:", StringComparison.Ordinal) && id.AsSpan(5).IndexOfAnyExcept("0123456789ABCDEF") < 0;
+
+    internal static void RequireConfirmed(InvalidationResult result)
+    {
+        if (result.Queued > 0) throw new CacheInvalidationUnavailableException("Cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
+    }
+
+    internal HttpStorageInfo? Find(string id) => IsObservationId(id) ? List().FirstOrDefault(info => info.Id == id) : null;
     internal async ValueTask<bool> RemoveObservationAsync(string id, CancellationToken token)
     {
         var known = Find(id);

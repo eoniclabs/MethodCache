@@ -59,7 +59,7 @@ namespace MethodCache.SourceGenerator
 
             private static void AppendGeneratedClass(StringBuilder sb, List<PolicyDefinition> definitions)
             {
-                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(typeof(MethodCacheGenerator).Assembly.GetName().Version!.ToString())})]");
+                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(ThisAssembly.AssemblyInformationalVersion)})]");
                 sb.AppendLine("    private static class GeneratedPolicyRegistrations");
                 sb.AppendLine("    {");
                 sb.AppendLine("        public static void Describe(global::MethodCache.Generated.GeneratedModuleBuilder builder)");
@@ -121,6 +121,7 @@ namespace MethodCache.SourceGenerator
                     PopulateFromCacheAttribute(definition, method.CacheAttr);
                     entries.Add(new PolicyEntry(
                         definition.MethodId,
+                        Utils.GetKeyMethodName(method.Method, info.Symbol),
                         new EquatableArray<string>(method.Method.Parameters.Select(p => p.Name)),
                         new EquatableArray<string>(definition.PolicyStatements),
                         new EquatableArray<string>(definition.MetadataStatements)));

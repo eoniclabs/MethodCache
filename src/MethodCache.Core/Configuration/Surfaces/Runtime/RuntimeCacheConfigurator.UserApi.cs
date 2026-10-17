@@ -50,6 +50,11 @@ internal sealed partial class RuntimeCacheConfigurator
         if (_registry is PolicyRegistry registry) _ = registry.GetHandle(methodId);
     }
 
-    private Task WaitForInvalidation(string methodId, CancellationToken token)
-        => _registry is PolicyRegistry registry ? registry.Invalidation(methodId).WaitAsync(token) : Task.CompletedTask;
+    private async Task WaitForInvalidation(string methodId, CancellationToken token)
+    {
+        if (_registry is not PolicyRegistry registry) return;
+        var pending = registry.Invalidation(methodId);
+        try { await pending.WaitAsync(token).ConfigureAwait(false); }
+        finally { if (pending.IsCompleted) registry.ForgetInvalidation(methodId, pending); }
+    }
 }

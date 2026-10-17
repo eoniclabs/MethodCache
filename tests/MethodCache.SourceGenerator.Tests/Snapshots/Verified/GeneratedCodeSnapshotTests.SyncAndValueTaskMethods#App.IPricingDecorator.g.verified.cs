@@ -11,7 +11,7 @@ using global::System.Threading.Tasks;
 
 namespace App
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class IPricingDecorator : global::App.IPricing
     {
@@ -40,8 +40,8 @@ namespace App
 
             public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = registry.Method("App.IPricing.Price", typeof(global::App.IPricing), "Price", "App.IPricing.Price");
-                Method1 = registry.Method("App.IPricing.FindAsync", typeof(global::App.IPricing), "FindAsync", "App.IPricing.FindAsync");
+                Method0 = registry.Method("[SnapshotApp]App.IPricing.Price", typeof(global::App.IPricing), "Price", "[SnapshotApp]App.IPricing.Price");
+                Method1 = registry.Method("[SnapshotApp]App.IPricing.FindAsync", typeof(global::App.IPricing), "FindAsync", "[SnapshotApp]App.IPricing.FindAsync");
             }
         }
 

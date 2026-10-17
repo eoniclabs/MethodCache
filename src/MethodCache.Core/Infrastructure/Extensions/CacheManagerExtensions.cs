@@ -49,7 +49,7 @@ namespace MethodCache
         /// <summary>Invalidates one logical key, optionally in a versioned key family.</summary>
         public static ValueTask<InvalidationResult> InvalidateKeyAsync(this ICacheManager cacheManager, string key,
             int? version = null, CancellationToken cancellationToken = default)
-            => cacheManager.InvalidateKeysAsync([GetCacheKey(key, version)], cancellationToken);
+            => cacheManager.InvalidateKeysAsync([key], version, cancellationToken);
 
         /// <summary>Invalidates one application tag.</summary>
         public static ValueTask<InvalidationResult> InvalidateTagAsync(this ICacheManager cacheManager, string tag,
@@ -74,7 +74,7 @@ namespace MethodCache
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return cacheManager.TryGetAsync<T>(VersionedKey(key, version), cancellationToken);
+            return cacheManager.TryGetAsync<T>(key, version, cancellationToken);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace MethodCache
                         // and with EnableFastPath off every entry, which would send cached keys to the factory
                         var cached = FindMemoryManager(cacheManager) is { } local
                             ? local.TryGetFreshForLookup<T>(VersionedKey(key, options.Version))
-                            : await cacheManager.TryGetAsync<T>(VersionedKey(key, options.Version), cancellationToken).ConfigureAwait(false);
+                            : await cacheManager.TryGetAsync<T>(key, options.Version, cancellationToken).ConfigureAwait(false);
                         if (cached.Found)
                         {
                             results[key] = cached.Value!;
@@ -203,7 +203,7 @@ namespace MethodCache
             await Parallel.ForEachAsync(Enumerable.Range(0, keys.Length),
                 new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentDistributedReads, CancellationToken = token }, async (index, ct) =>
                 {
-                    var lookup = manager.TryGetAsync<T>(options.GetCacheKey(keys[index]), ct);
+                    var lookup = manager.TryGetAsync<T>(keys[index], options.Version, ct);
                     hits[index] = lookup.IsCompletedSuccessfully ? lookup.Result : await lookup.AsTask().WaitAsync(ct).ConfigureAwait(false);
                 }).ConfigureAwait(false);
             var missing = new List<string>();

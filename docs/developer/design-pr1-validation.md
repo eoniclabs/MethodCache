@@ -8,7 +8,7 @@ The specification is [design-spec.md](design-spec.md), PR 1 acceptance G01–G14
 | G01 | CompatTests references checked-in vendor/third-party DLLs, verifies manifest hashes and executes sync/Task/ValueTask, tags, invalidation, fallback, generics and CacheInterface. |
 | G02 | Contract99 DLL's real module initializer loads successfully; AddMethodCache rejects version 99 before Describe runs. Core also checks bootstrap directly. |
 | G03 | SourceGeneratorTestEngine checks semantic Core symbols in generated sources throughout SignatureCorpus. |
-| G04 | GeneratedContractTests covers two containers, updates and disposal; keyed registration and ownership tests exercise DI lifetimes. |
+| G04 | FinalVendorCompatibilityTests executes the frozen vendor in two containers with separate managers, overrides and disposal; keyed registration and ownership tests exercise DI lifetimes. |
 | G05 | QuickStartRegistrationTests and startup validation cover late cacheable registration and repeated AddMethodCache. |
 | G06 | QuickStartRegistrationTests covers explicit opt-in, zero/two candidates, scoped auto-registration and explicit factory lifetimes. |
 | G07 | AotSmokeTest includes a separately compiled vendor assembly and explicit FromAssemblyOf selection, as well as explicit AutoRegister. |
@@ -20,23 +20,16 @@ The specification is [design-spec.md](design-spec.md), PR 1 acceptance G01–G14
 
 ## Contract and scope
 
-The historical frozen DLLs below were compiled for .NET 8 and therefore exercise
-materialized keys even when run on newer runtimes. A final audit adds a separate
-`Contract1Net10` checkpoint for the actual `KeyBuilder` constructor/ref lookup ABI;
-the original checkpoint remains unchanged. The metadata coverage fact fails before
-that addition, and removing the constructor from a temporary runtime makes the new
-frozen vendor fail with MissingMethodException. All nine compatibility facts and
-the extended native osx-arm64 smoke pass after restoration. This is additive local
-evidence; the final published head still requires normal CI.
-[Exact baseline provenance and red/green/native receipts](design-performance-results.md#external-measurement-archive).
+The original `Contract1` and `Contract1Net10` checkpoints are historical development evidence, retained unchanged.
+PR134 review deliberately narrows the still-unpublished Generated API before 1.0: inline generation always uses the
+bound `KeyBuilder` constructor and `AppendPart`, with ref lookups. `MethodCall.StartKey`, `BindKey`, `KeyPrefix` and
+`TextKey` remain implementation details. No released binary contract is being changed.
 
-The broader API audit also finds that #132 removed the original public
-`MethodCall.StartKey` entry point. The combined final correction restores it as a
-supported contract-1 member; current generated code retains the constructor path.
-A guard against all 103 original declarations fails before that restoration and
-passes afterward, alongside ten compatibility facts, 1,043 Core facts and native
-AOT. Existing vendor images and their manifests remain unchanged.
-[Exact member snapshot, red/green and coverage proof](design-performance-results.md#external-measurement-archive).
+`Contract1Final` is the explicit pre-release freeze for that reviewed surface. Its vendor exercises primitive,
+collection, record, provider and fallback keys, generic/version keys, all three return shapes and invalidation.
+The compatibility suite also checks unknown-module selection and two containers with separate managers, overrides
+and disposal. Frozen images and the exact Generated API manifest are produced only by the explicit freeze command;
+normal builds never regenerate them. Final freeze/test receipts are recorded in the current review validation.
 
 Module initializers register descriptors only. Startup validates contract versions, selects modules and binds each
 service registration to its own runtime context. One immutable MethodCall snapshot supplies key construction,

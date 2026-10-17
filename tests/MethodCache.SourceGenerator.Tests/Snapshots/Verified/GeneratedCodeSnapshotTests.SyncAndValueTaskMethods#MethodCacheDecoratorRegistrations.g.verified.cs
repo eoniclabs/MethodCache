@@ -3,7 +3,7 @@
 #nullable enable
 namespace MethodCache.Generated
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     internal static partial class MethodCacheDecoratorRegistrations
     {
         [global::System.Runtime.CompilerServices.ModuleInitializer]
@@ -17,7 +17,8 @@ namespace MethodCache.Generated
                 builder.Decorator(
                     typeof(global::App.IPricing),
                     static (inner, services) => new global::App.IPricingDecorator((global::App.IPricing)inner, services),
-                    new string[] { "App.IPricing.Price", "App.IPricing.FindAsync" });
+                    new string[] { "[SnapshotApp]App.IPricing.Price", "[SnapshotApp]App.IPricing.FindAsync" },
+                    new string[] { "Price", "FindAsync" });
                 builder.ImplementationCandidate(typeof(global::App.IPricing), typeof(global::App.Pricing));
             }
         }

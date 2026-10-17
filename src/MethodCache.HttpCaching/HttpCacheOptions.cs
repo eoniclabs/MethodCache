@@ -3,6 +3,8 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Settings for HTTP caching on one HttpClient. Set them in <c>AddHttpCaching(options => ...)</c>.
 /// </summary>
+/// <remarks>Size and freshness/retention values must be non-negative. Background revalidation timeout must be
+/// positive and no greater than 4,294,967,294 milliseconds. Named settings are validated when the host starts.</remarks>
 public sealed class HttpCacheOptions
 {
     /// <summary>

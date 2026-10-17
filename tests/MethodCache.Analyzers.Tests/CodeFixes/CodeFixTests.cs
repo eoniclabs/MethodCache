@@ -113,7 +113,7 @@ public class Users
 
         [Theory]
         [InlineData("MC0003", "void Save(int id);")]
-        [InlineData("MC0004", "Task SaveAsync(int id);")]
+        [InlineData("MC0022", "Task SaveAsync(int id);")]
         [InlineData("MC0015", "IEnumerable<int> All();")]
         public async Task UncacheableMethod_RemoveCache(string id, string member)
         {

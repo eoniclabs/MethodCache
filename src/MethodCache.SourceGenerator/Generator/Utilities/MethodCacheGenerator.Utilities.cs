@@ -145,7 +145,7 @@ namespace MethodCache.SourceGenerator
             internal static string GetMethodId(IMethodSymbol method)
             {
                 var definition = method.OriginalDefinition;
-                return definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
+                return MethodCache.Internal.AssemblyIdentity.PolicyPrefix(definition.ContainingAssembly.Name) + definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
             }
 
             /// <summary>The method's name in ids and keys: <c>Find</c>, or <c>Find(int)</c> when it is overloaded.</summary>
@@ -171,7 +171,7 @@ namespace MethodCache.SourceGenerator
 
                 var signature = GetSignatureName(method);
                 return others.Any(m => GetSignatureName(m) == signature)
-                    ? method.ContainingType.ToDisplayString(TypeIdFormat) + "." + signature
+                    ? MethodCache.Internal.AssemblyIdentity.PolicyPrefix(method.ContainingAssembly.Name) + method.ContainingType.ToDisplayString(TypeIdFormat) + "." + signature
                     : signature;
             }
 

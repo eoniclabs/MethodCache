@@ -3,7 +3,7 @@
 #nullable enable
 namespace MethodCache.Generated
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     internal static partial class MethodCacheDecoratorRegistrations
     {
         [global::System.Runtime.CompilerServices.ModuleInitializer]
@@ -17,7 +17,8 @@ namespace MethodCache.Generated
                 builder.Decorator(
                     typeof(global::App.IUserService),
                     static (inner, services) => new global::App.IUserServiceDecorator((global::App.IUserService)inner, services),
-                    new string[] { "App.IUserService.GetUserAsync" });
+                    new string[] { "[SnapshotApp]App.IUserService.GetUserAsync" },
+                    new string[] { "GetUserAsync" });
                 builder.ImplementationCandidate(typeof(global::App.IUserService), typeof(global::App.UserService));
             }
         }

@@ -449,6 +449,72 @@ public class SignatureCorpusTests
         }
     }
 
+    [Fact]
+    public async Task SameNamedInterfacesInDifferentAssemblies_KeepValuesAndPoliciesSeparate()
+    {
+        const string source = """
+            using MethodCache;
+            namespace Collision {
+                public interface IService { [Cache(Duration = "DURATION")] int Read(int id); }
+                public sealed class Service : IService { public int Read(int id) => RESULT + id; }
+            }
+            """;
+        var left = await _engine.CompileWithSourceGeneratorAsync(source.Replace("DURATION", "1m").Replace("RESULT", "100"), "CollisionLeft");
+        var right = await _engine.CompileWithSourceGeneratorAsync(source.Replace("DURATION", "2m").Replace("RESULT", "200"), "CollisionRight");
+        var a = left.Assembly.GetType("Collision.IService")!;
+        var b = right.Assembly.GetType("Collision.IService")!;
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, a, left.Assembly.GetType("Collision.Service")!);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, b, right.Assembly.GetType("Collision.Service")!);
+        Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(services, builder => builder.FromAssembly(left.Assembly).FromAssembly(right.Assembly));
+        await using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        var aService = provider.GetService(a)!;
+        var bService = provider.GetService(b)!;
+        Assert.Equal(101, a.GetMethod("Read")!.Invoke(aService, [1]));
+        Assert.Equal(201, b.GetMethod("Read")!.Invoke(bService, [1]));
+        Assert.Equal(101, a.GetMethod("Read")!.Invoke(aService, [1]));
+        var policies = (MethodCache.Policies.IPolicyRegistry)provider.GetService(typeof(MethodCache.Policies.IPolicyRegistry))!;
+        var aId = "[CollisionLeft]Collision.IService.Read";
+        var bId = "[CollisionRight]Collision.IService.Read";
+        Assert.Equal(TimeSpan.FromMinutes(1), policies.GetPolicy(aId).Policy.Duration);
+        Assert.Equal(TimeSpan.FromMinutes(2), policies.GetPolicy(bId).Policy.Duration);
+        var runtime = (IRuntimeCacheConfigurator)provider.GetService(typeof(IRuntimeCacheConfigurator))!;
+        await runtime.UpsertAsync(aId, options => options.WithDuration(TimeSpan.FromSeconds(3)));
+        Assert.Equal(TimeSpan.FromSeconds(3), policies.GetPolicy(aId).Policy.Duration);
+        Assert.Equal(TimeSpan.FromMinutes(2), policies.GetPolicy(bId).Policy.Duration);
+    }
+
+    [Fact]
+    public async Task SynchronousInvalidation_CustomManager_IsRejectedBeforeMutation()
+    {
+        const string source = """
+            using System;
+            using MethodCache;
+            using MethodCache.Extensibility;
+            using Microsoft.Extensions.DependencyInjection;
+            namespace Corpus {
+                public interface ISvc { [CacheInvalidate(Tags = new[] { "users" })] void Update(); }
+                public class Svc : ISvc { public static int Calls; public void Update() { Calls++; } }
+                public static class Scenario {
+                    public static int Run() {
+                        var services = new ServiceCollection();
+                        services.AddSingleton<ICacheManager>(new NoOpCacheManager());
+                        services.AddSingleton<ISvc, Svc>();
+                        services.AddMethodCache(builder => builder.FromAssembly(typeof(Scenario).Assembly));
+                        using var provider = services.BuildServiceProvider();
+                        try { provider.GetRequiredService<ISvc>(); return -1; }
+                        catch (NotSupportedException error) {
+                            if (!error.Message.Contains("synchronous invalidation")) return -2;
+                            return Svc.Calls;
+                        }
+                    }
+                }
+            }
+            """;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RejectSyncCustomManager");
+        Assert.Equal(0, compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("Run")!.Invoke(null, null));
+    }
+
     [Theory]
     [InlineData("Task", "Task.CompletedTask")]
     [InlineData("ValueTask", "default")]
@@ -498,8 +564,8 @@ public class SignatureCorpusTests
     private static readonly Dictionary<string, (string Member, string Implementation, string ExpectedId)> Unsupported = new()
     {
         ["void"] = ("void Touch(int id)", "void Touch(int id) { }", "MC0003"),
-        ["Task without result"] = ("Task Save(int id)", "Task Save(int id) => Task.CompletedTask;", "MC0004"),
-        ["ValueTask without result"] = ("ValueTask Save(int id)", "ValueTask Save(int id) => default;", "MC0004"),
+        ["Task without result"] = ("Task Save(int id)", "Task Save(int id) => Task.CompletedTask;", "MC0022"),
+        ["ValueTask without result"] = ("ValueTask Save(int id)", "ValueTask Save(int id) => default;", "MC0022"),
         ["in parameter"] = ("Task<string> Get(in int id)", "Task<string> Get(in int id) => Task.FromResult(\"v\");", "MC0005"),
         ["ref parameter"] = ("Task<string> Get(ref int id)", "Task<string> Get(ref int id) => Task.FromResult(\"v\");", "MC0005"),
         ["out parameter"] = ("string Get(int id, out int found)", "string Get(int id, out int found) { found = 1; return \"v\"; }", "MC0005"),

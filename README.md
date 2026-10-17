@@ -160,7 +160,7 @@ await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entr
 ```
 <!-- endSnippet -->
 
-Generated keys look like `MyApp.IUserService.GetUserAsync:42` (a record argument as `(alice:2)`, an array or list as
+Generated keys look like `[MyApp]MyApp.IUserService.GetUserAsync:42` (a record argument as `(alice:2)`, an array or list as
 `[3:1:2:3]`), and `MethodCacheKeys` builds the same keys, so you never guess the format.
 
 ### Configuration without redeploying
@@ -174,7 +174,7 @@ unless an override calls `ClearTags()`.
 ```cs
 builder.Services.AddMethodCache(config =>
     config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
 ```
 <!-- endSnippet -->
 
@@ -182,7 +182,7 @@ builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
 {
   "MethodCache": {
     "Services": {
-      "MyApp.IUserService.GetUserAsync": { "Duration": "00:30:00" }
+      "[MyApp]MyApp.IUserService.GetUserAsync": { "Duration": "00:30:00" }
     }
   }
 }
@@ -427,3 +427,8 @@ local method/HTTP statistics, configured weight units and independent storage/ba
 
 Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
 invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
+
+Logical-key lookups and invalidations use the same framing and optional version as storage, including keys starting
+with NUL. Admin mutations return 503 while distributed invalidation awaits confirmation; recovery remains owned by
+the cache. Incompatible distributed scope contracts use memory only and report an actionable unhealthy status.
+See [manual keys](docs/features/manual-caching.md#versions-and-the-stored-key) and [monitoring](docs/features/monitoring.md).

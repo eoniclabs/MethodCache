@@ -16,7 +16,7 @@ public class RuntimePolicyConsistencyTests
         using var provider = services.BuildServiceProvider();
         var runtime = provider.GetRequiredService<IRuntimeCacheConfigurator>();
         var admin = provider.GetRequiredService<ICacheAdministrator>();
-        var method = typeof(IConcurrentReader).FullName!.Replace('+', '.') + ".Read";
+        var method = $"[{typeof(IConcurrentReader).Assembly.GetName().Name}]{typeof(IConcurrentReader).FullName!.Replace('+', '.')}.Read";
         provider.GetRequiredService<IConcurrentReader>();
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var updates = Enumerable.Range(1, 32).Select(seconds => Task.Run(async () =>

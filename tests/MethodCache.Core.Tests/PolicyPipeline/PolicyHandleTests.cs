@@ -12,7 +12,7 @@ namespace MethodCache.Core.Tests.PolicyPipeline;
 
 public class PolicyHandleTests
 {
-    private static readonly string MethodId = $"{typeof(IOrders).FullName!.Replace('+', '.')}.Get";
+    private static readonly string MethodId = global::MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IOrders), "Get");
 
     [Fact]
     public void Handle_AuditOnlyUpdate_PreservesGeneration()

@@ -39,7 +39,8 @@ public interface IOrderService
 spelling is used first; otherwise a single case-insensitive match is used. A name that matches several parameters
 only by case, such as `{NAME}` for `name` and `Name`, stays literal text and is reported as
 [MC0017](../user-guide/DIAGNOSTICS.md#mc0017). An unknown name is reported as
-[MC0010](../user-guide/DIAGNOSTICS.md#mc0010), with a code fix that offers the closest parameter. An argument's text is inserted as it is, even if it contains braces: an id of `"{org}"` gives
+[MC0010](../user-guide/DIAGNOSTICS.md#mc0010), with a code fix that offers the closest parameter. Arguments use canonical key-part formatting: strings escape backslashes and colons, GUIDs use the 32-digit `N`
+format, and null uses `\0`. Braces in an argument remain literal: an id of `"{org}"` gives
 the tag `order:{org}` on both the cached call and the invalidation.
 
 A template takes a parameter name only. `"{order.Id}"` is not a template and stays literal text, so every call would
@@ -71,7 +72,7 @@ await cache.InvalidateTagsAsync(["order:42", "customer:7:orders"]);
 <!-- snippet: invalidation-by-key -->
 ```cs
 var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 

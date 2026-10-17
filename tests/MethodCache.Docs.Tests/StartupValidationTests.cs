@@ -24,7 +24,7 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
         });
         builder.Services.AddMethodCache();
-        builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+        builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
         using var host = builder.Build();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync());
@@ -40,7 +40,7 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "01:00:00"
         });
         builder.Services.AddMethodCache();
-        builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+        builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
 
         // A source added later, as Program.cs or WebApplicationFactory does
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -64,7 +64,7 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
         });
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:10:00"

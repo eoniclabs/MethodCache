@@ -57,6 +57,7 @@ namespace MethodCache.Extensibility
         private readonly DistributedCacheLayer? _distributed;
         private readonly Action<string>? _onMethodInvalidated;
         private readonly GeneratedDiagnostics _syncDiagnostics;
+        private readonly Func<string, CacheRuntimePolicy?>? _lookupPolicy;
 
         /// <summary>Whether removals also go to a distributed cache and, through it, to the other instances.</summary>
         internal bool HasDistributedCache => _distributed != null;
@@ -70,8 +71,9 @@ namespace MethodCache.Extensibility
         /// <summary>Creates a cache manager with container-owned instrumentation and optional distributed storage.</summary>
         internal InMemoryCacheManager(IOptions<MethodCacheMemoryOptions>? options = null, TimeProvider? timeProvider = null,
             DistributedCacheLayer? distributed = null, Action<string>? onMethodInvalidated = null,
-            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null)
+            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null, Func<string, CacheRuntimePolicy?>? lookupPolicy = null)
         {
+            _lookupPolicy = lookupPolicy;
             _telemetry = telemetry;
             _http = http;
             _options = options?.Value ?? new MethodCacheMemoryOptions();
@@ -586,11 +588,11 @@ namespace MethodCache.Extensibility
         /// <inheritdoc />
         public ValueTask ClearAsync()
         {
-            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("tag") : null;
+            using var activity = _distributed == null ? _telemetry?.BeginInvalidation("clear") : null;
             ClearLocal();
             _hits.Reset();
             _misses.Reset();
-            _telemetry?.Invalidations("tag", "local", 1);
+            _telemetry?.Invalidations("clear", "local", 1);
             return _distributed == null ? ValueTask.CompletedTask : new ValueTask(_distributed.ClearAsync());
         }
 
@@ -904,7 +906,7 @@ namespace MethodCache.Extensibility
             }
 
             var entryPolicy = GetEntryPolicy(policy);
-            var flight = new Flight(entryPolicy.Tags) { Generation = policy.Generation, MethodId = policy.MethodId };
+            var flight = new Flight(entryPolicy.Tags) { Generation = policy.Generation, MethodId = policy.MethodId, UnknownTags = true };
             if (!ReferenceEquals(JoinOrStartFlight(key, flight), flight))
             {
                 return (false, default);
@@ -927,6 +929,7 @@ namespace MethodCache.Extensibility
                 var stored = await ReadDistributedAsync<T>(key, entryPolicy, cancellationToken).ConfigureAwait(false);
                 if (stored.Found && Remaining(stored, entryPolicy) is > 0 and var remaining && ShouldStore(stored.Value, entryPolicy, methodName))
                 {
+                    entryPolicy = EntryPolicy.From(policy with { Tags = stored.Tags ?? [] });
                     StoreLoaded(key, stored.Value, entryPolicy, flight, duration: remaining);
                     flight.Complete(stored.Value);
                     completed = true;
@@ -1387,7 +1390,7 @@ namespace MethodCache.Extensibility
 
             foreach (var flight in _flights.Values.Concat(_syncFlights.Values))
             {
-                if (includeUntagged)
+                if (includeUntagged || flight.UnknownTags)
                 {
                     flight.Invalidated = true;
                     continue;
@@ -1635,6 +1638,7 @@ namespace MethodCache.Extensibility
             internal bool IsBulkPublication => _publication != null;
 
             public string[]? Tags { get; }
+            internal bool UnknownTags { get; init; }
 
             /// <summary>Set when the key or one of its tags is invalidated while loading; the result is then not stored.</summary>
             public bool Invalidated

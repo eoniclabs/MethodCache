@@ -16,6 +16,7 @@ public static partial class PolicyBackendContract
     {
         switch (scenario)
         {
+            case "lookup": await LookupAsync(create); break;
             case "equivalent": await EqualPolicyAsync(create); break;
             case "reload": await ReloadAsync(create, time); break;
             case "specificity": await SpecificityAsync(create); break;
@@ -27,6 +28,24 @@ public static partial class PolicyBackendContract
             case "lost-message": await LostMessageAsync(create, time); break;
             default: throw new ArgumentOutOfRangeException(nameof(scenario));
         }
+    }
+
+    private static async Task LookupAsync(Func<Origin, Action<MethodCacheBuilder>?, Task<ServiceProvider>> create)
+    {
+        await using var first = await create(new Origin(100), null);
+        await using var second = await create(new Origin(200), null);
+        await SilenceAsync(first); await SilenceAsync(second);
+        Assert.Equal(101, await first.GetRequiredService<IOrigin>().ReadAsync(1));
+        var key = MethodCacheKeys.For(typeof(IOrigin), nameof(IOrigin.ReadAsync), MethodCacheKeys.Part(1));
+        var cache = second.GetRequiredService<ICacheManager>();
+        var generated = await cache.TryGetAsync<int>(key, default);
+        Assert.True(generated.Found);
+        Assert.Equal(101, generated.Value);
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual-lookup", _ => new ValueTask<int>(42), options => options.WithTags("lookup-tag"));
+        Assert.True((await cache.TryGetAsync<int>("manual-lookup", default)).Found);
+        Assert.Contains("lookup-tag", second.GetRequiredService<ICacheAdministrator>().GetEntry("manual-lookup")!.Tags);
+        await cache.InvalidateTagsAsync(["lookup-tag"], default);
+        Assert.False((await cache.TryGetAsync<int>("manual-lookup", default)).Found);
     }
 
     private static PolicyHandle Handle(ServiceProvider node) => PolicyHandle.For(node.GetRequiredService<IPolicyRegistry>(), MethodId);
