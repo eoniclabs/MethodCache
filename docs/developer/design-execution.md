@@ -24,9 +24,16 @@ A passing ancestor does not establish the latest head's result.
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current 5257fb63 publishes the HTTP/telemetry cost corrections. Local Core1055/HTTP343 and osx-arm64 native smoke/prefix/HTTP/175-signature-corpus checks pass; complete current cumulative67case cost profile passes with six unchanged accepted costs. Exact current-head CI passes all fourteen jobs/four statuses:2,637 Linux tests,zero failures,one intentional opt-in soak skip and94.3%changed-line coverage. Timing remains failed/open; proposed HTTP time bounds are inactive pending a design decision. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current c9ec0db3 includes the client-index correction. All fourteen jobs/four statuses pass:2,639 Linux tests,zero failures,one intentional opt-in soak skip,diff3620/3839=94.3%,99 randomized properties,enabled soak,AOT175,packages/docs and real backends. Cumulative67case costs pass with six unchanged accepted costs. The fixed fourteen-case cumulative candidate timing fails:3slower/2wide/9pass;all280launches complete without executionerrors. Proposed HTTP bounds remain inactive; combined review againstmain is approved, with old17overages retained as historical failures. |
 
 ## Remaining verification
+
+Latest published c9ec0db3 correctness/build verification is complete on all three
+platforms; its raw evidence is in [combined-functional-c9ec0db](../../plans/design-benchmarks/combined-functional-c9ec0db/).
+The current candidate passes cumulative costs; complete fourteen-case timing now
+fails with three slow cases and two wide intervals (nine cases pass). All280launches
+and original/current-rule reviews are retained in [current HTTP timing](../../plans/design-benchmarks/http-client-index-final14-v1/). Older source-point results below retain their
+actual scope; earlier green CI is not used to validate later code.
 
 The historical180launch multi-PR BenchmarkDotNet matrix is **cancelled** by Johan's
 2026-10-16 decision. It must not be restarted. Section10 now requires a complete
@@ -65,13 +72,15 @@ invalidation scans resident HTTP entries. Targeted22/fullHTTP345/Core1055pass (o
 intentional opt-in skip), and cumulative67case costs pass with six unchanged accepted
 costs. The complete two-case direct pilot against5257fb63 is precise and faster:
 coldmiss7.2%,listening3043.4%. This is not a cumulative time gate. Fresh fourteen-case
-candidate timing againstf438 and actual new published-head CI remain required.
+candidate timing againstf438 is complete and fails:3slower/2wide/9pass,0executionerrors. Actual published c9ec0db3 CI now
+passes all fourteen jobs as recorded above.
 
 The complete per-change cost archive retains seventeen overages on five historical
 heads (#124,#129,#130,#132,#133). Those particular standalone heads do not pass their
-cost gates. Later corrections in #137/#134 do not alter the historical verdicts;
-review/merge planning must retain the combined corrections before treating the design
-series as a releasable implementation. No merge or package publication is part of this
+cost gates. Johan approved combined review in #134 against main on2026-10-17, preserving
+commit history and replacing separate historical-head cost acceptance for this series.
+The combined corrections and final cumulative gates remain required; no historical
+verdict changes. No merge or package publication is part of this
 implementation task's standing authorization.
 
 The authoritative evidence and outstanding gates are in

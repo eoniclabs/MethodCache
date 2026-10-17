@@ -605,6 +605,15 @@ Tidsmätningen körs en gång i slutgrinden (PR 7) mot f43854d, och för en PR s
 Båda finns i `benchmarks/MethodCache.CostProfile` (beslut av Johan 2026-10-16; ersätter tre
 BenchmarkDotNet-körningar per sida för varje jämförelse).
 
+**Integrationsbeslut för denna designserie (Johan 2026-10-17):** hela serien granskas
+samlat i #134 mot `main`, med commit-historiken bevarad. För denna serie ersätter den
+samlade grinden kravet att varje historisk PR-version passerar en separat kostnadsgrind.
+De sjutton uppmätta kostnadsöverskridandena på fem äldre versioner behålls som historiska
+fel, inte omklassificerade pass. Slutversionen ska fortfarande passera den fullständiga
+kostnadsprofilen och den parade tidsgrinden mot f43854d; reglerna för filtrerade
+CPU-mätningar, precision och uttryckligen godkända undantag är oförändrade. Beslutet
+godkänner granskningsupplägget och innebär ingen merge eller paketpublicering.
+
 **Steg 1, kostnadsprofil.** `cost-profile.sh <bas>` bygger basen och ändringen med exakt samma harness och
 mäter varje fall per operation: allokerade bytes (median av sju batcher), Redis-kommandon räknade av servern
 (INFO commandstats, så kommandon inuti Lua-skript räknas) och SQL-kommandon med textlängd och parametrar.
@@ -780,7 +789,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | V01 | Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required. | Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna. |
 | V02 | Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er. | Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer. |
 | V03 | mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API. | Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses. |
-| V04 | §10 steg 1 per förändring; steg 1 och steg 2 för hela baslinjen mot f43854d. | Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen försämring i den parade tidsmätningen. |
+| V04 | §10 steg 1 enligt integrationsbeslutet för designserien; full steg 1 och steg 2 mot f43854d samt berörda filtrerade CPU-mätningar. | Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen försämring i den parade tidsmätningen. |
 
 ## 12. PR-ordning och klart-kriterier
 
