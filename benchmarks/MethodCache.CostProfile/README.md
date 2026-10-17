@@ -49,7 +49,7 @@ benchmarks/MethodCache.CostProfile/cost-profile.sh --time <pairs> <base-ref> [ca
 ```
 
 Times every matching case in its own process, `<pairs>` times per side, alternating which side goes first, with
-the same in-process BenchmarkDotNet job (20–60 adaptive warmup iterations, then 12 actual iterations), and compares them pair by pair (`paired.py`). Cases timed one after
+the same in-process BenchmarkDotNet job (100–140 adaptive warmup iterations, then 12 actual iterations), and compares them pair by pair (`paired.py`). Cases timed one after
 another in one process shape each other's JIT and GC state; in a trial here that alone made later cases look up to
 30 % slower. A case is slower when the whole 95 % interval of the change/base ratio lies above 1 and the estimate is
 more than 3 % above it; an interval wider than 6 % or a missing time fails too. A deliberate slowdown passes with a

@@ -15,7 +15,7 @@ internal static class Timing
     internal static async Task<int> RunAsync(Type[] types, Func<string, bool> matches, bool hasRedis, bool hasSql, string output)
     {
         var job = Job.Default.WithToolchain(InProcessEmitToolchain.Instance)
-            .WithMinWarmupCount(20).WithMaxWarmupCount(60).WithIterationCount(12).WithIterationTime(Perfolizer.Horology.TimeInterval.FromMilliseconds(150));
+            .WithMinWarmupCount(100).WithMaxWarmupCount(140).WithIterationCount(12).WithIterationTime(Perfolizer.Horology.TimeInterval.FromMilliseconds(150));
         var config = ManualConfig.CreateEmpty().AddJob(job).AddLogger(NullLogger.Instance).WithOptions(ConfigOptions.DisableLogFile);
         await using var writer = new StreamWriter(output, append: false);
         foreach (var type in types)
