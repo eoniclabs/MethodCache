@@ -15,7 +15,7 @@ without/with a no-op MeterListener. Both setups prove the origin is not called b
 | Off | 738.3 ns | 1,435 ns | 2.48 / 4.23 KiB |
 | On | 723.7 ns | 1,482 ns | 2.48 / 4.23 KiB |
 
-[Raw logs and environment/source manifest](../../plans/design-benchmarks/http-preflight-0663/) preserve the failed
+[Raw logs and environment/source manifest](design-performance-results.md#external-measurement-archive) preserve the failed
 candidate. Per-launch BDN intervals are in those logs; these are not 95% intervals over three independent means.
 
 The added zero-allocation local-vector regression test failed before the fix: 7,920,224 bytes over 10,000 captures.
@@ -32,7 +32,7 @@ alone do not discharge the performance gate.
 
 Candidate `6bf7221147b3f0030433d25af9f5036d6706a446`, same runtime/base/workload/settings as above, fresh independent
 launches: listener off 723.2 → 950.9 ns, on 715.8 → 944.2 ns; allocations 2.48 → 2.62 KiB. This is still rejected,
-not a three-run acceptance result. [Its raw logs/manifest](../../plans/design-benchmarks/http-preflight-6bf7221/)
+not a three-run acceptance result. [Its raw logs/manifest](design-performance-results.md#external-measurement-archive)
 retain the unsuccessful intermediate repair.
 
 The next repair prepares both the permanent-slot hash and process-key hash after the fixed hashed client prefix.
@@ -49,7 +49,7 @@ The next timings and the complete section-10 matrix remain required.
 
 Candidate `d5dd97ac1436eb8e4af31d15769ca10cd40b9f8a`, same base/runtime/job settings, now including private variants
 and origin-repopulated namespaces after unsafe invalidation. All measured hits are proven not to call origin.
-[Raw logs/manifest](../../plans/design-benchmarks/http-preflight-d5dd97a/) retain this one-pair diagnostic.
+[Raw logs/manifest](design-performance-results.md#external-measurement-archive) retain this one-pair diagnostic.
 
 | Hit / listeners / after invalidation | Base ns | Candidate ns | Allocated base / candidate KiB |
 |---|---:|---:|---:|
@@ -70,7 +70,7 @@ retain their own tag namespace and an earlier configuration's cache stays isolat
 ## Fourth rejected diagnostic: 82f8ccb
 
 Candidate `82f8ccb9fd3eaac9ecf991302756ff214bc10c91`; same base/job/runtime/workloads, one independent launch pair.
-[Raw logs/manifest](../../plans/design-benchmarks/http-preflight-82f8ccb/) retain the measured state. Candidate fresh
+[Raw logs/manifest](design-performance-results.md#external-measurement-archive) retain the measured state. Candidate fresh
 hits off/on were 760.5/762.1 ns initially and 842.6/840.8 ns after invalidation, against 720.9/714.1 and
 752.4/747.6 ns. Private variants were 1,353/1,298 ns initially and 1,446/1,436 ns afterward, against
 1,267/1,262 and 1,291/1,290 ns. Allocations remain lower in all corresponding cases. Time still rejects this state.
@@ -98,7 +98,7 @@ The latest complete timing and functional gates remain required before accepting
 
 Candidate `6c9881e0c89d3fe3c4e507879411d3e7493a92a6`, base
 `850cef8f3bc709eaf464b3c25e5ec898217fcc73`; identical local HTTP workload sources, runtime and job settings.
-[Raw logs and manifest](../../plans/design-benchmarks/http-preflight-6c9881e/) preserve this independent launch pair.
+[Raw logs and manifest](design-performance-results.md#external-measurement-archive) preserve this independent launch pair.
 
 | Hit / listeners / after invalidation | Base ns | Candidate ns | Allocated base / candidate KiB |
 |---|---:|---:|---:|

@@ -18,7 +18,7 @@ retain their original framework and SDK details. C# 12 source language coverage 
 Initial checks: Release solution build, 66 generator tests, 533 generator integration cases and the CI
 script suite (45 tests, two existing optional publish-SDK skips) pass. Snapshot differences contain only
 removal of the old conditional fallback. New package and SDK-installer acceptance tests failed before
-the implementation and pass after it. Selected logs: `plans/design-benchmarks/net10-only/`.
+the implementation and pass after it. Selected logs: `external archive: design-benchmarks/net10-only/`.
 
 ## Full functional receipt
 
@@ -37,7 +37,7 @@ dependency groups, exact Core version bounds and rejected mismatches. Redis/SQL 
 and hash-seed phases pass, along with JSON/MessagePack, ASP.NET Core, OpenTelemetry and HTTP apps.
 The known reflection-fallback AOT warning categories remain; this is not a zero-warning claim.
 
-[Selected full receipts](../../plans/design-benchmarks/net10-functional-28ab9b2/) preserve this run.
+[Selected full receipts](design-performance-results.md#external-measurement-archive) preserve this run.
 The net10 runtime lookup code retains the former NET9_0_OR_GREATER branch unchanged; new generated code
 removes only its inactive conditional/string fallback for net10 consumers. There is no claim that
 removing framework targets improves runtime throughput.

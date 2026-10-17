@@ -7,7 +7,7 @@ ten alternating pairs and 260 fresh-process launches verify. The twelve GUID
 miss shapes (sync/Task/ValueTask, short/long prefix, listeners off/on) and the
 previously noisy listening short-prefix sync hit are all faster and precise.
 Both frozen and current-rule reviews pass without a new exception.
-[Complete follow-up report and raw launches](../../plans/design-benchmarks/mac-prefix-followup-v4/).
+[Complete follow-up report and raw launches](design-performance-results.md#external-measurement-archive).
 
 Together with the fifteen already precise resident-hit cases in the original
 28-case comparison, this covers the scoped full-path prefix requirement after
@@ -83,7 +83,7 @@ assertion remains unchanged, and all 44,000 listener measurements, including war
 allocation cases passed before the full pipeline was repeated successfully. The first failed run is retained and
 is not counted as passing evidence. Regenerating LLM documentation also corrects stale SipHash wording.
 
-[Selected standalone receipts](../../plans/design-benchmarks/prefix-functional-850cef8/) record both attempts and
+[Selected standalone receipts](design-performance-results.md#external-measurement-archive) record both attempts and
 the exact production source. This test/documentation-only follow-up does not change the library being measured on
 Nimbus. Section-10 timing and external CI remain required; no speed claim is introduced.
 

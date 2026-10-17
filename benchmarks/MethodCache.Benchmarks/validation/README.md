@@ -74,7 +74,7 @@ lookup variants and all four memory-cache references. The harness explicitly ref
 DI implementation version as the benchmark tests: otherwise BDN's transitive DI 6 implementation
 can be selected alongside newer abstractions and fail while constructing the provider. The original
 failure and successful checks against both historical runtime points are retained in
-`plans/design-benchmarks/component-harness-startup/`. No timing from the failed setup is accepted.
+`external archive: design-benchmarks/component-harness-startup/`. No timing from the failed setup is accepted.
 The hash-only component varies both Int and canonical GUID argument text at every prefix length;
 this gives eighteen lookup cases, thirty-two facade/key-build cases and four references. Do not pool
 the earlier int-only hash-component results with the expanded matrix.
@@ -116,7 +116,7 @@ Growing-pressure rows still require performance review; the separation does not 
 
 ## Full frozen Nimbus cohort
 
-The published [version-4 protocol](../../../plans/design-benchmarks/guid-full-protocol-v4/)
+The published [version-4 protocol](../../../docs/developer/design-performance-results.md#external-measurement-archive)
 supersedes the preliminary twelve-point local dispatcher above for final evidence. It preserves
 fourteen actual runtime points and six component points, split into 180 bounded launches.
 Preparation and all sixty compiled family checks must complete before the measurement dispatcher starts.
@@ -126,7 +126,7 @@ all 180 unique successful launches and identical source/program hashes across ea
 Its pair statistics are the same as `summarize-pair.py`; acceptance remains manual.
 The source-reviewed round-trip classification supersedes the frozen protocol archive's earlier
 analysis-only label: validation already existed, PR4 adds an opt-out affecting writes, and both
-read labels remain comparable. [Original failing cases and source evidence](../../../plans/design-benchmarks/guid-feature-review-v1/)
+read labels remain comparable. [Original failing cases and source evidence](../../../docs/developer/design-performance-results.md#external-measurement-archive)
 retain that correction without changing deployed measurement inputs or collecting different samples.
 
 ## Independent-run statistical report
@@ -160,5 +160,5 @@ The Nimbus startup-affinity protocol uses taskset before .NET initializes, suppl
 affinity characteristic, and samples the owned .NET process tree's actual CPU sets. Each of the
 four executed child PIDs must have observations on CPU2; missing samples or different masks fail.
 The V3 validation failure and fresh V4 protocol are retained under
-`plans/design-benchmarks/independent-run-precision/startup-affinity-validation/`. Earlier samples
+`external archive: design-benchmarks/independent-run-precision/startup-affinity-validation/`. Earlier samples
 remain separate; all 31 affinity/activity/statistics helper tests pass, without a timing pass.

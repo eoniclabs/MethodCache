@@ -68,7 +68,7 @@ The updated HTTP unit suite passes all 320 cases on net10.0; 49 selected Core pr
 and all three host startup facts pass. Windows CI previously exposed its default EventLog logger
 masking the intended missing-Core startup exception with an access-denied logging exception. The
 host registration tests now clear host logging providers; no machine permissions are changed.
-Selected red/green receipts are in `plans/design-benchmarks/http-publication-followup/`.
+Selected red/green receipts are in `external archive: design-benchmarks/http-publication-followup/`.
 Full descendant release gates and timing remain pending. Johan subsequently approved dropping .NET
 8 and 9: a separate following PR changes the supported matrix to .NET 10 only; prior receipts remain
 historical evidence for their original revisions.
@@ -79,4 +79,4 @@ The privacy fixture now explicitly waits for watcher startup and delivers its ch
 avoiding a second thread-pool dispatch in the assertion phase. The privacy checks are unchanged.
 A temporary unsanitized-logger mutation still fails on the synthetic secret canary; after restoring
 production code all seven privacy cases pass on net10.0. Production source is unchanged. Selected
-red/green evidence is in `plans/design-benchmarks/privacy-watcher-startup/`; latest-head CI is required.
+red/green evidence is in `external archive: design-benchmarks/privacy-watcher-startup/`; latest-head CI is required.

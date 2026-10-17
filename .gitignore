@@ -66,3 +66,6 @@ artifacts/
 
 # Python CI regression tests
 __pycache__/
+
+# Raw design/benchmark evidence belongs in external artifacts, never in Git
+/plans/design-benchmarks/

@@ -28,7 +28,7 @@ that addition, and removing the constructor from a temporary runtime makes the n
 frozen vendor fail with MissingMethodException. All nine compatibility facts and
 the extended native osx-arm64 smoke pass after restoration. This is additive local
 evidence; the final published head still requires normal CI.
-[Exact baseline provenance and red/green/native receipts](../../plans/design-benchmarks/net10-inline-vendor-baseline/).
+[Exact baseline provenance and red/green/native receipts](design-performance-results.md#external-measurement-archive).
 
 The broader API audit also finds that #132 removed the original public
 `MethodCall.StartKey` entry point. The combined final correction restores it as a
@@ -36,7 +36,7 @@ supported contract-1 member; current generated code retains the constructor path
 A guard against all 103 original declarations fails before that restoration and
 passes afterward, alongside ten compatibility facts, 1,043 Core facts and native
 AOT. Existing vendor images and their manifests remain unchanged.
-[Exact member snapshot, red/green and coverage proof](../../plans/design-benchmarks/generated-api-preservation/).
+[Exact member snapshot, red/green and coverage proof](design-performance-results.md#external-measurement-archive).
 
 Module initializers register descriptors only. Startup validates contract versions, selects modules and binds each
 service registration to its own runtime context. One immutable MethodCall snapshot supplies key construction,

@@ -642,7 +642,7 @@ SDK/runtime, CPU, GC och antal par.
 metadata, administrationen och telemetrin och godkänn exakt fem avgränsade tidskostnader:
 lokal HTTP-workload-miss högst +6 %, de två 304-fallen med lyssnare högst +6 % respektive
 +8 %, samt de två kalla missfallen efter invalidering högst +20 %. Exakta fallnamn,
-motiveringar och tak finns i `accepted.json`; [beslut och reproducerbar granskning](../../plans/design-benchmarks/http-time-acceptance-v1/)
+motiveringar och tak finns i `accepted.json`; [beslut och reproducerbar granskning](design-performance-results.md#external-measurement-archive)
 bevarar före/efter-regler och samtliga ursprungsrapporter. Två osäkra Mac-fall har
 separata kompletta precisa Nimbus-bekräftelser; inga par eller medelvärden slås ihop
 mellan studier. Precisionskravet på 6 %, korrekthet, bytes/kommandon och övriga fall
