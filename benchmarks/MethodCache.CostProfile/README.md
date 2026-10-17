@@ -49,12 +49,11 @@ benchmarks/MethodCache.CostProfile/cost-profile.sh --time <pairs> <base-ref> [ca
 ```
 
 Times every matching case in its own process, `<pairs>` times per side, alternating which side goes first, with
-the same short in-process BenchmarkDotNet job, and compares them pair by pair (`paired.py`). Cases timed one after
+the same in-process BenchmarkDotNet job (20–60 adaptive warmup iterations, then 12 actual iterations), and compares them pair by pair (`paired.py`). Cases timed one after
 another in one process shape each other's JIT and GC state; in a trial here that alone made later cases look up to
 30 % slower. A case is slower when the whole 95 % interval of the change/base ratio lies above 1 and the estimate is
 more than 3 % above it; an interval wider than 6 % or a missing time fails too. A deliberate slowdown passes with a
-`time` bound (the largest accepted ratio) in `accepted.json`. Each case and launch takes about 6 seconds, so filter
-it. Run it on a quiet machine. The profile does not see a change that only costs CPU time, so §10 says when this
+`time` bound (the largest accepted ratio) in `accepted.json`. Each launch takes several seconds; filter the cases when investigating a change. Run it on a quiet machine. The profile does not see a change that only costs CPU time, so §10 says when this
 step is required.
 
 The precision limit applies even to a faster result or an accepted slowdown. Both sides must contain every
@@ -66,7 +65,10 @@ priority. This follows [Apple's pthread QoS contract](https://github.com/apple-o
 and [BenchmarkDotNet 0.15.4's in-process executor](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.4/src/BenchmarkDotNet/Toolchains/InProcess/Emit/InProcessEmitExecutor.cs).
 It does not establish a fixed physical-core affinity.
 
-Timing records retain all 12 actual workload measurements, the runtime and GC mode. The exported time is
+Timing records retain every warmup and all 12 actual workload measurements, the runtime and GC mode.
+A launch exports no accepted time if the medians of its first and last four actual iterations differ by more
+than 25%: that signals a large compilation or machine phase change, even when pair medians look precise.
+This check rejects unstable evidence; it does not change the 3% regression or 6% pair-precision limits. The exported time is
 BenchmarkDotNet's time per operation, including its normalization for batched benchmarks; it is not divided again.
 
 The two exact sync/int time limits in `accepted.json` record Johan's SipHash choice

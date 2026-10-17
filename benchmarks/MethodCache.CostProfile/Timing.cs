@@ -7,15 +7,15 @@ using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 
-// One timing launch: the matching cases in this process, with a short fixed job. Cases timed in one process shape each
-// other's JIT and GC state, so cost-profile.sh --time starts one launch per case and revision, alternating the sides,
+// One timing launch uses adaptive warmup and fixed actual iterations. Cases in one process shape each other's
+// JIT and GC state, so cost-profile.sh --time starts one launch per case and revision, alternating the sides,
 // so drift on the machine hits both sides of a pair alike.
 internal static class Timing
 {
     internal static async Task<int> RunAsync(Type[] types, Func<string, bool> matches, bool hasRedis, bool hasSql, string output)
     {
         var job = Job.Default.WithToolchain(InProcessEmitToolchain.Instance)
-            .WithWarmupCount(4).WithIterationCount(12).WithIterationTime(Perfolizer.Horology.TimeInterval.FromMilliseconds(150));
+            .WithMinWarmupCount(20).WithMaxWarmupCount(60).WithIterationCount(12).WithIterationTime(Perfolizer.Horology.TimeInterval.FromMilliseconds(150));
         var config = ManualConfig.CreateEmpty().AddJob(job).AddLogger(NullLogger.Instance).WithOptions(ConfigOptions.DisableLogFile);
         await using var writer = new StreamWriter(output, append: false);
         foreach (var type in types)
@@ -39,19 +39,37 @@ internal static class Timing
 
     internal static Dictionary<string, object?> Record(BenchmarkReport report)
     {
+        var warmup = report.AllMeasurements.Where(m => m.IterationMode == IterationMode.Workload && m.IterationStage == IterationStage.Warmup).ToArray();
         var actual = report.AllMeasurements.Where(m => m.IterationMode == IterationMode.Workload && m.IterationStage == IterationStage.Actual).ToArray();
+        var stable = actual.Length == 12 && HasStableActualPhase(actual);
         return new()
         {
             ["case"] = Name(report.BenchmarkCase),
             // BenchmarkDotNet statistics already divide by operation count, including OperationsPerInvoke.
-            ["ns"] = report.Success && actual.Length == 12 && report.ResultStatistics is { } statistics ? Math.Round(statistics.Median, 2) : null,
+            ["ns"] = report.Success && stable && report.ResultStatistics is { } statistics ? Math.Round(statistics.Median, 2) : null,
             ["actualIterations"] = actual.Length,
+            ["unstableActualPhase"] = actual.Length == 12 && !stable,
+            ["warmupIterations"] = warmup.Length,
+            ["warmupMeasurements"] = warmup.Select(m => new { m.Operations, m.Nanoseconds }).ToArray(),
             ["actualMeasurements"] = actual.Select(m => new { m.Operations, m.Nanoseconds }).ToArray(),
             ["operationsPerInvoke"] = report.BenchmarkCase.Descriptor.OperationsPerInvoke,
             ["runtime"] = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
             ["serverGC"] = System.Runtime.GCSettings.IsServerGC,
             ["gcLatencyMode"] = System.Runtime.GCSettings.LatencyMode.ToString(),
         };
+    }
+
+    private static bool HasStableActualPhase(Measurement[] measurements)
+    {
+        // Reject large JIT/thermal phase transitions, not individual outliers. Pair precision remains 6%.
+        static double Median(IEnumerable<Measurement> values)
+        {
+            var times = values.Select(m => m.Nanoseconds / m.Operations).Order().ToArray();
+            return (times[1] + times[2]) / 2;
+        }
+        var first = Median(measurements.Take(4));
+        var last = Median(measurements.TakeLast(4));
+        return first > 0 && last > 0 && Math.Max(first, last) <= Math.Min(first, last) * 1.25;
     }
 
     private static string Name(BenchmarkCase c)
