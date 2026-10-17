@@ -8,6 +8,9 @@ namespace MethodCache.TestSupport;
 internal sealed class PolicySubscriptionBarrier(IBackplane inner) : IBackplane, IAsyncDisposable
 {
     private int _disposed;
+    private readonly object _deliveryGate = new();
+    private Func<BackplaneMessage, Task>? _callback;
+    private Task _pendingDeliveries = Task.CompletedTask;
     internal TaskCompletionSource Ready { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal static void Decorate(IServiceCollection services)
     {
@@ -30,15 +33,38 @@ internal sealed class PolicySubscriptionBarrier(IBackplane inner) : IBackplane, 
     public Task PublishClearAsync(CancellationToken cancellationToken = default) => inner.PublishClearAsync(cancellationToken);
     public async Task SubscribeAsync(Func<BackplaneMessage, Task> callback, CancellationToken cancellationToken = default)
     {
-        try { await inner.SubscribeAsync(callback, cancellationToken); Ready.TrySetResult(); }
+        lock (_deliveryGate) _callback = callback;
+        try { await inner.SubscribeAsync(DeliverAsync, cancellationToken); Ready.TrySetResult(); }
         catch (Exception error) { Ready.TrySetException(error); throw; }
     }
-    public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => inner.UnsubscribeAsync(cancellationToken);
+    private Task DeliverAsync(BackplaneMessage message)
+    {
+        lock (_deliveryGate)
+        {
+            if (_callback == null) return Task.CompletedTask;
+            var delivery = _callback(message);
+            if (!delivery.IsCompletedSuccessfully)
+                _pendingDeliveries = _pendingDeliveries.IsCompleted ? delivery : Task.WhenAll(_pendingDeliveries, delivery);
+            return delivery;
+        }
+    }
+    public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
+    {
+        Task pending;
+        lock (_deliveryGate)
+        {
+            // A native callback may already be queued before its handler is detached.
+            _callback = null;
+            pending = _pendingDeliveries;
+        }
+        await inner.UnsubscribeAsync(cancellationToken);
+        await pending.WaitAsync(cancellationToken);
+    }
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        await UnsubscribeAsync();
         if (inner is IAsyncDisposable asyncDisposable) await asyncDisposable.DisposeAsync();
         else if (inner is IDisposable disposable) disposable.Dispose();
-        else await inner.UnsubscribeAsync();
     }
 }

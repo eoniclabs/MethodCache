@@ -282,6 +282,34 @@ The original console bytes are restored in Git. The complete published batch is
 also checked against Git objects, rather than working files alone.
 [Line-ending regression and complete Git-object verification](../../plans/design-benchmarks/evidence-line-endings-v1/).
 
+Published `be88349fae9b2e0c55406ccde578a0d1a105b233` passes all fourteen jobs and
+all four statuses after those checkout/evidence corrections. Earlier complete
+CI attempts remain failures: f7520375 reports 4,480 bytes in the Docs public-hit
+probe's first measurement, and d3126b71 reports a Redis deadline assertion failure
+during the coverage run. Neither intermittent failure is silently discarded.
+
+The Docs probe now warms its complete counter/loop path before one unchanged
+fixed window requiring zero bytes. A negative control detects one escaping
+allocation, and actual listener callbacks and the single origin load are
+asserted. Ten fresh original-code processes pass, as do ten candidate processes
+with both facts and all 120 Docs tests. The Core DLL is byte-identical; this is
+test initialization, not a library allocation waiver or a proven attribution of
+the original transient bytes.
+[Original CI failure and complete probe validation](../../plans/design-benchmarks/docs-hit-probe-v1/).
+
+The deadline-only native phase also detaches and drains callbacks before advancing
+its fake clock. Recovery is allowed to retire a running load; earlier native
+mutation/delivery assertions stay active. Two deterministic barrier facts fail
+before the change: a queued callback enters after unsubscribe and unsubscribe
+returns before a running callback completes. All three barrier facts then pass.
+Ten fresh original Redis processes pass; ten candidate Redis and three SQL Server
+processes, with coverage collection enabled, also pass without skips. All 1,047
+Core tests pass with the intentional opt-in soak skip, and Core DLL hashes are
+identical. Deadlines and value assertions are unchanged. These test corrections
+still require CI on their published commit; neither claims a precise scheduling
+explanation for the earlier native failure.
+[Actual native failure, deterministic fault tests and all native results](../../plans/design-benchmarks/policy-deadline-isolation-v1/).
+
 ## Historical checkpoints and investigations
 
 ## Historical 908a94e three-platform functional checkpoint
