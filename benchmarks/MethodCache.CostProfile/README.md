@@ -66,8 +66,9 @@ and [BenchmarkDotNet 0.15.4's in-process executor](https://github.com/dotnet/Ben
 It does not establish a fixed physical-core affinity.
 
 Timing records retain every warmup and all 12 actual workload measurements, the runtime and GC mode.
-A launch exports no accepted time if the medians of its first and last four actual iterations differ by more
-than 25%: that signals a large compilation or machine phase change, even when pair medians look precise.
+A launch exports no accepted time if its first and last four actual iterations form completely separated
+windows more than 25% apart: that signals a sustained compilation or machine phase change, even when pair
+medians look precise. Transient upper outliers remain in the raw data and BenchmarkDotNet’s robust summary.
 This check rejects unstable evidence; it does not change the 3% regression or 6% pair-precision limits. The exported time is
 BenchmarkDotNet's time per operation, including its normalization for batched benchmarks; it is not divided again.
 

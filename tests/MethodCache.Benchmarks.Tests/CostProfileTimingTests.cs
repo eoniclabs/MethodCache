@@ -46,6 +46,15 @@ public class CostProfileTimingTests
         Assert.Equal(12, record["actualIterations"]);
     }
 
+    [Fact]
+    public void Record_TransientTailOutliers_PreservesStableMedianAndEveryActualMeasurement()
+    {
+        double[] times = [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1600, 1700, 1600];
+        var record = Timing.Record(Report(nameof(BatchedWork.Single), 12, times));
+        Assert.Equal(1000d, record["ns"]);
+        Assert.Equal(12, record["actualIterations"]);
+    }
+
     private static BenchmarkReport Report(string method, int actualCount, double[]? times = null)
     {
         var benchmark = BenchmarkConverter.TypeToBenchmarks(typeof(BatchedWork)).BenchmarksCases

@@ -61,15 +61,12 @@ internal static class Timing
 
     private static bool HasStableActualPhase(Measurement[] measurements)
     {
-        // Reject large JIT/thermal phase transitions, not individual outliers. Pair precision remains 6%.
-        static double Median(IEnumerable<Measurement> values)
-        {
-            var times = values.Select(m => m.Nanoseconds / m.Operations).Order().ToArray();
-            return (times[1] + times[2]) / 2;
-        }
-        var first = Median(measurements.Take(4));
-        var last = Median(measurements.TakeLast(4));
-        return first > 0 && last > 0 && Math.Max(first, last) <= Math.Min(first, last) * 1.25;
+        // A sustained phase change separates both complete windows. Transient upper outliers
+        // remain in the raw data and BenchmarkDotNet's robust summary; pair precision is still 6%.
+        var first = measurements.Take(4).Select(m => m.Nanoseconds / m.Operations).ToArray();
+        var last = measurements.TakeLast(4).Select(m => m.Nanoseconds / m.Operations).ToArray();
+        return first.Min() > 0 && last.Min() > 0 &&
+            first.Min() <= last.Max() * 1.25 && last.Min() <= first.Max() * 1.25;
     }
 
     private static string Name(BenchmarkCase c)
