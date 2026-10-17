@@ -1,0 +1,7 @@
+{
+  "inputs_sha256": "92cac7964cb2565f970ff2aa416eac290a199713f095a5c3c1890e011b8eebef",
+  "prepared_sha256": "07b5e029468ec4369a89603687d06c5508e5444c4aba832143878afb3778ec59",
+  "verified_binary_files": 222,
+  "original_prepared_sha256": "5e68e5d53b6505018f2afaba545be8f768c41adb801227f206525202bd81fd62",
+  "scope": "Bothsidesbyte-identicaltocompletedoriginaldiagnostic;onlypredeclarednumberofpairs/caseselectionchangesbeforeanynewmeasurement"
+}

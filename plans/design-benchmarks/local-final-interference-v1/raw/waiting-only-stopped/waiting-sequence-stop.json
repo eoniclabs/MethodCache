@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-17T03:09:09.313384+00:00",
+  "scope": "Own waiting-only follow-up queue stopped after predecessor terminal failure; no measurement launched; original frozen inputs retained.",
+  "pid": 2486,
+  "signal": "SIGTERM"
+}

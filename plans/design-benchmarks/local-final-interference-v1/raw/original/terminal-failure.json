@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-17T03:09:09.313849+00:00",
+  "sequence_pid": 87766,
+  "actual_handle_missing": true,
+  "failed_group": "CPU-04",
+  "group_exit": 1,
+  "reason": "Interference guard saw external build/test process14535 during pair7. Entire interrupted four-case group is inadmissible; completed groups00-03 retained, no means reviewed.",
+  "continuation_policy": "Same compiled inputs; replace all10pairs of group04, then run unstarted05-13. Preserve all original raw files."
+}

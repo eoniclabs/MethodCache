@@ -1,23 +1,19 @@
-# Acceptance inventory: final gate is open
+# Acceptance inventory: timing gate remains open
 
-[acceptance.json](acceptance.json) covers all 76 explicit §11 rows, with each
-required scenario/outcome, inspected source assertions and exact file hashes.
-It is an evidence inventory, not a pass inferred from test names or CI totals.
+[acceptance.json](acceptance.json) covers all 76 explicit specification rows with
+required scenarios, inspected source assertions and exact file hashes. This
+inventory distinguishes functional verification from outstanding timing gates.
 
-The last complete published functional checkpoint is abd0eae (all fourteen jobs,
-four statuses,94.0%diffcoverage). The candidate additionally has the explicit
-native-prefix checks, ordinary-late-DI control, macOS scheduling tests and the
-two-line saved-node-hash correction. Their local/isolated evidence is identified
-separately; full CI on the new published commit remains required.
+Published checkpoint `3e9df33eb9da29c7740b2cd4434345a4486a62ce` passes all fourteen
+jobs and four statuses, with 2,612 Linux tests and 94.0% diff coverage. It includes
+the node-hash correction, explicit native-prefix execution, ordinary late-DI
+control, portable proof paths and the deterministic test-support corrections.
+The evidence-only documentation batch will need its own published-head CI.
 
-The complete original full71, prefix28 and quiet3 time reports are retained as
-failed. The candidate cost profile passes all67caseswith6unchangedaccepted costs,
-and independent Nimbus/Mac comparisons confirm the miss correction. Nimbus GUID
-sync remains precisely slower and other original intervals remain too wide.
-The unadopted inlining trial clears no gate. Only Johan's two exact no-listener
-sync/int SipHash limits are accepted; no GUID/miss or precision waiver is added.
-
-Changed source hashes are updated only for the independently checked AOT program
-hook and the two reasoned int time limits; exact prior hashes remain recorded.
-The candidate memory-engine/immutable-node/hash-memo implementation and new
-acceptance test sources are explicitly listed with their current hashes.
+The complete original timing reports remain failed/noisy. The corrected runtime
+passes all 67 cost cases with the same six accepted costs. Independent cumulative
+comparisons confirm the miss correction; Nimbus GUID sync remains slower. A
+diagnostic isolates hash/lookup as the relevant mechanism and does not change
+production or grant acceptance. A fixed 53-case quiet-Mac cohort and thirteen
+affected F05 cases remain pending. Only the two previously authorized exact
+no-listener sync/int time limits are currently accepted.

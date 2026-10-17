@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/tmp/methodcache-final-local-cpu-continuation-v3/queue.py", line 13, in <module>
+    if code!=0:(f/'sequence.exit').write_text(str(code)+'\n');raise RuntimeError((name,code))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: ('measure-CPU-04', 1)

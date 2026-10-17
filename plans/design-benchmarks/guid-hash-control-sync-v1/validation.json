@@ -1,0 +1,14 @@
+{
+  "scope": "Complete diagnostic hash/lookup isolation;onesyncGUIDcase/20pairs/40launches;currentSipHashprefixversusruntimeadaptivehash,unchangedcontractbinding/telemetry;NOTproductionadoptionorlatencygate",
+  "utc": "2026-10-17T02:47:08.812473+00:00",
+  "archive_sha256": "23d784e19298067a44792dc33939b52ba83bb6b5ade5479cdaf67ad5d3872d49",
+  "indexed_files_verified": 105,
+  "inputs_sha256": "92cac7964cb2565f970ff2aa416eac290a199713f095a5c3c1890e011b8eebef",
+  "prepared_sha256": "07b5e029468ec4369a89603687d06c5508e5444c4aba832143878afb3778ec59",
+  "review_exit": 0,
+  "revisions": {
+    "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "head_patch_sha256": "dce56814130c4a3b255daebc6e5c525d57100f8fee73e57ae8eb723f18e28272"
+}

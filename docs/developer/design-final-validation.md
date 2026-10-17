@@ -317,6 +317,52 @@ still require CI on their published commit; neither claims a precise scheduling
 explanation for the earlier native failure.
 [Actual native failure, deterministic fault tests and all native results](../../plans/design-benchmarks/policy-deadline-isolation-v1/).
 
+The latest published functional checkpoint is now
+`3e9df33eb9da29c7740b2cd4434345a4486a62ce`: all fourteen jobs and all four
+statuses pass, with 2,612 Linux tests, zero failures, one intentional opt-in
+soak skip and 3,529/3,753 changed lines covered (94.0%). This includes both
+test-support corrections described above, all 120 Docs tests and 1,047 Core tests.
+It supersedes pending functional-checkpoint statements above; timing remains open.
+[Exact complete job logs, statuses and original/stored hashes](../../plans/design-benchmarks/combined-functional-3e9df33/).
+
+A diagnostic changes only the memory engine's comparer selection, retaining the
+current generated binding, generation checks, telemetry and node-hash correction.
+The complete initial three-case study is too noisy on all three return shapes.
+An independently declared twenty-pair sync-only confirmation verifies all forty
+launches and measures the runtime's adaptive string lookup 9.3% faster than the
+current SipHash prefix lookup (ratio 0.907, 95% interval 0.884–0.930), meeting the
+precision criterion. This attributes the difference to the hash/lookup mechanism
+as a whole; it does not isolate the SipHash primitive alone. The original runtime
+explicitly uses ConcurrentDictionary's non-randomized string fast path; .NET 10
+retains an adaptive comparer for default/ordinal strings, as documented in the
+[primary runtime source](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Collections.Concurrent/src/System/Collections/ConcurrentDictionary.cs).
+Production keeps SipHash. No new acceptance rule is inferred from this diagnostic.
+[Original complete diagnostic](../../plans/design-benchmarks/guid-hash-control-v1/) and
+[independent precise sync confirmation](../../plans/design-benchmarks/guid-hash-control-sync-v1/).
+
+The fixed quiet-Mac cumulative confirmation now runs all 53 existing local CPU
+cases, ten alternating pairs each, in fourteen bounded groups. Its compiled
+inputs match every current production source file; the exact original SHA and
+two-line correction remain explicit. No group means are reviewed before the
+entire fixed cohort terminates. Afterwards, a queued F05 follow-up covers all
+twelve GUID miss shapes affected by node removal plus the one previously noisy
+listener-enabled sync hit. The other fifteen previously precise F05 hit cases
+retain their complete original results; the four int controls are also included
+in the current 53-case cohort. Both cohorts reuse the same compiled files and
+frozen workloads, without new checkouts or builds during timing. These are final
+confirmation requirements, not the cancelled historical multi-PR matrix.
+
+The quiet-Mac final cohort subsequently stops during CPU-04 pair 7 when its
+predeclared process guard reports a competing build/test command. Groups
+CPU-00–03 are complete and retained without reviewing their means. A continuation
+using the same 444 compiled files replaces the entire interrupted four-case
+group, then is itself stopped by the same guard during pair 6. Both interrupted
+attempts are preserved and contribute no formal timing records. Their following
+F05 queues start no measurements. External process identity is under observation
+before another attempt; no other job or provider is stopped. The remaining fixed
+cases and full-cohort review are still required.
+[Both complete interrupted attempts and queue diagnostics](../../plans/design-benchmarks/local-final-interference-v1/).
+
 ## Historical checkpoints and investigations
 
 ## Historical 908a94e three-platform functional checkpoint

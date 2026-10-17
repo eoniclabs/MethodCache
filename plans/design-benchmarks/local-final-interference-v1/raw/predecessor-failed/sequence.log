@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/tmp/methodcache-final-prefix-followup-v3/queue.py", line 8, in <module>
+    assert (predecessor/'sequence.exit').read_text().strip()=='0','Predecessor cohort failed; do not continue silently'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Predecessor cohort failed; do not continue silently

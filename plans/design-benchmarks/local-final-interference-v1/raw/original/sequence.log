@@ -1,0 +1,9 @@
+Completefixedgroup CPU-00 2026-10-17T02:39:29.183879+00:00
+Completefixedgroup CPU-01 2026-10-17T02:46:11.939819+00:00
+Completefixedgroup CPU-02 2026-10-17T02:53:27.226004+00:00
+Completefixedgroup CPU-03 2026-10-17T03:01:44.870415+00:00
+Traceback (most recent call last):
+  File "/tmp/methodcache-final-local-cpu-v2/queue.py", line 12, in <module>
+    (f/(name+'.exit')).write_text(str(code)+'\n');assert code==0,(name,code)
+                                                         ^^^^^^^
+AssertionError: ('measure-CPU-04', 1)
