@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Testing
 
 The implementation of a cached interface is a plain class: create it directly in unit tests and no caching is
@@ -52,9 +54,10 @@ independent. Configure HTTP caching separately and use its administrator for inv
 
 ## Time
 
-The cache reads the time from the `TimeProvider` registered in the container, if there is one. Register a fake
-`TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
-This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
-eviction and the background revalidation timeout.
+> [!TIP]
+> The cache reads the time from the `TimeProvider` registered in the container, if there is one. Register a fake
+> `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
+> This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
+> eviction and the background revalidation timeout.
 
 The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.

@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Conditional caching
 
 Sometimes a result should be returned but not remembered: an empty search, a product that doesn't exist yet, a
@@ -27,7 +29,8 @@ builder.Services.AddMethodCache(config =>
 - The predicate runs once per load, never on a cache hit. If it throws, the result is returned and not stored.
 - It is set in startup code only, so it can't come from `appsettings.json`. `Any<T>.Value` stands for any argument.
 
-To stop caching `null` everywhere, set `CacheNullValues = false` on the [memory cache](memory-cache.md) instead.
+> [!TIP]
+> To stop caching `null` everywhere, set `CacheNullValues = false` on the [memory cache](memory-cache.md) instead.
 
 ## Skipping the cache for one call
 

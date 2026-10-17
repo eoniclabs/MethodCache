@@ -1,3 +1,5 @@
+[← MethodCache documentation](README.md)
+
 # Migrating from IMemoryCache
 
 With `IMemoryCache`, every cached method holds the same pattern: build a key, try the cache, load, store, and remember

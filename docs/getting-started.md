@@ -1,3 +1,5 @@
+[← MethodCache documentation](README.md)
+
 # Getting started
 
 MethodCache is not on nuget.org yet. Until it is, reference the projects from this repository (the
@@ -63,8 +65,9 @@ public sealed class ProductService(Database db) : IProductService
 - `"product:{id}"` is a tag template: `GetAsync(42)` is tagged `product:42`.
 - `UpdateAsync(42, ...)` removes every entry tagged `products` or `product:42` once it has completed.
 
-The attributes must be on the interface. On a class they do nothing, and the analyzer reports
-[MC0001](user-guide/DIAGNOSTICS.md#mc0001) with a code fix that moves them.
+> [!IMPORTANT]
+> The attributes must be on the interface. On a class they do nothing, and the analyzer reports
+> [MC0001](user-guide/DIAGNOSTICS.md#mc0001) with a code fix that moves them.
 
 ## 3. Register it
 

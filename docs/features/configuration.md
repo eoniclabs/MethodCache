@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Configuration
 
 A cached method's policy (duration, sliding expiration, refresh-ahead, fail-safe, tags, group, version) can come from

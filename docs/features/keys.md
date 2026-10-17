@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Cache keys
 
 You never write keys for `[Cache]` methods. The generated decorator builds each key from the interface, the method

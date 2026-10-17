@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Fail-safe
 
 Fail-safe keeps an expired value for a while and returns it when calling the method again fails, so a database or API
@@ -66,7 +68,8 @@ turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `
 
 ## Limits
 
-The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
-once.
+> [!NOTE]
+> The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
+> once.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.

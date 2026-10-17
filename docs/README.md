@@ -1,4 +1,10 @@
-# MethodCache documentation
+<p align="center">
+  <img src="../assets/branding/icon.svg" alt="MethodCache logo" width="72" height="72">
+</p>
+
+<h1 align="center">MethodCache documentation</h1>
+
+<p align="center"><a href="../README.md">README</a> · <a href="getting-started.md">Getting started</a> · <a href="troubleshooting.md">Troubleshooting</a> · <a href="user-guide/DIAGNOSTICS.md">Build diagnostics</a></p>
 
 Start with [Getting started](getting-started.md). Each page below covers one feature, and every C# example on these
 pages is compiled and tested in CI.

@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Distributed cache
 
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
@@ -21,6 +23,30 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
 
 ## How it works
 
+```mermaid
+flowchart LR
+    A([Call a cached method]):::dark --> B{In memory?<br/>L1}
+    B -- yes --> R([Return the value]):::amber
+    B -- no --> C{In Redis or<br/>SQL Server? L2}
+    C -- yes --> D[Keep it in memory]:::light --> R
+    C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
+    classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
+    classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
+    classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
+```
+
+```mermaid
+sequenceDiagram
+    participant A as Instance A
+    participant L2 as Redis / SQL Server
+    participant B as Instance B
+    A->>A: [CacheInvalidate] or InvalidateTagsAsync
+    A->>L2: Remove the key, or stamp the tag
+    A-->>B: Backplane message (pub/sub, or the next poll)
+    B->>B: Drop the in-memory copy
+    Note over B: The next call reads L2 or runs the method
+```
+
 - Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
@@ -31,8 +57,9 @@ Redis backplane publication stops waiting when its token is cancelled. A cancell
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
-Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
-are ignored with one warning.
+> [!IMPORTANT]
+> Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
+> are ignored with one warning.
 
 ## Policy isolation
 
@@ -182,12 +209,13 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 
 ## Keep invalidations from being evicted
 
-Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
-stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
-it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
-noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
-them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
-as down and answers from memory. SQL Server removes rows only once they expired.
+> [!WARNING]
+> Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
+> stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
+> it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+> noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
+> them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
+> as down and answers from memory. SQL Server removes rows only once they expired.
 
 ## Limits
 
