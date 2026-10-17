@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-17T02:11:17.219735+00:00",
+  "inputs_sha256": "c961a5467996627b8337de38121bd6ac519cba0f7e59d8b1b7968024e88200a1",
+  "prepared_sha256": "2cb3894226d025d0fe04d4f40524363770925634e5eaa0bc8cc8ea71abdf3829",
+  "verified_binary_files": 222,
+  "source_diff_paths": [
+    "src/MethodCache.Core/Generated/GeneratedServices.cs",
+    "src/MethodCache.Core/Generated/MethodCall.cs",
+    "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs"
+  ],
+  "base_is_exact_verified_hash_reuse_candidate": true,
+  "scope": "Immutablecachedinputsprototypeonly;allbinding/livegenerationchecksretained;noobservedtimingsreadbeforedispatch"
+}

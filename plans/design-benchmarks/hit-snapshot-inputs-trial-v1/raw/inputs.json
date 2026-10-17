@@ -1,0 +1,24 @@
+{
+  "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "pairs": 10,
+  "remaining_groups": [
+    0
+  ],
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "label": "methodcache-design-20261015-01a13a93-hit-snapshot-inputs-v1",
+  "runtime_patch_sha256": "6d3ece63871ef1af2b477cecef9b0e8f3d95ada8186d31b927fe0a85b162b3ed",
+  "cases": [
+    "GeneratedContractBenchmarks.SyncHit()",
+    "GeneratedContractBenchmarks.TaskHit()",
+    "GeneratedContractBenchmarks.ValueTaskHit()"
+  ],
+  "files_sha256": {
+    "run.py": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "runtime.patch": "6d3ece63871ef1af2b477cecef9b0e8f3d95ada8186d31b927fe0a85b162b3ed",
+    "prepare.py": "afba544a27179eefbf34ed537b899b98bd65c48e88779276ac9d0a4798554f7d"
+  },
+  "purpose": "Controlled candidate to remove immutable Policy/Services indirections and nullable Enabled processing on each generated hit. Cache only values already frozen by the invocation snapshot; retain binding and live generation checks. Not applied to authoritative source until verified.",
+  "base_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a"
+}

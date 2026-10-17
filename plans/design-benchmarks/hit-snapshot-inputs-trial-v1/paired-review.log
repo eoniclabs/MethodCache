@@ -1,0 +1,7 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedContractBenchmarks.SyncHit() | 60.9 | 60.6 | 0.996 | 0.967-1.026 | same |
+| GeneratedContractBenchmarks.TaskHit() | 66.1 | 65.8 | 1.014 | 0.979-1.051 | **too noisy** |
+| GeneratedContractBenchmarks.ValueTaskHit() | 70.7 | 72.5 | 0.998 | 0.947-1.052 | **too noisy** |
+
+10 pairs, 3 compared, 0 slower, 2 too noisy, 0 without a time
