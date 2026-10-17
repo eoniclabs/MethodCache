@@ -141,8 +141,8 @@ after metadata loss or overflow. SQL initialization rejects unversioned/unknown 
 migration for the known legacy layout. The roundtrip check is optional and cannot detect semantic losses in nested
 derived or private state; explicit serializer configuration remains the application's responsibility.
 
-Generated-method dictionaries hash keys with SipHash-1-3 under a process-secret 128-bit key (the keyed hash Python and Rust use for their hash tables); full key text is always compared
+Generated-method dictionaries hash keys with SipHash-1-3 under process-secret 128-bit keys (the keyed hash Python and Rust use for their hash tables): ASCII keys as one byte per character, any other key as UTF-16, each under its own key. Full key text is always compared
 ordinally. Hash state is immutable per invocation snapshot and never becomes an L2/wire/admin identity. The
 [algorithm and threat review](developer/prefix-hash-security.md) records the 32-bit dictionary output limitation,
-reference sources and validation. `PrefixHashPropertyTests` pins published SipHash vectors, arbitrary UTF-16 splits and append
+reference sources and validation. `PrefixHashPropertyTests` pins published SipHash vectors in both encodings, arbitrary UTF-16 splits and append
 invalidation; `PrefixCollisionTests` forces collisions through all lookup/publication paths and checks eviction.

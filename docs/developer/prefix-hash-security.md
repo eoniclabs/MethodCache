@@ -1,12 +1,15 @@
 # Prefix hashing review
 
-Generated-method dictionaries hash keys with **SipHash-1-3** under an independent 128-bit process-secret key
-from `RandomNumberGenerator`. SipHash is a keyed hash designed against hash flooding
+Generated-method dictionaries hash keys with **SipHash-1-3** under independent 128-bit process-secret keys
+from `RandomNumberGenerator`, one per input encoding. SipHash is a keyed hash designed against hash flooding
 ([Aumasson and Bernstein](https://www.aumasson.jp/siphash/siphash.pdf)); SipHash-1-3, one compression round and
-three finalization rounds, is the variant Python 3.11+ and Rust use for their hash tables. Input is the key's exact
-UTF-16 code units in little-endian byte order, including isolated surrogates. Immutable invocation snapshots retain
-the unfinished prefix state; a lookup finishes a copy in locals with its current suffix. Every dictionary path uses
-this algorithm and key. Equality always compares the complete key ordinally. Hashes and keys never become external
+three finalization rounds, is the variant Python 3.11+ and Rust use for their hash tables. A key whose code units
+are all ASCII (below 0x80) is hashed as one byte per code unit, which halves the compressions for typical keys;
+any other key as its exact UTF-16 code units in little-endian byte order, including isolated surrogates. Each
+encoding has its own key, so an ASCII key and a UTF-16 key with the same bytes have unrelated hashes. Immutable
+invocation snapshots retain the unfinished prefix state in both encodings; a lookup finishes a copy in locals with
+its current suffix, in the ASCII form only when the prefix and the suffix are both ASCII. Every dictionary path
+makes the same choice for the same key text and uses this algorithm and these keys. Equality always compares the complete key ordinally. Hashes and keys never become external
 identities.
 
 This replaces the Marvin32 candidate (the .NET randomized string hash). Marvin has a 64-bit seed and is not a
@@ -21,9 +24,10 @@ through logs, metrics, admin, L2 or wire frames.
 
 The implementation is checked against the 64 published SipHash-1-3 vectors from Rust's core library tests: every
 even-length vector, as UTF-16, at every pair of split points between prefix, appended text and finished suffix.
+All vector inputs are below 0x80, so every vector also checks the one-byte form at every pair of split points.
 A separately written byte-oriented reference in the tests is pinned to those vectors and the authors' SipHash-2-4
 vectors, and CsCheck compares the implementation with it for arbitrary keys, UTF-16 text, isolated surrogates and
-splits. Growth and append after lookup are covered through `KeyBuilder`. Deterministic Aa/BB polynomial-collision
+splits, and for text around the 0x7F/0x80 boundary in both encodings at every prefix split. Growth and append after lookup are covered through `KeyBuilder`. Deterministic Aa/BB polynomial-collision
 families, long common prefixes, NUL and isolated surrogates are assessed using bounded equality-chain work, not
 fragile nanosecond assertions. These cases are regression evidence; their distribution alone is not the security
 argument. Forced-collision engine tests cover every key path, concurrent publication, removal and
