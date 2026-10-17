@@ -1,5 +1,27 @@
 # Prefix-hash candidate: functional verification
 
+## Current .NET 10 checkpoint (2026-10-17)
+
+The affected F05 timing follow-up is complete: all thirteen predeclared cases,
+ten alternating pairs and 260 fresh-process launches verify. The twelve GUID
+miss shapes (sync/Task/ValueTask, short/long prefix, listeners off/on) and the
+previously noisy listening short-prefix sync hit are all faster and precise.
+Both frozen and current-rule reviews pass without a new exception.
+[Complete follow-up report and raw launches](../../plans/design-benchmarks/mac-prefix-followup-v4/).
+
+Together with the fifteen already precise resident-hit cases in the original
+28-case comparison, this covers the scoped full-path prefix requirement after
+the eviction/expiry-only node-hash correction. The unaffected hits retain their
+actual original source/binary provenance; no launches from different studies are
+pooled. Four sync/int controls also pass the later complete 53-case cumulative
+study. The original failed 28-case report remains unchanged. Cost and JIT/native
+vendor checks pass independently; overall V04 timing acceptance remains open
+for the HTTP regressions and insufficient-precision confirmations described in
+[final verification](design-final-validation.md).
+
+The dated sections below retain earlier candidates and framework matrices;
+current runtime support is .NET 10 only.
+
 Initial SipHash library implementation: `3aa4800`, based on PR 5 `2f4a91d0c9144dd0cd9de3482291f365c4443508`.
 This is a candidate until the full section-10 timing gates pass. No 15–20 ns / 20% performance claim is made.
 
