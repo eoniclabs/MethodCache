@@ -9,10 +9,10 @@ For every cached method at once:
 
 <!-- snippet: failsafe-central -->
 ```cs
-builder.Services.AddMethodCache(config => config.FailSafe(
+builder.Services.AddMethodCache(config => config.Defaults(o => o.FailSafe(
     duration: TimeSpan.FromHours(1),              // how long an expired value is kept as a fallback
     timeout: TimeSpan.FromMilliseconds(200),      // optional: don't wait longer than this when a fallback exists
-    retryAfter: TimeSpan.FromSeconds(30)));       // optional: reuse the fallback this long before trying again
+    retryAfter: TimeSpan.FromSeconds(30))));       // optional: reuse the fallback this long before trying again
 ```
 <!-- endSnippet -->
 

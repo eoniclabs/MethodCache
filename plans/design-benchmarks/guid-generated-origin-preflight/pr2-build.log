@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  Restored /tmp/methodcache-guid-all-revisions/pr2/DesignValidation.csproj (in 151 ms).
+  8 of 9 projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/user-api-policy-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  DesignValidation -> /tmp/methodcache-guid-all-revisions/pr2/bin/Release/net10.0/DesignValidation.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.34

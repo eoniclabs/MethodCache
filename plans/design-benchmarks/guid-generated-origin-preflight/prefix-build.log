@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Redis/MethodCache.Redis.csproj (in 104 ms).
+  Restored /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj (in 105 ms).
+  Restored /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj (in 104 ms).
+  Restored /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 104 ms).
+  Restored /tmp/methodcache-guid-all-revisions/prefix/DesignValidation.csproj (in 121 ms).
+  4 of 9 projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/prefix-hash-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  DesignValidation -> /tmp/methodcache-guid-all-revisions/prefix/bin/Release/net10.0/DesignValidation.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.33

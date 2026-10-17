@@ -1,0 +1,4 @@
+Test run for /home/agent-admin/methodcache-design-bench-20261015/docs-hit-probe-v1/tree/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   120, Skipped:     0, Total:   120, Duration: 1 s - MethodCache.Docs.Tests.dll (net10.0)

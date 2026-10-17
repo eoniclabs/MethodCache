@@ -20,7 +20,6 @@ if (!string.IsNullOrEmpty(redis))
 }
 
 // Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
-builder.Services.AddMethodCacheOpenTelemetry();
 var telemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? "MethodCache.WebDemo"))
     .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())

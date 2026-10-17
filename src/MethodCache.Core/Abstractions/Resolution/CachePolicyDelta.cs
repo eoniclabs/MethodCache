@@ -5,7 +5,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// The fields a policy change sets or clears, plus the policy values it carries.
 /// </summary>
-public sealed class CachePolicyDelta
+internal sealed class CachePolicyDelta
 {
     /// <summary>
     /// Creates a delta.

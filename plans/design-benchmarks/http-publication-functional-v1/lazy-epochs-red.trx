@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="a058ce22-29b1-4b2b-a48c-04cb196286af" name="@Megatron 2026-10-17 09:21:30" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-17T09:21:30.1219280+02:00" queuing="2026-10-17T09:21:30.1219280+02:00" start="2026-10-17T09:21:29.7677210+02:00" finish="2026-10-17T09:21:30.1236500+02:00" />
+  <TestSettings name="default" id="89f7f3e5-bb38-41d6-954c-2c56be3a6d48">
+    <Deployment runDeploymentRoot="_Megatron_2026-10-17_09_21_30" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="a4e52525-4457-4977-85ba-61757aaf72de" testId="c259bb06-6fed-c309-b949-d72ff26103de" testName="MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors" computerName="Megatron" duration="00:00:00.0179444" startTime="2026-10-17T09:21:30.0586210+02:00" endTime="2026-10-17T09:21:30.0814110+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a4e52525-4457-4977-85ba-61757aaf72de">
+      <Output>
+        <ErrorInfo>
+          <Message>Initial slot metadata costs 240,0 B; unused epoch vectors must stay lazy.</Message>
+          <StackTrace>   at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 26
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="c259bb06-6fed-c309-b949-d72ff26103de">
+      <Execution id="a4e52525-4457-4977-85ba-61757aaf72de" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests" name="InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="c259bb06-6fed-c309-b949-d72ff26103de" executionId="a4e52525-4457-4977-85ba-61757aaf72de" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.07]   Discovered:  MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.08]   Starting:    MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.11]       Initial slot metadata costs 240,0 B; unused epoch vectors must stay lazy.
+[xUnit.net 00:00:00.11]       Stack Trace:
+[xUnit.net 00:00:00.11]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs(26,0): at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors()
+[xUnit.net 00:00:00.11]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.11]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.12]   Finished:    MethodCache.HttpCaching.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="Megatron" outcome="Error" timestamp="2026-10-17T09:21:30.0823890+02:00">
+        <Text>[xUnit.net 00:00:00.11]     MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

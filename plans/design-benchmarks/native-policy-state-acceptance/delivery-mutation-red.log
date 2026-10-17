@@ -1,0 +1,73 @@
+  Determining projects to restore...
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  All projects are up-to-date for restore.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+  MethodCache.Core.Tests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.05]   Discovering: MethodCache.Core.Tests
+[xUnit.net 00:00:00.10]   Discovered:  MethodCache.Core.Tests
+[xUnit.net 00:00:00.11]   Starting:    MethodCache.Core.Tests
+[xUnit.net 00:00:00.20]     MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [FAIL]
+[xUnit.net 00:00:00.20]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.20]       Expected: 101
+[xUnit.net 00:00:00.20]       Actual:   201
+[xUnit.net 00:00:00.20]       Stack Trace:
+[xUnit.net 00:00:00.20]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(249,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:00.20]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(252,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:00.20]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(252,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:00.20]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(27,0): at MethodCache.TestSupport.PolicyBackendContract.RunAcceptanceAsync(String scenario, Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:00.20]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/FaultInjection/NativePolicyStateContractTests.cs(39,0): at MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(String scenario)
+[xUnit.net 00:00:00.20]         --- End of stack trace from previous location ---
+Reload generation ready before confirmation: True
+Reload generation ready before confirmation: True
+[xUnit.net 00:00:00.22]   Finished:    MethodCache.Core.Tests
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "specificity") [51 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "equivalent") [9 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "custom") [5 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "disabled") [9 ms]
+  Failed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 101
+Actual:   201
+  Stack Trace:
+     at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 249
+   at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 252
+   at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 252
+   at MethodCache.TestSupport.PolicyBackendContract.RunAcceptanceAsync(String scenario, Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 27
+   at MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(String scenario) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/FaultInjection/NativePolicyStateContractTests.cs:line 39
+--- End of stack trace from previous location ---
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [1 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "unready-sync") [6 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "reload") [5 ms]
+  Passed MethodCache.Core.Tests.FaultInjection.NativePolicyStateContractTests.PolicyState_ConformsToSharedNativeContract(scenario: "refresh") [2 ms]
+
+Test Run Failed.
+Total tests: 9
+     Passed: 8
+     Failed: 1
+ Total time: 0,4193 Seconds

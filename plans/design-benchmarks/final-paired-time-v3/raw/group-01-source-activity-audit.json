@@ -1,0 +1,10 @@
+{
+  "recorded_utc": "2026-10-16T21:27:20.319237+00:00",
+  "group": "group-01",
+  "admissible": false,
+  "source_checkout_start": "2026-10-16T21:24:36.725688+00:00",
+  "source_checkout_end": "2026-10-16T21:24:37.456307+00:00",
+  "reason": "Own corrected-int preparation cloned/checked out sources before acquiring the lease, overlapping group01. The automatic guard covers build/test activity, so this explicit source-activity audit also rejects that group. No means reviewed.",
+  "decision": "Retain all original group01 outputs as rejected evidence. Repeat its exact four cases in a separate fixed ten-pair cohort with the same compiled binaries and full original guards; do not select individual runs.",
+  "other_jobs_interrupted": false
+}

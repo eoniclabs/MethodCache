@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-10-16T11:20:31.838706+00:00",
+  "controller_pid": 4125199,
+  "controller_command": "python3 -u /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/timing-all.py ",
+  "idle_children": [],
+  "last_driver_line": "Finished round-1-siphash-component-generated exit 0 2026-10-16T11:20:31.724219+00:00",
+  "original_metadata_sha256": "aaeab640a953880bde30d5f7beb4de607fbebe1956743cd5f220fe1affb15ec6",
+  "reason": "Source-scoped schedule and cumulative-first ordering, selected without inspecting timing means",
+  "other_jobs_interrupted": false
+}

@@ -1,0 +1,38 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "prepare_label": "design-http-publication-completion-pilot-v1-prepare",
+  "pairs": 10,
+  "warmups": 32,
+  "remaining_groups": [
+    0
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Diagnostic fixed two-case cumulative pilot only: f438 vs A2+A3+sparse tags+lazy local epochs+deferred local target+completed-origin telemetry path. Ten alternating pairs,32warm12actual150ms. Identical frozen helper/workload, SDK/runtime/workstationGC/affinity. All prior failed cohorts retained; not full14HTTP or cumulative acceptance. No limits changed; source frozen before means.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "6634b267d017a02e8f6b1372bc09eda9437b5fe11e5467eed8862ed9d862fa77"
+    },
+    {
+      "path": "run.py",
+      "sha256": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "publication.patch",
+      "sha256": "d8593a9747d7a92ebbf3e748794b09695fb578ce41d3eef7972033f2f04e865f"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "40dc906c01341719b9f77d3f010a3cbd3be00240b3b737567616368a3b835d63"
+    }
+  ]
+}

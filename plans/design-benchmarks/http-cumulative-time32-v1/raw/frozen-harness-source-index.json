@@ -1,0 +1,89 @@
+{
+  "utc": "2026-10-17T06:31:00.002779+00:00",
+  "scope": "Exact13sourcebodiesreadfromfrozencompiledNimbusbase/headtrees;bothsidesidentical. Nineexistingpreparedsourcehashesverified;fourCostProfilefilesalsoverifiedagainstexactheadGitblobs. No runtime/benchmark file changed. Source bodies are independent of Mac setup sources; no platforms pooled.",
+  "prepared_sha256": "10c114b27da1a08145fa493bbde9138d1a4f13196a9192cd7cd9b922023bcd54",
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "files": [
+    {
+      "path": "benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Program.cs",
+      "sha256": "f068ec77e98e5e80603d9ead96d7dcbca5a7bcdc40d054dee4350357754e08bc",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c",
+      "prepared_source_catalogue": true,
+      "git_bound_cost_harness": false
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f",
+      "prepared_source_catalogue": false,
+      "git_bound_cost_harness": true
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5",
+      "prepared_source_catalogue": false,
+      "git_bound_cost_harness": true
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82",
+      "prepared_source_catalogue": false,
+      "git_bound_cost_harness": true
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b",
+      "prepared_source_catalogue": false,
+      "git_bound_cost_harness": true
+    }
+  ]
+}

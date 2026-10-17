@@ -6,6 +6,104 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Avoid the implicit client-tag index on local HTTP publication. Client-tag invalidation scans resident HTTP
+  entries and physically reclaims matching bodies; URL and other application-tag indexes remain.
+
+- Keep sparse tag indexes small and materialize local HTTP epoch/URL metadata only when needed.
+  Administration, generation identities and conservative byte-budget accounting are preserved.
+
+- Reuse already successful HTTP origin tasks while recording the same load duration, errors and activity parent.
+
+- Reuse an entry's existing process-keyed hash when evicting or expiring it, avoiding redundant hashing
+  during cache pressure without changing key identity or eviction behavior.
+
+- Reuse the latest SQL Server epoch command shape instead of rebuilding its SQL text on every HTTP lookup.
+  Generation values remain fresh; reordered and duplicate keys retain their caller positions.
+
+- Avoid temporary sets and sorting when HTTP responses have no custom key headers or `Vary` fields;
+  private caches still select by `Authorization` and `Cookie`.
+
+- Avoid allocating unused fail-safe and distributed-write closures on memory-only asynchronous misses.
+
+- Read already initialized, permanent SQL Server HTTP epoch metadata without rewriting its rows. Missing,
+  expired or finite/sliding metadata is still initialized or repaired under the same atomic locks.
+
+- Preserve `MethodCall.StartKey` in generated contract 1 for already compiled inline callers. Add a
+  separate frozen .NET 10 vendor checkpoint and a complete contract-member guard; original images stay unchanged.
+
+- Keep generated source filenames bounded for long namespace/type identifiers, including Unicode, when
+  `EmitCompilerGeneratedFiles` is enabled. Generated types and cache identities are unchanged.
+
+- **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
+  their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Frozen generated-contract fixtures remain unchanged.
+
+### Core telemetry and attribute diagnostics
+
+- Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
+  Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
+  Spans/logs omit exception payloads and copied request identities; key/tag recording is explicit opt-in.
+- Replace object-memory estimates with local method/HTTP counts, HTTP bytes, observed distributed entries and
+  `TotalWeight` in configured units. Health checks honor `failureStatus` and distinguish L2 availability from actual
+  backplane connection state and the two recovery queues.
+
+
+- Unify duration parsing and generator errors; add named attribute groups, enabled/distributed flags and fail-safe retry delay. Remove raw-key attributes and consolidate diagnostic IDs. Dynamic tag placeholders now use canonical key parts while existing contract-1 binaries retain their formatting.
+
+- Omit invalid reload values and policy watcher exception payloads from diagnostic logs; retain error types.
+- Drain HTTP generation recovery before disposing its transport. Retry once through an open breaker and report
+  unconfirmed URL invalidations at shutdown without exposing targets.
+
+### Core-owned HTTP storage
+
+- Derive local HTTP administration IDs when first inspected, avoiding the hash and ID allocation on cold publication.
+  IDs, removal behavior and conservative response-budget accounting remain unchanged.
+
+- Merge 304 response headers directly into the replacement representation, avoiding a temporary dictionary
+  and per-response filter allocations when no Connection options are present.
+
+- Avoid constructing duplicate response/content/header objects during foreground 304 revalidation; validate
+  the returned representation before adding caller-only headers, and preserve background/error ownership.
+
+- Release every retired local response body when its URL generation slot is invalidated, including colliding URLs.
+  Avoid temporary identity/target buffers and reuse immutable local metadata during response replacement.
+
+- Require explicit AddMethodCache alongside AddHttpCaching, in either order. Core owns a separate 100 MiB
+  HTTP byte budget, or exclusively uses MethodCache's native Redis/SQL Server transport. Remove the public
+  HTTP storage options/interface/entry extension points and the application-cache fallback.
+- Capture shared atomic URL/client/static-tag/clear generations before origin work. Confirm unsafe mutation
+  invalidation across nodes and value formats even with lost backplane messages; retain owned recovery when
+  callers cancel. Unconfirmed mutations throw HttpCacheInvalidationException and must not be retried automatically.
+- Add KeepCookies for a complete response-cache bypass, static HTTP tags, resident/observed administration and
+  bounded body-free L2 observations. Core telemetry and health distinguish HTTP capability from method statistics.
+
+### Owned distributed transports and stable wire contract
+
+- Freeze one Core prefix and validated provider options at startup; use owned storage and serializer registrations. Application `IDistributedCache` is never a fallback. SQL connection strings can come from DI.
+- Add wire v1 and entry format 6 with absolute deadlines, format-independent logical invalidation and shared retention bounds. Malformed mandatory frames clear local entries and warn once.
+- Add native batched reads and permanent atomic epochs in Redis/SQL Server; version SQL schemas and ship an explicit legacy migration.
+- Select JSON through copied options or a source-generated context. Add `VerifyRoundTrip` and `SerializerVersion`; internalize serializer/atomic-store interfaces.
+
+### Cache API and policy isolation
+
+- Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
+- Retire local generations on effective policy changes, isolate runtime L2 namespaces and validate L2 lifetimes from first publication.
+- Internalize policy/key/backplane implementation APIs and remove public cache callbacks and memory tuning switches.
+- Keep the replaced fluent root/service/group coordinators internal; startup configuration uses `MethodCacheBuilder`
+  and retains its public method configuration results.
+
+### Generated contract and explicit startup registration
+
+- Generated decorators use the versioned `MethodCache.Generated` facade. Each invocation captures one immutable
+  policy/key snapshot; retired snapshots bypass caching and cannot publish into the current generation.
+- Startup uses `MethodCacheBuilder`, with `Defaults`, `Group`, typed `Method` expressions and explicit module
+  selection. Missing services require `AutoRegister(lifetime)` and exactly one accessible implementation.
+  Cacheable late, open generic, catch-all keyed and unsupported bindings produce named errors.
+- Built-in synchronous methods use a synchronous factory and single-flight path. Async-only custom managers
+  bypass synchronous caching with a diagnostic. Distributed adapters without bounded native synchronous
+  operations are unavailable for these calls; use async methods for L2 and distributed mutation invalidation.
+- All six add-on packages require the exact matching Core package version. Frozen vendor binaries are tested
+  under the current runtime and Native AOT without rebuilding their source during ordinary tests.
+
 ### Project review fixes
 
 - Bulk factory results invalidated during their source read are not published; concurrent individual writes still win.
@@ -167,3 +265,5 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
   `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
+
+Diagnostic migration: MC0001 stays MC0001; old duration MC0004 → MC0002; MCG001–MCG007 → MC0003–MC0009; MCG009–MCG019 → MC0010–MC0020. MC0021 rejects explicit negative versions. Update analyzer suppressions and `.editorconfig`; migrate `[Cache("group")]` to `[Cache(Group = "group")]` and remove `[CacheKey]`. Canonical `ICacheKeyProvider` parts and manual `ICacheManager` keys replace raw-key use cases.

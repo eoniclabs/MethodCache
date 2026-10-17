@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-17T01:08:30.915585+00:00",
+  "inputs_sha256": "3780d3d352fc5de728d4982853a99dda8949231b12b780c7438f581c5d15f60e",
+  "prepared_sha256": "91dbe0571c7842025d10f1ad18fb57cf3ddacb02c4173f6ade752b91b3711583",
+  "verified_build_files": 222,
+  "source_and_two_line_patch_verified": true,
+  "baseline": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "case_count": 2,
+  "pairs": 10
+}

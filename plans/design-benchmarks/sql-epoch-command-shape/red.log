@@ -1,0 +1,21 @@
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> <worktree>/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.SqlServer.Tests -> <worktree>/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll
+Test run for <worktree>/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.07]     MethodCache.SqlServer.Tests.EpochCommandAllocationTests.RepeatedBatchShape_DoesNotRebuildSqlText [FAIL]
+  Failed MethodCache.SqlServer.Tests.EpochCommandAllocationTests.RepeatedBatchShape_DoesNotRebuildSqlText [4 ms]
+  Error Message:
+   Allocated 21200 B per repeated SQL shape.
+  Stack Trace:
+     at MethodCache.SqlServer.Tests.EpochCommandAllocationTests.RepeatedBatchShape_DoesNotRebuildSqlText() in <worktree>/tests/MethodCache.SqlServer.Tests/EpochCommandAllocationTests.cs:line 18
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     1, Passed:     1, Skipped:     0, Total:     2, Duration: 19 ms - MethodCache.SqlServer.Tests.dll (net10.0)

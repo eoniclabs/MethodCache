@@ -3,8 +3,11 @@ namespace MethodCache.Extensibility;
 /// <summary>
 /// Defines a backplane for coordinating cache invalidation across multiple instances.
 /// </summary>
-public interface IBackplane
+internal interface IBackplane
 {
+    /// <summary>Current delivery-connection capability; successful cache I/O does not imply this is connected.</summary>
+    BackplaneState ConnectionState => BackplaneState.Unknown;
+
     /// <summary>
     /// Publishes a cache invalidation message.
     /// </summary>
@@ -29,12 +32,20 @@ public interface IBackplane
     /// Gets the instance ID for this backplane.
     /// </summary>
     string InstanceId { get; }
+
+    /// <summary>Publishes a declared-method invalidation without changing the receiver's policy.</summary>
+    Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
+        => Task.FromException(new NotSupportedException("This backplane does not support method invalidation."));
+    /// <summary>Publishes a format-independent clear operation.</summary>
+    Task PublishClearAsync(CancellationToken cancellationToken = default)
+        => Task.FromException(new NotSupportedException("This backplane does not support clear invalidation."));
+
 }
 
 /// <summary>
 /// Represents a backplane message for cache invalidation.
 /// </summary>
-public class BackplaneMessage
+internal class BackplaneMessage
 {
     /// <summary>
     /// The type of invalidation.
@@ -65,7 +76,7 @@ public class BackplaneMessage
 /// <summary>
 /// Types of backplane messages.
 /// </summary>
-public enum BackplaneMessageType
+internal enum BackplaneMessageType
 {
     /// <summary>
     /// Invalidate a specific cache key.
@@ -80,5 +91,9 @@ public enum BackplaneMessageType
     /// <summary>
     /// Clear all cache entries.
     /// </summary>
-    ClearAll
+    ClearAll,
+
+    /// <summary>Invalidates a declared method across all registrations and policy identities.</summary>
+    MethodInvalidation
 }
+internal enum BackplaneState { Unknown, NotConfigured, Connecting, Connected, Disconnected }

@@ -1,0 +1,24 @@
+{
+  "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "pairs": 10,
+  "remaining_groups": [
+    0
+  ],
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "label": "methodcache-design-20261015-01a13a93-guid-hash-control-v1",
+  "runtime_patch_sha256": "dce56814130c4a3b255daebc6e5c525d57100f8fee73e57ae8eb723f18e28272",
+  "cases": [
+    "GeneratedContractBenchmarks.SyncHit()",
+    "GeneratedContractBenchmarks.TaskHit()",
+    "GeneratedContractBenchmarks.ValueTaskHit()"
+  ],
+  "files_sha256": {
+    "run.py": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "runtime.patch": "dce56814130c4a3b255daebc6e5c525d57100f8fee73e57ae8eb723f18e28272",
+    "prepare.py": "5141b4560bcfb63c9056721bdf08e07ba78648bd33a265a4015eaa73f8362acb"
+  },
+  "purpose": "Diagnostic only: quantify hash/lookup mechanism separately from unchanged generated-contract binding and telemetry. Head uses existing internal runtime-comparer test hook. No optimization adoption or gate waiver inferred.",
+  "base_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a"
+}

@@ -11,7 +11,7 @@ namespace Docs.Configuration
 
     public interface IUserService
     {
-        [Cache("user-data", Duration = "01:00:00", Tags = ["users"])]
+        [Cache(Group = "user-data", Duration = "01:00:00", Tags = ["users"])]
         Task<UserProfile> GetProfileAsync(int userId);
     }
 
@@ -29,15 +29,13 @@ namespace Docs.Configuration
             builder.Services.AddMethodCache(config =>
             {
                 // Every cached method: fills in what the method leaves unset
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(15)));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15)));
 
-                // Methods in the "user-data" group: [Cache("user-data")] or WithGroup("user-data")
-                config.ForGroup("user-data")
-                      .Configure(o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
+                // Methods in the "user-data" group: [Cache(Group = "user-data")] or WithGroup("user-data")
+                config.Group("user-data", o => o.WithSlidingExpiration(TimeSpan.FromMinutes(10)));
 
                 // One method
-                config.ForService<IUserService>()
-                      .Method(s => s.GetProfileAsync(Any<int>.Value))
+                config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
                       .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
             });
             // end-snippet
@@ -75,12 +73,12 @@ namespace Docs.Configuration
         public static void Diagnostics(WebApplication app)
         {
             // begin-snippet: configuration-diagnostics
-            var diagnostics = app.Services.GetRequiredService<PolicyDiagnosticsService>();
+            var diagnostics = app.Services.GetRequiredService<ICacheAdministrator>();
 
-            foreach (var report in diagnostics.GetAllPolicies())
+            foreach (var report in diagnostics.GetMethods())
             {
-                var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-                Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, from {sources}");
+                var sources = string.Join(", ", report.Sources);
+                Console.WriteLine($"{report.MethodId}: Duration={report.Duration}, from {sources}");
             }
             // end-snippet
         }

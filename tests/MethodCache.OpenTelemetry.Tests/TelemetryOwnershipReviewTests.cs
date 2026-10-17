@@ -1,3 +1,5 @@
+using OpenTelemetry;
+using OpenTelemetry.Trace;
 using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -15,7 +17,7 @@ public class TelemetryOwnershipReviewTests
         var counter = new Counter();
         services.AddSingleton(counter);
         services.Add(new ServiceDescriptor(typeof(ICacheManager), typeof(SyncManager), lifetime));
-        services.AddMethodCacheOpenTelemetry();
+        using var instrumentation = Sdk.CreateTracerProviderBuilder().AddMethodCacheInstrumentation().Build();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         for (var i = 0; i < 2; i++)
         {
@@ -45,7 +47,7 @@ public class TelemetryOwnershipReviewTests
         if (registration == "type") services.AddSingleton(typeof(ICacheManager), type);
         else if (registration == "factory") services.AddSingleton<ICacheManager>(_ => Create());
         else services.AddSingleton(Create());
-        services.AddMethodCacheOpenTelemetry();
+        using var instrumentation = Sdk.CreateTracerProviderBuilder().AddMethodCacheInstrumentation().Build();
         await using (var provider = services.BuildServiceProvider())
             _ = provider.GetRequiredService<ICacheManager>();
         Assert.Equal(registration == "instance" ? 0 : 1, counter.Disposals);

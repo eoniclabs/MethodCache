@@ -1,0 +1,6 @@
+Original unmodified exact-allocation probe failures (preserved, not reclassified as successful):
+HTTP PR129 953e04b4555344e7270e3af1c280003e574b4681:
+Linux run 20261015-144038-953e04b45553, .NET 9, long key: expected16000 actual20200 bytes.
+Final PR131 f1da8927490a9496852947433695b8996290b6d4:
+macOS run 20261015-145847-f1da8927490a, .NET 10, long key: expected16000 actual23080 bytes.
+The short isolated local run passed before fixture changes; these receipts do not claim a locally deterministic reproduction or a proven runtime cause.

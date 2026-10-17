@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-17T05:22:54.869505+00:00",
+  "scope": "Independent all-source/helper/binary input verification before any paired candidate timing; same measured workload/library DLLs, new32warmupjob only",
+  "inputs_sha256": "9e04b9fee853833479d4f5eb478ae6ce6ac4b4223709f3059d17d49438c360cc",
+  "prepared_sha256": "9a2c3d755a2ace6d6a87ef62f42c9be4dda2b209866c3299a5385632ae389fb7",
+  "binary_files": 210,
+  "source_files": 446,
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ]
+}

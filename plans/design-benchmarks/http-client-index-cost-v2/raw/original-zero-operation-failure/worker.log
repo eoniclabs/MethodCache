@@ -1,0 +1,18 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-http-client-index-cost-v1 2026-10-17T09:59:29.797604+00:00
+Traceback (most recent call last):
+  File "/home/agent-admin/methodcache-design-bench-20261015/http-client-index-cost-v1/run.py", line 44, in <module>
+    if sys.argv[1]=='worker':worker()
+                             ~~~~~~^^
+  File "/home/agent-admin/methodcache-design-bench-20261015/http-client-index-cost-v1/run.py", line 37, in worker
+    with (results/(side+'.log')).open('x') as log:call(args,env=env,stdout=log,stderr=subprocess.STDOUT)
+                                                  ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent-admin/methodcache-design-bench-20261015/http-client-index-cost-v1/run.py", line 8, in call
+    def call(args,**kw):return subprocess.run(list(map(str,args)),check=True,text=True,**kw)
+                               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['docker', 'run', '--rm', '--init', '--network', 'host', '--cpuset-cpus', '0-15', '--user', '1001:1001', '--label', 'methodcache-design-bench=methodcache-design-20261015-01a13a93-http-client-index-cost-v1', '--volume', '/home/agent-admin/methodcache-design-bench-20261015:/home/agent-admin/methodcache-design-bench-20261015', '--workdir', '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-candidate-v1/tree', '--env', 'METHODCACHE_REDIS_URL', '--env', 'METHODCACHE_SQLSERVER_CONNECTION', '--env', 'DOTNET_gcServer', '--env', 'DOTNET_gcConcurrent', 'sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3', 'dotnet', '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-candidate-v1/bin/base/main/MethodCache.CostProfile.dll', '--out', '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-cost-v1/results/base.jsonl']' returned non-zero exit status 131.
+cb424d9b6920
+caf0b2a90833
+Releasing exclusive lease methodcache-design-20261015-01a13a93-http-client-index-cost-v1 exit 1 2026-10-17T09:59:42.540620+00:00

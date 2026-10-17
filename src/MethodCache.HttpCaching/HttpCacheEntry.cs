@@ -8,7 +8,7 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Represents a cached HTTP response with metadata for validation and freshness calculation.
 /// </summary>
-public sealed record HttpCacheEntry
+internal sealed record HttpCacheEntry
 {
     /// <summary>
     /// The URI of the request that generated this cache entry.
@@ -103,11 +103,32 @@ public sealed record HttpCacheEntry
         long maxSize = 0,
         CancellationToken cancellationToken = default,
         ArrayPool<byte>? bufferPool = null,
-        TimeSpan responseDelay = default)
+        TimeSpan responseDelay = default,
+        IHttpCacheStorage? storage = null, string? storageKey = null)
     {
         var originalContent = response.Content;
         var contentHeaders = SerializeHeaders(originalContent.Headers);
+        var metadata = new HttpCacheEntry
+        {
+            RequestUri = request.RequestUri?.ToString() ?? "",
+            Method = request.Method.ToString(),
+            StatusCode = response.StatusCode,
+            Headers = SerializeHeaders(response.Headers, StorableHeaders(response.Headers)),
+            ContentHeaders = contentHeaders,
+            ETag = response.Headers.ETag?.ToString(), // with W/ for a weak validator
+            LastModified = response.Content.Headers.LastModified,
+            CacheControl = response.Headers.CacheControl,
+            Expires = response.Content.Headers.Expires,
+
+            // RFC 9110 section 6.6.1: without a Date, the time it was received stands in for it
+            Date = response.Headers.Date ?? now,
+            StoredAt = now,
+            InitialAge = CalculateInitialAge(response, now, responseDelay),
+            VaryHeaders = response.Headers.Vary?.ToArray()
+        };
         var limit = maxSize > 0 ? maxSize : long.MaxValue;
+        if (storage != null && storageKey != null) limit = Math.Min(limit, storage.BodyBudget(storageKey, metadata));
+        if (limit < 0) return null;
         // HEAD, 204 and 304 responses have no body whatever Content-Length says (RFC 9110 sections 9.3.2, 8.6).
         var knownLength = HasNoBody(request, response) ? 0 : response.Content.Headers.ContentLength;
         if (knownLength > limit || knownLength > Array.MaxLength) return null;
@@ -148,25 +169,7 @@ public sealed record HttpCacheEntry
         RestoreHeaders(response.Content.Headers, contentHeaders);
         originalContent.Dispose();
 
-        return new HttpCacheEntry
-        {
-            RequestUri = request.RequestUri?.ToString() ?? "",
-            Method = request.Method.ToString(),
-            StatusCode = response.StatusCode,
-            Content = content,
-            Headers = SerializeHeaders(response.Headers, StorableHeaders(response.Headers)),
-            ContentHeaders = contentHeaders,
-            ETag = response.Headers.ETag?.ToString(), // with W/ for a weak validator
-            LastModified = response.Content.Headers.LastModified,
-            CacheControl = response.Headers.CacheControl,
-            Expires = response.Content.Headers.Expires,
-
-            // RFC 9110 section 6.6.1: without a Date, the time it was received stands in for it
-            Date = response.Headers.Date ?? now,
-            StoredAt = now,
-            InitialAge = CalculateInitialAge(response, now, responseDelay),
-            VaryHeaders = response.Headers.Vary?.ToArray()
-        };
+        return metadata with { Content = content };
     }
 
     /// <summary>
@@ -200,18 +203,8 @@ public sealed record HttpCacheEntry
     /// </summary>
     internal HttpCacheEntry WithUpdatedHeaders(HttpResponseMessage notModifiedResponse, DateTimeOffset now, TimeSpan responseDelay = default)
     {
-        var mergedHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var header in Headers)
-        {
-            mergedHeaders[header.Key] = header.Value;
-        }
-
-        var updatedHeaders = SerializeHeaders(notModifiedResponse.Headers, StorableHeaders(notModifiedResponse.Headers));
-        foreach (var header in updatedHeaders)
-        {
-            mergedHeaders[header.Key] = header.Value;
-        }
+        var mergedHeaders = new Dictionary<string, string[]>(Headers, StringComparer.OrdinalIgnoreCase);
+        CopyHeaders(notModifiedResponse.Headers, mergedHeaders, StorableHeaders(notModifiedResponse.Headers));
 
         // RFC 9111 section 3.2: the 304's header fields replace the stored ones, content headers such as Expires
         // included, except those that describe its own (empty) body
@@ -263,14 +256,19 @@ public sealed record HttpCacheEntry
     private static Dictionary<string, string[]> SerializeHeaders(HttpHeaders headers, Func<string, bool>? include = null)
     {
         var result = new Dictionary<string, string[]>();
+        CopyHeaders(headers, result, include);
+        return result;
+    }
+
+    private static void CopyHeaders(HttpHeaders headers, Dictionary<string, string[]> destination, Func<string, bool>? include)
+    {
         foreach (var header in headers)
         {
             if (include == null || include(header.Key))
             {
-                result[header.Key] = header.Value.ToArray();
+                destination[header.Key] = header.Value.ToArray();
             }
         }
-        return result;
     }
 
     private static bool HasNoBody(HttpRequestMessage request, HttpResponseMessage response)
@@ -292,8 +290,14 @@ public sealed record HttpCacheEntry
     /// </summary>
     private static Func<string, bool> StorableHeaders(HttpResponseHeaders headers)
     {
-        var connectionOptions = headers.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return name => !UnstoredHeaders.Contains(name) && !connectionOptions.Contains(name);
+        if (headers.Connection.Count == 0) return static name => !UnstoredHeaders.Contains(name);
+        return WithConnectionOptions(headers);
+
+        static Func<string, bool> WithConnectionOptions(HttpResponseHeaders source)
+        {
+            var connectionOptions = source.Connection.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return name => !UnstoredHeaders.Contains(name) && !connectionOptions.Contains(name);
+        }
     }
 
     private static readonly HashSet<string> UnstoredHeaders = new(StringComparer.OrdinalIgnoreCase)

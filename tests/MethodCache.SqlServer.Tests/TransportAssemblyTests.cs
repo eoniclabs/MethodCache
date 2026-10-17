@@ -5,9 +5,10 @@ namespace MethodCache.SqlServer.Tests;
 public class TransportAssemblyTests
 {
     [Fact]
-    public void Backplane_WireTextImplementation_IsOwnedByAddOnAssembly()
+    public void Backplane_WireTextImplementation_UsesMatchingCoreInternals()
     {
-        var type = typeof(SqlServerBackplane).Assembly.GetType("MethodCache.Infrastructure.LosslessWireText");
+        Assert.Null(typeof(SqlServerBackplane).Assembly.GetType("MethodCache.Infrastructure.LosslessWireText"));
+        var type = typeof(ICacheManager).Assembly.GetType("MethodCache.Infrastructure.LosslessWireText");
         Assert.NotNull(type);
         Assert.False(type.IsPublic);
     }

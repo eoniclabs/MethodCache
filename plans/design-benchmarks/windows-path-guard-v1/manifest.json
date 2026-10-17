@@ -1,0 +1,25 @@
+{
+  "scope": "RealWindowscheckoutregressionplusred/greenpathguard;375byte-identicalmoves;3168originalarchivehashesverified",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "458b29e4da428f616b2561509c5c5b6ec7b557b8fafc2efeee25ec7a4b2a6b1e"
+    },
+    {
+      "path": "green.log",
+      "sha256": "5610bb341ae4df72930d9f88afd8d925eec567770a8ccf6387603ee214544c29"
+    },
+    {
+      "path": "receipt.json",
+      "sha256": "ab64a8b47557b9051dfe7383e0730bc0adb4fa18a8ca048382f547fb5abf795d"
+    },
+    {
+      "path": "red.log",
+      "sha256": "1668d4ec240c3dfb4d0ab9211228e898cd7f0932a2eef84d71281becbc525e58"
+    },
+    {
+      "path": "windows-checkout-f752.log",
+      "sha256": "f48dcb3ff2bfa255c18dabb1b1ebf29038f92441b137b1a9a4691c63f769b72f"
+    }
+  ]
+}

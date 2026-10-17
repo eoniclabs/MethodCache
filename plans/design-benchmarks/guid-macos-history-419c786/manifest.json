@@ -1,0 +1,94 @@
+{
+  "observed_utc": "2026-10-15T22:21:49.183384+00:00",
+  "run": "20261015-221936-419c786d949d",
+  "head": {
+    "baseRefOid": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "headRefOid": "419c786d949d361cd2acd418178e4b0a8e21a860",
+    "isDraft": false,
+    "number": 135,
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "MethodCache CI",
+        "startedAt": "2026-10-15T20:30:06Z",
+        "state": "FAILURE",
+        "targetUrl": ""
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "MethodCache CI (macOS)",
+        "startedAt": "2026-10-15T20:30:05Z",
+        "state": "FAILURE",
+        "targetUrl": ""
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "MethodCache CI (Linux)",
+        "startedAt": "2026-10-15T20:30:03Z",
+        "state": "SUCCESS",
+        "targetUrl": ""
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "MethodCache CI (Windows)",
+        "startedAt": "2026-10-15T20:30:04Z",
+        "state": "SUCCESS",
+        "targetUrl": ""
+      }
+    ],
+    "url": "https://github.com/eoniclabs/MethodCache/pull/135"
+  },
+  "macos": {
+    "build_exit": 1,
+    "unit_exit": "skipped"
+  },
+  "logs": [
+    {
+      "file": "build.log",
+      "original_sha256": "584535ae2472a63164ab3529b6f7ead0a8ab706481c2d33c161bd8358add5bc7",
+      "stored_sha256": "584535ae2472a63164ab3529b6f7ead0a8ab706481c2d33c161bd8358add5bc7"
+    },
+    {
+      "file": "build.exit",
+      "original_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stored_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "file": "unit.exit",
+      "original_sha256": "badae110bc1d90a6bff107b900b504d08d676dbfee56c16a9c5ac2340d949768",
+      "stored_sha256": "badae110bc1d90a6bff107b900b504d08d676dbfee56c16a9c5ac2340d949768"
+    },
+    {
+      "file": "console.log",
+      "original_sha256": "2205c923b4c50cbdaed6ea6ecb26f8b41fbee33ee4edd938d0a6cf4207146344",
+      "stored_sha256": "2205c923b4c50cbdaed6ea6ecb26f8b41fbee33ee4edd938d0a6cf4207146344"
+    }
+  ],
+  "native_git_checks": [
+    {
+      "repository": "failed-clone",
+      "command": [
+        "git",
+        "fsck",
+        "--connectivity-only",
+        "--no-dangling"
+      ],
+      "exit": 2,
+      "log": "failed-clone-connectivity.log",
+      "stored_sha256": "c938262345b751665c5dd578063315d2206e9d4f22b7386f8311c30191e34465"
+    },
+    {
+      "repository": "current-mirror",
+      "command": [
+        "git",
+        "fsck",
+        "--connectivity-only",
+        "--no-dangling"
+      ],
+      "exit": 0,
+      "log": "current-mirror-connectivity.log",
+      "stored_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  ],
+  "scope": "Git history object failure before test execution; causal mechanism and repair not established. No failed clone, mirror, service or commit status was changed."
+}

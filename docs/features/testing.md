@@ -23,7 +23,7 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](monitoring.md)).
 
-## Turning caching off
+## Turning method caching off
 
 Register `NoOpCacheManager` after `AddMethodCache()` and every call reaches your implementation:
 
@@ -37,8 +37,8 @@ services.AddSingleton<ICacheManager, NoOpCacheManager>();   // after AddMethodCa
 ```
 <!-- endSnippet -->
 
-For code that uses [manual caching](manual-caching.md), pass a `NoOpCacheManager` directly. `GetOrCreateAsync` is an
-extension method, so mocking libraries can't intercept it:
+For code that uses [manual caching](manual-caching.md), pass a `NoOpCacheManager` directly, or mock the four
+operations on `ICacheManager`. The options-builder convenience overload delegates to that interface contract:
 
 <!-- snippet: manual-testing -->
 ```cs
@@ -47,7 +47,8 @@ var reader = new OrderReader(cache, repository);
 ```
 <!-- endSnippet -->
 
-`NoOpCacheManager` is in `MethodCache.Extensibility`.
+`NoOpCacheManager` is in `MethodCache.Extensibility`. It disables method caching; HTTP response storage remains
+independent. Configure HTTP caching separately and use its administrator for invalidation.
 
 ## Time
 

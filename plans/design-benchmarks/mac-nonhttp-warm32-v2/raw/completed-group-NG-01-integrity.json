@@ -1,0 +1,37 @@
+{
+  "utc": "2026-10-17T06:27:30.573513+00:00",
+  "scope": "Second fixed group integrity only; no timing verdict or partial means. Full9case comparison remains live. Source-equivalence audit unchanged from first group; current tracked src clean at same exact head.",
+  "group": "NG-01",
+  "launches": 80,
+  "readiness_samples": 96,
+  "measurement_samples": 952,
+  "external_builds": 0,
+  "current_local_head": "f49264198631167d22d8c19e8b396d147646a87d",
+  "source_equivalence_proof_sha256": "721e2419bfbd33fe3474153b58cfe803239092a2c9fb52e8fe599ea2cc1e9e26",
+  "files": [
+    {
+      "path": "inputs.json",
+      "sha256": "175a1a0a4ee5b69709fb0cb5ab0019f5f54fa45038f4992cb870acb8a7b55c83"
+    },
+    {
+      "path": "prepared.json",
+      "sha256": "7d708add996614e6c34558cefd9e12a784dd3d48f25d4046ff4d63a3751500c9"
+    },
+    {
+      "path": "pr-NG-01/intent.json",
+      "sha256": "f424cfe3fbcfe547cbdee88072b2b7fe1458f88362e4abad7f63a15a0206e80d"
+    },
+    {
+      "path": "pr-NG-01/observations.json",
+      "sha256": "80c23d35cbd8495f54c27e5761b27a017b8238967bc7b8ef7edaf6cf485178fc"
+    },
+    {
+      "path": "pr-NG-01/quiet-confirmed.json",
+      "sha256": "05e7eb750826ab7321fc76a1e8253c8a99a2ad7f252d21288b3cd2e09d2a3180"
+    },
+    {
+      "path": "pr-NG-01/launches.jsonl",
+      "sha256": "49dd340deb008e01af0f015090c8a5445328dc2d30d6b3afe640057b08381397"
+    }
+  ]
+}

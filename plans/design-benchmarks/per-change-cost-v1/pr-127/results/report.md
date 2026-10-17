@@ -1,0 +1,71 @@
+| Case | Bytes base | Bytes head | Redis base | Redis head | SQL base | SQL head | Gate |
+|---|---:|---:|---|---|---:|---:|---|
+| GeneratedContractBenchmarks.SyncHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.GenericHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.TaskHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.ValueTaskHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.StringHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.RecordHit() | 296.2 | 296.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.CollectionHit() | 896.2 | 896.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.FallbackHit() | 408.2 | 408.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.SyncMiss() | 984 | 984 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.ValueTaskMiss() | 1136 | 1136 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.TaskMiss() | 1128 | 1128 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False) | 2552.1 | 2552.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=False) | 4112.1 | 4112.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False) | 8266.4 | 8256.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7304.2 | 7304.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=True) | 2784.1 | 2784.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True) | 4432.1 | 4432.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True) | 8256.2 | 8256.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7304.6 | 7307.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False) | 2552.1 | 2552.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False) | 4112.1 | 4112.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False) | 8256.2 | 8256.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 7304.5 | 7305.7 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=True) | 2784.1 | 2784.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=True) | 4432.1 | 4432.1 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True) | 8256.2 | 8256.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7304.5 | 7307.5 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7469.9 | 7469.9 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7470.4 | 7470.3 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 7469.9 | 7469.9 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7470.3 | 7470.3 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=False) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=False) | 1875.2 | 1875.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=False) | 6937.2 | 6964 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=True) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=True) | 1900.3 | 1900.8 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=True) | 6953.3 | 6984.8 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False) | 1678.7 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=False) | 2769.1 | 2078.6 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False) | 1687.2 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False) | 10381.4 | 7169.1 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True) | 1679.1 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=True) | 2802.7 | 2099.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True) | 1691.8 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True) | 10484.1 | 7188.1 | - | - | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=False) | 5680.1 | 5688 | hget 2 | hget 2 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=False) | 10913.1 | 10937 | expire 1, hget 2, hmget 1, hmset 1 | expire 1, hget 2, hmget 1, hmset 1 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=True) | 5680.4 | 5688 | hget 2 | hget 2 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=True) | 11400.1 | 11424.1 | expire 1, hget 2, hmget 1, hmset 1 | expire 1, hget 2, hmget 1, hmset 1 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=False) | 11091 | 11128.1 | - | - | 1 (157 ch) | 1 (157 ch) | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=False) | 25987.6 | 26034 | - | - | 3 (1396 ch) | 3 (1396 ch) | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=True) | 11072.1 | 11080.1 | - | - | 1 (157 ch) | 1 (157 ch) | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=True) | 26472.4 | 26496.4 | - | - | 3 (1396 ch) | 3 (1396 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=False) | 2544.1 | 2544.1 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False) | 7056.2 | 7056.2 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True) | 1792 | 1792 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=True) | 1944 | 1944 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False) | 8392.5 | 8392.5 | hmget 2 | hmget 2 | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False) | 15685.3 | 15722.1 | expire 1.56, hmget 3, hmset 1.56 | expire 1.57, hmget 3, hmset 1.57 | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True) | 1792 | 1792 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=True) | 1944 | 1944 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False) | 18818.4 | 18818.4 | - | - | 2 (1090 ch) | 2 (1090 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=False) | 40938 | 40938 | - | - | 4.95 (3027 ch) | 4.95 (3027 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True) | 1792 | 1792 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=True) | 1944 | 1944 | - | - | - | - | ok |
+
+

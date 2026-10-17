@@ -1,0 +1,18 @@
+{
+  "label": "methodcache-design-20261015-01a13a93-guid-final-v5-native-constructor-base",
+  "images": {
+    "redis": {
+      "reference": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "image_id": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+    },
+    "sqlserver": {
+      "reference": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+      "image_id": "sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+    }
+  },
+  "redis_container_id": "1396cfb9a68d8c5ad9a3e0306aee9a6dd5b570020bd6438b1674114e0edc644f",
+  "sql_container_id": "cdb3c346d26845df34c6446891d34d45e7835eb11599e8b6e5cb2fbde1147d17",
+  "verified_before": "2026-10-16T09:07:09.7576189+00:00",
+  "verified_after": "2026-10-16T09:07:11.2045887+00:00",
+  "child_exit": 0
+}

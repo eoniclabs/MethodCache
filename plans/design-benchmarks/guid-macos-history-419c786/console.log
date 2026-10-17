@@ -1,0 +1,2 @@
+error: unable to read sha1 file of benchmarks/MethodCache.Benchmarks/README.md (2b842f84d51b8ef405addc1fb10783e14eaf1971)
+error: invalid object 100644 2b842f84d51b8ef405addc1fb10783e14eaf1971 for 'benchmarks/MethodCache.Benchmarks/README.md'

@@ -1,0 +1,127 @@
+{
+  "scope": "Exact c9 functional CI only; timing separate",
+  "head": "c9ec0db33d1d5b27a68ff7a31d7437c603b360a5",
+  "run": "20261017-121707-c9ec0db33d1d",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "54b4f96d935c2d8b9956db21911a3639021528124c6f19e8a54d64ac01bba0aa"
+    },
+    {
+      "path": "raw/linux/aot.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/aot.log",
+      "sha256": "6a7ee0ba451f49f616f9069bf6a58daa51bc47902329f683df8acd5761bdbd97"
+    },
+    {
+      "path": "raw/linux/build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/build.log",
+      "sha256": "63b1816188c938282c5610481c200452d353b8be2a3842f4390fc9f8df589376"
+    },
+    {
+      "path": "raw/linux/cultures.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/cultures.log",
+      "sha256": "d53a038f42a21cb325d6a03b70eb00260f345233f993730b5fa88e02eea3c40c"
+    },
+    {
+      "path": "raw/linux/demo.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/demo.log",
+      "sha256": "af6c83b048378068a50e634f2db0ddd5400ff2fac57aaadecdef319e50387eca"
+    },
+    {
+      "path": "raw/linux/diffcoverage.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/diffcoverage.log",
+      "sha256": "a4ef440f78358fecdf7ef241daa9dae337ed3de9e63b4ddd1af8a72fe3380805"
+    },
+    {
+      "path": "raw/linux/docs.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/docs.log",
+      "sha256": "2e8443fd2c99fb78a7bfbc7c09f1e1b8badba271ac9e1ef193399e3075a6f084"
+    },
+    {
+      "path": "raw/linux/packages.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/packages.log",
+      "sha256": "afd6278947e613997a5baa042375bdfe522e4d1dabbaf96cf5877775fa2f329d"
+    },
+    {
+      "path": "raw/linux/properties.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/properties.log",
+      "sha256": "b828c2e18eeb780ea4d38ceac0c8d9db452944f5c3d531c8d57f867cade7796f"
+    },
+    {
+      "path": "raw/linux/soak.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/soak.log",
+      "sha256": "ca30f085411ab36c11b9b2b6855a8cbe20d863d3680b267a29d862547e351fb8"
+    },
+    {
+      "path": "raw/linux/tests.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/tests.log",
+      "sha256": "c1d7768d7c442ce6b68cad2c9547b31f884950a17920dda9f2ff100282593cd6"
+    },
+    {
+      "path": "raw/macos/build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/macos/build.log",
+      "sha256": "7f7bc2db6477f15505589f74017dc6ed2553213842e11339a25b0cb6745b6dc2"
+    },
+    {
+      "path": "raw/macos/unit.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/macos/unit.log",
+      "sha256": "5e029154f02048cbcdbd06dd1ff726eed79227c274c0afba123c4e23646eef45"
+    },
+    {
+      "path": "raw/manifest.json",
+      "sha256": "cebd5bfa13052af6c99072a2f1706deef3f34f95bdf0f26d916a2f99cc68e2b9"
+    },
+    {
+      "path": "raw/windows/build.exit",
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "raw/windows/build.log",
+      "sha256": "16f11dcdf3cf6f919ad97a04504e76ee86e2615fac31af430707c7d4ac2acbc7"
+    },
+    {
+      "path": "raw/windows/unit.exit",
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "raw/windows/unit.log",
+      "sha256": "62958492d580ca35887beb54d2dedbe7ecc21da53674d4c317187ded9efa4228"
+    }
+  ]
+}

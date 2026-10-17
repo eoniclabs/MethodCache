@@ -1,0 +1,16 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache",
+  "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+  "workload_sha": "c4e954b1e16a1e643d016f408f9690873ec667e5",
+  "source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "ea4a300eb6f8245e70502bcbba52e4beacde6902a783ddf52a37735fefce3d5d",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "compiled_capabilities": {
+    "prefix_hash": false,
+    "hash_algorithm": "runtime string hash",
+    "in_place_key_builder": false
+  },
+  "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+}

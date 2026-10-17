@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-17T08:38:01.595124+00:00",
+  "queue_sha256": "08fb3d2b3a9ffa58a6650ef0a7f840e2d913783488f6b25bcd431ccbd3e059df",
+  "inputs_sha256": "64a3f0156f9d48bf99f5173053354c8a5cf924f21f9d7b46fcde330fd1926484",
+  "scope": "Filtered current-head cumulative CPU verification for the compact TelemetryOperation change: four enabled-listener eviction/single-flight cases and six enabled-listener short/long GUID misses. Fixed10alternatingpairs/32warmups/12actual150ms/freshprocess. No pooling with earlier source points. Same frozen harness/helper/reviewers; baseline original Mac binaries, final rebuilt from exact5257fb63 production sources. Existing6%precision and accepted rules unchanged.",
+  "prepared_sha256": "df6d295fc4d46d3615564aba9c6769eee51f59bbc4a1a4968df58e2a85c3ae4d",
+  "verified_binary_count": 420,
+  "verified_production_count": 224
+}

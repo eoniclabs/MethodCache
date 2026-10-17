@@ -1,0 +1,148 @@
+{
+  "verified_utc": "2026-10-17T10:28:07.220483+00:00",
+  "combined": "c9ec0db33d1d5b27a68ff7a31d7437c603b360a5",
+  "main": "8402ad2f70f4a6569ed081ba928ddfd4ebcb52f7",
+  "main_is_ancestor": false,
+  "prs": [
+    {
+      "baseRefName": "claude/faster-cache-hits-xft398-siphash",
+      "headRefName": "claude/faster-cache-hits-xft398-guid-bench",
+      "headRefOid": "419c786d949d361cd2acd418178e4b0a8e21a860",
+      "isDraft": false,
+      "number": 135,
+      "title": "Benchmark cache hits with GUID ids, README shows int and GUID",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/135",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "claude/faster-cache-hits-xft398-guid-bench",
+      "headRefName": "codex/design-combined-gates-v1",
+      "headRefOid": "c9ec0db33d1d5b27a68ff7a31d7437c603b360a5",
+      "isDraft": true,
+      "number": 134,
+      "title": "Preserve generated ABI and fix measured design regressions",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/134",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "claude/faster-cache-hits-xft398",
+      "headRefName": "claude/faster-cache-hits-xft398-siphash",
+      "headRefOid": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+      "isDraft": false,
+      "number": 133,
+      "title": "Hash generated keys with SipHash-1-3 instead of Marvin",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/133",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/design-final-gates-v1",
+      "headRefName": "claude/faster-cache-hits-xft398",
+      "headRefOid": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "isDraft": false,
+      "number": 132,
+      "title": "Construct the generated key builder in place (x64 hit regression from design PR 1)",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/132",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/net10-only-v1",
+      "headRefName": "codex/design-final-gates-v1",
+      "headRefOid": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "isDraft": true,
+      "number": 131,
+      "title": "Record final .NET 10 design verification and acceptance gates",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/131",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/http-core-store-v1",
+      "headRefName": "codex/net10-only-v1",
+      "headRefOid": "1bafff182df69a4cf156280f904b9248bae8ce74",
+      "isDraft": true,
+      "number": 130,
+      "title": "Require .NET 10 before 1.0",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/130",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/prefix-hash-v1",
+      "headRefName": "codex/http-core-store-v1",
+      "headRefOid": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "isDraft": true,
+      "number": 129,
+      "title": "Move HTTP caching onto Core storage and generation contracts",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/129",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/core-telemetry-v1",
+      "headRefName": "codex/prefix-hash-v1",
+      "headRefOid": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "isDraft": true,
+      "number": 128,
+      "title": "Reuse immutable method prefix hash state",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/128",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/transport-format-v1",
+      "headRefName": "codex/core-telemetry-v1",
+      "headRefOid": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "isDraft": true,
+      "number": 127,
+      "title": "Produce telemetry in Core and report storage health accurately",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/127",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/keys-attributes-v1",
+      "headRefName": "codex/transport-format-v1",
+      "headRefOid": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "isDraft": true,
+      "number": 126,
+      "title": "Own distributed transports and freeze wire contract 1",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/126",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/user-api-policy-v1",
+      "headRefName": "codex/keys-attributes-v1",
+      "headRefOid": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "isDraft": true,
+      "number": 125,
+      "title": "Unify attribute syntax, duration parsing and canonical tags",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/125",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "codex/generated-contract-v1",
+      "headRefName": "codex/user-api-policy-v1",
+      "headRefOid": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "isDraft": true,
+      "number": 124,
+      "title": "Refactor user API and isolate policy generations",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/124",
+      "ancestor_of_combined": true
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/generated-contract-v1",
+      "headRefOid": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "isDraft": true,
+      "number": 123,
+      "title": "Establish generated contract v1 and explicit startup binding (design PR 1)",
+      "url": "https://github.com/eoniclabs/MethodCache/pull/123",
+      "ancestor_of_combined": true
+    }
+  ],
+  "constraint": "Seventeen measured cost overages on five historical heads must not be relabelled PASS; current cumulative fixes do not prove each earlier standalone edge. Final CI/cost are green; final timing still pending. No integration action authorized or performed.",
+  "prospective_main_merge": {
+    "command": "git merge-tree --write-tree HEAD 8402ad2f70f4a6569ed081ba928ddfd4ebcb52f7",
+    "exit": 0,
+    "tree": "b4d9d2613df57ccfd60331b0e0633ccb019874f8",
+    "current_head_tree": "b4d9d2613df57ccfd60331b0e0633ccb019874f8",
+    "changes_current_tree": false,
+    "stdout": "b4d9d2613df57ccfd60331b0e0633ccb019874f8\n",
+    "stderr": ""
+  }
+}

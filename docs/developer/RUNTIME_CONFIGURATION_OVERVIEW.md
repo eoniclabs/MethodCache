@@ -11,38 +11,54 @@ Each source implements `IPolicySource` and is registered with a priority from `P
 | 100 | `RuntimeOverrides` | `RuntimePolicySource` (`runtime-overrides`) | Always, by `AddMethodCache()` | Yes, through `IRuntimeCacheConfigurator` |
 | 50 | `ConfigurationFiles` | `ConfigFilePolicySource` (`configuration-files`) | `AddMethodCacheFromConfiguration(configuration, "MethodCache")` | Yes, on `IConfiguration` reload |
 | 40 | `StartupFluent` | `FluentPolicySource` (`startup-fluent`) | `AddMethodCache(config => ...)` | No |
-| 10 | `Attributes` | Policies emitted by the source generator (`attributes`) | Each generated decorator | No |
+| 10 | `Attributes` | Policies emitted by the source generator (`attributes`) | Generated module binding | No |
 
-The code is in `src/MethodCache.Core/PolicyPipeline`: `Sources/` (the sources above), `Model/` (`CachePolicyBuilder`, `MethodIds`, `PolicySourceIds`, `PolicySourcePriority`), `Resolution/` (`PolicyResolver`, `PolicyRegistry`) and `Diagnostics/` (`PolicyDiagnosticsService`). The `CachePolicy` record is in `Abstractions/Policies`.
+The code is in `src/MethodCache.Core/PolicyPipeline`: `Sources/` (the sources above), `Model/` (`CachePolicyBuilder`, `MethodIds`, `PolicySourceIds`, `PolicySourcePriority`), `Resolution/` (`PolicyResolver`, `PolicyRegistry`) and `Diagnostics/` (`PolicyDiagnosticsService`). The internal `CachePolicy` record is in `Abstractions/Policies`. Public startup configuration enters through `MethodCacheBuilder`; the older root/service/group fluent coordinator interfaces are internal. The method configuration interfaces returned by the builder remain public.
 
 ## Resolution
 
-`PolicyResolver` merges the snapshots of all sources for a method field by field. A `CachePolicy` has `Duration`, `SlidingExpiration`, `RefreshAhead`, `CacheWhen`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version` and `Metadata`, and each source says which of them it set with `CachePolicyFields` flags. For each field, the source with the highest priority that set it wins. Two sources with the same priority, such as two `AddMethodCache(config => ...)` calls, each keep their own layer, and the one registered later wins where both set a field. `Metadata` is merged key by key, with the same order. Every contribution is kept as a `PolicyContribution`, so diagnostics can show where each value came from.
+`PolicyResolver` merges the snapshots of all sources for a method field by field. An internal `CachePolicy` has `Enabled`, `Distributed`, `Duration`, `SlidingExpiration`, `RefreshAhead`, `CacheWhen`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version` and `Metadata`, and each source says which of them it set with `CachePolicyFields` flags. For each field, the source with the highest priority that set it wins. Two sources with the same priority, such as two `AddMethodCache(config => ...)` calls, each keep their own layer, and the one registered later wins where both set a field. `Metadata` is merged key by key, with the same order. Every contribution is kept as a `PolicyContribution`, so diagnostics can show where each value came from.
 
 A method id is the full name of the interface that declares the method, a dot and the method name, for example `MyApp.IUserService.GetUserAsync`. A generic interface is named by its definition, so one id covers every closed type, and an overloaded method adds its parameter types, for example `MyApp.IUsers.Find(int)` (`MethodIds`).
 
 ### Defaults and groups
 
-Policies can also be registered for two kinds of default ids: `*` for every cached method (`DefaultPolicy` in startup code, `Defaults` and `FailSafe` in the configuration section) and `group:<name>` for the methods in a group (`ForGroup`). A method is in a group when its resolved `Metadata` has a `group` entry, set by `[Cache("name")]` or `WithGroup`. Each field comes from the method's own layers first, whatever their priority, then from its group's defaults, then from the defaults for every method; within each of these the priority rule above applies. So `[Cache(Duration = "00:10:00")]` (priority 10) beats a default duration in appsettings.json (priority 50). A change to a default re-resolves every method.
+Policies can also be registered for two kinds of default ids: `*` for every cached method (`MethodCacheBuilder.Defaults` in startup code, `Defaults` and `FailSafe` in the configuration section) and `group:<name>` for the methods in a group (`MethodCacheBuilder.Group`). A method is in a group when its resolved `Metadata` has a `group` entry, set by `[Cache(Group = "name")]` or `WithGroup`. Group membership still uses internal metadata; this is not an application-extensible policy source. Each field comes from the method's own layers first, whatever their priority, then from its group's defaults, then from the defaults for every method; within each of these the priority rule above applies. So `[Cache(Duration = "00:10:00")]` (priority 10) beats a default duration in appsettings.json (priority 50). A change to a default re-resolves every method.
 
-`PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to a `PolicyHandle` per method. Every decorator for the method shares that handle and reads `PolicyHandle.Current` on each call, with one volatile read and no lock. A change replaces the whole policy, so a call never sees half of an update, and it reaches services that already exist, including singletons.
+`PolicyRegistry` (`IPolicyRegistry`) holds the resolved policy of every method and publishes changes to an internal
+`PolicyHandle`. Bound `MethodCache.Generated.CachedMethod` slots receive these updates and publish immutable
+invocation snapshots. A decorator reads `Capture()` once; the resulting `MethodCall` owns policy, prefix,
+local publication generation, keyed registration and background-scope target. It starts the bound key builder,
+probes and loads using that same snapshot. A retired snapshot bypasses caching; publication and retirement use
+the same generation guard. Existing singleton decorators receive updates without being recreated.
 
 ## Runtime Overrides
 
 `IRuntimeCacheConfigurator` writes to an in-memory store behind `RuntimePolicySource`:
 
-```csharp
-var configurator = services.GetRequiredService<IRuntimeCacheConfigurator>();
+<!-- snippet: configuration-runtime-overrides -->
+```cs
+var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 
-await configurator.UpsertAsync<IUserService, UserProfile>(
-    s => s.GetUserProfileAsync(default),
-    o => o.WithDuration(TimeSpan.FromMinutes(5)),
-    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211"));
+// One method, strongly typed, with who and why for the audit trail
+await configurator.UpsertAsync<IOrdersService, Order>(
+    s => s.GetAsync(Any<int>.Value),
+    o => o.WithDuration(TimeSpan.FromMinutes(2)),
+    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
 
-await configurator.RemoveAsync<IUserService, UserProfile>(s => s.GetUserProfileAsync(default));
+// By method id, for example from an admin form
+await configurator.UpsertAsync("Docs.Configuration.IUserService.GetProfileAsync",
+    o => o.WithDuration(TimeSpan.FromMinutes(10)));
+
+// Back to the lower layers
+await configurator.RemoveAsync<IOrdersService, Order>(s => s.GetAsync(Any<int>.Value));
+await configurator.ClearAsync();
 ```
+<!-- endSnippet -->
 
-Overrides are not persisted and not shared between instances. `RuntimeOverrideMetadata` is stored as `runtime.*` metadata on the policy; a timer in `RuntimePolicyStore` removes an override when its `ExpiresAt` passes.
+Overrides are not persisted and not shared between instances. `GetOverridesAsync` returns immutable options and separate `RuntimeOverrideMetadata`. Internally the audit is also carried as `runtime.*` policy/contribution metadata; it is excluded from behavior identity. A timer in `RuntimePolicyStore` removes an override when its `ExpiresAt` passes. Runtime mutation targets methods; group/global defaults are declarative startup/configuration settings.
+
+Effective behavior changes retire local values and in-flight publication guards immediately. Equal effective options and audit-only changes keep them. Declarative policy has a stable shared L2 identity; runtime behavior overrides use a private container namespace. Removing an override restores the current shared declarative identity after method invalidation. Invalidation messages retire data on other nodes and do not distribute policy.
 
 ## Configuration Files
 
@@ -50,16 +66,7 @@ Overrides are not persisted and not shared between instances. `RuntimeOverrideMe
 
 ## Diagnostics
 
-`PolicyDiagnosticsService` reads the registry:
-
-```csharp
-var diagnostics = services.GetRequiredService<PolicyDiagnosticsService>();
-
-foreach (var report in diagnostics.GetAllPolicies())
-{
-    var sources = string.Join(", ", report.Contributions.Select(c => c.SourceId).Distinct());
-    Console.WriteLine($"{report.MethodId}: Duration={report.Policy.Duration}, Sources={sources}");
-}
-```
-
-`GetPolicy(methodId)`, `GetContributions(methodId, sourceId)` and `FindBySource(sourceId)` narrow the view. `ICacheAdministrator.GetMethods()` (and `GET /methodcache/methods` from `MethodCache.AspNetCore`) returns the effective policy of every cached method with its sources.
+Application code reads effective options, setting sources and the L2 namespace through
+`ICacheAdministrator.GetMethods()`. `PolicyDiagnosticsService` and the resolver records are internal
+implementation details. Runtime mutation uses `IRuntimeCacheConfigurator` and immutable options; see
+[configuration](../features/configuration.md#runtime-overrides).

@@ -1,0 +1,12 @@
+{
+  "scope": "PR128 independent completed study only; all five predeclared cases and ten pairs per case. Complete per-study analysis does not change frozen ongoing cumulative or other PR studies. No incomplete comparison or selected run is analyzed.",
+  "records": 100,
+  "cases": [
+    "GeneratedContractBenchmarks.SyncHit()",
+    "GeneratedContractBenchmarks.TaskHit()",
+    "GeneratedContractBenchmarks.ValueTaskHit()",
+    "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+    "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)"
+  ],
+  "other_cohorts_unchanged": true
+}

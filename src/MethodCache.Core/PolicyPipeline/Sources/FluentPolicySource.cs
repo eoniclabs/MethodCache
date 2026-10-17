@@ -10,6 +10,12 @@ internal sealed class FluentPolicySource : IPolicySource
     private readonly IReadOnlyList<PolicyDraft> _compiledPolicies;
     private readonly string _sourceId;
 
+    internal FluentPolicySource(IReadOnlyList<PolicyDraft> policies)
+    {
+        _sourceId = PolicySourceIds.StartupFluent;
+        _compiledPolicies = policies;
+    }
+
     public FluentPolicySource(Action<IFluentMethodCacheConfiguration> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);

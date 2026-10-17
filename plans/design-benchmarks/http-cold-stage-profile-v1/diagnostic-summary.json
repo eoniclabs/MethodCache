@@ -1,0 +1,155 @@
+{
+  "scope": "Instrumented diagnostic bucket medians only; NOT paired-time acceptance",
+  "utc": "2026-10-17T04:51:58.680337+00:00",
+  "archive_sha256": "14a40d33c74440f4c91fda9c0456225bb285eb34c998e19cf0b8a1d61ca1f6a2",
+  "indexed_files_verified": 24,
+  "processes_verified": 8,
+  "samples_per_process": 10,
+  "operations_per_sample": 8192,
+  "summary": [
+    {
+      "side": "base",
+      "listening": false,
+      "afterInvalidation": false,
+      "median_ns": {
+        "generation": 103.5391845703125,
+        "lookup": 189.6845703125,
+        "bodyBudget": 0.0,
+        "publication": 1526.0289306640625,
+        "total": 16098.196838378906
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 0,
+        "publication": 1
+      }
+    },
+    {
+      "side": "head",
+      "listening": false,
+      "afterInvalidation": false,
+      "median_ns": {
+        "generation": 625.3568725585938,
+        "lookup": 170.9056396484375,
+        "bodyBudget": 55.669921875,
+        "publication": 4119.558654785156,
+        "total": 15260.121643066406
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 1,
+        "publication": 1
+      }
+    },
+    {
+      "side": "head",
+      "listening": false,
+      "afterInvalidation": true,
+      "median_ns": {
+        "generation": 577.145751953125,
+        "lookup": 177.19598388671875,
+        "bodyBudget": 82.19879150390625,
+        "publication": 2823.697998046875,
+        "total": 14575.089904785156
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 1,
+        "publication": 1
+      }
+    },
+    {
+      "side": "base",
+      "listening": false,
+      "afterInvalidation": true,
+      "median_ns": {
+        "generation": 101.18890380859375,
+        "lookup": 180.0032958984375,
+        "bodyBudget": 0.0,
+        "publication": 1421.8041381835938,
+        "total": 16234.282531738281
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 0,
+        "publication": 1
+      }
+    },
+    {
+      "side": "base",
+      "listening": true,
+      "afterInvalidation": false,
+      "median_ns": {
+        "generation": 446.81036376953125,
+        "lookup": 181.0711669921875,
+        "bodyBudget": 0.0,
+        "publication": 897.1138305664062,
+        "total": 15570.046142578125
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 0,
+        "publication": 1
+      }
+    },
+    {
+      "side": "head",
+      "listening": true,
+      "afterInvalidation": false,
+      "median_ns": {
+        "generation": 617.1337890625,
+        "lookup": 241.75079345703125,
+        "bodyBudget": 72.6065673828125,
+        "publication": 3872.3534545898438,
+        "total": 15992.85107421875
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 1,
+        "publication": 1
+      }
+    },
+    {
+      "side": "head",
+      "listening": true,
+      "afterInvalidation": true,
+      "median_ns": {
+        "generation": 767.0944213867188,
+        "lookup": 179.58612060546875,
+        "bodyBudget": 63.02935791015625,
+        "publication": 3578.8709716796875,
+        "total": 14984.60205078125
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 1,
+        "publication": 1
+      }
+    },
+    {
+      "side": "base",
+      "listening": true,
+      "afterInvalidation": true,
+      "median_ns": {
+        "generation": 425.36126708984375,
+        "lookup": 232.91400146484375,
+        "bodyBudget": 0.0,
+        "publication": 1288.7637939453125,
+        "total": 18276.357788085938
+      },
+      "calls_per_operation": {
+        "generation": 1,
+        "lookup": 2,
+        "bodyBudget": 0,
+        "publication": 1
+      }
+    }
+  ]
+}

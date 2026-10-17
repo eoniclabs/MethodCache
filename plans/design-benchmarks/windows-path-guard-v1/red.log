@@ -1,0 +1,20 @@
+...F
+======================================================================
+FAIL: test_tracked_paths_are_valid_on_windows (test_repository_paths.RepositoryPathTests.test_tracked_paths_are_valid_on_windows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 28, in test_tracked_paths_are_valid_on_windows
+    self.assertEqual([], problems, "Tracked paths must allow the Windows worker to clone the repository")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [] != [('plans/design-benchmarks/final-paired-ti[58773 chars]me')]
+
+Second list contains 375 additional elements.
+First extra element 0:
+('plans/design-benchmarks/final-paired-time-v3/aux/methodcache-corrected-int-evidence/base-setup-guard.log', 'reserved Windows device name')
+
+Diff is 61450 characters long. Set self.maxDiff to None to see it. : Tracked paths must allow the Windows worker to clone the repository
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.025s
+
+FAILED (failures=1)

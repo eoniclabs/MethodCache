@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
+<OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><AssemblyName>MethodCache.Benchmarks</AssemblyName>
+<ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
+<ServerGarbageCollection>false</ServerGarbageCollection><ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+<DefineConstants>$(DefineConstants);METHODCACHE_PREFIX_HASH</DefineConstants></PropertyGroup><ItemGroup>
+<PackageReference Include="BenchmarkDotNet" Version="0.15.4"/><PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9"/>
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9"/>
+<ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.Core/MethodCache.Core.csproj"/><ProjectReference Include="/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+</ItemGroup></Project>

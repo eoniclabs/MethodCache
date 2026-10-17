@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-17T00:50:44.902489+00:00",
+  "inputs_sha256": "6f7f01fda606e66aaeacf0b2ac54369c3dc8ac2ef52781eb241bd363489771a3",
+  "prepared_sha256": "724d5da1551e919ae00907c5eca378302675c129829f8bfc8b303a8bdfbbcd4c",
+  "queue_sha256": "469ecace01a9584729a550560027692fb1af3514afa4e381b668bb2028a14f86",
+  "scope": "Independent quiet-Mac cumulative confirmation of all three precise Nimbus CPU regressions, f43854d to finalabd,60freshprocesses/threecases/tenpairs; no source change, no pooling or individual-run selection. Comparison id7 means final design stage, not GitHubPR7."
+}

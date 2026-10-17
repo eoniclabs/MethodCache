@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   542, Skipped:     0, Total:   542, Duration: 23 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)

@@ -1,0 +1,25 @@
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+<worktree>/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> <worktree>/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Serialization.MessagePack -> <worktree>/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.Core.Tests -> <worktree>/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+Test run for <worktree>/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:20.62]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1043, Skipped:     1, Total:  1044, Duration: 20 s - MethodCache.Core.Tests.dll (net10.0)
+
+Attachments:
+  /tmp/methodcache-alloc-probe/coverage/45af96de-66b7-402f-b186-2b90ab514c3b/coverage.cobertura.xml

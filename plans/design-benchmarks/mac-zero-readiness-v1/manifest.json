@@ -1,0 +1,78 @@
+{
+  "scope": "Stopped only own zero-launch readiness worker after881samples/~15minutes without60consecutivequietseconds. Zero formal timing launches; no acceptance decision. Original preparation and all readiness observations retained. Later whole-case confirmation is separate and waits before reserving capacity.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "inputs.json",
+      "sha256": "6ad23c4f307de446b7caa06f7d558185318ce1658c5e1c409b0a2ce129693b61",
+      "original_sha256": "ea69afbf60ea8ffcda1bf221538a6cc5d40a920423f9ed8ab7f80b1907e11878",
+      "catalogue_paths": [
+        [
+          "source_sha256"
+        ],
+        [
+          "frozen_reviewers"
+        ]
+      ]
+    },
+    {
+      "path": "measure-NG-00-driver.log",
+      "sha256": "3194c70c0f9df05133d81d9f217fcd14260b2e83dc469d51622ee2b09d14b15e"
+    },
+    {
+      "path": "pr-NG-00/intent.json",
+      "sha256": "b3f447720c908ac9a1a106df50d37961a4931cb60b3f9839afdb580a6e02bf61"
+    },
+    {
+      "path": "pr-NG-00/observations.json",
+      "sha256": "c0ac5d997ea76a902fdb38ae5f800ec85024683add7c3f303ea5844b0dcd98d0"
+    },
+    {
+      "path": "prepared.json",
+      "sha256": "33873c3ad5ca9375ae6df6e6c4b1c5c0a52d9d8f15c0d9f9ee54dbc0020b5394",
+      "original_sha256": "f14e6a40864701d91637027d752defcd72295ffe6e8269f4271f56273e5c325e",
+      "catalogue_paths": [
+        [
+          "source_sha256",
+          "baseline"
+        ],
+        [
+          "source_sha256",
+          "final"
+        ]
+      ]
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "queue.py",
+      "sha256": "ae85d118e7a10c4e14272b4eab1c316bdb12affb25a4ee75bf6f67f1c43aa3a1"
+    },
+    {
+      "path": "run.py",
+      "sha256": "c549439c710a01c2eac97c071cd50acaa572b8488e5de733a8eb1aa5ac3004ad"
+    },
+    {
+      "path": "sequence-intent.json",
+      "sha256": "171261dc96839a1aa9da00aec752e0d91621aa677a7c1004218862252703d5ea"
+    },
+    {
+      "path": "sequence.exit",
+      "sha256": "9d9b18720961e9b4689fd763b85e7b6f36160ccd3a8a1c9ddc5103bb0f66c396"
+    },
+    {
+      "path": "sequence.log",
+      "sha256": "ec0059a5ebcb3c629ec2a25efbfb4dd2b2c725a85a43a7378cdaa93791cec7ac"
+    },
+    {
+      "path": "stopped-before-first-launch.json",
+      "sha256": "de678e1adc5a319b58ac7e0f3377cd8289baa8d50176c17ce45cd70d05062a82"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

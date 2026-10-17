@@ -1,0 +1,24 @@
+{
+  "utc": "2026-10-17T11:28:13.175419+00:00",
+  "inputs_sha256": "19639d0545a8a285b808aead148c54d393d3ec375d6a6f9620d3951ed6ae3b51",
+  "prepared_sha256": "b0818dc4b5998e4e59326c38d706b6f6632bd86cda07cb34390b089b27d24bc9",
+  "comparison": {
+    "pr": "HF-04",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+        "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)"
+      ],
+      "int": []
+    }
+  },
+  "cases": {
+    "main": [
+      "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)"
+    ],
+    "int": []
+  }
+}

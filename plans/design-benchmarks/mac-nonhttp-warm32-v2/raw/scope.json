@@ -1,0 +1,112 @@
+{
+  "scope": "Nine whole non-HTTP cases needing independent precision/phase-drift confirmation. May run in parallel on Mac using same immutable f438/A2 libraries because the candidate modifies only HTTP publication/admin paths, no fields on shared cache types. Must document actual binary provenance and exact source-equivalence if candidate is adopted; no new runtime version claim from old binaries.",
+  "parent_scope_sha256": "a5c19f63465b80bf588cddf1605383d5f5bd17331a9f360c440b944c84606a61",
+  "pairs": 20,
+  "warmups": 32,
+  "actual_iterations": 12,
+  "iteration_milliseconds": 150,
+  "cases": [
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0772457280284233,
+        "head": 1.0200572589403634
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0309611740956555,
+        "head": 1.007159131719615
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0093931121211326,
+        "head": 1.0134336699061541
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0616270991882182,
+        "head": 1.0042023434550282
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0100041570994336,
+        "head": 0.9956733596130004
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+      "original_verdict": "faster",
+      "reasons": [
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0908151594496003,
+        "head": 0.9912744916830447
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)",
+      "original_verdict": "faster",
+      "reasons": [
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0604774564939867,
+        "head": 1.0014933609920507
+      }
+    },
+    {
+      "case": "GeneratedContractBenchmarks.FallbackHit()",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.320002290152486,
+        "head": 1.181756990652461
+      }
+    },
+    {
+      "case": "GeneratedContractBenchmarks.SyncHit()",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 0.9960969287775425,
+        "head": 0.9918018244371669
+      }
+    }
+  ]
+}

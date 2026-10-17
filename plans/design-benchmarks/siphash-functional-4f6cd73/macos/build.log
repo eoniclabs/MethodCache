@@ -1,0 +1,147 @@
+=== build
+test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts (test_coordinator.InstallTests.test_sdk_check_accepts_only_net10_and_rejects_older_only_hosts) ... ok
+test_update_atomically_preserves_open_old_script_and_versions_helper (test_coordinator.InstallTests.test_update_atomically_preserves_open_old_script_and_versions_helper) ... ok
+test_linux_capacity_denial_prevents_remote_checkout (test_coordinator.RetryIntegrationTests.test_linux_capacity_denial_prevents_remote_checkout) ... ok
+test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition (test_coordinator.RetryIntegrationTests.test_linux_capacity_grant_keeps_descriptor_without_nested_reacquisition) ... ok
+test_remote_linux_results_recovered_without_any_build (test_coordinator.RetryIntegrationTests.test_remote_linux_results_recovered_without_any_build) ... ok
+test_retry_builds_only_missing_platform (test_coordinator.RetryIntegrationTests.test_retry_builds_only_missing_platform) ... ok
+test_background_command_receives_script_on_stdin (test_coordinator.TimeoutTests.test_background_command_receives_script_on_stdin) ... ok
+test_watchdog_does_not_hold_archive_stdout_open (test_coordinator.TimeoutTests.test_watchdog_does_not_hold_archive_stdout_open) ... ok
+test_active_checkout_keeps_build (test_coordinator_state.StateTests.test_active_checkout_keeps_build) ... ok
+test_budget_removes_completed_clone_but_not_report (test_coordinator_state.StateTests.test_budget_removes_completed_clone_but_not_report) ... ok
+test_build_with_database_preserved (test_coordinator_state.StateTests.test_build_with_database_preserved) ... ok
+test_dirty_checkout_preserved (test_coordinator_state.StateTests.test_dirty_checkout_preserved) ... ok
+test_expired_failed_checkout_removed_without_losing_reports (test_coordinator_state.StateTests.test_expired_failed_checkout_removed_without_losing_reports) ... ok
+test_failed_checkout_kept_for_diagnostic_window (test_coordinator_state.StateTests.test_failed_checkout_kept_for_diagnostic_window) ... ok
+test_failure_is_complete_but_not_reusable_success (test_coordinator_state.StateTests.test_failure_is_complete_but_not_reusable_success) ... ok
+test_finished_marker_with_missing_job_is_incomplete (test_coordinator_state.StateTests.test_finished_marker_with_missing_job_is_incomplete) ... ok
+test_full_collection_is_throttled_between_scheduled_passes (test_coordinator_state.StateTests.test_full_collection_is_throttled_between_scheduled_passes) ... ok
+test_invalid_job_exit_is_incomplete (test_coordinator_state.StateTests.test_invalid_job_exit_is_incomplete) ... ok
+test_passed_build_removed_and_reports_kept (test_coordinator_state.StateTests.test_passed_build_removed_and_reports_kept) ... ok
+test_redirected_macos_root_is_preserved (test_coordinator_state.StateTests.test_redirected_macos_root_is_preserved) ... ok
+test_result_destination_outside_reports_refused (test_coordinator_state.StateTests.test_result_destination_outside_reports_refused) ... ok
+test_retry_backoff_and_limit (test_coordinator_state.StateTests.test_retry_backoff_and_limit) ... ok
+test_same_prefix_different_full_sha_is_not_reused (test_coordinator_state.StateTests.test_same_prefix_different_full_sha_is_not_reused) ... ok
+test_successful_platform_reused_with_logs_without_build (test_coordinator_state.StateTests.test_successful_platform_reused_with_logs_without_build) ... ok
+test_symlinked_exit_file_is_not_a_result (test_coordinator_state.StateTests.test_symlinked_exit_file_is_not_a_result) ... ok
+test_terminal_failure_is_not_a_pass_even_with_zero_job_exits (test_coordinator_state.StateTests.test_terminal_failure_is_not_a_pass_even_with_zero_job_exits) ... ok
+test_unknown_checkout_and_symlink_preserved (test_coordinator_state.StateTests.test_unknown_checkout_and_symlink_preserved) ... ok
+test_different_exact_dependency_fails (test_package_contracts.PackageContractTests.test_different_exact_dependency_fails) ... ok
+test_extra_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_extra_older_runtime_asset_fails) ... ok
+test_matching_exact_bounds_pass (test_package_contracts.PackageContractTests.test_matching_exact_bounds_pass) ... ok
+test_minimum_only_dependency_fails (test_package_contracts.PackageContractTests.test_minimum_only_dependency_fails) ... ok
+test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) ... ok
+test_bws_failure_or_empty_value_never_pushes (test_publish.PublishTests.test_bws_failure_or_empty_value_never_pushes) ... ok
+test_default_is_nuget (test_publish.PublishTests.test_default_is_nuget) ... ok
+test_explicit_github_packages (test_publish.PublishTests.test_explicit_github_packages) ... ok
+test_failed_ci_never_builds_or_fetches_secret (test_publish.PublishTests.test_failed_ci_never_builds_or_fetches_secret) ... ok
+test_invalid_target_never_contacts_services (test_publish.PublishTests.test_invalid_target_never_contacts_services) ... ok
+test_local_secret_reference_and_existing_host_token_file (test_publish.PublishTests.test_local_secret_reference_and_existing_host_token_file) ... ok
+test_missing_dependencies_report_the_tool_and_never_build (test_publish.PublishTests.test_missing_dependencies_report_the_tool_and_never_build) ... ok
+test_missing_package_never_fetches_secret (test_publish.PublishTests.test_missing_package_never_fetches_secret) ... ok
+test_missing_secret_reference_stops_before_build (test_publish.PublishTests.test_missing_secret_reference_stops_before_build) ... ok
+test_missing_symbol_companion_never_fetches_secret (test_publish.PublishTests.test_missing_symbol_companion_never_fetches_secret) ... ok
+test_nuget_fetches_one_secret_after_pack_and_pushes_seven_without_key_arguments (test_publish.PublishTests.test_nuget_fetches_one_secret_after_pack_and_pushes_seven_without_key_arguments) ... ok
+test_old_or_prerelease_sdk_fails_before_build_or_secret_read (test_publish.PublishTests.test_old_or_prerelease_sdk_fails_before_build_or_secret_read) ... ok
+test_symbol_companions_receive_the_same_environment_key (test_publish.PublishTests.test_symbol_companions_receive_the_same_environment_key) ... ok
+test_explicit_symbol_environment_key_is_used (test_publish_sdk.PublishSdkTests.test_explicit_symbol_environment_key_is_used) ... skipped 'Set METHODCACHE_TEST_PUBLISH_DOTNET to a .NET SDK 10.0.300+ executable'
+test_primary_key_fallback_for_discovered_symbol_service (test_publish_sdk.PublishSdkTests.test_primary_key_fallback_for_discovered_symbol_service) ... skipped 'Set METHODCACHE_TEST_PUBLISH_DOTNET to a .NET SDK 10.0.300+ executable'
+
+----------------------------------------------------------------------
+Ran 47 tests in 31.161s
+
+OK (skipped=2)
+All seven packages target .NET 10; all six integrations require MethodCache [1.2.3].
+  Determining projects to restore...
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/MethodCache.sln]
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj (in 755 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 797 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SourceGenerator.Tests/MethodCache.SourceGenerator.Tests.csproj (in 786 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj (in 761 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.AspNetCore.Tests/MethodCache.AspNetCore.Tests.csproj (in 767 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj (in 755 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.HttpCaching.IntegrationTests/MethodCache.HttpCaching.IntegrationTests.csproj (in 761 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 3 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Docs.Tests/MethodCache.Docs.Tests.csproj (in 774 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Core/MethodCache.Core.csproj (in 8 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj (in 2 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 23 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.CompatTests/MethodCache.CompatTests.csproj (in 19 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Redis/MethodCache.Redis.csproj (in 20 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Redis.IntegrationTests/MethodCache.Redis.IntegrationTests.csproj (in 52 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 1 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/benchmarks/MethodCache.Benchmarks/MethodCache.Benchmarks.csproj (in 885 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.Demo.FxVendor/MethodCache.Demo.FxVendor.csproj (in 23 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Analyzers.Tests/MethodCache.Analyzers.Tests.csproj (in 6 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj (in 61 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SourceGenerator.IntegrationTests/MethodCache.SourceGenerator.IntegrationTests.csproj (in 22 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SqlServer.Tests/MethodCache.SqlServer.Tests.csproj (in 26 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.Demo/MethodCache.Demo.csproj (in 47 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj (in 51 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Redis.Tests/MethodCache.Redis.Tests.csproj (in 43 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Samples.Tests/MethodCache.Samples.Tests.csproj (in 19 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.SqlServer/MethodCache.SqlServer.csproj (in 73 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SqlServer.IntegrationTests/MethodCache.SqlServer.IntegrationTests.csproj (in 29 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.OpenTelemetry.Tests/MethodCache.OpenTelemetry.Tests.csproj (in 175 ms).
+  Restored /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj (in 769 ms).
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  MethodCache.Analyzers -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Demo.FxVendor -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.Demo.FxVendor/bin/Release/net10.0/MethodCache.Demo.FxVendor.dll
+  MethodCache.SourceGenerator -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Demo -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.Demo/bin/Release/net10.0/MethodCache.Demo.dll
+  MethodCache.SqlServer -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.SourceGenerator.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.AspNetCore -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/src/MethodCache.AspNetCore/bin/Release/net10.0/MethodCache.AspNetCore.dll
+  Copying EmptyFiles to /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/EmptyFiles
+  MethodCache.Samples.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll
+  MethodCache.Analyzers.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll
+  MethodCache.CompatTests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+  MethodCache.Redis.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll
+  MethodCache.OpenTelemetry.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll
+  MethodCache.AspNetCore.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+  MethodCache.HttpCaching.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+  MethodCache.Core.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+  MethodCache.SqlServer.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll
+  MethodCache.SqlServer.IntegrationTests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+  MethodCache.Benchmarks -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/benchmarks/MethodCache.Benchmarks/bin/Release/net10.0/MethodCache.Benchmarks.dll
+  MethodCache.Docs.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll
+  MethodCache.Benchmarks.Tests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+  MethodCache.HttpCaching.IntegrationTests -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll
+  MethodCache.WebDemo -> /Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/samples/MethodCache.WebDemo/bin/Release/net10.0/MethodCache.WebDemo.dll
+
+Build succeeded.
+
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.cache/methodcache-ci/macos/runs/20261015-223954-4f6cd7382a73/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+    9 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:09.62

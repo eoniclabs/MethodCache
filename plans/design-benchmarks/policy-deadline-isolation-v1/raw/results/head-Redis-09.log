@@ -1,0 +1,8 @@
+Test run for /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/tree/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/results/head-Redis-09/result.trx
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 381 ms - MethodCache.Redis.IntegrationTests.dll (net10.0)
+
+Attachments:
+  /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/results/head-Redis-09/93e83ebe-7771-4b6d-be04-9c50539efe0c/coverage.cobertura.xml

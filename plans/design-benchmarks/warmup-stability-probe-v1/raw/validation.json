@@ -1,0 +1,81 @@
+{
+  "utc": "2026-10-17T05:10:59.073465+00:00",
+  "inputs_sha256": "496d142d4adacbb80d448a343d786475a1d7a75550ac1f5f42d4256699ae0d94",
+  "prepared_sha256": "e2c6bb11404d6e1de8f697989e8ab47c29fa2d79d11488c59a685bff3db620f8",
+  "results": [
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "path": "results/00-base-warm4.json",
+      "sha256": "aeb6e6116ac4c9063f5fffb518a27c71d72bd82d63223a4859ece940e66d8244",
+      "started_utc": "2026-10-17T05:09:46.098773+00:00",
+      "finished_utc": "2026-10-17T05:09:51.710216+00:00"
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "path": "results/01-head-warm4.json",
+      "sha256": "d9779783a9b25bb8c0946341c5331c211ccbf90bc99fe25e239a72b8473ea44d",
+      "started_utc": "2026-10-17T05:09:51.710277+00:00",
+      "finished_utc": "2026-10-17T05:09:57.831266+00:00"
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "path": "results/02-head-warm32.json",
+      "sha256": "b17cc276679225fde8b20f80ad77498842df256fc6da67e6f71f3d9ede7c064a",
+      "started_utc": "2026-10-17T05:09:57.831326+00:00",
+      "finished_utc": "2026-10-17T05:10:07.519005+00:00"
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "path": "results/03-base-warm32.json",
+      "sha256": "846f967296b2723dc92fe720d982024c0007877555091dbce1818385172fd6b2",
+      "started_utc": "2026-10-17T05:10:07.519069+00:00",
+      "finished_utc": "2026-10-17T05:10:17.206025+00:00"
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "path": "results/04-base-warm32.json",
+      "sha256": "c2a7a8f2e5555698b50c183f8a5c6649835ed9bea01ccf9b26a16ce14514248b",
+      "started_utc": "2026-10-17T05:10:17.206085+00:00",
+      "finished_utc": "2026-10-17T05:10:39.645968+00:00"
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "path": "results/05-head-warm32.json",
+      "sha256": "e52da26034f24e4857d93764a9b537bdb0cf2cf34a5018cd41fb053826ff4fdc",
+      "started_utc": "2026-10-17T05:10:39.646031+00:00",
+      "finished_utc": "2026-10-17T05:10:48.315175+00:00"
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "path": "results/06-head-warm4.json",
+      "sha256": "7bf92fea041c728abf3458f41a95c9548cceef2698ea0ee7d06823bbb4a4622f",
+      "started_utc": "2026-10-17T05:10:48.315235+00:00",
+      "finished_utc": "2026-10-17T05:10:52.910986+00:00"
+    },
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "path": "results/07-base-warm4.json",
+      "sha256": "1eb3a1f109fef04b9fe3f56b57f0560bbe8a0b76af60cb1c7557f0409293f9a5",
+      "started_utc": "2026-10-17T05:10:52.911048+00:00",
+      "finished_utc": "2026-10-17T05:10:59.037170+00:00"
+    }
+  ],
+  "scope": "Warmup-quality diagnostic only: fixed8processes(originalf438/A2,Revalidated/ColdMiss,warmups4/32),sameoriginalcompiledlibraries/workload,12actual150ms,GC/affinity/quiet. No statistical acceptance or candidate adoption from this probe.",
+  "all_shipping_files_unchanged": true
+}

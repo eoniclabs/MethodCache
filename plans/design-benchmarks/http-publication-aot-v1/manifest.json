@@ -1,0 +1,46 @@
+{
+  "scope": "Current publication/compact-telemetry candidate NativeAOT onosx-arm64: smoke passes explicit prefix shapes and HTTP privatevariants/admin/metadataJSON; corpus compiles175cases and executablepasses. Exact native binary digests and raw logs retained. Initial wrongplatform/noncanonicaltmp command failures retained separately as setup errors. Existing unchanged-source trim/dynamic-code warnings remain visible. No packages/tools installed.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "methodcache-compact-aot-corpus-execution.log",
+      "sha256": "46939aa00eb51bf60f23145d33c2df03813a9b7dcbceef178697e025e2e372e8"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-export-canonical.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-publish-canonical.log",
+      "sha256": "4aa690f2ef3b2cf3f6144591804d8c87bc1b09a1216674bb32d2873db5a987d6"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-publish.log",
+      "sha256": "f6353ba12f6378e358f180a4abd2d5b21dfe48c3b5fd4fbdc83c9bf4919c404a"
+    },
+    {
+      "path": "methodcache-compact-aot-execution.log",
+      "sha256": "453f611a7274752118d391c5cd3b394b033ab51200b5fbda6e5f23b4a672eeb6"
+    },
+    {
+      "path": "methodcache-compact-aot-osx.log",
+      "sha256": "f32805f769fca4af07f9b54034d2ce28f4a9a44d2c8427e0e836bf94fa5a5a0e"
+    },
+    {
+      "path": "methodcache-compact-telemetry-aot.log",
+      "sha256": "a7ba80a85ef5fd0fabf4296c8f7e52cedc1de60d6ce3a7cf36cee2a73c5bc6ec"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "173804a7767b8ce0bb030145b6ac95678719a8875b76e9e4d64b88e9e9295d30"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

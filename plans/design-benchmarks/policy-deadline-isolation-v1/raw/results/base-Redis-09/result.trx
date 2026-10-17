@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="ac93cb68-e41d-4c68-b281-617a7b6414c6" name="@Nimbus 2026-10-17 02:06:40" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-17T02:06:40.2555227+00:00" queuing="2026-10-17T02:06:40.2555227+00:00" start="2026-10-17T02:06:38.0169685+00:00" finish="2026-10-17T02:06:40.2611792+00:00" />
+  <TestSettings name="default" id="7edc8996-8886-46e6-be25-0e4022b472f3">
+    <Deployment runDeploymentRoot="_Nimbus_2026-10-17_02_06_40" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="964462a5-fb13-4999-9cc0-cef5d3ddd4f6" testId="0a895c74-01bb-d9b7-542c-554bea5b630e" testName="MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract" computerName="Nimbus" duration="00:00:00.3750263" startTime="2026-10-17T02:06:39.4413723+00:00" endTime="2026-10-17T02:06:39.8113324+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="964462a5-fb13-4999-9cc0-cef5d3ddd4f6" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract" storage="/home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/tree/tests/methodcache.redis.integrationtests/bin/release/net10.0/methodcache.redis.integrationtests.dll" id="0a895c74-01bb-d9b7-542c-554bea5b630e">
+      <Execution id="964462a5-fb13-4999-9cc0-cef5d3ddd4f6" />
+      <TestMethod codeBase="/home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/tree/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Redis.IntegrationTests.PolicyContractTests" name="PolicyTransitionsAndDeadlines_ConformToSharedContract" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="0a895c74-01bb-d9b7-542c-554bea5b630e" executionId="964462a5-fb13-4999-9cc0-cef5d3ddd4f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="1" executed="1" passed="1" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.12)
+[xUnit.net 00:00:00.05]   Discovering: MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.10]   Discovered:  MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.12]   Starting:    MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.53]   Finished:    MethodCache.Redis.IntegrationTests
+</StdOut>
+    </Output>
+    <CollectorDataEntries>
+      <Collector agentName="Nimbus" uri="datacollector://microsoft/CoverletCodeCoverage/1.0" collectorDisplayName="XPlat code coverage">
+        <UriAttachments>
+          <UriAttachment>
+            <A href="Nimbus/coverage.cobertura.xml"></A>
+          </UriAttachment>
+        </UriAttachments>
+      </Collector>
+    </CollectorDataEntries>
+  </ResultSummary>
+</TestRun>

@@ -1,0 +1,16 @@
+  Determining projects to restore...
+  Restored <worktree>/tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Vendor/Vendor.csproj (in 667 ms).
+  Restored <worktree>/tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/ThirdParty/ThirdParty.csproj (in 658 ms).
+  4 of 6 projects are up-to-date for restore.
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  ThirdParty -> <worktree>/tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/ThirdParty/bin/Release/net10.0/FrozenVendor.ThirdPartyNet10.dll
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  Vendor -> <worktree>/tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Vendor/bin/Release/net10.0/FrozenVendor.Contract1Net10.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.02

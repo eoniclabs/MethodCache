@@ -1,0 +1,26 @@
+{
+  "utc": "2026-10-17T01:43:07.643467+00:00",
+  "reproduced_issue": "GittextnormalizationchangedoneWindowsconsolelogblobbutnotitsworking-filehash",
+  "regression": "5tests;6line-ending-subtestsfailbeforeattribute,5testspassafterward",
+  "fixture_git_settings": {
+    "core.autocrlf": true,
+    "core.safecrlf": false
+  },
+  "formats": [
+    "log",
+    "jsonl",
+    "json",
+    "md",
+    "patch",
+    "ps1"
+  ],
+  "test_source": "build/ci/tests/test_repository_paths.py",
+  "test_source_sha256": "15e10b3f6f93993b5dbdc84378ed15d39844cb053fd34eb2033bb9fd67293c55",
+  "attributes_sha256": "5d23d123f55bedd686f5e476b403f659372eb9008fc82b4b4b8db2269f288fb8",
+  "whole_published_batch_git_object_verification": {
+    "files": 7521,
+    "proof_directories": 27,
+    "mismatches_after_fix": 0
+  },
+  "runtime_changes": "none"
+}

@@ -87,6 +87,7 @@ public class HttpResponseHeaderTests
     private static ServiceProvider Provider(Origin origin, TimeProvider? time = null)
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         if (time != null) services.AddSingleton(time);
         services.AddHttpClient("api").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         return services.BuildServiceProvider();

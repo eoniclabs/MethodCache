@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -21,9 +20,9 @@ namespace MethodCache.Analyzers
         public const string AttributeOnClassDiagnosticId = "MC0001";
 
         /// <summary>
-        /// The id of the diagnostic for a time span that is not a positive TimeSpan (MC0004).
+        /// The id of the diagnostic for a time span that is not a positive duration (MC0002).
         /// </summary>
-        public const string InvalidTimeSpanDiagnosticId = "MC0004";
+        public const string InvalidTimeSpanDiagnosticId = "MC0002";
 
         private const string Category = "Usage";
         private const string AttributeNamespace = "MethodCache";
@@ -44,17 +43,21 @@ namespace MethodCache.Analyzers
         internal static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(
             InvalidTimeSpanDiagnosticId,
             "Invalid time span",
-            "{0} = \"{1}\" is not a positive time span; use a value such as \"00:05:00\"",
+            "{0} = \"{1}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"",
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe and FailSafeTimeout on [Cache] and [assembly: CacheInterface] must be positive TimeSpan strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and RetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
             helpLinkUri: HelpLink(InvalidTimeSpanDiagnosticId));
 
-        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout" };
+        internal static readonly DiagnosticDescriptor InvalidVersionRule = new DiagnosticDescriptor(
+            "MC0021", "Invalid cache version", "Version must be non-negative when explicitly specified",
+            Category, DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0021"));
+
+        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "RetryAfter" };
 
         /// <inheritdoc />
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule, InvalidVersionRule);
 
         /// <inheritdoc />
         public override void Initialize(AnalysisContext context)
@@ -87,6 +90,8 @@ namespace MethodCache.Analyzers
 
                 if (isCache)
                 {
+                    if (HasNegativeVersion(attribute))
+                        Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidVersionRule);
                     foreach (var (property, text) in InvalidTimeSpans(attribute))
                     {
                         Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidTimeSpanRule, property, text);
@@ -116,6 +121,7 @@ namespace MethodCache.Analyzers
                 }
 
                 var location = reference.GetSyntax(context.CancellationToken).GetLocation();
+                if (HasNegativeVersion(attribute)) context.ReportDiagnostic(Diagnostic.Create(InvalidVersionRule, location));
                 foreach (var (property, text) in InvalidTimeSpans(attribute))
                 {
                     context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text));
@@ -127,14 +133,20 @@ namespace MethodCache.Analyzers
         {
             foreach (var argument in attribute.NamedArguments)
             {
-                if (Array.IndexOf(TimeSpanProperties, argument.Key) >= 0 &&
-                    argument.Value.Value is string text &&
-                    !(argument.Key == "FailSafe" && string.Equals(text, "off", StringComparison.OrdinalIgnoreCase)) &&
-                    (!TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) || value <= TimeSpan.Zero))
+                if (Array.IndexOf(TimeSpanProperties, argument.Key) < 0) continue;
+                var text = argument.Value.Value as string;
+                if (!MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
                 {
-                    yield return (argument.Key, text);
+                    yield return (argument.Key, text ?? "null");
                 }
             }
+        }
+
+        private static bool HasNegativeVersion(AttributeData attribute)
+        {
+            foreach (var argument in attribute.NamedArguments)
+                if (argument.Key == "Version" && argument.Value.Value is int version && version < 0) return true;
+            return false;
         }
 
         private static bool IsMethodCacheAttribute(INamedTypeSymbol? attributeClass, string name)

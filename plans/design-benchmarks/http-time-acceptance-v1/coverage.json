@@ -1,0 +1,701 @@
+{
+  "scope": "Case-scoped accepted final CPU coverage; all53existinglocalcases plus6affectedprefixmisses. No cross-study averaging; original full failed cohorts remain unchanged.",
+  "rules_sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+  "decision_sha256": "cca440a94aafdfe31e38df8d4e878b8912df79d4da50206f8924483dfa7ac99c",
+  "paired_reviewer_sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5",
+  "cost_reviewer_sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4",
+  "original_case_classification_sha256": "451ae809675e49adf76c5d358668d84e4ee68b689af2a1a38b988aae83b88b0b",
+  "source_impact_sha256": "e8b1186fce9dcd5c364a10eb2ac6cea266d9109f4d0794a1c13e1a1ee0154b49",
+  "verified_evidence": {
+    "cpu53": {
+      "manifest_sha256": "d8b3f68def1b039de06c8a072c1182b39340d1909a0aa11d702f01046238cb51",
+      "files_verified": 2562
+    },
+    "nonhttp9": {
+      "manifest_sha256": "6407f67def8fb08bb9d83e6ad0c2165a814d4f3d142ea91cf8440427da0fb2a5",
+      "files_verified": 848
+    },
+    "compact10": {
+      "manifest_sha256": "31886f741fb230f6487c3afa066a44f632b2bd490b3faf9c11517df6927be015",
+      "files_verified": 509
+    },
+    "mac14": {
+      "manifest_sha256": "ec22bab347eb705f4b71a76e3e58bb24fe3d17e3841462c4e1b65690f8b406e9",
+      "files_verified": 682
+    },
+    "nimbus2": {
+      "manifest_sha256": "35c04ef056444231457ae741896d1e580b7079c5a86f39cd81d7735f963a6a06",
+      "files_verified": 137
+    },
+    "cost67": {
+      "manifest_sha256": "73201b2b2ab7e1fd0baf16008b545a24f231ac2f8476ede6c8c56e5d521ea07f",
+      "files_verified": 38
+    }
+  },
+  "review_exits": {
+    "original_mac14_with_approved_rules": 1,
+    "mac12": 0,
+    "nimbus2": 0,
+    "cpu53": 0,
+    "nonhttp9": 0,
+    "compact10": 0,
+    "cost67": 0
+  },
+  "covered_cases": 59,
+  "accepted_time_cases": 5,
+  "missing": 0,
+  "too_wide": 0,
+  "unaccepted_slowdowns": 0,
+  "costs": "67 compared, 0 failing, 6 unchanged accepted costs",
+  "cases": [
+    {
+      "case": "DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=False)",
+      "pairs": 10,
+      "ratio": 0.9469947826038677,
+      "low": 0.9268149254022987,
+      "high": 0.9676140227129778,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)",
+      "pairs": 10,
+      "ratio": 1.0514678062971448,
+      "low": 1.045085640314806,
+      "high": 1.057888947116621,
+      "verdict": "accepted",
+      "time_cap": 1.06,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False)",
+      "pairs": 20,
+      "ratio": 0.4816582752256446,
+      "low": 0.4677387685427192,
+      "high": 0.4959920145515037,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True)",
+      "pairs": 20,
+      "ratio": 0.47389105787562036,
+      "low": 0.44681878439617734,
+      "high": 0.5026036115244304,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False)",
+      "pairs": 20,
+      "ratio": 0.474760334675847,
+      "low": 0.4576973895551517,
+      "high": 0.4924593858850538,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True)",
+      "pairs": 20,
+      "ratio": 0.4743702349467587,
+      "low": 0.4562351658083271,
+      "high": 0.4932261620051907,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.986065099760649,
+      "low": 0.970015710975989,
+      "high": 1.002380033605504,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=True)",
+      "pairs": 10,
+      "ratio": 0.9997600817671838,
+      "low": 0.9810086677773898,
+      "high": 1.0188699182033496,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.8547280953897597,
+      "low": 0.8260877626006297,
+      "high": 0.8843613840116814,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=True)",
+      "pairs": 10,
+      "ratio": 0.8573918218883956,
+      "low": 0.838570518507488,
+      "high": 0.8766355601786374,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.42087073374861156,
+      "low": 0.4123061884741032,
+      "high": 0.42961318427365847,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=True)",
+      "pairs": 10,
+      "ratio": 0.4200434587374934,
+      "low": 0.4128737656689517,
+      "high": 0.4273376559595354,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.4493676471859128,
+      "low": 0.42796080732695174,
+      "high": 0.4718452691933829,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True)",
+      "pairs": 20,
+      "ratio": 0.4456412855928705,
+      "low": 0.4334748832583441,
+      "high": 0.4581491641039469,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.8657454912317761,
+      "low": 0.8495102749630403,
+      "high": 0.8822909830263779,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=True)",
+      "pairs": 10,
+      "ratio": 0.8507086644984305,
+      "low": 0.8240087798040995,
+      "high": 0.8782736902691225,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+      "pairs": 10,
+      "ratio": 0.7915546484256852,
+      "low": 0.7682611808608869,
+      "high": 0.8155543675162791,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)",
+      "pairs": 10,
+      "ratio": 0.7710011985670295,
+      "low": 0.743379370122317,
+      "high": 0.7996493743080136,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.CollectionHit()",
+      "pairs": 10,
+      "ratio": 0.7367765439612962,
+      "low": 0.7109534252160793,
+      "high": 0.76353760524688,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.FallbackHit()",
+      "pairs": 20,
+      "ratio": 0.94526432322247,
+      "low": 0.932941247117362,
+      "high": 0.957750172926839,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.GenericHit()",
+      "pairs": 10,
+      "ratio": 0.8209784635684447,
+      "low": 0.8019058911480528,
+      "high": 0.8405046590669889,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.RecordHit()",
+      "pairs": 10,
+      "ratio": 0.9880221646056374,
+      "low": 0.9703482068175109,
+      "high": 1.0060180365084104,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.StringHit()",
+      "pairs": 10,
+      "ratio": 1.0212662004992912,
+      "low": 1.0082808745531682,
+      "high": 1.0344187602928299,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.SyncHit()",
+      "pairs": 20,
+      "ratio": 0.9846323253445393,
+      "low": 0.9629099851625313,
+      "high": 1.0068447010129933,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-nonhttp-warm32-v2",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.SyncMiss()",
+      "pairs": 10,
+      "ratio": 0.8295652729902793,
+      "low": 0.8227256167404848,
+      "high": 0.836461790114056,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.TaskHit()",
+      "pairs": 10,
+      "ratio": 0.9764137160342301,
+      "low": 0.9597243082525244,
+      "high": 0.9933933491751447,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.TaskMiss()",
+      "pairs": 10,
+      "ratio": 0.9432930148758814,
+      "low": 0.9155152992660932,
+      "high": 0.9719135361549104,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.ValueTaskHit()",
+      "pairs": 10,
+      "ratio": 0.9784201146504563,
+      "low": 0.9640970526231819,
+      "high": 0.9929559665677932,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedContractBenchmarks.ValueTaskMiss()",
+      "pairs": 10,
+      "ratio": 0.9110321439790904,
+      "low": 0.8842100080403436,
+      "high": 0.9386679180465337,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+      "pairs": 10,
+      "ratio": 0.795368163579244,
+      "low": 0.7821031753240022,
+      "high": 0.8088581348277321,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int)",
+      "pairs": 10,
+      "ratio": 0.6893147010188132,
+      "low": 0.6744200794013838,
+      "high": 0.7045382715508764,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)",
+      "pairs": 10,
+      "ratio": 0.7093958528669408,
+      "low": 0.6945369507468405,
+      "high": 0.7245726458810783,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int)",
+      "pairs": 10,
+      "ratio": 0.6624617010306796,
+      "low": 0.649613088652882,
+      "high": 0.6755644444334188,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.6974703731250661,
+      "low": 0.6847816972865268,
+      "high": 0.710394164030456,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.5645494102389017,
+      "low": 0.5621282201135402,
+      "high": 0.5669810288775691,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.7227467296187506,
+      "low": 0.707696345341533,
+      "high": 0.7381171862947915,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.6173104897776451,
+      "low": 0.6099631813668722,
+      "high": 0.6247463001546548,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.724201745020931,
+      "low": 0.7036831703089649,
+      "high": 0.7453186172707303,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "pairs": 10,
+      "ratio": 0.6146604702660141,
+      "low": 0.6064153903912208,
+      "high": 0.6230176537305561,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-compact-telemetry-cpu-v1",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.7855314419845895,
+      "low": 0.7777080889396476,
+      "high": 0.7934334940346416,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 1.1686908435216634,
+      "low": 1.1476927035641336,
+      "high": 1.1900731646108729,
+      "verdict": "accepted",
+      "time_cap": 1.2,
+      "study": "http-precision2-nimbus-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.7873057303491321,
+      "low": 0.7779651462265668,
+      "high": 0.7967584615417479,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 1.173201792023441,
+      "low": 1.156019404861103,
+      "high": 1.1906395680030906,
+      "verdict": "accepted",
+      "time_cap": 1.2,
+      "study": "http-precision2-nimbus-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.960189696021387,
+      "low": 0.9521487045185,
+      "high": 0.968298594505655,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.9671900346834771,
+      "low": 0.9457955769400057,
+      "high": 0.9890684477691991,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.9619372685628461,
+      "low": 0.9491520974514478,
+      "high": 0.9748946571731961,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.9832560574956561,
+      "low": 0.9653162192477674,
+      "high": 1.0015292971615912,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.5596002124573858,
+      "low": 0.5487966863705137,
+      "high": 0.570616415076038,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.5592756832676326,
+      "low": 0.554662917963345,
+      "high": 0.5639268098956419,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.56792058908059,
+      "low": 0.5466504848481991,
+      "high": 0.5900183104954342,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.5716301275991695,
+      "low": 0.5618511837668321,
+      "high": 0.5815792726257715,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 1.029980507594258,
+      "low": 1.0210042552716072,
+      "high": 1.0390356754604475,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 1.0228263925349845,
+      "low": 1.0146243794247,
+      "high": 1.031094709018641,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 1.0408949002435617,
+      "low": 1.0324066537724699,
+      "high": 1.0494529354242579,
+      "verdict": "accepted",
+      "time_cap": 1.06,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 1.0671930097653335,
+      "low": 1.0398583357425741,
+      "high": 1.0952462282073163,
+      "verdict": "accepted",
+      "time_cap": 1.08,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.9416925797122613,
+      "low": 0.9134849035614031,
+      "high": 0.9707712861239695,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.9812015224187983,
+      "low": 0.9729984237457192,
+      "high": 0.9894737793003576,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)",
+      "pairs": 10,
+      "ratio": 0.9604143936010447,
+      "low": 0.9540451385847264,
+      "high": 0.9668261700954591,
+      "verdict": "faster",
+      "time_cap": null,
+      "study": "http-client-index-final14-v1",
+      "paired_input": "raw/paired-input"
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=True)",
+      "pairs": 10,
+      "ratio": 0.9911030563694343,
+      "low": 0.9729134360539186,
+      "high": 1.0096327504006186,
+      "verdict": "same",
+      "time_cap": null,
+      "study": "mac-final-cpu53-v4",
+      "paired_input": "paired-input"
+    }
+  ]
+}

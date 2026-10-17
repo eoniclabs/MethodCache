@@ -1,0 +1,18 @@
+{
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "label": "methodcache-design-20261015-01a13a93-components-final-v3",
+  "sources": {
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/PrefixHitPathBenchmarks.cs": "c93d3e146e9fbc20c24ebda71f0c3f1aaf20cb7fd0b9383df0d87d43530a40f1",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/KeyHashLookupBenchmarks.cs": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "controller_sha256": "da11ce69e62a72fa2b9898e8bbd74e3623c5194f4fec3487d17c8fd77f5f112b",
+  "guard_sha256": "c7406101113975bff63aba7a9f139735e7f47a334cd8efd39b330f464a4913d4",
+  "scope": "Single-current-runtime diagnostic,30predeclaredcomponentcases/onefreshprocesspercase/4warmups12actual150ms. Keybuild8,hashlookup18,IMemoryCachereference4. Costprofile54cases. No before/after or time-gate pass inferred; existing paired full-path gates remain required.",
+  "activity_sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+  "preserved_predecessor": {
+    "folder": "components-final-v2",
+    "failure": "Compile-time guard namespace mismatch; qualify the diagnostic-only guard. No timing in either earlier attempt and no measured method/library changes."
+  }
+}

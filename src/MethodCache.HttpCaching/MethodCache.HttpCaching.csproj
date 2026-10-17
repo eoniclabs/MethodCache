@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
-    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -17,15 +17,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <InternalsVisibleTo Include="MethodCache.Docs.Tests" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching.IntegrationTests" />
   </ItemGroup>
 

@@ -1,0 +1,9 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedContractBenchmarks.SyncHit() | 61.6 | 67.8 | 1.099 | 1.064-1.136 | **too noisy** |
+| GeneratedContractBenchmarks.TaskHit() | 62.7 | 70.7 | 1.136 | 1.078-1.197 | **too noisy** |
+| GeneratedContractBenchmarks.ValueTaskHit() | 74.6 | 85.4 | 1.108 | 1.059-1.159 | **too noisy** |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 68.9 | 56.9 | 0.838 | 0.809-0.868 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 168.3 | 116.4 | 0.691 | 0.678-0.704 | faster |
+
+10 pairs, 5 compared, 0 slower, 3 too noisy, 0 without a time

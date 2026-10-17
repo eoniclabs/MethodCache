@@ -1,0 +1,9 @@
+/home/agent-admin/methodcache-design-bench-20261015/warmup-probe-v1/project/Program.cs(46,30): warning CA1416: This call site is reachable on all platforms. 'Process.ProcessorAffinity' is supported on: 'linux', 'windows'. (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1416) [/home/agent-admin/methodcache-design-bench-20261015/warmup-probe-v1/project/Profile.csproj]
+
+Build succeeded.
+
+/home/agent-admin/methodcache-design-bench-20261015/warmup-probe-v1/project/Program.cs(46,30): warning CA1416: This call site is reachable on all platforms. 'Process.ProcessorAffinity' is supported on: 'linux', 'windows'. (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1416) [/home/agent-admin/methodcache-design-bench-20261015/warmup-probe-v1/project/Profile.csproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.08

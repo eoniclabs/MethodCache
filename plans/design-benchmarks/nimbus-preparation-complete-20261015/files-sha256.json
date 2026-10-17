@@ -1,0 +1,22 @@
+{
+  "README.md": "d8032c129c83f465a947971a9252e5607d9414ebc6f856eb5151420a3f4f156b",
+  "components/completed/build-pr5": "2d19f9e2ac3c7d75f15df55d6b4f412d1b8ff1014f74a086777bf1735410bce1",
+  "components/completed/build-prefix": "d195aba1c0f02f7213608d3ec3145cf744144cea9085d9c440fe1c906ab01bc0",
+  "components/completed/setup-guards": "43140568b5cb4478e7e77c88a1348612cbae5df142a666f3baaa4528036eeba8",
+  "components/harness/pr5/PrefixValidation.csproj": "e171776499dd8417e299345927ab8be316f9c4dc999e0f326b05e24542e14203",
+  "components/harness/pr5/Program.cs": "91993909c10b0b750ae994ff925a7a3cce86bd7572d8f4bee79ea51eeb0bcfc1",
+  "components/harness/pr5/source-manifest.json": "44da18de282f7c79b7c5a5d1ce69431906660f6d05babbb8d72b415a146f8fdb",
+  "components/harness/prefix/PrefixValidation.csproj": "ad176c88e86454c401df442e976fd185efbc8b5ad47519ddf7328e2aeb3cf095",
+  "components/harness/prefix/Program.cs": "91993909c10b0b750ae994ff925a7a3cce86bd7572d8f4bee79ea51eeb0bcfc1",
+  "components/harness/prefix/source-manifest.json": "20db6ceeec7d770822f314a513a25f62526ae314ebc2960c39da44ad8b7be5dc",
+  "components/logs/build-pr5.log": "9d11e2e860fc9df30a939d661e6394a5ba487f396e90ef5fbf099bca85183215",
+  "components/logs/build-prefix.log": "1c74a82ce39fd5b5f10bbdf88589d9ae9fff64f282d8811ada639a7cf2d7cbc5",
+  "components/logs/setup-guards.log": "1017478069c0f5fe8263bc0c07851820a80c9ee298bc1e3de6037de643ecdc8f",
+  "components/preparation.log": "90ec273f48a53d1c0bfd81928a05a71896de3c45dcc245dfa2f4b36668b6e18e",
+  "components/sdk-info.txt": "2c80b752f15e4b5d595f3f02637cfb540dc0408bf75f228ce9acbc1e07cbcd7c",
+  "native/completed/verify-native": "16945f080eaf88800d29b36c9988a0521ea3a6e7bf55bbdbfc0c791bd3413ee0",
+  "native/driver.log": "dc8a6f7e3b56964713c752523c0c3cde0c2d6187a1db1f154efabf26be8f240a",
+  "native/harness/candidate/Program.cs": "56682306e85efd76e7ba4780d53d2ffbfeb20ebbf4e8158b70ac0a4d4f0e8304",
+  "native/harness/candidate/source-manifest.json": "e8ce12bfa8a33fffe76e0082b372b3e84c0338f41c52cbb5ec81ed14e889a322",
+  "native/logs/verify-native.log": "e1fb352891c97559afd3f17d5bfbdd42b94ca03522ebdcd095392feb68b32b07"
+}

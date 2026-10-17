@@ -1,0 +1,142 @@
+{
+  "scope": "Diagnostic feasibility pilot: published5257fb63 vs same production plus client-index-only patch92764360. Two fixed full HTTP cases,10alternatingpairs/40freshprocesses/32warmups12actual150ms. Same frozen workload/helper and .NET10.0.3 workstationInteractiveGC; unchanged6%precision and existing time rules. Compare directly with current code, not f438, so no cumulative acceptance inferred. Existing13semantic tests unchanged, new2isolation/accounting tests and fullHTTP345/Core1055 pass before this trial. Client invalidation becomes O(allresidentHTTPentries); preserve physical removal, all metadata/tags and generations. No full-matrix or new time waiver.",
+  "points": {
+    "baseline": "5257fb63fb72393c817d74292e989299ede374d2",
+    "final": "5257fb63fb72393c817d74292e989299ede374d2"
+  },
+  "head_kind": "uncommitted two-file production patch on5257fb63, actual sources/patch separately hashed",
+  "source_sha256": [
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Program.cs",
+      "sha256": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    }
+  ],
+  "activity_sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+  "pairs": 10,
+  "warmups": 32,
+  "cases": {
+    "main": [
+      "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+    ],
+    "int": []
+  },
+  "comparisons": [
+    {
+      "pr": "CI-00",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [
+          "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+        ],
+        "int": []
+      }
+    },
+    {
+      "pr": "CI-01",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [
+          "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+        ],
+        "int": []
+      }
+    }
+  ],
+  "host_quiet_limit_other_process_cpu_percent": 200,
+  "prior_prepared_sha256": "df6d295fc4d46d3615564aba9c6769eee51f59bbc4a1a4968df58e2a85c3ae4d",
+  "production_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
+  "frozen_reviewers": [
+    {
+      "path": "paired.py",
+      "sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5"
+    },
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "helper/Program.cs",
+      "sha256": "7bbceae89f86d45645cfd3c44c7bd41aba6abce189403ee3af0a418ebe5a0457"
+    },
+    {
+      "path": "helper/Profile.csproj",
+      "sha256": "76fb06b75bf60ea9bd106f4f1bf0d7c1240d9a6f55cb63b49b27af48a9599efd"
+    },
+    {
+      "path": "candidate-overlay.json",
+      "sha256": "ea470d3c4970c3f6cca91282ee4ede12cbe5727a33c32221c8dc9308a6752553"
+    },
+    {
+      "path": "production.patch",
+      "sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109"
+    },
+    {
+      "path": "candidate-src/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+    },
+    {
+      "path": "candidate-src/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+    },
+    {
+      "path": "prepare_host.py",
+      "sha256": "16eb299eb39f2dd26aeeba563c5ee42cfb5e969fa24504a4f617ddc7c0900cad"
+    }
+  ],
+  "controller_sha256": "354b0a20551fafa9a018f6087dad11c95c4725276728cd773f8b62981ec3c6a8"
+}

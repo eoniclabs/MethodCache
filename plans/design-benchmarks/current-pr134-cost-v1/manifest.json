@@ -1,0 +1,117 @@
+{
+  "scope": "Current PR134 direct-base deterministic cost comparison:419c786 to source-equivalent5257fb63,67cases/0failures/0acceptedexceptions. Complete unchanged raw cost rows reused from separate studies with7identicalcompiledharnesssourcesandpinnedSDK/runtime/backends. No paired time acceptance inferred; original historical reports remain unchanged.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "base-measurement-receipt.json",
+      "sha256": "8e70181cb56b54954b11fefc9c7c8b6438a271a024f38e9dea26bac1f5cf21a1",
+      "original_sha256": "5630850a44b4a9d17b578f8a2ede198e285ca736a9a37d4e5bf72af76d0caab8",
+      "catalogue_paths": [
+        [
+          "source_hashes"
+        ]
+      ]
+    },
+    {
+      "path": "base-sdk-info.txt",
+      "sha256": "53a4a83f988e3f9051ae76aaa4d39cef4e5ae5b297f91ecf771dc71bd0999c28"
+    },
+    {
+      "path": "base.jsonl",
+      "sha256": "9b5fcc6badd19063b23a4396fc32a31c4ab17ecb03388b78ae02e31fecf444ff"
+    },
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "head-completed-integrity.json",
+      "sha256": "2f0ad655ec9ef1756c1101c6320b0cbf05bdf55bf66d46ee879fbb659fac3717"
+    },
+    {
+      "path": "head-measurement-receipt.json",
+      "sha256": "51aa8bf131f81a76f7a96f23778213bf4b2751d6a3b86ceb89695fe6e2397fab"
+    },
+    {
+      "path": "head-prepared.json",
+      "sha256": "b55a61ea448229b1caf285db0f1358d51d5a902bb057ebf90ee8cd034c808b5c",
+      "original_sha256": "565800cf3f83c8e6dfb4551389de89a22a26b8f66b131d18574f071b8ec62cba",
+      "catalogue_paths": [
+        [
+          "source_hashes",
+          "base"
+        ],
+        [
+          "source_hashes",
+          "head"
+        ],
+        [
+          "binaries",
+          "base/main"
+        ],
+        [
+          "binaries",
+          "head/main"
+        ]
+      ]
+    },
+    {
+      "path": "head-profile-inputs.json",
+      "sha256": "23e0a9f358ceb66684e8a21e0f6deab4ecf4687df694abed380a1ceefd791ede",
+      "original_sha256": "5ddd4a40be5e202df376dc2ce6c5f6289c4638e2ca079825827499c3fe8b47c4",
+      "catalogue_paths": [
+        [
+          "sources",
+          "base",
+          "binaries"
+        ],
+        [
+          "sources",
+          "head",
+          "binaries"
+        ]
+      ]
+    },
+    {
+      "path": "head.jsonl",
+      "sha256": "5104153a9113c98aaf19ba3e0fb809cbe0b90bf9923f576485b8b173dfcf5dce"
+    },
+    {
+      "path": "provenance.json",
+      "sha256": "0ec7e2b2e30ef312dd1a0568aaaaaab94025e8eca20712da338861f9a511aaf3",
+      "original_sha256": "d3771215d12b5914554deb12de807a15013b0357c7fd074c024eb55121a596a9",
+      "catalogue_paths": [
+        [
+          "source_hashes"
+        ],
+        [
+          "upstream_inputs"
+        ]
+      ]
+    },
+    {
+      "path": "report.md",
+      "sha256": "b5c42c7292c0bd853051de9346620e6a7c1c7eccf9ca36e72d304994c09b10f1"
+    },
+    {
+      "path": "review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "review.log",
+      "sha256": "5fecac930ec178991406dbee55d2709b2bad1fee29c5e4031e19ccdc3a1c4fec"
+    },
+    {
+      "path": "study-notes.md",
+      "sha256": "8d63b40c0a28e95e2cd4d854a020c5afa793409e597a9270f7170e61f133cde9"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

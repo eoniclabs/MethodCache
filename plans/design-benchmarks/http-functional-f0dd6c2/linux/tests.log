@@ -1,0 +1,237 @@
+=== tests
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net8.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.AspNetCore.Tests/bin/Release/net8.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Core.Tests/bin/Release/net8.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Analyzers.Tests/bin/Release/net9.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Core.Tests/bin/Release/net9.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.AspNetCore.Tests/bin/Release/net9.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Analyzers.Tests/bin/Release/net8.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net9.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net9.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net8.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.Tests/bin/Release/net8.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.IntegrationTests/bin/Release/net8.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_28_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 457 ms - MethodCache.HttpCaching.IntegrationTests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.IntegrationTests/bin/Release/net9.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_29_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 682 ms - MethodCache.HttpCaching.IntegrationTests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 780 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_29_net9.0[1].trx
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 2 s - MethodCache.OpenTelemetry.Tests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 2 s - MethodCache.OpenTelemetry.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.Tests/bin/Release/net9.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net8.0[1].trx
+
+Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 2 s - MethodCache.HttpCaching.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.Tests/bin/Release/net8.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_29_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 4 s - MethodCache.AspNetCore.Tests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 4 s - MethodCache.AspNetCore.Tests.dll (net9.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.Tests/bin/Release/net9.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net10.0[1].trx
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 5 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net8.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_34_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 2 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net9.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_32_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: 7 s - MethodCache.Redis.IntegrationTests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_38_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 1 s - MethodCache.Redis.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_38_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 1 s - MethodCache.Redis.Tests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.Tests/bin/Release/net8.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_39_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 969 ms - MethodCache.Redis.Tests.dll (net10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_36_net9.0.trx
+
+Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 3 s - MethodCache.HttpCaching.Tests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.Tests/bin/Release/net9.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_38_net10.0.trx
+
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net8.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.Passed!  - Failed:     0, Passed:   322, Skipped:     0, Total:   322, Duration: 2 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net9.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_35_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: 7 s - MethodCache.Redis.IntegrationTests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_36_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: 7 s - MethodCache.Redis.IntegrationTests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.Tests/bin/Release/net8.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_32_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 17 s - MethodCache.Analyzers.Tests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_32_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 17 s - MethodCache.Analyzers.Tests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.Tests/bin/Release/net9.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_33_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 19 s - MethodCache.Analyzers.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_45_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 15 s - MethodCache.SourceGenerator.Tests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Benchmarks.Tests/bin/Release/net8.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_47_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 15 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Benchmarks.Tests/bin/Release/net9.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_53_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 7 s - MethodCache.Docs.Tests.dll (net10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_46_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net8.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Samples.Tests/bin/Release/net8.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_02_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    85, Skipped:     0, Total:    85, Duration: 2 s - MethodCache.Benchmarks.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Samples.Tests/bin/Release/net9.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_50_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_47_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 21 s - MethodCache.SourceGenerator.Tests.dll (net8.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_03_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    85, Skipped:     0, Total:    85, Duration: 2 s - MethodCache.Benchmarks.Tests.dll (net9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.CompatTests/bin/Release/net9.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v9.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.CompatTests/bin/Release/net8.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_50_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net9.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_06_net8.0.trx
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 1 s - MethodCache.Samples.Tests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_05_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    85, Skipped:     0, Total:    85, Duration: 2 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_08_net9.0.trx
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 1 s - MethodCache.Samples.Tests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_09_net10.0.trx
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 982 ms - MethodCache.Samples.Tests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_09_net8.0.trx
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 713 ms - MethodCache.CompatTests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_09_net9.0.trx
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 647 ms - MethodCache.CompatTests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_29_09_net10.0[1].trx
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 602 ms - MethodCache.CompatTests.dll (net10.0)
+[xUnit.net 00:00:45.75]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+[xUnit.net 00:00:45.93]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_31_net9.0.trx
+
+Passed!  - Failed:     0, Passed:  1023, Skipped:     1, Total:  1024, Duration: 43 s - MethodCache.Core.Tests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_30_net8.0[2].trx
+
+Passed!  - Failed:     0, Passed:  1023, Skipped:     1, Total:  1024, Duration: 44 s - MethodCache.Core.Tests.dll (net8.0)
+[xUnit.net 00:00:46.42]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_31_net10.0.trx
+
+Passed!  - Failed:     0, Passed:  1023, Skipped:     1, Total:  1024, Duration: 44 s - MethodCache.Core.Tests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_44_net8.0.trx
+
+Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration: 35 s - MethodCache.SqlServer.IntegrationTests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_44_net9.0.trx
+
+Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration: 35 s - MethodCache.SqlServer.IntegrationTests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_46_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration: 34 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_51_net9.0.trx
+
+Passed!  - Failed:     0, Passed:   533, Skipped:     0, Total:   533, Duration: 1 m 13 s - MethodCache.SourceGenerator.IntegrationTests.dll (net9.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_51_net8.0.trx
+
+Passed!  - Failed:     0, Passed:   528, Skipped:     0, Total:   528, Duration: 1 m 16 s - MethodCache.SourceGenerator.IntegrationTests.dll (net8.0)
+Results File: /home/agent-admin/methodcache-ci/runs/20261016-002732-f0dd6c204cd3/artifacts/test-results/_Nimbus_2026-10-15_22_28_54_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   533, Skipped:     0, Total:   533, Duration: 1 m 14 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)

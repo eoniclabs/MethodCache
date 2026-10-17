@@ -1,0 +1,11 @@
+Exact complete cohort is terminal; independent verification starts nonhttp 2026-10-17T09:25:57.075775+00:00
+Traceback (most recent call last):
+  File "/tmp/methodcache-compact-nonhttp-review-observer-v1/observe.py", line 24, in <module>
+    (folder/'review.exit').write_text(str(r.returncode)+'\n');assert r.returncode==0,'Verifier failed; preserve data and inspect, never rerun measurements automatically'
+                                                                     ^^^^^^^^^^^^^^^
+AssertionError: Verifier failed; preserve data and inspect, never rerun measurements automatically
+Traceback (most recent call last):
+  File "/tmp/methodcache-compact-nonhttp-review-observer-v1/observe.py", line 24, in <module>
+    (folder/'review.exit').write_text(str(r.returncode)+'\n');assert r.returncode==0,'Verifier failed; preserve data and inspect, never rerun measurements automatically'
+                                                                     ^^^^^^^^^^^^^^^
+AssertionError: Verifier failed; preserve data and inspect, never rerun measurements automatically

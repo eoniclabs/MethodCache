@@ -1,0 +1,111 @@
+{
+  "purpose": "Fresh fixed nine-launch baseline precision study of all four hits. Parent starts on CPU2 before CLR; children inherit it. No BDN affinity characteristic is set. Actual OS CPU masks are sampled for all four benchmark child PIDs. Not acceptance.",
+  "fixed_launches": 9,
+  "startup_probe": "ProcessorCount=1;Affinity=4\n",
+  "supersedes": "V3 stopped with validation exit1: short binary display100 was misparsed, and BDN attempted an invalid zero-mask affinity after seeing ProcessorCount1. Original V3 logs/data stay separate, not pooled. V4 uses startup taskset only and verifies actual OS masks; fresh fixed nine launches.",
+  "owner": "methodcache-design-20261015-01a13a93",
+  "image": "sha256:28177d4fc98bf285dd0a62da2d22d2ef5f9e8d6adbc2500c8e49046b4ca4cdbf",
+  "sources": {
+    "prefix": {
+      "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+      "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+      "workloads_sha": "8063e9aa55b503be34a3b094a0130f1c6c5c8e7c",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+    }
+  },
+  "sdk": ".NET SDK:\n Version:           10.0.401\n Commit:            e34a38d2ae\n Workload version:  10.0.400-manifests.63b36e85\n MSBuild version:   18.9.11+e34a38d2a\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  24.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /usr/share/dotnet/sdk/10.0.401/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.12\n  Architecture: x64\n  Commit:       95017c711e\n\n.NET SDKs installed:\n  8.0.425 [/usr/share/dotnet/sdk]\n  9.0.318 [/usr/share/dotnet/sdk]\n  10.0.401 [/usr/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 8.0.31 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.20 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 8.0.31 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.20 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_CLI_TELEMETRY_OPTOUT              [1]\n  DOTNET_GENERATE_ASPNET_CERTIFICATE       [false]\n  DOTNET_NOLOGO                            [1]\n  DOTNET_RUNNING_IN_CONTAINER              [true]\n  DOTNET_SDK_VERSION                       [10.0.401]\n  DOTNET_USE_POLLING_FILE_WATCHER          [true]\n  DOTNET_VERSION                           [10.0.12]\n\nglobal.json file:\n  Not found\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+  "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              11th Gen Intel(R) Core(TM) i9-11900 @ 2.50GHz\nCPU family:                              6\nModel:                                   167\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                1\nCPU(s) scaling MHz:                      19%\nCPU max MHz:                             5200.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                4992.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid mpx avx512f avx512dq rdseed adx smap avx512ifma clflushopt intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               384 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Vulnerable\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT vulnerable\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+  "affinity_mask": 4,
+  "logical_cpu": 2,
+  "physical_core": 2,
+  "topology": "Observed 2026-10-15: CPU2 core2 sibling CPU10, max5200MHz; no host governor/boost/service changes.",
+  "gc": "concurrent workstation",
+  "lease": "/srv/skribera-ci/ci-build-capacity.lock",
+  "batch_max_seconds": 1500,
+  "helpers_sha256": {
+    "worker.py": "91839ace72e201682315b1fc9115a9944bd20284cb21884c997738d092d8067a",
+    "bdn_affinity.py": "e354dbe522842cfcacc335972d3403cac00298a255d191566f7d3f6079ec7065",
+    "run.py": "b2c03699aec4073fff35a1219b7cb2bb62d376705fdd398327555beb35664141",
+    "prepare.py": "d8f3ac6c36b03c5c42b08b724a16ffeeaf9ddbe80ae01fa114b4eaff826cd224"
+  },
+  "runs": [
+    {
+      "round": 1,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T17:43:39.645885+00:00",
+      "finished": "2026-10-15T17:58:31.195494+00:00",
+      "exit": 0
+    },
+    {
+      "round": 2,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T17:58:31.195828+00:00",
+      "finished": "2026-10-15T18:10:40.750497+00:00",
+      "exit": 0
+    },
+    {
+      "round": 3,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T18:10:40.750837+00:00",
+      "finished": "2026-10-15T18:22:52.287677+00:00",
+      "exit": 0
+    },
+    {
+      "round": 4,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T18:22:52.288026+00:00",
+      "finished": "2026-10-15T19:16:23.579497+00:00",
+      "exit": 0
+    },
+    {
+      "round": 5,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T19:16:23.579864+00:00",
+      "finished": "2026-10-15T19:56:13.176490+00:00",
+      "exit": 0
+    },
+    {
+      "round": 6,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T19:56:13.176840+00:00",
+      "finished": "2026-10-15T20:08:30.716491+00:00",
+      "exit": 0
+    },
+    {
+      "round": 7,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-15T20:08:30.716824+00:00",
+      "finished": "2026-10-16T06:39:27.479910+00:00",
+      "exit": 0
+    },
+    {
+      "round": 8,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-16T06:39:27.480515+00:00",
+      "finished": "2026-10-16T06:44:37.002948+00:00",
+      "exit": 0
+    },
+    {
+      "round": 9,
+      "revision": "prefix",
+      "group": "precision",
+      "started": "2026-10-16T06:44:37.003143+00:00",
+      "finished": "2026-10-16T07:12:02.483379+00:00",
+      "exit": 0
+    }
+  ]
+}

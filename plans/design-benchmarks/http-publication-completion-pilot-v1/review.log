@@ -1,0 +1,6 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7246.1 | 8861.5 | 1.226 | 1.206-1.246 | **slower** |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True) | 5238.2 | 5424.6 | 1.035 | 1.017-1.053 | **slower** |
+
+10 pairs, 2 compared, 2 slower, 0 too noisy, 0 without a time

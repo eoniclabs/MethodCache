@@ -1,0 +1,179 @@
+{
+  "scope": "Complete warmup-quality diagnostic only; all8predeclaredprocesses verified. No acceptance inferred from unpaired samples.",
+  "utc": "2026-10-17T05:24:10.726798+00:00",
+  "archive_sha256": "3534bf297b6b2661f9353edcf417b0335275e303ef5f95a3a906c864d19361d2",
+  "indexed_files_verified": 26,
+  "processes_verified": 8,
+  "actual_iterations": 12,
+  "quiet_samples": 60,
+  "summary": [
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "median_ns": 5113.39,
+      "first3_over_last3": 1.0155187176106968,
+      "actual_ns": [
+        5192.611753833516,
+        5137.845940580504,
+        5250.276150054765,
+        5114.917784775465,
+        5108.920249178533,
+        5160.955298466593,
+        5106.21782584885,
+        5097.581941401972,
+        5139.812773822563,
+        5113.260507940854,
+        5111.929764512596,
+        5114.95868702081
+      ]
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "median_ns": 5305.03,
+      "first3_over_last3": 1.0038666803097653,
+      "actual_ns": [
+        5329.836728919072,
+        5322.131968024901,
+        5303.675863044708,
+        5306.555991794001,
+        5406.269312393888,
+        5315.167020373515,
+        5299.46668081494,
+        5299.647283531409,
+        5319.573571024335,
+        5299.960384833051,
+        5301.632250990379,
+        5336.084854272779
+      ]
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "median_ns": 5371.38,
+      "first3_over_last3": 0.9989947725522663,
+      "actual_ns": [
+        5365.832458285386,
+        5368.262586306099,
+        5388.717671173763,
+        5361.220044591484,
+        5373.315700517836,
+        5372.510680379747,
+        5386.92538118527,
+        5381.8600402761795,
+        5359.76251438435,
+        5382.972741657077,
+        5373.664341196778,
+        5360.9736766398155
+      ]
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "median_ns": 5244.16,
+      "first3_over_last3": 1.0052779909435179,
+      "actual_ns": [
+        5243.724221380471,
+        5264.7037037037035,
+        5280.3408740179575,
+        5245.692585578002,
+        5240.599081088664,
+        5250.08406986532,
+        5276.494493546576,
+        5336.749368686868,
+        5241.257926487093,
+        5267.444654882155,
+        5227.918806116722,
+        5237.0625350729515
+      ]
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "median_ns": 7329.03,
+      "first3_over_last3": 1.0002200092860998,
+      "actual_ns": [
+        7432.84033203125,
+        7304.90234375,
+        7334.955322265625,
+        7327.56591796875,
+        7373.1612548828125,
+        7303.084228515625,
+        7340.9801025390625,
+        7327.4541015625,
+        7330.9459228515625,
+        7330.348876953125,
+        7333.3419189453125,
+        7498.286376953125
+      ]
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "median_ns": 10571.42,
+      "first3_over_last3": 1.0314453629852973,
+      "actual_ns": [
+        10519.000610351562,
+        10900.406005859375,
+        11198.692138671875,
+        10539.661254882812,
+        10545.262939453125,
+        11062.136596679688,
+        11003.7041015625,
+        10577.662841796875,
+        10467.4482421875,
+        11074.73974609375,
+        10565.3037109375,
+        10568.088623046875
+      ]
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "median_ns": 11164.31,
+      "first3_over_last3": 1.7479828085408489,
+      "actual_ns": [
+        25218.940795898438,
+        19253.419311523438,
+        14428.233154296875,
+        12481.040405273438,
+        10893.45751953125,
+        11882.888793945312,
+        11126.329956054688,
+        10926.510864257812,
+        11668.840087890625,
+        11205.195922851562,
+        10979.85986328125,
+        11014.650268554688
+      ]
+    },
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "median_ns": 7973.94,
+      "first3_over_last3": 2.4211574831546665,
+      "actual_ns": [
+        21237.3203125,
+        18425.938842773438,
+        13156.105712890625,
+        12042.523071289062,
+        9603.41552734375,
+        8903.569458007812,
+        7751.531494140626,
+        7975.395996093751,
+        7857.742919921875,
+        7362.5767822265625,
+        7610.38427734375,
+        7651.75732421875
+      ]
+    }
+  ]
+}

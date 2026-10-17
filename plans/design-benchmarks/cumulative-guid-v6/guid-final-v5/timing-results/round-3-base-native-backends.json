@@ -1,0 +1,18 @@
+{
+  "label": "methodcache-design-20261015-01a13a93-guid-timing-v6-round-3-base-native",
+  "images": {
+    "redis": {
+      "reference": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "image_id": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+    },
+    "sqlserver": {
+      "reference": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+      "image_id": "sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+    }
+  },
+  "redis_container_id": "ff3140c0295ae6a02d391a31e67f85a984515acc9586724772d3aa2c2bb12c61",
+  "sql_container_id": "de62ca973a51f964a949a64efb48160446390e535175ef537c87a4ad89f14539",
+  "verified_before": "2026-10-16T13:46:58.2713663+00:00",
+  "verified_after": "2026-10-16T13:53:21.7589855+00:00",
+  "child_exit": 0
+}

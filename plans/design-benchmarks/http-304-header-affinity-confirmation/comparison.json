@@ -1,0 +1,321 @@
+{
+  "confidence": "95%, Student t with df=8 over 9 independent run means",
+  "method_filter": null,
+  "base_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/checkouts/prefix",
+    "runtime_sha": "850cef8f3bc709eaf464b3c25e5ec898217fcc73",
+    "workloads_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.",
+    "canonical_program_sha256": "56682306e85efd76e7ba4780d53d2ffbfeb20ebbf4e8158b70ac0a4d4f0e8304",
+    "harness_program_sha256": "ddb8f1c106714e5198c6a7591491376289a110f780914c6b510eba3d06c0bbfb",
+    "http_verification_extension_sha256": "e8962156eeef8c00c573d766bf0a166be976b69c3081720b44eca57337b6cc6e"
+  },
+  "change_source": {
+    "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/http-304-header-v1/checkout",
+    "runtime_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "workloads_sha": "28ab9b22e02b0050a449c2bb1cfd977ec187ae25",
+    "source_sha256": {
+      "Comparison/GeneratedContractBenchmarks.cs": "c130e6fc1eb1ba3b5ee020efe4b549109d7731ac6e01946af8237a91d34cc9cd",
+      "Microbenchmarks/HttpResponsePathBenchmarks.cs": "211adcf624362866a8124ca93bbbd29d80bb2a4d75f2f4c86ea84c6c944fbda7",
+      "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+    "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.",
+    "canonical_program_sha256": "56682306e85efd76e7ba4780d53d2ffbfeb20ebbf4e8158b70ac0a4d4f0e8304",
+    "harness_program_sha256": "ddb8f1c106714e5198c6a7591491376289a110f780914c6b510eba3d06c0bbfb",
+    "http_verification_extension_sha256": "e8962156eeef8c00c573d766bf0a166be976b69c3081720b44eca57337b6cc6e"
+  },
+  "acceptance": "not determined; review feature equivalence and matching hit allocations",
+  "rows": [
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          14253.448820592288,
+          18186.87617529045,
+          17142.81518349724,
+          17175.387498554242,
+          15590.567467948718,
+          16292.295274646198,
+          14477.187403572276,
+          18384.98633091385,
+          21848.122859493527
+        ],
+        "mean_ns": 17039.07633494542,
+        "lower_ns": 15251.529652978978,
+        "upper_ns": 18826.623016911864,
+        "relative_half_width": 0.10490866094075568,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "change": {
+        "means_ns": [
+          14948.078511583444,
+          14177.094293842036,
+          12880.872610294118,
+          7925.53465909091,
+          12780.785702506597,
+          17957.118290743023,
+          14279.046339563864,
+          7308.512093663911,
+          19801.2676135077
+        ],
+        "mean_ns": 13562.034457199512,
+        "lower_ns": 10427.775563113537,
+        "upper_ns": 16696.293351285487,
+        "relative_half_width": 0.23110536284046448,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "relative_change": -0.204062814755683,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256,
+        8256,
+        8256,
+        8312,
+        8256,
+        8344,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7168,
+        7168,
+        7168,
+        7200,
+        7168,
+        7168,
+        7200,
+        7200,
+        7168
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=False&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          19194.81491644823,
+          14422.385484307359,
+          20327.378153858837,
+          15012.777094614925,
+          11687.242668140008,
+          15099.398236163921,
+          14909.90874229316,
+          20970.299604791395,
+          22770.799043395808
+        ],
+        "mean_ns": 17155.00043822374,
+        "lower_ns": 14284.85707050357,
+        "upper_ns": 20025.143805943906,
+        "relative_half_width": 0.16730651672413174,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "change": {
+        "means_ns": [
+          13260.553641494627,
+          14012.283668356878,
+          7060.840480535279,
+          17693.77707370101,
+          17643.304700391916,
+          13665.241840277778,
+          17940.676474656928,
+          13416.457618491322,
+          16482.539822765302
+        ],
+        "mean_ns": 14575.075035630116,
+        "lower_ns": 11929.23963565373,
+        "upper_ns": 17220.9104356065,
+        "relative_half_width": 0.18153151139931675,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "relative_change": -0.15038911901425478,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8344,
+        8256,
+        8312,
+        8256,
+        8256,
+        8312,
+        8344
+      ],
+      "change_allocated_bytes": [
+        7168,
+        7168,
+        7168,
+        7168,
+        7168,
+        7168,
+        7168,
+        7168,
+        7168
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=False"
+      ],
+      "base": {
+        "means_ns": [
+          16646.662383808904,
+          16415.487631890614,
+          20552.40776001292,
+          17735.533326337252,
+          14407.133432539684,
+          14184.593243539204,
+          20351.69875465008,
+          13475.070645591084,
+          21269.869402577544
+        ],
+        "mean_ns": 17226.49517566081,
+        "lower_ns": 14957.529540285948,
+        "upper_ns": 19495.46081103567,
+        "relative_half_width": 0.13171371264078524,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "change": {
+        "means_ns": [
+          18560.275135281383,
+          14493.91231439917,
+          13952.295845524493,
+          17338.29654539176,
+          18151.595412081613,
+          16977.590184678524,
+          17411.15105360326,
+          20075.47163483401,
+          17291.244359439832
+        ],
+        "mean_ns": 17139.09249835934,
+        "lower_ns": 15676.02552656159,
+        "upper_ns": 18602.159470157087,
+        "relative_half_width": 0.08536431972333439,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "relative_change": -0.005073735336771246,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256,
+        8256,
+        8256,
+        8256,
+        8344,
+        8256,
+        8312
+      ],
+      "change_allocated_bytes": [
+        7400,
+        7368,
+        7368,
+        7400,
+        7368,
+        7400,
+        7400,
+        7400,
+        7368
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    },
+    {
+      "case": [
+        "MethodCache.Benchmarks.Microbenchmarks",
+        "HttpResponsePathBenchmarks",
+        "Revalidated",
+        "Listening=True&AfterInvalidation=True"
+      ],
+      "base": {
+        "means_ns": [
+          17479.728092035864,
+          18305.75479433761,
+          17221.428219577556,
+          21688.914457476432,
+          17289.045817057293,
+          13392.803302046954,
+          17358.553962778296,
+          20425.934601870293,
+          17281.72064920684
+        ],
+        "mean_ns": 17827.098210709682,
+        "lower_ns": 16048.050276055239,
+        "upper_ns": 19606.146145364124,
+        "relative_half_width": 0.09979458875621577,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "change": {
+        "means_ns": [
+          18482.557150172488,
+          19355.111257856523,
+          15057.532371349094,
+          11559.825519390582,
+          13867.382422054106,
+          14342.373832244382,
+          12979.823174547982,
+          8110.940391318125,
+          14581.60352717144
+        ],
+        "mean_ns": 14259.683294011636,
+        "lower_ns": 11661.072294299882,
+        "upper_ns": 16858.29429372339,
+        "relative_half_width": 0.18223483271911395,
+        "launch_count": 9,
+        "degrees_of_freedom": 8
+      },
+      "relative_change": -0.20011192368676756,
+      "base_allocated_bytes": [
+        8256,
+        8256,
+        8256,
+        8312,
+        8256,
+        8256,
+        8256,
+        8256,
+        8256
+      ],
+      "change_allocated_bytes": [
+        7368,
+        7400,
+        7400,
+        7456,
+        7400,
+        7368,
+        7368,
+        7400,
+        7400
+      ],
+      "allocation_increase_observed": false,
+      "review": "insufficient_precision"
+    }
+  ]
+}

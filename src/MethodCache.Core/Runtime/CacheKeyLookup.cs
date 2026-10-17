@@ -4,7 +4,7 @@ using MethodCache.Infrastructure;
 namespace MethodCache
 {
     /// <summary>
-    /// Looks up a precomputed cache key through <see cref="ICacheManager.LookupAsync{T}"/>, which reports whether an
+    /// Looks up a precomputed cache key through <see cref="ICacheManager.TryGetAsync{T}"/>, which reports whether an
     /// entry is present separately from its value, so a cached <c>0</c>, <c>false</c> or <c>null</c> is a hit.
     /// </summary>
     internal static class CacheKeyLookup

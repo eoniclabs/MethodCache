@@ -1,0 +1,1562 @@
+{
+  "scope": "All76explicit specification requirements mapped to inspected assertions and exact source/report evidence. Performance accepted after explicit human decision; approval-publication exact-head CI pending.",
+  "head": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "head_scope": "Preceding exact functional source checkpoint. New changes are only approved acceptance rules, evidence and documentation; production/build/test sources identical.",
+  "spec_sha256": "6b027d20c56d7daa53cb9f42fe4e6008b2571e5c7e8308cd398df215ebc44ffa",
+  "rows": [
+    {
+      "id": "G01",
+      "spec_line": 685,
+      "scenario": "Kör fryst vendor-DLL mot ny Core utan att regenerera; sync/Task/ValueTask, tags, invalidation och CacheInterface.",
+      "required_outcome": "Rätt värden, samma nyckelidentitet, samma cachebeteende; manifest-hash oförändrad.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
+          "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
+        }
+      ]
+    },
+    {
+      "id": "G02",
+      "spec_line": 686,
+      "scenario": "Module initializer registrerar kontrakt 99 med känd bootstrap; Describe/factory har en räknare som kastar om den körs.",
+      "required_outcome": "Assembly kan laddas; AddMethodCache ger named versionfel; räknaren är noll, ingen TypeInitializationException.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
+          "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
+        }
+      ]
+    },
+    {
+      "id": "G03",
+      "spec_line": 687,
+      "scenario": "Analysera semantiska symbols i generated sources för hela SignatureCorpus.",
+      "required_outcome": "Alla runtimeanrop till MethodCache går genom Generated; användarsymboler/BCL tillåts.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Infrastructure/SourceGeneratorTestEngine.cs",
+          "sha256": "54d02f22c7e291a7eb1210cc45157769cbbd59b094043b1cdfe1ed4488e00af5"
+        }
+      ]
+    },
+    {
+      "id": "G04",
+      "spec_line": 688,
+      "scenario": "Två containrar, samma moduler, olika overrides/managers; dispose den ena.",
+      "required_outcome": "Ingen policy/generation/metrik/scope- eller disposalpåverkan i den andra.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs",
+          "sha256": "9cf8db3984eb34786ea56c20694f9d9880135dc30dc6cc20c29788292890f85b"
+        }
+      ]
+    },
+    {
+      "id": "G05",
+      "spec_line": 689,
+      "scenario": "Lägg cachebar DI-registrering efter AddMethodCache; jämför icke-cachebar sen registrering och upprepat AddMethodCache.",
+      "required_outcome": "Bara den sena odekorerade cachebara registreringen ger tydligt fel; ingen dubblering.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Explicit ordinary-late control and cacheable-late rejection pass in the published functional checkpoint; all 542 source-generator integration tests pass.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/QuickStartRegistrationTests.cs",
+          "sha256": "9b4ae9d65fc94242f762d467be75434b3eab0d25e5c79785867cd168f9dc22f8"
+        }
+      ],
+      "additional_evidence": "plans/design-benchmarks/final-g05-acceptance/manifest.json"
+    },
+    {
+      "id": "G06",
+      "spec_line": 690,
+      "scenario": "AutoRegister scoped med 0, 1 och 2 kandidater; explicit registrering med 2 kandidater.",
+      "required_outcome": "0/2 ger named fel, 1 blir scoped; explicit registrering behåller sin implementation/lifetime.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/QuickStartRegistrationTests.cs",
+          "sha256": "9b4ae9d65fc94242f762d467be75434b3eab0d25e5c79785867cd168f9dc22f8"
+        }
+      ]
+    },
+    {
+      "id": "G07",
+      "spec_line": 691,
+      "scenario": "Samma fixture under JIT och Native AOT; inkluderar modul i refererat hjälpbibliotek och explicit modulval.",
+      "required_outcome": "Samma kandidater och dekoratorer, ingen assemblynamnsbaserad gissning.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.AotSmokeTest/Program.cs",
+          "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1",
+          "previous_reviewed_sha256": "4e42c7c18d7c3bd514ac8514b0cf236dea534f8f3bf5bd0ae70c82da2feda8db"
+        }
+      ]
+    },
+    {
+      "id": "G08",
+      "spec_line": 692,
+      "scenario": "Två keyed scoped registreringar av samma interface med olika resultat; generiska closed instanser och bakgrundsrefresh.",
+      "required_outcome": "Isolerade nycklar/resultat; rätt inner/service key i ny scope; ingen användning efter dispose.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Docs.Tests/KeyedRegistrationTests.cs",
+          "sha256": "65e2196b170b9e2e10b17ee88e422ed5c292291e40bbf87798de16ee63d342ce"
+        }
+      ]
+    },
+    {
+      "id": "G09",
+      "spec_line": 693,
+      "scenario": "Stoppa anrop efter Capture av v1; byt till v2; fortsätt key-build/probe/load.",
+      "required_outcome": "Ingen v2-policy skrivs under v1-nyckeln; stale snapshot bypass/retry enligt §2.2.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs",
+          "sha256": "9cf8db3984eb34786ea56c20694f9d9880135dc30dc6cc20c29788292890f85b"
+        }
+      ]
+    },
+    {
+      "id": "G10",
+      "spec_line": 694,
+      "scenario": "Packa/installera alla sex tillägg och Core; försök blandade versioner.",
+      "required_outcome": "Exakt nuspec-intervall för varje tillägg; matchade versioner fungerar, mismatch nekas av strikt restore (NU1608 som error).",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "build/ci/check_package_restore.py",
+          "sha256": "cbbd3e6b867bdf228235fadd2c0dfab525bd58fd9a2f196bc208cc7e81ea8acf"
+        }
+      ]
+    },
+    {
+      "id": "G11",
+      "spec_line": 695,
+      "scenario": "Reservnycklar, sealed/provider/record/samling och Unicode-surrogates med samma typade data.",
+      "required_outcome": "Samma deterministiska identitet som helper; olika data/typer aliasar inte.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/GeneratedKeyPropertyTests.cs",
+          "sha256": "6bda5ff4a6cfa1fbf6bad1376610b649198326e56ce06375c700f730c2d950c8"
+        }
+      ]
+    },
+    {
+      "id": "G12",
+      "spec_line": 696,
+      "scenario": "Capture A; starta inline-/reservbyggare; byt policy till B före uppslag och försök även byggaren med en annan MethodCall/container.",
+      "required_outcome": "A använder bara A:s prefix och stale-regel; felbindning avvisas före cacheåtkomst. Ingen extra policy-läsning döljer racen.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs",
+          "sha256": "9cf8db3984eb34786ea56c20694f9d9880135dc30dc6cc20c29788292890f85b"
+        }
+      ]
+    },
+    {
+      "id": "G13",
+      "spec_line": 697,
+      "scenario": "Tom/liten/exakt full stackbuffer, långt prefix, långa escaped strängar, provider-parts och Unicode; styr heap-growth och miss följd av load.",
+      "required_outcome": "Exakt samma text som helper vid alla storlekar; miss lämnar nyckeln användbar; bara skrivna tecken läses och async-arbete äger sin materialiserade nyckel.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs",
+          "sha256": "9cf8db3984eb34786ea56c20694f9d9880135dc30dc6cc20c29788292890f85b"
+        }
+      ]
+    },
+    {
+      "id": "G14",
+      "spec_line": 698,
+      "scenario": "Kompilera hela SignatureCorpus för sync/Task/ValueTask samt generiska/provider/reservformer under stödda TFM och AOT; kör hit-benchmarks.",
+      "required_outcome": "KeyBuilder-konstruktorn/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje.",
+      "validation_report": "docs/developer/design-pr1-validation.md",
+      "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
+      "state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "open",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs",
+          "sha256": "88450fbf0ad32d496383c48a9019b57f25e9600ec3bc441603e0a28e60478e21"
+        },
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Infrastructure/SourceGeneratorTestEngine.cs",
+          "sha256": "54d02f22c7e291a7eb1210cc45157769cbbd59b094043b1cdfe1ed4488e00af5"
+        },
+        {
+          "path": "tests/MethodCache.AotSmokeTest/Program.cs",
+          "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1",
+          "previous_reviewed_sha256": "4e42c7c18d7c3bd514ac8514b0cf236dea534f8f3bf5bd0ae70c82da2feda8db"
+        },
+        {
+          "path": "tests/Directory.Build.props",
+          "sha256": "572cb65d677339dd446b4112ae275907bc4e14dfc85dd0deb4409da9c887f7bd"
+        },
+        {
+          "path": "build/ci/jobs.sh",
+          "sha256": "5360850795a1b563d3416e7dd9d53195543bba517653252aec0ded63c9578a05"
+        }
+      ],
+      "additional_cost_evidence": "plans/design-benchmarks/final-prefix-cost-v1/manifest.json",
+      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Time requirements remain open.",
+      "latest_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json"
+      ],
+      "affected_f05_confirmation": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json",
+      "previous_timing_state": "Exact5257fb63:affected10nonHTTPcasesPASS;whole14HTTPcasesFAIL5slow/1wide. Client-indextrialhasrelativepilotPASSbutnotadoptedorcumulativelyaccepted. Canonicaltimeboundsunchanged."
+    },
+    {
+      "id": "P01",
+      "spec_line": 706,
+      "scenario": "Kör varje rad i §5.1: fyll, stoppa en load/refresh, ändra policy, släpp arbetet.",
+      "required_outcome": "Nästa lokala uppslag använder ny generation; gammal laddning publicerar aldrig över den.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/PolicyTransitionTests.cs",
+          "sha256": "b14aafbb25f35acab9a51eee7654c8fe9d1744af9564a0902b1e3ab594030aa9"
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "spec_line": 707,
+      "scenario": "A/B delar L2; TTL=1h. A får privat override 1s; B återfyller efter method-invalidation.",
+      "required_outcome": "A läser inte B:s 1h-post; efter FakeTime +2s måste A ladda på nytt, B behåller sin policy.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendContract.cs",
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "spec_line": 708,
+      "scenario": "A/B har samma effektiva config men registrerar källor/tags i olika ordning.",
+      "required_outcome": "Samma shared-identitet och verklig L2-reuse; audit-only ändring orsakar inte ny load.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "spec_line": 709,
+      "scenario": "A reload till 1s; B kvar på 1h skriver efter A:s invalidation.",
+      "required_outcome": "A väljer inte B:s gamla policyrymd; när B reloadar delar de ny shared-identitet.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P05",
+      "spec_line": 710,
+      "scenario": "Override av/på, ändring, remove och restart med gammal privat L2-data kvar.",
+      "required_outcome": "Ny privat identitet per ändring/restart; remove väljer shared efter bekräftad invalidation; inga gamla värden återkommer.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendContract.cs",
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+        }
+      ]
+    },
+    {
+      "id": "P06",
+      "spec_line": 711,
+      "scenario": "L2-post publicerad vid t0, duration=10s; en ny nod läser vid t0+9s. Kör också med en lång factory före t0 och med CacheNullValues=false hos mottagaren.",
+      "required_outcome": "Lokal post går ut senast t0+10s; factorytid skiljs från CreatedAt; null-hit avvisas när null-caching är av.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendContract.cs",
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+        }
+      ]
+    },
+    {
+      "id": "P07",
+      "spec_line": 712,
+      "scenario": "Grupp-default Enabled=false i config, explicit metodtrue i attribut; även metodfalse med grupptrue.",
+      "required_outcome": "Metodspecifik inställning vinner oavsett source-priority; falskt värde bypassar allt.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P08",
+      "spec_line": 713,
+      "scenario": "Enabled=false; många samtidiga anrop, stale-post och refresh kvar; CacheInvalidate körs.",
+      "required_outcome": "Implementation körs per anrop utan joins/cache/stale; refresh lagrar inget; invalidation fungerar.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P09",
+      "spec_line": 714,
+      "scenario": "Egen async recording-manager och NoOp; även sync-genererad tjänst.",
+      "required_outcome": "Async går till vald manager med rätt options; NoOp laddar varje gång; sync-custom bypassar utan task-blockering.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P10",
+      "spec_line": 715,
+      "scenario": "Built-in sync med native provider; sedan async-only/unready lånad anslutning och pågående async refresh.",
+      "required_outcome": "Native bounded operation eller fail-open L1/factory, aldrig väntan på async task; korrekta generationer.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P11",
+      "spec_line": 716,
+      "scenario": "Invalidation för tre distinkta targets: två L2-success, ett storage-fel; en publication-failure.",
+      "required_outcome": "Requested=3, Local=3, Distributed=2, Queued=1, Published=1, PublicationQueued=1; inga falska alla-kvittenser.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs",
+          "sha256": "ee9c1d17f4158394845dbd96dc3ca1df3ab6b458f50b7abd043ab0f3a8b6a029"
+        }
+      ]
+    },
+    {
+      "id": "P12",
+      "spec_line": 717,
+      "scenario": "Tom/dubblett/invalid batch; cancellation före mutation och efter lokal mutation före L2.",
+      "required_outcome": "Validering först; exakta räknare; tidig cancel gör inget; sen cancel avslutar väntan men återhämtningen slutförs.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs",
+          "sha256": "ee9c1d17f4158394845dbd96dc3ca1df3ab6b458f50b7abd043ab0f3a8b6a029"
+        }
+      ]
+    },
+    {
+      "id": "P13",
+      "spec_line": 718,
+      "scenario": "Tappa method-frame till B eller håll L2 nere; låt A uppdatera.",
+      "required_outcome": "A:s lokala policy gäller direkt; B kan behålla gammal L1 till expiry; queue/status och dokumentation matchar.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+          "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+        }
+      ]
+    },
+    {
+      "id": "P14",
+      "spec_line": 719,
+      "scenario": "Supply mutable options/tags och ändra originalsamlingen efter publicering; CacheWhen avvisar ett L2-värde.",
+      "required_outcome": "Publicerad snapshot oförändrad; avvisat L2-värde används/lagras inte, factory körs.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/UserApiShapeTests.cs",
+          "sha256": "5454ff5623cd903c2abc88f5b9ca2ee749ecf1dc98c612361547814894ca652b"
+        }
+      ]
+    },
+    {
+      "id": "P15",
+      "spec_line": 720,
+      "scenario": "Bulk med L1/L2-hits, null/0/false, missar och samtidig writer.",
+      "required_outcome": "Factory får bara missar; slutvärdet följer publication-vinnaren; max samtidiga L2-reads är bounded.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs",
+          "sha256": "e62bec71b8c26b1277f9cefa3eb7c7e2114d169c90f5afac0f58511b90a7575f"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/DistributedCacheTests.cs",
+          "sha256": "53c77cc4590ba4e6f3cee37f199dc779b5867c7130e7dd8aa0e219c3e7615082"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/Extensions/CacheManagerExtensionsTests.cs",
+          "sha256": "14befd9af0a36c94d5ae6ff5d3b89d984fba9a1dc671747ed2124b247deee58c"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/Extensions/CacheLookupTests.cs",
+          "sha256": "e811fe27d2a00180fb18bc6ee0cbfcf57544436bd23e9bb9bdc824e135cdb2ac"
+        }
+      ],
+      "scope_note": "Both built-in and custom L2 lookup loops explicitly cap MaxDegreeOfParallelism at8; publication is sequential. Actual L2-hit/factory-miss and concurrent-publication-winner tests accompany presence-aware typedFound checks."
+    },
+    {
+      "id": "P16",
+      "spec_line": 721,
+      "scenario": "Reflektera offentliga async-metoder i användar-API och Generated-loader/invalidation.",
+      "required_outcome": "Token sist; bootstrap och synkrona helpers undantas; inga default(T)-som-miss-kontrakt.",
+      "validation_report": "docs/developer/design-pr2-validation.md",
+      "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/UserApiShapeTests.cs",
+          "sha256": "5454ff5623cd903c2abc88f5b9ca2ee749ecf1dc98c612361547814894ca652b"
+        }
+      ]
+    },
+    {
+      "id": "K01",
+      "spec_line": 732,
+      "scenario": "Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, 1.00:00:00, fraktion, whitespace/case.",
+      "required_outcome": "Samma ticks över net10.0, sv-SE/tr-TR; alla giltiga former accepterade.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.Tests/SourceGenerator/DurationGrammarTests.cs",
+          "sha256": "a1ca72e12f7b5da1b597443a69787a1c53aa0738e5cd7e65ae38a3d813ecf550"
+        }
+      ]
+    },
+    {
+      "id": "K02",
+      "spec_line": 733,
+      "scenario": "30, 0s, -1h, 1m30s, 1,5h, exponent, overflow och positivt sub-tick-värde; analyzers av.",
+      "required_outcome": "Generator/config ger named fel, aldrig tyst default; felaktig generatorinput producerar inget cachebeteende.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.Tests/SourceGenerator/DurationGrammarTests.cs",
+          "sha256": "a1ca72e12f7b5da1b597443a69787a1c53aa0738e5cd7e65ae38a3d813ecf550"
+        }
+      ]
+    },
+    {
+      "id": "K03",
+      "spec_line": 734,
+      "scenario": "Global FailSafe på; metodtext off och builder-zero; unset och retry/timeout=zero.",
+      "required_outcome": "Off/zero stänger av för metoden; unset ärver; retry/timeout-zero nekas.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/AttributeContractTests.cs",
+          "sha256": "3654f9d969fd9c20d60a511a2637e1072772ead021c67aa58d6c15d0d95ef34b"
+        }
+      ]
+    },
+    {
+      "id": "K04",
+      "spec_line": 735,
+      "scenario": "Version utelämnad, explicit 0 och -1; Enabled/Distributed unset kontra false.",
+      "required_outcome": "Frånvaro faller igenom; explicita giltiga värden respekteras; negativ Version nekas.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/AttributeContractTests.cs",
+          "sha256": "3654f9d969fd9c20d60a511a2637e1072772ead021c67aa58d6c15d0d95ef34b"
+        }
+      ]
+    },
+    {
+      "id": "K05",
+      "spec_line": 736,
+      "scenario": "Guid/DateTime/offset/enum/null och separators i Cache/CacheInvalidate-mallar.",
+      "required_outcome": "Samma Part-text och träffsäker invalidation i alla kulturer.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/AttributeContractTests.cs",
+          "sha256": "3654f9d969fd9c20d60a511a2637e1072772ead021c67aa58d6c15d0d95ef34b"
+        }
+      ]
+    },
+    {
+      "id": "K06",
+      "spec_line": 737,
+      "scenario": "Användartaggar/keytext som imiterar interna method/ClearAll-namn, U+0000 och lone surrogates.",
+      "required_outcome": "Bara rätt applikationstag påverkas; ingen intern generation/clear kan förfalskas.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/PolicyTransitionTests.cs",
+          "sha256": "b14aafbb25f35acab9a51eee7654c8fe9d1744af9564a0902b1e3ab594030aa9"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/DistributedTagIdentityPropertyTests.cs",
+          "sha256": "5f4571031e8e394913a9f5c47987ef066cd8e4d308873412f8ea15307cb3da56"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/KeyInjectionPropertyTests.cs",
+          "sha256": "fe8948a94cb6db809b3cb15bc98a0f653ccac0588def692cf9b979c9737e545c"
+        }
+      ]
+    },
+    {
+      "id": "K07",
+      "spec_line": 738,
+      "scenario": "Properties för overload/generic arity, closed types, keyed suffix och manual version-namespace.",
+      "required_outcome": "Ingen key-aliasing; G11-korpus fortsatt grön.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs",
+          "sha256": "88450fbf0ad32d496383c48a9019b57f25e9600ec3bc441603e0a28e60478e21"
+        },
+        {
+          "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/GeneratedCodeEdgeCaseTests.cs",
+          "sha256": "a872c4eff8219ebaa02353ffef7c013ad4f8e81f6568c46eb4766095e4b8e271"
+        },
+        {
+          "path": "tests/MethodCache.Docs.Tests/KeyedRegistrationTests.cs",
+          "sha256": "65e2196b170b9e2e10b17ee88e422ed5c292291e40bbf87798de16ee63d342ce"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/Extensions/CacheManagerExtensionsTests.cs",
+          "sha256": "14befd9af0a36c94d5ae6ff5d3b89d984fba9a1dc671747ed2124b247deee58c"
+        }
+      ]
+    },
+    {
+      "id": "K08",
+      "spec_line": 739,
+      "scenario": "Konsumera gamla raw-key-/attributformer och gamla diagnostik-id-konfigurationer.",
+      "required_outcome": "Avsiktligt nytt API/diagnostik rapporteras; CHANGELOG har id-mappning och migration utan shims.",
+      "validation_report": "docs/developer/design-pr3-validation.md",
+      "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SourceGenerator.Tests/SourceGenerator/DurationGrammarTests.cs",
+          "sha256": "a1ca72e12f7b5da1b597443a69787a1c53aa0738e5cd7e65ae38a3d813ecf550"
+        }
+      ]
+    },
+    {
+      "id": "D01",
+      "spec_line": 745,
+      "scenario": "Fyll key i N och N+1 samt två policyidentiteter; invalidiera från respektive version.",
+      "required_outcome": "Alla äldre logiska varianter blir L2-missar även utan backplane, inte bara avsändarens format.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/CrossFormatInvalidationTests.cs",
+          "sha256": "b0bd6c04ba2d762a96a39756003927da8984d3f02b104a424068dfdba0ef31e6"
+        }
+      ]
+    },
+    {
+      "id": "D02",
+      "spec_line": 746,
+      "scenario": "Samma fixture för tag, method och ClearAll; Unicode-identiteter och nytt frivilligt wire-fält; Ensure/Advance markerad HTTP-metadata.",
+      "required_outcome": "Båda versioner förstår invalidationen; okända optional fields påverkar inte identity; atomiska epochs kan inte återställas av omvänd leverans/retry.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/BackplaneWireTests.cs",
+          "sha256": "62848b0971b27d96d1e04dd571e2e438c8306ac5eb95eae88aa2d7b2e04ecf3c"
+        }
+      ]
+    },
+    {
+      "id": "D03",
+      "spec_line": 747,
+      "scenario": "Oläsbar ram/okänd obligatorisk operation med fylld L1.",
+      "required_outcome": "Lokal ClearAll, engångsvarning utan payload; ingen falsk leveransgaranti.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SqlServer.IntegrationTests/BackplaneAcknowledgementTests.cs",
+          "sha256": "8322b8bada68d2a4246bd797b3f490409b06a82badfd7c6be977c32800b7b68b"
+        }
+      ]
+    },
+    {
+      "id": "D04",
+      "spec_line": 748,
+      "scenario": "Gammalt format har TTL=1h; key-remove, fram till +6min; metadata outlives fortfarande posten.",
+      "required_outcome": "Gammal post återkommer inte när tidigare femminutersstamp skulle ha gått ut.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/CrossFormatInvalidationTests.cs",
+          "sha256": "b0bd6c04ba2d762a96a39756003927da8984d3f02b104a424068dfdba0ef31e6"
+        }
+      ]
+    },
+    {
+      "id": "D05",
+      "spec_line": 749,
+      "scenario": "Stoppa äldre write före fysisk transportcompletion; remove/newer write; släpp gammal transport.",
+      "required_outcome": "Gammal post läses aldrig som giltig efter invalidation; recovery/bounds följer §8.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/RetentionPublicationTests.cs",
+          "sha256": "1c9bb744f8fd68af1bef490c26efe1b5927891d39d1f6e5026f55cbeb0a05828"
+        }
+      ]
+    },
+    {
+      "id": "D06",
+      "spec_line": 750,
+      "scenario": "Försök korta retention efter att långlivad post lagrats; äldre/nyare atomic stamp-writes i omvänd ordning.",
+      "required_outcome": "Retention/max-stamp går aldrig bakåt; inkompatibel scope-retention nekas utan resurrection.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/EpochBackendContract.cs",
+          "sha256": "72d4abb10d817eb574e0edfc0ca0a2b734aa9aa793d014fd058ada72b7ac6e67"
+        }
+      ]
+    },
+    {
+      "id": "D07",
+      "spec_line": 751,
+      "scenario": "Configure KeyPrefix efter UseRedis/UseSqlServer men före container/start.",
+      "required_outcome": "Data, metadata, generationsnycklar och backplane använder samma prefix; annan app är isolerad.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Redis.Tests/OwnedTransportOptionsTests.cs",
+          "sha256": "ea69983a4f7d9d101b90b822e724c75c111cd2672c53a97ac045a3fde1b3aefe"
+        }
+      ]
+    },
+    {
+      "id": "D08",
+      "spec_line": 752,
+      "scenario": "Optionsvalidering utan frisk L2; DI-anslutningsfabrik; okänt SQL-schema och levererat migreringsskript.",
+      "required_outcome": "Fel i inställning/schema ger tydliga fel; giltig outage startar degraderat; inget tyst schema-byte.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.SqlServer.IntegrationTests/SchemaContractTests.cs",
+          "sha256": "e9e3d3233354b0127a383048fb8b1b2939add7562624aed49ec524c3b7d5137a"
+        }
+      ]
+    },
+    {
+      "id": "D09",
+      "spec_line": 753,
+      "scenario": "Private setter, Dog i List av Animal, korrekt polymorf context, RoundTrip på/av och Distributed=false.",
+      "required_outcome": "Kontrollens begränsning dokumenterad/testad; context bevarar data; false gör inga L2-read/write.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Core/PolymorphicContextTests.cs",
+          "sha256": "0e59e52951ef400d36fa7446113128f11de43eb976be6e601721ed57dc4ab076"
+        }
+      ]
+    },
+    {
+      "id": "D10",
+      "spec_line": 754,
+      "scenario": "Queue retry/publication failure, shutdown och reconnect med tappade meddelanden.",
+      "required_outcome": "Kö observerbar/bounded, rätt lokala clears, korrekt lost-at-shutdown-rapport och inga oobserverade exceptions.",
+      "validation_report": "docs/developer/design-pr4-validation.md",
+      "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/FaultInjection/BackplaneShutdownTests.cs",
+          "sha256": "24eb1da702f47ca987b45ceacd27b487393e5ff3eb5379d1100ff86f6e3cf998"
+        }
+      ]
+    },
+    {
+      "id": "T01",
+      "spec_line": 760,
+      "scenario": "Två containrar med MetricCollector; fast hit, miss, L2-hit, flight-join, refresh, stale och exception.",
+      "required_outcome": "Exakt en request-result per anrop; load-duration bara för faktisk origin/factory; containrar isolerade.",
+      "validation_report": "docs/developer/design-pr5-validation.md",
+      "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryRequestTests.cs",
+          "sha256": "35a6fc84888b1998b28519e16ea8a362db50083119593a04d0ecae037e09326e"
+        }
+      ]
+    },
+    {
+      "id": "T02",
+      "spec_line": 761,
+      "scenario": "Befintliga keys/tags/token/query innehåller canary-identiteter; defaults och explicit span-opt-in.",
+      "required_outcome": "Inga canaries i metrik/standardspans/loggar; opt-in gäller bara avsedda span-fält.",
+      "validation_report": "docs/developer/design-pr5-validation.md",
+      "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryPrivacyTests.cs",
+          "sha256": "59c16149e500d928ba9035aaf20dea2c6dbc113ecad49c355b278b9afd4fcca5"
+        }
+      ]
+    },
+    {
+      "id": "T03",
+      "spec_line": 762,
+      "scenario": "Registrera instrumentation före/efter Core och slå av lyssnare.",
+      "required_outcome": "Samma instrument; inga dekoratordubletter; allocation- och tidsgrind klaras.",
+      "validation_report": "docs/developer/design-pr5-validation.md",
+      "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
+      "state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "open",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.OpenTelemetry.Tests/CoreInstrumentationTests.cs",
+          "sha256": "f16e4e087405a6bdad83fe3036ab3286e47dda7cd9ca266778635a46750173a5"
+        },
+        {
+          "path": "tests/MethodCache.Core.Tests/Telemetry/CoreTelemetryTests.cs",
+          "sha256": "2baeaabb9a4a1daa7a439bd3f9227a3f7a2bc35f2f945050cd227bf84f16a333"
+        }
+      ],
+      "latest_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json"
+      ],
+      "affected_f05_confirmation": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json",
+      "previous_timing_state": "Exact5257fb63:affected10nonHTTPcasesPASS;whole14HTTPcasesFAIL5slow/1wide. Client-indextrialhasrelativepilotPASSbutnotadoptedorcumulativelyaccepted. Canonicaltimeboundsunchanged."
+    },
+    {
+      "id": "T04",
+      "spec_line": 763,
+      "scenario": "Storage queue och publication queue, L2 healthy men backplane disconnected/connecting/unknown.",
+      "required_outcome": "Kötyper/status separata; failureStatus respekteras; healthy L2 döljer inte backplanefel.",
+      "validation_report": "docs/developer/design-pr5-validation.md",
+      "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.AspNetCore.Tests/HealthCapabilityTests.cs",
+          "sha256": "581952a72a4ed51aa4cd2a6eb83f426215704f83301f38fec62fa3d79f80259f"
+        }
+      ]
+    },
+    {
+      "id": "T05",
+      "spec_line": 764,
+      "scenario": "Stats med method vikter, HTTP local bodies och bara observerade L2-svar.",
+      "required_outcome": "Rätt enheter och scope; observerade poster ökar inte resident entries/HTTP-bytes.",
+      "validation_report": "docs/developer/design-pr5-validation.md",
+      "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Contracts/MemoryStatisticsTests.cs",
+          "sha256": "43526a65b684a9aa0efdee471d95da8c8b716fe222ca6a0e981870e196501b45"
+        }
+      ]
+    },
+    {
+      "id": "F01",
+      "spec_line": 770,
+      "scenario": "CsCheck över slumpade seed, prefix/argument och alla delningspunkter; tomma delar, UTF-16-surrogates, escaping, olika buffertstorlekar, Append efter lookup och reservnycklar.",
+      "required_outcome": "Delad hash är exakt samma som helsträngshash för samma sluttext/seed; growth och Append lämnar aldrig gammal hash aktiv.",
+      "validation_report": "docs/developer/design-prefix-validation.md",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/PrefixHashPropertyTests.cs",
+          "sha256": "79ee276b20e924f041adab6e1584bceae21d15357e045b406dee6c8331112f09"
+        }
+      ]
+    },
+    {
+      "id": "F02",
+      "spec_line": 771,
+      "scenario": "Tvinga hashkollisioner via en intern testhook; skriv/hämta/ersätt/ta bort genom string-, span- och builder-vägar, inklusive konkurrerande publicering och eviction.",
+      "required_outcome": "Bara identisk ordinal nyckel är en träff; alla vägar hittar samma post; borttagning och frekvensspårning fungerar trots kollisioner.",
+      "validation_report": "docs/developer/design-prefix-validation.md",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/PrefixCollisionTests.cs",
+          "sha256": "516af47c6c2ec694d4d31fa0dc3b8cd28b6ffc98b0a4927857c7d30b305182a2"
+        }
+      ]
+    },
+    {
+      "id": "F03",
+      "spec_line": 772,
+      "scenario": "Två processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop.",
+      "required_outcome": "Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består.",
+      "validation_report": "docs/developer/design-prefix-validation.md",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.PackageSmokeTest.AddOns/SeedIsolationCheck.cs",
+          "sha256": "c7ed097fd81906cd251838b8542ef932aad5fab997ecfd662b2896d8e74717b3"
+        },
+        {
+          "path": "tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs",
+          "sha256": "a188eef738346d83c6f8d0e288a3b173190a185a2953049acb72a7bdf2f06f94"
+        }
+      ]
+    },
+    {
+      "id": "F04",
+      "spec_line": 773,
+      "scenario": "Granska algoritm/seed/hotmodell; kör algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med långa gemensamma prefix och kontrollerad arbetsmätning.",
+      "required_outcome": "Dokumenterat skydd mot avsiktlig hashflooding; regressioner mäts utan sleeps eller sköra nanosekundasserts. Slumpmässig fördelning ensam räknas inte som godkännande.",
+      "validation_report": "docs/developer/design-prefix-validation.md",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.Core.Tests/Properties/PrefixHashPropertyTests.cs",
+          "sha256": "79ee276b20e924f041adab6e1584bceae21d15357e045b406dee6c8331112f09"
+        }
+      ]
+    },
+    {
+      "id": "F05",
+      "spec_line": 774,
+      "scenario": "Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net10.0 och AOT, med korta/långa prefix och lyssnare av/på.",
+      "required_outcome": "Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten.",
+      "validation_report": "docs/developer/design-prefix-validation.md",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Scoped prefix full-path acceptance established: 13 complete affected whole cases pass after node-hash reuse, plus 15 earlier precise unaffected resident-hit cases with actual provenance retained. No studies pooled. JIT/native/vendor correctness and costs pass; cumulative V04 now has approved case-scoped acceptance; see final HTTP decision/replay.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "PASS scoped F05; cumulative V04 separately accepted with explicit five HTTP bounds",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
+          "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
+        },
+        {
+          "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+          "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c"
+        },
+        {
+          "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+          "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+        },
+        {
+          "path": "tests/MethodCache.AotSmokeTest/PrefixAotChecks.cs",
+          "sha256": "4ee98780386cae47f0ff04dfe10dbf5b4ef3c03abe4d055c20b7bbc28aff847a",
+          "verification": "Explicit native checks pass in separate evidence and published 3e9df33 AOT job."
+        },
+        {
+          "path": "tests/MethodCache.AotSmokeTest/Program.cs",
+          "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1",
+          "verification": "Explicit native checks pass in separate evidence and published 3e9df33 AOT job."
+        }
+      ],
+      "additional_cost_evidence": "plans/design-benchmarks/final-prefix-cost-v1/manifest.json",
+      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Separate final time acceptance is recorded in V04.",
+      "native_execution_gate": "PASS: explicit JIT/native execution and frozen vendor checks pass, including the published checkpoint AOT job.",
+      "native_execution_evidence": "plans/design-benchmarks/final-prefix-aot-v1/manifest.json",
+      "complete_prefix_time_evidence": "plans/design-benchmarks/final-prefix-time-v1/manifest.json",
+      "isolated_hash_reuse_evidence": "plans/design-benchmarks/eviction-hash-reuse-v1/manifest.json",
+      "candidate_time_evidence": [
+        "plans/design-benchmarks/eviction-cumulative-time-v1/manifest.json",
+        "plans/design-benchmarks/mac-eviction-cumulative-time-v1/manifest.json"
+      ],
+      "affected_followup_evidence": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json",
+      "unaffected_hit_scope": "Only EvictNode/OnTimerExpired node-hash memo calls changed; resident-hit paths and fields/layout unchanged. Four int controls also pass complete later53case study."
+    },
+    {
+      "id": "H01",
+      "spec_line": 780,
+      "scenario": "Befintliga HTTP freshness/no-cache/private/shared/Vary/304/ownership-tester mot ny adapter.",
+      "required_outcome": "Alla tidigare säkerhets- och protokollgarantier bevarade; metodduration/jitter/fail-safe ändrar inte svar.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/HttpCacheCorrectnessTests.cs",
+          "sha256": "68c14c77b5732952840d947115e7d607e88d1191d4d5964723d1d9f9808c4100"
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/HttpCacheIsolationTests.cs",
+          "sha256": "bc178510b38b633c55ae5a76c287da943f3073a6c8348b7da30fbc6110dd7998"
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+          "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        },
+        {
+          "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+          "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff",
+          "previous_reviewed_sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac",
+          "scope": "Published c9 client-index correction; prior source hash retained; full exact CI and unchanged removal/replacement facts pass."
+        },
+        {
+          "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+          "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1",
+          "previous_reviewed_sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae",
+          "scope": "Published c9 client-index correction; prior source hash retained; full exact CI and unchanged removal/replacement facts pass."
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+          "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1",
+          "previous_reviewed_sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d",
+          "scope": "Inspected publication candidate; exact5257fb63 now passes all14requiredCIjobs/fourSUCCESS,Core1055/HTTP343."
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+          "sha256": "cb841e1414a8d78298e0c4fa07de494aa2aadb372932142ad16054170e5dd284"
+        }
+      ],
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
+      "current_candidate_state": "Current assertions and full exact5257fb63CI pass; cumulative cost67pass; time acceptance remains open.",
+      "current_candidate_evidence": "plans/design-benchmarks/combined-functional-c9ec0db/manifest.json"
+    },
+    {
+      "id": "H02",
+      "spec_line": 781,
+      "scenario": "A:s origin/body-publicering stoppad; B POST/PUT/PATCH/DELETE bekräftas; gammal A fortsätter.",
+      "required_outcome": "Nytt uppslag på A/B väljer nya generationer; gammal response kan avslutas men återpubliceras inte.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/HttpNativeContract.cs",
+          "sha256": "2474e897abc0bdce98669cf7188f993265158da13b5234588eb9265372a9a393"
+        }
+      ]
+    },
+    {
+      "id": "H03",
+      "spec_line": 782,
+      "scenario": "Tappa alla backplane-meddelanden; A/B delar L2 och gör samma H02-fall.",
+      "required_outcome": "Fortsatt korrekt via delade generationer; inga lokala värde/epoch-kopior används.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/HttpNativeContract.cs",
+          "sha256": "2474e897abc0bdce98669cf7188f993265158da13b5234588eb9265372a9a393"
+        }
+      ]
+    },
+    {
+      "id": "H04",
+      "spec_line": 783,
+      "scenario": "Origin lyckas; generation-write/get hänger/felar; cancel efter origin; slå sedan på L2.",
+      "required_outcome": "Tydligt fel/cancel, origin körs en gång, återhämtning fortsätter; ingen normal framgång enbart Queued.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/HttpGenerationFaultTests.cs",
+          "sha256": "c36aa4b3326afd1deb38476b20b823731f78d6b09454e8f8c3e36d02da7288fa"
+        }
+      ]
+    },
+    {
+      "id": "H05",
+      "spec_line": 784,
+      "scenario": "Evict generationmetadata, kör N/N+1, collisions i URL-slots; dispatcha Advance i omvänd ordning och upprepa en tidigare operation efter ny invalidation.",
+      "required_outcome": "Atomisk revision går bara framåt; ingen återgång till gammalt namespace; collisions endast extra missar, inga caller/klientläckor.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/EpochBackendContract.cs",
+          "sha256": "72d4abb10d817eb574e0edfc0ca0a2b734aa9aa793d014fd058ada72b7ac6e67"
+        }
+      ]
+    },
+    {
+      "id": "H06",
+      "spec_line": 785,
+      "scenario": "Seed alla Vary/caller/formatvarianter; admin client-tag/custom-tag, Clear och per-observation remove under äldre publication. Skicka även tag/clear från en Core-nod utan HTTP-tillägg.",
+      "required_outcome": "Alla berörda gamla varianter oåtkomliga utan enumeration; gemensam metadata pensioneras även av Core-only-noden; resultat markerar bekräftat/queued korrekt.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/TestSupport/HttpNativeContract.cs",
+          "sha256": "2474e897abc0bdce98669cf7188f993265158da13b5234588eb9265372a9a393"
+        }
+      ]
+    },
+    {
+      "id": "H07",
+      "spec_line": 786,
+      "scenario": "Unsafe svar med samma-origin Location/Content-Location samt främmande origin.",
+      "required_outcome": "Rätt request- och mål-URL:er pensioneras; främmande origin invalidieras inte.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/HttpCacheCorrectnessTests.cs",
+          "sha256": "68c14c77b5732952840d947115e7d607e88d1191d4d5964723d1d9f9808c4100"
+        }
+      ]
+    },
+    {
+      "id": "H08",
+      "spec_line": 787,
+      "scenario": "Cookies enabled genom konfiguration före/efter AddHttpCaching; KeepCookies false/true.",
+      "required_outcome": "False stänger av/loggar en gång; true bevarar transport och ger full response-bypass, Only-if-cached=504.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/TransportCookieIsolationTests.cs",
+          "sha256": "6725dedeb02382d8bbbaf8383935a3605ce0f5219f4e0d016d304b633c0c2b7e"
+        }
+      ]
+    },
+    {
+      "id": "H09",
+      "spec_line": 788,
+      "scenario": "Samtidiga cookies, Set-Cookie på 200/304, redirect och dold transport.",
+      "required_outcome": "Ingen annans body/cookie återanvänds; inga jar-snapshot-races; okänd transport bypass om ej uttryckligen betrodd.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/TransportCookieIsolationTests.cs",
+          "sha256": "6725dedeb02382d8bbbaf8383935a3605ce0f5219f4e0d016d304b633c0c2b7e"
+        }
+      ]
+    },
+    {
+      "id": "H10",
+      "spec_line": 789,
+      "scenario": "Bypass/KeepCookies-klient muterar en URL med redan delad response-generation.",
+      "required_outcome": "Origin körs, generation pensioneras; bypass lämnar inte gamla variants åt andra callers.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+          "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        }
+      ]
+    },
+    {
+      "id": "H11",
+      "spec_line": 790,
+      "scenario": "Local HTTP och metodposter fyller sina budgetar; en HTTP-body större än hela MaxHttpBytes.",
+      "required_outcome": "Separat eviction; stor body returneras/streamas men sparas inte; bounded kostnadsberäkning.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+          "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        }
+      ]
+    },
+    {
+      "id": "H12",
+      "spec_line": 791,
+      "scenario": "L2-mode observerar >1024 representations; restart, remote delete och stats/listing.",
+      "required_outcome": "Register högst 1024, tomt efter restart; ObservedDistributed tydligt, aldrig global/resident garanti.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/HttpObservationAcceptanceTests.cs",
+          "sha256": "cbbddc33992b17713dc41e2d965a08d1d4faf6d55b3f5e38b209ed040a2da3ce"
+        }
+      ]
+    },
+    {
+      "id": "H13",
+      "spec_line": 792,
+      "scenario": "L2 saknas/egen app-IDistributedCache finns; AddHttpCaching utan Core och omvänd registreringsordning.",
+      "required_outcome": "Ingen app-cache-reserv; saknad Core ger fel; legitim inbördes ordning fungerar.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+          "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        }
+      ]
+    },
+    {
+      "id": "H14",
+      "spec_line": 793,
+      "scenario": "Admin observation med credential/query-canaries och långt adversarialt klientnamn.",
+      "required_outcome": "Bounded hashed identity; ingen body/credential/query läcker; tagg-escaping kan inte välja annan klient.",
+      "validation_report": "docs/developer/design-pr6-validation.md",
+      "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
+      "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+          "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        },
+        {
+          "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+          "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff",
+          "previous_reviewed_sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac",
+          "scope": "Published c9 client-index correction; prior source hash retained; full exact CI and unchanged removal/replacement facts pass."
+        },
+        {
+          "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+          "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1",
+          "previous_reviewed_sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae",
+          "scope": "Published c9 client-index correction; prior source hash retained; full exact CI and unchanged removal/replacement facts pass."
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+          "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1",
+          "previous_reviewed_sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d",
+          "scope": "Inspected publication candidate; exact5257fb63 now passes all14requiredCIjobs/fourSUCCESS,Core1055/HTTP343."
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+          "sha256": "cb841e1414a8d78298e0c4fa07de494aa2aadb372932142ad16054170e5dd284"
+        }
+      ],
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
+      "current_candidate_state": "Current assertions and full exact5257fb63CI pass; cumulative cost67pass; time acceptance remains open.",
+      "current_candidate_evidence": "plans/design-benchmarks/combined-functional-c9ec0db/manifest.json"
+    },
+    {
+      "id": "V01",
+      "spec_line": 799,
+      "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
+      "required_outcome": "Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna.",
+      "validation_report": "docs/developer/design-final-validation.md",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "build/ci/jobs.sh",
+          "sha256": "5360850795a1b563d3416e7dd9d53195543bba517653252aec0ded63c9578a05"
+        },
+        {
+          "path": "build/ci/windows.ps1",
+          "sha256": "d5ceeed1dbb2b9f5dd241d484a09084a9a78612bdad3da8b4fa9aff5c19d327f",
+          "previous_worktree_crlf_sha256": "7351f2031cdf8f9baf0e02d849610b2d50cccf6e80b7618f532da05d93d2176f",
+          "byte_verification": "Exact Git LF bytes; prior hash covered identical worktree text checked out as CRLF by eol=crlf. No source change."
+        },
+        {
+          "path": "tests/Directory.Build.props",
+          "sha256": "572cb65d677339dd446b4112ae275907bc4e14dfc85dd0deb4409da9c887f7bd"
+        }
+      ],
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json",
+      "candidate_checkout_regression": "Historical AUX checkout failure is retained; portable path fix and Git-byte preservation pass on all platforms at 3e9df33.",
+      "test_stabilization_evidence": [
+        "plans/design-benchmarks/docs-hit-probe-v1/manifest.json",
+        "plans/design-benchmarks/policy-deadline-isolation-v1/manifest.json"
+      ]
+    },
+    {
+      "id": "V02",
+      "spec_line": 800,
+      "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
+      "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
+      "validation_report": "docs/developer/design-final-validation.md",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "build/ci/jobs.sh",
+          "sha256": "5360850795a1b563d3416e7dd9d53195543bba517653252aec0ded63c9578a05"
+        },
+        {
+          "path": "tests/MethodCache.AotSmokeTest/Program.cs",
+          "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1",
+          "previous_reviewed_sha256": "4e42c7c18d7c3bd514ac8514b0cf236dea534f8f3bf5bd0ae70c82da2feda8db"
+        },
+        {
+          "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
+          "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
+        }
+      ],
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json"
+    },
+    {
+      "id": "V03",
+      "spec_line": 801,
+      "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API.",
+      "required_outcome": "Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses.",
+      "validation_report": "docs/developer/design-final-validation.md",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "not an independent timing requirement",
+      "reviewed_sources": [
+        {
+          "path": "build/ci/jobs.sh",
+          "sha256": "5360850795a1b563d3416e7dd9d53195543bba517653252aec0ded63c9578a05"
+        },
+        {
+          "path": "Directory.Build.props",
+          "sha256": "f55bd201827482878be9a3b02e09128e7643f213f5d2bee61c059be579df4034"
+        },
+        {
+          "path": "tests/MethodCache.Docs.Tests/ReadmeTests.cs",
+          "sha256": "471f766fa22c5b68d01cc3382190aab61da1d828a476c696b668f0c3214032d5"
+        }
+      ],
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json"
+    },
+    {
+      "id": "V04",
+      "spec_line": 802,
+      "scenario": "§10 steg 1 enligt integrationsbeslutet för designserien; full steg 1 och steg 2 mot f43854d samt berörda filtrerade CPU-mätningar.",
+      "required_outcome": "Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen ej uttryckligen godkänd försämring i den parade tidsmätningen.",
+      "validation_report": "docs/developer/design-final-validation.md",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "PASS approved case-scoped performance gate: all53existinglocalCPUcases+6affectedprefixmisses;59wholecases/5acceptedtimecosts/0unacceptedslow/0wide/0missing. All67costcasespasswith6unchangedacceptedcosts. Original full failed studies and source points retained.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "PASS with five exact human-approved HTTP caps; unchanged6%precision",
+      "reviewed_sources": [
+        {
+          "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+          "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+        },
+        {
+          "path": "benchmarks/MethodCache.CostProfile/compare.py",
+          "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+        },
+        {
+          "path": "benchmarks/MethodCache.CostProfile/paired.py",
+          "sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5"
+        },
+        {
+          "path": "benchmarks/MethodCache.CostProfile/accepted.json",
+          "sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+          "previous_reviewed_sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+        }
+      ],
+      "per_change_cost_evidence": "plans/design-benchmarks/per-change-cost-v1/manifest.json",
+      "per_change_cost_summary": "All12actualedges/67casesperside/0executionerrors;7pass/5historicalheadsretain17costfailures. Current134and137pass.",
+      "siphash_cpu_gate": "QuietMac133 all5casespasswithtwoexactauthorized8percentintcontrols;original-ruleandnoisyreportsretained.",
+      "siphash_cpu_evidence": "plans/design-benchmarks/mac-cpu-pr133-formal-v1/manifest.json",
+      "cumulative_time_evidence": "plans/design-benchmarks/final-paired-time-v3/manifest.json",
+      "cumulative_time_state": "PASS case-scoped approved59cases; no pooled means or original-cohort relabeling",
+      "latest_cumulative_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/mac-compact-telemetry-cpu-v1/manifest.json",
+        "plans/design-benchmarks/http-client-index-final14-v1/manifest.json"
+      ],
+      "isolated_http_correction_evidence": "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json",
+      "current_cumulative_cost": "PASS current runtime all67cases,0failures,6unchangedacceptedcosts",
+      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
+      "current_working_cost_state": "PASS replaywithapprovedcanonicalrules:67cases/0failures/6unchangedacceptedcosts",
+      "current_working_time_state": "PASS approved59case coverage",
+      "previous_timing_state": "All67case cumulativeA3 costs pass with unchanged six accepted costs. Final timing FAIL: four coldHTTP regressions, one listening304 regression and one wide listening304 interval; fixed9case nonHTTP confirmation passes.",
+      "current_working_cost_evidence": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json",
+      "integration_decision_evidence": "plans/design-benchmarks/design-integration-review-v1/decision.json",
+      "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json",
+      "approved_time_decision": "plans/design-benchmarks/http-time-acceptance-v1/decision.json",
+      "approved_time_replay": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json"
+    }
+  ],
+  "review_notes": "Johan approved alternative1 on2026-10-17. Five exact reasoned time caps active; all other correctness/cost/precision rules unchanged. Current59case CPU coverage and67casecostreplaypass. Exact7bfunctionalCIpasses; final approval publication requires actual new-head CI. No merge/release/PublicAPIpromotion/PR138integration.",
+  "latest_published_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "latest_functional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json",
+  "latest_published_functional_jobs": "PASS14jobs/fourSUCCESS;2639Linux/0failures/1intentionalsoakskip;3621/3839=94.3%;99properties,soak,cultures,AOT175,sevenpackages/add-ons/docs/nativebackends",
+  "approved_time_decision": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/decision.json",
+    "sha256": "cca440a94aafdfe31e38df8d4e878b8912df79d4da50206f8924483dfa7ac99c"
+  },
+  "current_time_acceptance": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json",
+    "sha256": "79884550de9114d7bd73b4b098804c492e1238ec0000fefc7ca4373264ff8d03",
+    "state": "PASS59wholecases/5accepted/0unacceptedslow/0wide/0missing;all53existinglocalCPUcases+6affectedprefixmisses",
+    "original_studies": "OriginalMac14stillfails2widewithapprovedrules;separatewholeNimbus2confirmationcoversonlythose2cases;no studiespooled."
+  },
+  "source_impact_review": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/source-impact.json",
+    "sha256": "e8b1186fce9dcd5c364a10eb2ac6cea266d9109f4d0794a1c13e1a1ee0154b49"
+  },
+  "current_cumulative_cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
+  "canonical_accepted_sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+  "integration_decision_evidence": "plans/design-benchmarks/design-integration-review-v1/decision.json",
+  "historical_inventory": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/inventory-before.json",
+    "sha256": "9142dac4b0ca254eb8d73c2f270857cfc5ad1776227fb34eac0776891c099bb7",
+    "scope": "Exact pre-approval inventory, including historical source hashes and failing/noisy verdicts. Retained without relabeling."
+  },
+  "current_candidate_required_ci": "Pending actual approval-publication head; prior7bgreen. Runtime/build/test sources unchanged."
+}

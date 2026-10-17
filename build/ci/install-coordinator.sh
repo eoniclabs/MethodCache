@@ -74,9 +74,9 @@ problems=0
 check() { # description command...
   if "${@:2}" > /dev/null 2>&1; then echo "  ok    $1"; else echo "  MISSING $1"; problems=1; fi
 }
-sdks_ok() { # the `dotnet --list-sdks` output on stdin has 8, 9 and 10
+sdks_ok() { # the `dotnet --list-sdks` output on stdin has a .NET 10 SDK
   local sdks; sdks=$(tr -d '\r')
-  for major in 8 9 10; do grep -q "^$major\." <<< "$sdks" || return 1; done
+  grep -q '^10\.' <<< "$sdks"
 }
 local_sdks() { dotnet --list-sdks | sdks_ok; }
 
@@ -84,7 +84,7 @@ echo "This Mac ($(hostname -s))"
 check "gh is signed in" gh auth status
 check "git" git --version
 check "python3 for checkout collection and result validation" python3 --version
-check ".NET SDKs 8, 9 and 10" local_sdks
+check ".NET 10 SDK" local_sdks
 echo "Nimbus ($nimbus)"
 check "SSH" ssh -o BatchMode=yes -o ConnectTimeout=15 "$nimbus" true
 check "Docker" ssh -o BatchMode=yes "$nimbus" docker info

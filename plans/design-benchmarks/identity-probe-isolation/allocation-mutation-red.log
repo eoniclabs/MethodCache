@@ -1,0 +1,83 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+Test run for /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.07]   Discovered:  MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.08]   Starting:    MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.10]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"···) [FAIL]
+[xUnit.net 00:00:00.10]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.10]       Expected: 16000
+[xUnit.net 00:00:00.10]       Actual:   3296000
+[xUnit.net 00:00:00.10]       Stack Trace:
+[xUnit.net 00:00:00.10]         /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs(32,0): at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key)
+[xUnit.net 00:00:00.10]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.11]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "url:\0�:�:é") [FAIL]
+[xUnit.net 00:00:00.11]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.11]       Expected: 16000
+[xUnit.net 00:00:00.11]       Actual:   20800
+[xUnit.net 00:00:00.11]       Stack Trace:
+[xUnit.net 00:00:00.11]         /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs(32,0): at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key)
+[xUnit.net 00:00:00.11]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.11]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "") [FAIL]
+[xUnit.net 00:00:00.11]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.11]       Expected: 16000
+[xUnit.net 00:00:00.11]       Actual:   18400
+[xUnit.net 00:00:00.11]       Stack Trace:
+[xUnit.net 00:00:00.11]         /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs(32,0): at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key)
+[xUnit.net 00:00:00.11]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.11]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"···) [FAIL]
+[xUnit.net 00:00:00.11]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.11]       Expected: 16000
+[xUnit.net 00:00:00.11]       Actual:   50400
+[xUnit.net 00:00:00.11]       Stack Trace:
+[xUnit.net 00:00:00.11]         /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs(32,0): at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key)
+[xUnit.net 00:00:00.11]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.11]   Finished:    MethodCache.HttpCaching.Tests
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"···) [10 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   3296000
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key) in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 32
+--- End of stack trace from previous location ---
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "url:\0�:�:é") [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   20800
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key) in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 32
+--- End of stack trace from previous location ---
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "") [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   18400
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key) in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 32
+--- End of stack trace from previous location ---
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(key: "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"···) [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   50400
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_WithoutTemporaryCopiesOnLittleEndian(String key) in /Users/johan/.codex/worktrees/http-core-store-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 32
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 4
+     Failed: 4
+ Total time: 0,3321 Seconds

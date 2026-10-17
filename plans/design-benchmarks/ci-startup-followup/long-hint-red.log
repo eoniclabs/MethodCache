@@ -1,0 +1,67 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/MethodCache.SourceGenerator.IntegrationTests.csproj (in 651 ms).
+  4 of 5 projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SourceGenerator.IntegrationTests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.07]   Discovered:  MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.08]   Starting:    MethodCache.SourceGenerator.IntegrationTests
+[xUnit.net 00:00:00.72]     MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long interface name") [FAIL]
+[xUnit.net 00:00:00.72]       System.IO.PathTooLongException : The path '/var/folders/64/4r64vhm52cx5s6j2tcfk2t8r0000gn/T/methodcache-generated-51fc8baa46184ad6ae3991621a64e611/Corpus.LongTypes.IaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDecorator.g.cs' is too long, or a component of the specified path is too long.
+[xUnit.net 00:00:00.72]       Stack Trace:
+[xUnit.net 00:00:00.72]            at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+[xUnit.net 00:00:00.72]            at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+[xUnit.net 00:00:00.72]            at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+[xUnit.net 00:00:00.72]            at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+[xUnit.net 00:00:00.72]            at System.IO.File.WriteToFileAsync(String path, FileMode mode, ReadOnlyMemory`1 contents, Encoding encoding, CancellationToken cancellationToken)
+[xUnit.net 00:00:00.72]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs(99,0): at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name)
+[xUnit.net 00:00:00.72]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.89]     MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long ASCII namespace") [FAIL]
+[xUnit.net 00:00:00.89]       System.IO.PathTooLongException : The path '/var/folders/64/4r64vhm52cx5s6j2tcfk2t8r0000gn/T/methodcache-generated-c205adeb0f4640988aee46ee90c16ab5/Corpus.Partaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.ISvcDecorator.g.cs' is too long, or a component of the specified path is too long.
+[xUnit.net 00:00:00.89]       Stack Trace:
+[xUnit.net 00:00:00.89]            at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+[xUnit.net 00:00:00.89]            at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+[xUnit.net 00:00:00.89]            at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+[xUnit.net 00:00:00.89]            at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+[xUnit.net 00:00:00.89]            at System.IO.File.WriteToFileAsync(String path, FileMode mode, ReadOnlyMemory`1 contents, Encoding encoding, CancellationToken cancellationToken)
+[xUnit.net 00:00:00.89]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs(99,0): at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name)
+[xUnit.net 00:00:00.89]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.89]   Finished:    MethodCache.SourceGenerator.IntegrationTests
+  Failed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long interface name") [625 ms]
+  Error Message:
+   System.IO.PathTooLongException : The path '/var/folders/64/4r64vhm52cx5s6j2tcfk2t8r0000gn/T/methodcache-generated-51fc8baa46184ad6ae3991621a64e611/Corpus.LongTypes.IaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDecorator.g.cs' is too long, or a component of the specified path is too long.
+  Stack Trace:
+     at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+   at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at System.IO.File.WriteToFileAsync(String path, FileMode mode, ReadOnlyMemory`1 contents, Encoding encoding, CancellationToken cancellationToken)
+   at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs:line 99
+--- End of stack trace from previous location ---
+  Passed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long Unicode namespace") [89 ms]
+  Failed MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(name: "long ASCII namespace") [85 ms]
+  Error Message:
+   System.IO.PathTooLongException : The path '/var/folders/64/4r64vhm52cx5s6j2tcfk2t8r0000gn/T/methodcache-generated-c205adeb0f4640988aee46ee90c16ab5/Corpus.Partaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.ISvcDecorator.g.cs' is too long, or a component of the specified path is too long.
+  Stack Trace:
+     at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException)
+   at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at System.IO.File.WriteToFileAsync(String path, FileMode mode, ReadOnlyMemory`1 contents, Encoding encoding, CancellationToken cancellationToken)
+   at MethodCache.SourceGenerator.IntegrationTests.Tests.SignatureCorpusTests.LongIdentifiers_EmitDistinctDeterministicSourceFiles(String name) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs:line 99
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 3
+     Passed: 1
+     Failed: 2
+ Total time: 1,1118 Seconds

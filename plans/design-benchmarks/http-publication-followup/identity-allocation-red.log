@@ -1,0 +1,56 @@
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj (in 106 ms).
+  5 of 6 projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.10]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"···) [FAIL]
+[xUnit.net 00:00:00.10]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "") [FAIL]
+[xUnit.net 00:00:00.10]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"···) [FAIL]
+[xUnit.net 00:00:00.10]     MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "url:\0�:�:é") [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"···) [11 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   3316800
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(String key) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 37
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "") [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   39200
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(String key) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 37
+   at InvokeStub_HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"···) [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   71200
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(String key) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 37
+   at InvokeStub_HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(key: "url:\0�:�:é") [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 16000
+Actual:   41600
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(String key) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/HttpStorageIdentityTests.cs:line 37
+   at InvokeStub_HttpStorageIdentityTests.Identity_PreservesFrozenUtf16Digest_AllocatingOnlyTheReturnedIdentity(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithOneArg(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+
+Failed!  - Failed:     4, Passed:     0, Skipped:     0, Total:     4, Duration: 20 ms - MethodCache.HttpCaching.Tests.dll (net10.0)

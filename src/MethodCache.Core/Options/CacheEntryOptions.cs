@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,31 +11,27 @@ namespace MethodCache
     /// </summary>
     public sealed class CacheEntryOptions
     {
+        internal static CacheEntryOptions Default { get; } = new Builder().Build();
         internal CacheEntryOptions(
             TimeSpan? duration,
             TimeSpan? slidingExpiration,
             TimeSpan? refreshAhead,
             IReadOnlyList<string> tags,
-            IReadOnlyList<Action<CacheContext>> onHitCallbacks,
-            IReadOnlyList<Action<CacheContext>> onMissCallbacks,
-            ICacheMetrics? metrics,
             int? version,
-            Func<CacheContext, bool>? predicate,
             TimeSpan? failSafe,
             TimeSpan? failSafeTimeout,
             TimeSpan? failSafeRetryAfter,
-            bool clearsTags = false)
+            bool clearsTags = false, bool? enabled = null, bool? distributed = null, Func<object?, bool>? cacheWhen = null)
         {
+            Enabled = enabled;
+            Distributed = distributed;
+            CacheWhen = cacheWhen;
             ClearsTags = clearsTags;
             Duration = duration;
             SlidingExpiration = slidingExpiration;
             RefreshAhead = refreshAhead;
             Tags = tags;
-            OnHitCallbacks = onHitCallbacks;
-            OnMissCallbacks = onMissCallbacks;
-            Metrics = metrics;
             Version = version;
-            Predicate = predicate;
             FailSafe = failSafe;
             FailSafeTimeout = failSafeTimeout;
             FailSafeRetryAfter = failSafeRetryAfter;
@@ -65,30 +62,36 @@ namespace MethodCache
         /// of its attribute and of the other lower layers instead of adding to them.
         /// </summary>
         public bool ClearsTags { get; }
+        /// <summary>Whether caching is enabled; unset inherits the default.</summary>
+        public bool? Enabled { get; }
+        /// <summary>Whether distributed caching is enabled; unset inherits the default.</summary>
+        public bool? Distributed { get; }
+        internal Func<object?, bool>? CacheWhen { get; }
+        /// <summary>Checks whether the typed result may be cached. A throwing predicate rejects the result.</summary>
+        /// <remarks>Custom managers apply this check both before publication and after distributed reads.</remarks>
+        public bool CanCache<T>(T value)
+        {
+            if (Enabled == false) return false;
+            try { return CacheWhen?.Invoke(value) != false; }
+            catch (Exception) { return false; }
+        }
+        /// <summary>Returns the canonical key for these options, applying an explicit-key version exactly once.</summary>
+        /// <remarks>Custom managers use this before storage; generated calls already carry their complete key.</remarks>
+        public string GetCacheKey(string key) => Runtime != null ? key : CacheManagerExtensions.GetCacheKey(key, Version);
+        internal CacheRuntimePolicy? Runtime { get; init; }
+        internal static CacheEntryOptions FromRuntime(CacheRuntimePolicy policy, bool preparedKey = true) => new(
+            policy.Duration, policy.SlidingExpiration, policy.RefreshAhead,
+            Array.AsReadOnly(policy.Tags.ToArray()), policy.Version,
+            policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
+            enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen)
+        { Runtime = preparedKey ? policy : null };
 
-        /// <summary>
-        /// Gets callbacks executed when the cache entry is served from cache.
-        /// </summary>
-        public IReadOnlyList<Action<CacheContext>> OnHitCallbacks { get; }
 
-        /// <summary>
-        /// Gets callbacks executed when the cache entry is resolved from the factory.
-        /// </summary>
-        public IReadOnlyList<Action<CacheContext>> OnMissCallbacks { get; }
-        /// <summary>
-        /// Gets the metrics sink for this call.
-        /// </summary>
-        public ICacheMetrics? Metrics { get; }
 
         /// <summary>
         /// Gets the version that is added to the key, so changing it skips entries stored under the old one.
         /// </summary>
         public int? Version { get; }
-
-        /// <summary>
-        /// Gets the predicate that decides whether a result is cached.
-        /// </summary>
-        public Func<CacheContext, bool>? Predicate { get; }
 
         /// <summary>
         /// Gets how long an expired value is kept as a fail-safe fallback; <see cref="TimeSpan.Zero"/> turns it off.
@@ -110,16 +113,26 @@ namespace MethodCache
         /// </summary>
         public sealed class Builder
         {
+            private bool? _enabled;
+            private bool? _distributed;
+            private Func<object?, bool>? _cacheWhen;
+            /// <summary>Enables or disables all caching for the invocation or method.</summary>
+            public Builder WithEnabled(bool enabled) { _enabled = enabled; return this; }
+            /// <summary>Enables or disables distributed reads and writes.</summary>
+            public Builder WithDistributed(bool distributed) { _distributed = distributed; return this; }
+            /// <summary>Stores and accepts only results satisfying the typed predicate.</summary>
+            public Builder CacheWhen<T>(Func<T, bool> predicate)
+            {
+                ArgumentNullException.ThrowIfNull(predicate);
+                _cacheWhen = new TypedCachePredicate<T>(predicate).Accept;
+                return this;
+            }
             private TimeSpan? _duration;
             private TimeSpan? _slidingExpiration;
             private TimeSpan? _refreshAhead;
             private readonly List<string> _tags = new();
             private bool _clearTags;
-            private readonly List<Action<CacheContext>> _onHitCallbacks = new();
-            private readonly List<Action<CacheContext>> _onMissCallbacks = new();
-            private ICacheMetrics? _metrics;
             private int? _version;
-            private Func<CacheContext, bool>? _predicate;
             private TimeSpan? _failSafe;
             private TimeSpan? _failSafeTimeout;
             private TimeSpan? _failSafeRetryAfter;
@@ -244,36 +257,6 @@ namespace MethodCache
             }
 
             /// <summary>
-            /// Adds a callback executed when the entry is served from cache.
-            /// </summary>
-            public Builder OnHit(Action<CacheContext> callback)
-            {
-                if (callback == null) throw new ArgumentNullException(nameof(callback));
-                _onHitCallbacks.Add(callback);
-                return this;
-            }
-
-            /// <summary>
-            /// Adds a callback executed when the entry is created via the factory.
-            /// </summary>
-            public Builder OnMiss(Action<CacheContext> callback)
-            {
-                if (callback == null) throw new ArgumentNullException(nameof(callback));
-                _onMissCallbacks.Add(callback);
-                return this;
-            }
-
-            /// <summary>
-            /// Attaches an observer that is told about this call's hit, miss or error. Applies to <c>GetOrCreateAsync</c> only;
-            /// configuring it for a cached method throws at startup.
-            /// </summary>
-            public Builder WithMetrics(ICacheMetrics metrics)
-            {
-                _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-                return this;
-            }
-
-            /// <summary>
             /// Sets a version that becomes part of the key, so entries cached under an older version are ignored.
             /// </summary>
             public Builder WithVersion(int version)
@@ -284,22 +267,6 @@ namespace MethodCache
                 }
 
                 _version = version;
-                return this;
-            }
-
-            /// <summary>
-            /// Skips the cache for this <c>GetOrCreateAsync</c> call when <paramref name="predicate"/> returns false: the factory
-            /// runs and its result is neither read from nor stored in the cache. Applies to <c>GetOrCreateAsync</c> only.
-            /// </summary>
-            public Builder When(Func<CacheContext, bool> predicate)
-            {
-                _predicate = predicate ?? throw new ArgumentNullException(nameof(predicate));
-                return this;
-            }
-
-            internal Builder WithPredicate(Func<CacheContext, bool>? predicate)
-            {
-                _predicate = predicate;
                 return this;
             }
 
@@ -323,15 +290,11 @@ namespace MethodCache
                     _slidingExpiration,
                     _refreshAhead,
                     new ReadOnlyCollection<string>(_tags.ToArray()),
-                    new ReadOnlyCollection<Action<CacheContext>>(_onHitCallbacks.ToArray()),
-                    new ReadOnlyCollection<Action<CacheContext>>(_onMissCallbacks.ToArray()),
-                    _metrics,
                     _version,
-                    _predicate,
                     _failSafe,
                     _failSafeTimeout,
                     _failSafeRetryAfter,
-                    _clearTags);
+                    _clearTags, _enabled, _distributed, _cacheWhen);
             }
         }
     }

@@ -1,0 +1,25 @@
+Waiting for exclusive capacity 123 2026-10-16T22:23:11.126648+00:00
+Finished cost worker 123 0 2026-10-16T22:27:53.164495+00:00
+Waiting for exclusive capacity 124 2026-10-16T22:28:03.164784+00:00
+Finished cost worker 124 0 2026-10-16T22:34:27.675422+00:00
+Waiting for exclusive capacity 125 2026-10-16T22:34:37.675837+00:00
+Finished cost worker 125 0 2026-10-16T22:51:02.581540+00:00
+Waiting for exclusive capacity 126 2026-10-16T22:51:12.581926+00:00
+Finished cost worker 126 0 2026-10-16T23:04:34.493827+00:00
+Waiting for exclusive capacity 127 2026-10-16T23:04:44.494127+00:00
+Finished cost worker 127 0 2026-10-16T23:14:39.922660+00:00
+Waiting for exclusive capacity 128 2026-10-16T23:14:49.923014+00:00
+Finished cost worker 128 0 2026-10-16T23:21:06.222042+00:00
+Waiting for exclusive capacity 129 2026-10-16T23:21:16.222379+00:00
+Finished cost worker 129 0 2026-10-16T23:30:45.155450+00:00
+Waiting for exclusive capacity 130 2026-10-16T23:30:55.155793+00:00
+Finished cost worker 130 0 2026-10-16T23:40:38.282258+00:00
+Waiting for exclusive capacity 132 2026-10-16T23:40:48.282624+00:00
+Finished cost worker 132 0 2026-10-16T23:50:08.590142+00:00
+Waiting for exclusive capacity 133 2026-10-16T23:50:18.590451+00:00
+Finished cost worker 133 0 2026-10-16T23:53:50.325573+00:00
+Waiting for exclusive capacity 134 2026-10-16T23:54:00.325917+00:00
+Finished cost worker 134 0 2026-10-16T23:56:38.027681+00:00
+Waiting for exclusive capacity 137 2026-10-16T23:56:48.028078+00:00
+Finished cost worker 137 0 2026-10-17T00:06:21.474641+00:00
+All per-change cost workers terminal; inspect profile exits separately 2026-10-17T00:06:31.475230+00:00

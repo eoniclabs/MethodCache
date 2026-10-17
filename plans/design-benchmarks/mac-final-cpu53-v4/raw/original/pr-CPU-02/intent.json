@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-17T02:46:22.013757+00:00",
+  "inputs_sha256": "200353c1e4f7b5e2b8e07045603bc11e01af01ee00a4de7c167fb14d9b2d36f9",
+  "prepared_sha256": "1ed19b94f25d4169c3e10eeff05c83351a144e195e0888d381d2be87cc88debf",
+  "comparison": {
+    "pr": "CPU-02",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "GeneratedContractBenchmarks.SyncMiss()",
+        "GeneratedContractBenchmarks.ValueTaskMiss()",
+        "GeneratedContractBenchmarks.TaskMiss()",
+        "HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False)"
+      ],
+      "int": []
+    }
+  },
+  "cases": {
+    "main": [
+      "GeneratedContractBenchmarks.SyncMiss()",
+      "GeneratedContractBenchmarks.ValueTaskMiss()",
+      "GeneratedContractBenchmarks.TaskMiss()",
+      "HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False)"
+    ],
+    "int": []
+  }
+}

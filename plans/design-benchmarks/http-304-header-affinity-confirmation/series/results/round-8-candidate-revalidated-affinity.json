@@ -1,0 +1,53 @@
+{
+  "root_pid": 3988172,
+  "benchmark_pids": [
+    "3988401",
+    "3988431",
+    "3988459",
+    "3988527"
+  ],
+  "processes": {
+    "3988172": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 34,
+      "mismatch": false
+    },
+    "3988221": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 10,
+      "mismatch": false
+    },
+    "3988401": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 5,
+      "mismatch": false
+    },
+    "3988431": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 6,
+      "mismatch": false
+    },
+    "3988459": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 7,
+      "mismatch": false
+    },
+    "3988527": {
+      "allowed_cpus": [
+        2
+      ],
+      "observations": 5,
+      "mismatch": false
+    }
+  }
+}

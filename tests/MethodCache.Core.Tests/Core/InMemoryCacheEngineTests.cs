@@ -26,7 +26,7 @@ public class InMemoryCacheEngineTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time);
     }
 
     private static CacheRuntimePolicy Policy(string method = "M", TimeSpan? duration = null) =>
@@ -560,11 +560,12 @@ public class InMemoryCacheEngineTests
     }
 
     [Theory]
-    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.Lru)]
-    [InlineData(MemoryCacheEvictionPolicy.Fifo)]
-    public async Task Size_IsBoundedByMaxItems(MemoryCacheEvictionPolicy policy)
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Fifo)]
+    public async Task Size_IsBoundedByMaxItems(int policyValue)
     {
+        var policy = (MemoryCacheEvictionPolicy)policyValue;
         var manager = CreateManager(o =>
         {
             o.MaxItems = 100;
@@ -577,7 +578,7 @@ public class InMemoryCacheEngineTests
         }
 
         var stats = await manager.GetStatsAsync();
-        stats.Entries.Should().BeLessThanOrEqualTo(100);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(100);
         stats.Evictions.Should().BeGreaterThanOrEqualTo(900);
     }
 
@@ -642,8 +643,8 @@ public class InMemoryCacheEngineTests
         }
 
         var stats = await manager.GetStatsAsync();
-        stats.MemoryUsage.Should().BeLessThanOrEqualTo(1000);
-        stats.Entries.Should().BeLessThanOrEqualTo(10);
+        stats.TotalWeight.Should().BeLessThanOrEqualTo(1000);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(10);
     }
 
     [Fact]
@@ -687,6 +688,35 @@ public class InMemoryCacheEngineTests
 
         _time.Advance(TimeSpan.FromDays(66));
         (await manager.ExistsAsync("a")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SparseTags_DoNotAllocateADictionaryPerEntry()
+    {
+        const int count = 1024;
+        static long Measure(bool tagged)
+        {
+            var engine = new MemoryCacheEngine(10_000, EngineEvictionMode.Fifo, static () => 0, count);
+            var nodes = Enumerable.Range(0, count).Select(i => new ValueNode<int>(i.ToString(), i)
+            {
+                PhysicalExpiresAt = long.MaxValue,
+                LogicalExpiresAt = long.MaxValue,
+                AbsoluteExpiresAt = long.MaxValue,
+                Tags = tagged ? ["tag:" + i] : null
+            }).ToArray();
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            foreach (var node in nodes) engine.Add(node);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            engine.Count.Should().Be(count);
+            engine.Clear();
+            return allocated;
+        }
+        // Warm both paths before comparing their extra indexing cost. Node/key construction is excluded.
+        _ = Measure(false); _ = Measure(true);
+        var withoutTags = Measure(false);
+        var withTags = Measure(true);
+        ((withTags - withoutTags) / (double)count).Should().BeLessThan(512,
+            "one-entry tags need a small index rather than a full concurrent dictionary per entry");
     }
 
     [Fact]
@@ -794,10 +824,11 @@ public class InMemoryCacheEngineTests
     }
 
     [Theory]
-    [InlineData(MemoryCacheEvictionPolicy.TinyLfu)]
-    [InlineData(MemoryCacheEvictionPolicy.Lru)]
-    public void ConcurrentWriters_CannotOutrunEviction(MemoryCacheEvictionPolicy policy)
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    public void ConcurrentWriters_CannotOutrunEviction(int policyValue)
     {
+        var policy = (MemoryCacheEvictionPolicy)policyValue;
         const int maxItems = 100;
         var writers = Math.Max(4, Environment.ProcessorCount * 2);
         var manager = CreateManager(o =>
@@ -863,7 +894,7 @@ public class InMemoryCacheEngineTests
     [Fact]
     public async Task ConcurrentMixedOperations_KeepInvariants()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheMemoryOptions { MaxItems = 500 }));
+        var manager = new InMemoryCacheManager(MsOptions.Create(new MethodCacheMemoryOptions { MaxItems = 500 }));
         var tagged = Policy() with { Tags = new[] { "t1", "t2" } };
 
         var workers = Enumerable.Range(0, Environment.ProcessorCount).Select(worker => Task.Run(async () =>
@@ -908,7 +939,7 @@ public class InMemoryCacheEngineTests
         // bound is exact once they are applied
         manager.Engine.Maintain();
         var stats = await manager.GetStatsAsync();
-        stats.Entries.Should().BeLessThanOrEqualTo(500);
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(500);
     }
 }
 

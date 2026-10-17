@@ -1,0 +1,57 @@
+Changed C# lines under src/ since 9c31e3b150b2: 1355 in 27 file(s)
+  src/MethodCache.AspNetCore/MethodCacheHealthCheck.cs: 9/9 changed lines covered
+  src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs: 10/10 changed lines covered
+  src/MethodCache.Core/Management/CacheEntryInfo.cs: 7/7 changed lines covered
+  src/MethodCache.Core/Management/HttpCacheAdministrator.cs: 14/18 changed lines covered
+         30 | public CacheEntryInfo? GetEntry(string key) => store.Find(key) is { } info ? store.Describe(info) : null;
+         35 | => store.InvalidateTagsAsync(tags, cancellationToken).AsTask();
+         37 | public ValueTask ClearAsync(CancellationToken cancellationToken = default) => store.ClearAsync(cancellationToken);
+         41 | public IReadOnlyList<CachedMethodInfo> GetMethods() => [];
+  src/MethodCache.Core/Management/InMemoryCacheAdministrator.cs: 9/9 changed lines covered
+  src/MethodCache.Core/PolicyPipeline/Resolution/PolicyResolver.cs: 1/1 changed lines covered
+  src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.Http.cs: 55/55 changed lines covered
+  src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs: 7/7 changed lines covered
+  src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs: 5/5 changed lines covered
+  src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs: 298/303 changed lines covered
+        283 | catch { Queue(slot, pending); throw; }
+        325 | catch { /* Its bounded transport operation reports the type and retains this target for recovery. */ }
+        403 | => await _distributed!.CheckAvailableAsync(token).ConfigureAwait(false);
+        437 | HashIdentityUtf16Streaming(key, digest);
+        438 | }
+  src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs: 12/12 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheEntry.cs: 21/21 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheInvalidationException.cs: 1/1 changed lines covered
+  src/MethodCache.HttpCaching/HttpCacheOptions.cs: 2/2 changed lines covered
+  src/MethodCache.HttpCaching/IHttpCacheStorage.cs: 5/6 changed lines covered
+         19 | => new(Task.WhenAll(keys.Select(key => InvalidateAsync(key, CancellationToken.None).AsTask())).WaitAsync(token));
+  src/MethodCache.HttpCaching/Internal/HttpCacheClientState.cs: 2/2 changed lines covered
+  src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs: 86/92 changed lines covered
+         69 | internal string ClientName => _keyName;
+         78 | catch
+         80 | _metrics?.Request("http", _keyName, RequestResult.Error);
+         81 | throw;
+        766 | await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+        777 | await RemoveUrlAsync(storage, urlKey, cacheKey, timeout.Token).ConfigureAwait(false);
+  src/MethodCache.HttpCaching/Internal/HttpCacheKeys.cs: 76/85 changed lines covered
+        185 | Span<byte> length = stackalloc byte[4];
+        186 | BinaryPrimitives.WriteInt32LittleEndian(length, checked(value.Length * 2));
+        187 | hash.AppendData(length);
+        188 | Span<byte> character = stackalloc byte[2];
+        189 | foreach (var item in value)
+        191 | BinaryPrimitives.WriteUInt16LittleEndian(character, item);
+        192 | hash.AppendData(character);
+        194 | }
+        221 | for (var i = 0; i < value.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(destination[(i * 2)..], value[i]);
+  src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs: 81/89 changed lines covered
+         22 | private IHttpCacheStorage Default => ForClient(string.Empty, _default);
+         24 | public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default) => Default.GetGenerationAsync(key, cancellationToken);
+         26 | public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default) => Default.InvalidateAsync(key, cancellationToken);
+         28 | public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default) => Default.GetAsync(key, cancellationToken);
+         30 | public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default) => Default.SetAsync(key, entry, timeToLive, cancellationToken);
+         32 | public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) => Default.RemoveAsync(key, cancellationToken);
+         34 | public ValueTask ClearAsync(CancellationToken cancellationToken = default) => core.ClearAsync(cancellationToken);
+         52 | throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
+  src/MethodCache.HttpCaching/Internal/HttpCacheTransportFilter.cs: 12/12 changed lines covered
+  src/MethodCache.HttpCaching/MethodCacheHttpClientBuilderExtensions.cs: 19/19 changed lines covered
+Diff coverage: 733/766 changed lines = 95.7% (minimum 80%)

@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-17T01:16:28.726060+00:00",
+  "inputs_sha256": "3d8132771e872048efb830c1fb5f4efb5b27640da73c736a84afa8f21d11627b",
+  "prepared_sha256": "d8756695221d77b101e9cbf540b330cf005096ccb6e948d56cc742fbd5d2b622",
+  "comparison": {
+    "pr": 7,
+    "base": "baseline",
+    "head": "final"
+  },
+  "cases": {
+    "main": [
+      "GeneratedContractBenchmarks.SyncHit()",
+      "GeneratedContractBenchmarks.TaskMiss()",
+      "GeneratedContractBenchmarks.ValueTaskMiss()"
+    ],
+    "int": []
+  }
+}

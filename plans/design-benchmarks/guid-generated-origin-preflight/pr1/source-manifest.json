@@ -1,0 +1,13 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/generated-contract-v1/MethodCache",
+  "runtime_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+  "workloads_sha": "33e864433543e0f258be232c27bb310cc2761e54",
+  "source_sha256": {
+    "Comparison/GeneratedContractBenchmarks.cs": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+    "Microbenchmarks/HttpResponsePathBenchmarks.cs": "26a7340764c6365248a4f557f3cf3eaf387e6ffb158f62699ba0fbb4a0841c9c",
+    "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+  },
+  "harness_program_sha256": "6c99ccdb3c33c72809ce4aba1432582d7fa2fbc9defc304ca03fc85984743131",
+  "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+  "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+}

@@ -1,0 +1,58 @@
+test_duplicate_case_is_not_silently_overwritten (test_cost_profile_timing.PairedCostProfileTests.test_duplicate_case_is_not_silently_overwritten) ... FAIL
+test_nonfinite_times_fail (test_cost_profile_timing.PairedCostProfileTests.test_nonfinite_times_fail) ... ok
+test_precise_deliberate_slowdown_requires_reason_and_bound (test_cost_profile_timing.PairedCostProfileTests.test_precise_deliberate_slowdown_requires_reason_and_bound) ... ok
+test_precise_equal_measurements_pass (test_cost_profile_timing.PairedCostProfileTests.test_precise_equal_measurements_pass) ... ok
+test_unpaired_launch_is_not_silently_discarded (test_cost_profile_timing.PairedCostProfileTests.test_unpaired_launch_is_not_silently_discarded) ... FAIL
+test_wide_accepted_slowdown_still_fails (test_cost_profile_timing.PairedCostProfileTests.test_wide_accepted_slowdown_still_fails) ... FAIL
+test_wide_faster_interval_still_fails (test_cost_profile_timing.PairedCostProfileTests.test_wide_faster_interval_still_fails) ... FAIL
+
+======================================================================
+FAIL: test_duplicate_case_is_not_silently_overwritten (test_cost_profile_timing.PairedCostProfileTests.test_duplicate_case_is_not_silently_overwritten)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/benchmarks/MethodCache.Benchmarks/validation/test_cost_profile_timing.py", line 53, in test_duplicate_case_is_not_silently_overwritten
+    self.assertNotEqual(0, self.compare([1] * 10, duplicate=True).returncode)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_unpaired_launch_is_not_silently_discarded (test_cost_profile_timing.PairedCostProfileTests.test_unpaired_launch_is_not_silently_discarded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/benchmarks/MethodCache.Benchmarks/validation/test_cost_profile_timing.py", line 50, in test_unpaired_launch_is_not_silently_discarded
+    self.assertNotEqual(0, self.compare([1] * 10, extra_base=True).returncode)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_wide_accepted_slowdown_still_fails (test_cost_profile_timing.PairedCostProfileTests.test_wide_accepted_slowdown_still_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/benchmarks/MethodCache.Benchmarks/validation/test_cost_profile_timing.py", line 46, in test_wide_accepted_slowdown_still_fails
+    self.assertNotEqual(0, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0 : | Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedContractBenchmarks.SyncHit() | 100.0 | 140.0 | 1.396 | 1.323-1.474 | accepted: Deliberate cost |
+
+10 pairs, 1 compared, 0 slower, 0 too noisy, 0 without a time
+
+
+======================================================================
+FAIL: test_wide_faster_interval_still_fails (test_cost_profile_timing.PairedCostProfileTests.test_wide_faster_interval_still_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/benchmarks/MethodCache.Benchmarks/validation/test_cost_profile_timing.py", line 41, in test_wide_faster_interval_still_fails
+    self.assertNotEqual(0, result.returncode, result.stdout)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0 : | Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedContractBenchmarks.SyncHit() | 100.0 | 70.0 | 0.693 | 0.622-0.772 | faster |
+
+10 pairs, 1 compared, 0 slower, 0 too noisy, 0 without a time
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.288s
+
+FAILED (failures=4)

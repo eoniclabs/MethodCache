@@ -1,0 +1,53 @@
+{
+  "scope": "Full publication candidate plus compact enabled operation scopes. Parent functional proof remains separately retained. Full Core1055pass/oneintentionalsoakskip and HTTP343pass. Allocation probe fails at200B/op before and passes unchanged128B bound after; all metric/error/activity semantics pass. Current full timing/cost and exact-head CI remain unproven.",
+  "files": [
+    {
+      "path": "compact-telemetry-core.trx",
+      "sha256": "53884f850b096ea508827a19562d9dbc983c2fe8ddd4d48ad085f973b63f4413"
+    },
+    {
+      "path": "compact-telemetry-http.trx",
+      "sha256": "ea92eb365fce518939124d542787c52eaf5e25688a9f75efa2eb516cf4bb2faf"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "6141d946d87c2ad0e77bc9db11779d0a25d347a9d26e95f79ce05352c8a5487e"
+    },
+    {
+      "path": "methodcache-compact-telemetry-core.log",
+      "sha256": "8c8054a5a5096fa668e241baacb9f9a37860e78bf0732f60a8e7f5cfcc1c0e9c"
+    },
+    {
+      "path": "methodcache-compact-telemetry-format.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "methodcache-compact-telemetry-http.log",
+      "sha256": "7edfbb99e20e83b7b650e62b44200b838551469471cde67ecacffdce1126b750"
+    },
+    {
+      "path": "methodcache-telemetry-size-red.log",
+      "sha256": "bf58161575c1eec3bf10ba834e89e3ead7b0ce24be80b764294956e07591b338"
+    },
+    {
+      "path": "publication.patch",
+      "sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb"
+    },
+    {
+      "path": "source/src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
+      "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
+    },
+    {
+      "path": "source/tests/MethodCache.Core.Tests/Telemetry/TelemetryOperationAllocationTests.cs",
+      "sha256": "e87bbefb228699aab0321b977d898642ea902315fe73280e5ff9e9e36b153acc"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "2d9581c0f2958cedd47c98f96ad32097853d96da75f66b754cd9b45fa4fba52d"
+    },
+    {
+      "path": "telemetry-size-red.trx",
+      "sha256": "03dc2f8a5587f438937a5467d29f9ef61d4d380adc04c4a57a707ef2b1cb2d81"
+    }
+  ]
+}

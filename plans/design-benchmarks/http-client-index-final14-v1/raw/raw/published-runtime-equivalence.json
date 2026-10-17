@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-17T10:17:01.327514+00:00",
+  "published_head": "c9ec0db33d1d5b27a68ff7a31d7437c603b360a5",
+  "prepared_sha256": "b0818dc4b5998e4e59326c38d706b6f6632bd86cda07cb34390b089b27d24bc9",
+  "source_files_audited": 224,
+  "scope": "Every runtime code/build input byte matches publishedc9ec0db3;only one explicitly listed uncompiled README differs because publication documents the client-invalidation tradeoff. Actual immutable library/source provenance retained. This receipt grants no timing or CI pass.",
+  "documentation_only_differences": [
+    {
+      "path": "src/MethodCache.HttpCaching/README.md",
+      "measured_sha256": "4d6d0bee466c8304bf423e4c24e305b9b3ff4b1aac6413830c8f3698040f1e05",
+      "publication_sha256": "65a4eb52e93639f73bb0d32e3ed7998e508cedeff15748a772c8d8a3bcc3a0ab"
+    }
+  ]
+}

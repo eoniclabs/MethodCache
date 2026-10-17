@@ -62,6 +62,7 @@ namespace MethodCache.SourceGenerator
                 GetAssemblyIdentity(symbol),
                 Utils.GetFullyQualifiedName(symbol),
                 Utils.GetFullyQualifiedName(symbol.OriginalDefinition),
+                Utils.GetFullyQualifiedName(symbol.IsGenericType ? symbol.ConstructUnboundGenericType() : symbol),
                 Utils.GetDecoratorFullName(symbol),
                 symbol.IsGenericType,
                 info.CachedMethods.Length > 0,
@@ -167,6 +168,9 @@ namespace MethodCache.SourceGenerator
 
                 if (cacheAttr != null)
                 {
+                    var attributeErrors = ValidateCacheAttribute(cacheAttr, method.Locations.FirstOrDefault());
+                    diagnostics.AddRange(attributeErrors);
+                    if (attributeErrors.Count != 0) continue;
                     var validation = ValidateCacheMethod(method);
                     if (validation.diagnostic != null)
                     {

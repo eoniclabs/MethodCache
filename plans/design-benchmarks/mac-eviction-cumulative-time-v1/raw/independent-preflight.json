@@ -1,0 +1,10 @@
+{
+  "scope": "Independent read-only frozen source/binary/patch verification during cohort; no timing values read or launches excluded",
+  "utc": "2026-10-17T01:19:28.341964+00:00",
+  "inputs_sha256": "3d8132771e872048efb830c1fb5f4efb5b27640da73c736a84afa8f21d11627b",
+  "prepared_sha256": "d8756695221d77b101e9cbf540b330cf005096ccb6e948d56cc742fbd5d2b622",
+  "source_files_per_side": 13,
+  "binary_files_verified": 444,
+  "runtime_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "source_diff_numstat": "2\t0\tsrc/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs"
+}

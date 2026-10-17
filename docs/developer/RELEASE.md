@@ -21,7 +21,7 @@ go-ahead for that release. Use `--github` to select GitHub Packages instead.
 ### The packages
 
 - [ ] `build/ci/linux.sh build packages` (it packs them first): all seven packages install and work in a fresh app,
-  with the .NET 8 and the current SDK.
+  with the supported .NET 10 SDK and runtime.
 - [ ] The version is right for the change (`release.sh` sets it in `version.json`): a breaking change after 1.0
   needs a new major version.
 - [ ] Each package's README (shown on the package page) matches what the package does.

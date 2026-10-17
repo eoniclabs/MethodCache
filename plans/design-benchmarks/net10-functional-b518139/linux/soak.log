@@ -1,0 +1,21 @@
+=== soak
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-182702-b518139fc469/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+/home/agent-admin/methodcache-ci/runs/20261015-182702-b518139fc469/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.12)
+[xUnit.net 00:00:00.07]   Discovering: MethodCache.Core.Tests
+[xUnit.net 00:00:00.19]   Discovered:  MethodCache.Core.Tests
+[xUnit.net 00:00:00.20]   Starting:    MethodCache.Core.Tests
+[xUnit.net 00:00:30.28]   Finished:    MethodCache.Core.Tests
+  Passed MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [30 s]
+  Standard Output Messages:
+ Ran 30 s with 32 workers: 41,638,244 loads (24,982,680 hot), 15,848,438 factory calls (316,652 failed), 5,547,712 reads, 2,778,404 writes, 2,598 invalidations
+ Stats: 28,968,328 hits, 21,128,994 misses, 18,111,930 evictions, 987 entries, weight 2,093,966 (max seen 2,101,017, bound 2,097,152), max entries seen 1,092
+ Managed memory after full GCs (MB): 12.2, 12.3, 12.2, 12.2, 12.2, 12.2, 12.2, 12.2, 12.3, 12.2, 12.1
+
+
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 30.5943 Seconds

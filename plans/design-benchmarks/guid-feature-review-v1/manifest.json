@@ -1,0 +1,422 @@
+{
+  "reviewed_utc": "2026-10-16T07:07:48.697450+00:00",
+  "scope": "Source-only classification correction before full measurement dispatch. No timing/workload/protocol/process change or performance acceptance.",
+  "old_summary_sha256": "72f00f0cad124eb96a249843962fe04a369ace2fa00cdf1d83d4dea5b9df6bff",
+  "new_summary_sha256": "d10b416c58d5e6b9496aaa0e5d4477324da20ec124c0aca414372f93d6e5cca1",
+  "pair_statistics_unchanged_sha256": "9d8f78f664d9dd06206d0ec26b576f13bf02ad45954a9c443c7129afca40bd95",
+  "red": "12 tests ran; 6 assertion subtest failures against original V4 analysis source. No import/compile failure.",
+  "green": "All 12 summary tests and all 52 benchmark-validation Python tests pass.",
+  "revisions": [
+    {
+      "revision": "base",
+      "runtime_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "option_available": false,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "402fa53d863016ee5fa760c58c245867ec732a1a793f4228dc276e2e489d1a82",
+          "lines": [
+            {
+              "line": 391,
+              "text": "if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51",
+          "lines": []
+        }
+      }
+    },
+    {
+      "revision": "pr1-base",
+      "runtime_sha": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+      "option_available": false,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "402fa53d863016ee5fa760c58c245867ec732a1a793f4228dc276e2e489d1a82",
+          "lines": [
+            {
+              "line": 391,
+              "text": "if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51",
+          "lines": []
+        }
+      }
+    },
+    {
+      "revision": "pr1",
+      "runtime_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "option_available": false,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "402fa53d863016ee5fa760c58c245867ec732a1a793f4228dc276e2e489d1a82",
+          "lines": [
+            {
+              "line": 391,
+              "text": "if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51",
+          "lines": []
+        }
+      }
+    },
+    {
+      "revision": "pr2",
+      "runtime_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "option_available": false,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "d725dcf1d53b3dbdb39fee3a377bc2a7dae14aebac658930a6aee8e54d1153b9",
+          "lines": [
+            {
+              "line": 409,
+              "text": "if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51",
+          "lines": []
+        }
+      }
+    },
+    {
+      "revision": "pr3",
+      "runtime_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "option_available": false,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "d725dcf1d53b3dbdb39fee3a377bc2a7dae14aebac658930a6aee8e54d1153b9",
+          "lines": [
+            {
+              "line": 409,
+              "text": "if (!RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51",
+          "lines": []
+        }
+      }
+    },
+    {
+      "revision": "pr4",
+      "runtime_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "1c3fe3357fbea6bc40d22d81fde99f469d297c22bdc00df9f739c452085b0889",
+          "lines": [
+            {
+              "line": 45,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 431,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "pr5",
+      "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "ad99b8f3614fecc212e8804cf22fc600bf95aec6f72461b94e4d4a40dc861a6e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 439,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "prefix",
+      "runtime_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "ad99b8f3614fecc212e8804cf22fc600bf95aec6f72461b94e4d4a40dc861a6e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 439,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "http",
+      "runtime_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "net10",
+      "runtime_sha": "1bafff182df69a4cf156280f904b9248bae8ce74",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "constructor-base",
+      "runtime_sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "constructor",
+      "runtime_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "siphash",
+      "runtime_sha": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "revision": "final",
+      "runtime_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+      "option_available": true,
+      "source": {
+        "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs": {
+          "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e",
+          "lines": [
+            {
+              "line": 46,
+              "text": "private readonly bool _verifyRoundTrip;"
+            },
+            {
+              "line": 436,
+              "text": "if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))"
+            }
+          ]
+        },
+        "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs": {
+          "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9",
+          "lines": [
+            {
+              "line": 10,
+              "text": "private bool _verifyRoundTrip = true;"
+            },
+            {
+              "line": 13,
+              "text": "public bool VerifyRoundTrip"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "log_hashes": {
+    "red.log": {
+      "original_sha256": "055afb3219164dee8e1ea5e4cbe9e85bb3c60c03f5f63a8b83d30310e381d2e6",
+      "stored_sha256": "208bbc9aec680f82980591c5069fb6607d802a98ae05fa3d43b3ff67a1f48ebc"
+    },
+    "green.log": {
+      "original_sha256": "6a4de457d4726975741ea8a20815f7dd26f68835fda11647551c1d56a1078487",
+      "stored_sha256": "6a4de457d4726975741ea8a20815f7dd26f68835fda11647551c1d56a1078487"
+    },
+    "all-validation.log": {
+      "original_sha256": "d9b9ec14ce5c17c6d98e9609e53e21c1cb0163a0a0af0eaaa8cc9e1ad7548cea",
+      "stored_sha256": "d9b9ec14ce5c17c6d98e9609e53e21c1cb0163a0a0af0eaaa8cc9e1ad7548cea"
+    }
+  }
+}

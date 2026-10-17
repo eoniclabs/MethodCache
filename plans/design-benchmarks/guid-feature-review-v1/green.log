@@ -1,0 +1,17 @@
+test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass (test_design_summary.DesignSummaryGuards.test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass) ... ok
+test_cookie_policy_addition_is_separate_from_ordinary_cached_hit (test_design_summary.DesignSummaryGuards.test_cookie_policy_addition_is_separate_from_ordinary_cached_hit) ... ok
+test_failed_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_failed_launch_is_rejected) ... ok
+test_generated_hits_and_unique_misses_have_distinct_allocation_roles (test_design_summary.DesignSummaryGuards.test_generated_hits_and_unique_misses_have_distinct_allocation_roles) ... ok
+test_missing_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_missing_launch_is_rejected) ... ok
+test_missing_pr_edges_are_rejected_after_complete_measurements (test_design_summary.DesignSummaryGuards.test_missing_pr_edges_are_rejected_after_complete_measurements) ... ok
+test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) ... ok
+test_roundtrip_disabled_is_comparable_after_option_exists (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_comparable_after_option_exists) ... ok
+test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) ... ok
+test_roundtrip_is_comparable_between_historical_revisions (test_design_summary.DesignSummaryGuards.test_roundtrip_is_comparable_between_historical_revisions) ... ok
+test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) ... ok
+test_same_count_duplicate_substitution_is_rejected (test_design_summary.DesignSummaryGuards.test_same_count_duplicate_substitution_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.001s
+
+OK

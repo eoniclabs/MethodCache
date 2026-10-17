@@ -31,7 +31,7 @@ namespace DefaultPolicy
         [Cache(Duration = ""00:10:00"")]
         Task<int> GetOwnDurationAsync(int id);
 
-        [Cache(""short"")]
+        [Cache(Group = ""short"")]
         Task<int> GetGroupedAsync(int id);
     }
 
@@ -50,8 +50,8 @@ namespace DefaultPolicy
             services.AddSingleton<IPrices, Prices>();
             services.AddMethodCache(config =>
             {
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)));
-                config.ForGroup(""short"").Configure(o => o.WithDuration(TimeSpan.FromSeconds(10)));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1)));
+                config.Group(""short"", o => o.WithDuration(TimeSpan.FromSeconds(10)));
             });
         }
     }

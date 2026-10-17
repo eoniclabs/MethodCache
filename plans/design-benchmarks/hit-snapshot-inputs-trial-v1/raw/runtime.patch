@@ -1,0 +1,131 @@
+diff --git a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+index 4c115708..8e50eebf 100644
+--- a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
++++ b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+@@ -603,6 +603,7 @@ internal sealed class MemoryCacheEngine
+     private bool OnTimerExpired(Node node)
+     {
+         // Already detached from the wheel by the caller.
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -732,6 +733,7 @@ internal sealed class MemoryCacheEngine
+ 
+     private void EvictNode(Node node)
+     {
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+--- a/src/MethodCache.Core/Generated/GeneratedServices.cs
++++ b/src/MethodCache.Core/Generated/GeneratedServices.cs
+@@ -101,6 +101,11 @@
+         return PrefixHash.FinishUtf16(text[Prefix.Length..]);
+     }
+ 
++    // These inputs are immutable for this snapshot, including custom-manager absence.
++    internal InMemoryCacheManager? Memory { get; } = Services.FastMemory;
++    internal bool Enabled { get; } = Policy.Enabled != false;
++    internal string MethodId { get; } = Policy.MethodId;
++
+     internal PolicyGeneration Generation { get; } = Policy.Generation!;
+     internal bool HasParameterizedTags { get; } = Policy.Tags.Any(static tag => tag.Contains('{'));
+ 
+--- a/src/MethodCache.Core/Generated/MethodCall.cs
++++ b/src/MethodCache.Core/Generated/MethodCall.cs
+@@ -41,14 +41,14 @@
+     {
+         if (!ReferenceEquals(key.Binding, _snapshot))
+             throw new ArgumentException("The key belongs to a different MethodCache invocation snapshot.", nameof(key));
+-        return _snapshot.Policy.Enabled != false && _snapshot.Generation.IsCurrent;
++        return _snapshot.Enabled && _snapshot.Generation.IsCurrent;
+     }
+ 
+     /// <summary>Looks up a task from snapshot-bound owned key text.</summary>
+     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+     public bool TryGetTask<T>(in TextKey key, [NotNullWhen(true)] out Task<T>? task)
+     {
+-        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextTask(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out task))
++        if (CanRead(in key) && _snapshot.Memory is { } memory && memory.TryGetGeneratedTextTask(key.Text, _snapshot, _snapshot.Generation, _snapshot.MethodId, out task))
+         {
+             return true;
+         }
+@@ -60,7 +60,7 @@
+     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+     public bool TryGetValue<T>(in TextKey key, out T? value)
+     {
+-        if (CanRead(in key) && _snapshot.Services.FastMemory is { } memory && memory.TryGetGeneratedTextValue(key.Text, _snapshot, _snapshot.Generation, _snapshot.Policy.MethodId, out value))
++        if (CanRead(in key) && _snapshot.Memory is { } memory && memory.TryGetGeneratedTextValue(key.Text, _snapshot, _snapshot.Generation, _snapshot.MethodId, out value))
+         {
+             return true;
+         }
+@@ -105,15 +105,15 @@
+     {
+         if (!ReferenceEquals(key.Binding, _snapshot))
+             throw new ArgumentException("The key builder belongs to a different MethodCache invocation snapshot.", nameof(key));
+-        return _snapshot.Policy.Enabled != false && _snapshot.Generation?.IsCurrent != false;
++        return _snapshot.Enabled && _snapshot.Generation?.IsCurrent != false;
+     }
+ 
+     /// <summary>Looks up a completed task without allocating a task or key on the built-in hit path.</summary>
+     [MethodImpl(MethodImplOptions.NoInlining)]
+     public bool TryGetTask<T>(ref KeyBuilder key, [NotNullWhen(true)] out Task<T>? task)
+     {
+-        if (CanRead(ref key) && _snapshot.Services.FastMemory is { } memory &&
+-            memory.TryGetGeneratedTask(ref key, _snapshot.Generation!, _snapshot.Policy.MethodId, out task))
++        if (CanRead(ref key) && _snapshot.Memory is { } memory &&
++            memory.TryGetGeneratedTask(ref key, _snapshot.Generation!, _snapshot.MethodId, out task))
+         {
+             return true;
+         }
+@@ -125,8 +125,8 @@
+     [MethodImpl(MethodImplOptions.NoInlining)]
+     public bool TryGetValue<T>(ref KeyBuilder key, out T? value)
+     {
+-        if (CanRead(ref key) && _snapshot.Services.FastMemory is { } memory &&
+-            memory.TryGetGeneratedValue(ref key, _snapshot.Generation!, _snapshot.Policy.MethodId, out value))
++        if (CanRead(ref key) && _snapshot.Memory is { } memory &&
++            memory.TryGetGeneratedValue(ref key, _snapshot.Generation!, _snapshot.MethodId, out value))
+         {
+             return true;
+         }
+@@ -160,9 +160,9 @@
+         var call = this;
+         var telemetry = _snapshot.Services.Telemetry;
+         if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false)
+-            return telemetry?.Enabled == true ? telemetry.BypassAsync(_snapshot.Policy.MethodId, key, () => loader(call, state)) : loader(call, state);
++            return telemetry?.Enabled == true ? telemetry.BypassAsync(_snapshot.MethodId, key, () => loader(call, state)) : loader(call, state);
+         var policy = _snapshot.HasParameterizedTags ? CacheTagTemplates.Expand(_snapshot.Policy, _snapshot.ParameterNames, parameterValues) : _snapshot.Policy;
+-        if (_snapshot.Services.FastMemory == null && telemetry?.Enabled == true)
++        if (_snapshot.Memory == null && telemetry?.Enabled == true)
+             return telemetry.CustomAsync(_snapshot.Services.CacheManager, key, policy, () => loader(call, state), cancellationToken);
+         return _snapshot.Services.CacheManager.GetOrCreateFastAsync(key, _snapshot.Name,
+             () => loader(call, state), policy, cancellationToken);
+@@ -177,9 +177,9 @@
+         var call = this;
+         var telemetry = _snapshot.Services.Telemetry;
+         if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false)
+-            return telemetry?.Enabled == true ? new ValueTask<T>(telemetry.BypassAsync(_snapshot.Policy.MethodId, key, () => loader(call, state).AsTask())) : loader(call, state);
++            return telemetry?.Enabled == true ? new ValueTask<T>(telemetry.BypassAsync(_snapshot.MethodId, key, () => loader(call, state).AsTask())) : loader(call, state);
+         var policy = _snapshot.HasParameterizedTags ? CacheTagTemplates.Expand(_snapshot.Policy, _snapshot.ParameterNames, parameterValues) : _snapshot.Policy;
+-        if (_snapshot.Services.FastMemory == null && telemetry?.Enabled == true)
++        if (_snapshot.Memory == null && telemetry?.Enabled == true)
+             return new ValueTask<T>(telemetry.CustomAsync(_snapshot.Services.CacheManager, key, policy, () => loader(call, state).AsTask(), cancellationToken));
+         return new ValueTask<T>(_snapshot.Services.CacheManager.GetOrCreateFastAsync(key, _snapshot.Name,
+             () => loader(call, state).AsTask(), policy, cancellationToken));
+@@ -194,11 +194,11 @@
+         var call = this;
+         var telemetry = _snapshot.Services.Telemetry;
+         if (_snapshot.Policy.Enabled == false || _snapshot.Policy.Generation?.IsCurrent == false)
+-            return telemetry?.Enabled == true ? telemetry.Bypass(_snapshot.Policy.MethodId, key, () => loader(call, state)) : loader(call, state);
+-        if (_snapshot.Services.FastMemory is not { } memory)
++            return telemetry?.Enabled == true ? telemetry.Bypass(_snapshot.MethodId, key, () => loader(call, state)) : loader(call, state);
++        if (_snapshot.Memory is not { } memory)
+         {
+             _snapshot.Services.Diagnostics.ReportSyncBypass(_snapshot.Name, "The configured custom manager has no synchronous caching capability.");
+-            return telemetry?.Enabled == true ? telemetry.Bypass(_snapshot.Policy.MethodId, key, () => loader(call, state)) : loader(call, state);
++            return telemetry?.Enabled == true ? telemetry.Bypass(_snapshot.MethodId, key, () => loader(call, state)) : loader(call, state);
+         }
+         if (memory.HasDistributedCache)
+             _snapshot.Services.Diagnostics.ReportSyncBypass(_snapshot.Name, "The distributed adapter has no bounded native synchronous operations; L2 is unavailable for this invocation.");

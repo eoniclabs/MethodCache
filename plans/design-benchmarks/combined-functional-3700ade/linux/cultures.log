@@ -1,0 +1,135 @@
+=== cultures
+== Tests under tr_TR
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0) için test çalıştırması
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.Toplam 1 test dosyası belirtilen desenle eşleşti.
+
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+Toplam 1 test dosyası belirtilen desenle eşleşti.
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll içinde sunulan test çalışması filtresi `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` ile eşleşen test yok
+/home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll içinde sunulan test çalışması filtresi `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` ile eşleşen test yok
+
+
+
+Başarılı!  - Başarısız:     0, Başarılı:    16, Atlanan:     0, Toplam:    16, Süre: 614 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    52, Atlanan:     0, Toplam:    52, Süre: 782 ms - MethodCache.Redis.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:     4, Atlanan:     0, Toplam:     4, Süre: 495 ms - MethodCache.CompatTests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:     2, Atlanan:     0, Toplam:     2, Süre: 864 ms - MethodCache.Samples.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    29, Atlanan:     0, Toplam:    29, Süre: 1 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:   320, Atlanan:     0, Toplam:   320, Süre: 1 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    49, Atlanan:     0, Toplam:    49, Süre: 2 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:   119, Atlanan:     0, Toplam:   119, Süre: 4 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    92, Atlanan:     0, Toplam:    92, Süre: 5 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    71, Atlanan:     0, Toplam:    71, Süre: 6 s - MethodCache.Analyzers.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    66, Atlanan:     0, Toplam:    66, Süre: 7 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+[xUnit.net 00:00:14.32]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Atlandı MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Başarılı!  - Başarısız:     0, Başarılı:  1036, Atlanan:     1, Toplam:  1037, Süre: 12 s - MethodCache.Core.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:    42, Atlanan:     0, Toplam:    42, Süre: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Başarılı!  - Başarısız:     0, Başarılı:   533, Atlanan:     0, Toplam:   533, Süre: 42 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)
+== Tests under sv_SE
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.HttpCaching.IntegrationTests/bin/Release/net10.0/MethodCache.HttpCaching.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Analyzers.Tests/bin/Release/net10.0/MethodCache.Analyzers.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.OpenTelemetry.Tests/bin/Release/net10.0/MethodCache.OpenTelemetry.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SourceGenerator.IntegrationTests/bin/Release/net10.0/MethodCache.SourceGenerator.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.Tests/bin/Release/net10.0/MethodCache.Redis.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SourceGenerator.Tests/bin/Release/net10.0/MethodCache.SourceGenerator.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.Tests/bin/Release/net10.0/MethodCache.SqlServer.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.AspNetCore.Tests/bin/Release/net10.0/MethodCache.AspNetCore.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Samples.Tests/bin/Release/net10.0/MethodCache.Samples.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.A total of 1 test files matched the specified pattern.
+
+A total of 1 test files matched the specified pattern.
+Test run for /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+No test matches the given testcase filter `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` in /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+No test matches the given testcase filter `FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests` in /home/agent-admin/methodcache-ci/runs/20261015-210236-3700ade78a14/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+
+
+
+Passed!  - Failed:     0, Passed:    16, Skipped:     0, Total:    16, Duration: 669 ms - MethodCache.HttpCaching.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    52, Skipped:     0, Total:    52, Duration: 792 ms - MethodCache.Redis.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 574 ms - MethodCache.CompatTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 801 ms - MethodCache.Samples.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 1 s - MethodCache.OpenTelemetry.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   320, Skipped:     0, Total:   320, Duration: 1 s - MethodCache.HttpCaching.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 2 s - MethodCache.AspNetCore.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 4 s - MethodCache.Docs.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    92, Skipped:     0, Total:    92, Duration: 6 s - MethodCache.Benchmarks.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    71, Skipped:     0, Total:    71, Duration: 6 s - MethodCache.Analyzers.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    66, Skipped:     0, Total:    66, Duration: 7 s - MethodCache.SourceGenerator.Tests.dll (net10.0)
+[xUnit.net 00:00:14.07]     MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [SKIP]
+  Skipped MethodCache.Core.Tests.Soak.InMemoryCacheSoakTests.SustainedConcurrentLoad_StaysBoundedConsistentAndStampedeFree [1 ms]
+
+Passed!  - Failed:     0, Passed:  1036, Skipped:     1, Total:  1037, Duration: 12 s - MethodCache.Core.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: 15 s - MethodCache.SqlServer.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   533, Skipped:     0, Total:   533, Duration: 43 s - MethodCache.SourceGenerator.IntegrationTests.dll (net10.0)

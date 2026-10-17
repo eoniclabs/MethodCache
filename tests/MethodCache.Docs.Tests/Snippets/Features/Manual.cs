@@ -42,9 +42,7 @@ namespace Docs.Manual
                       .RefreshAhead(TimeSpan.FromMinutes(5))
                       .WithTags("orders", $"customer:{customerId}")
                       .WithVersion(2)
-                      .OnHit(ctx => logger.LogDebug("Cache hit: {Key}", ctx.Key))
-                      .OnMiss(ctx => logger.LogDebug("Cache miss: {Key}", ctx.Key))
-                      .When(ctx => customerId > 0));   // skip the cache when false
+                      .WithEnabled(customerId > 0));   // skip the cache when false
             // end-snippet
         }
 

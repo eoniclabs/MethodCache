@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-16T21:59:41.124736+00:00",
+  "pr": 133,
+  "actual_base": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+  "actual_head": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+  "inputs_sha256": "7a2fac93001af8e55034aa8a77d28b6c51ca9fb3dd365bb343326d22984d38d5",
+  "prepared_sha256": "a025f0a433078a53fb77cf429ea57c5e1aaa01fc71a858aca14c6dd2be6d890e",
+  "review_protocol_sha256": "f9873da4ec97377dafb018b3ef374624676a7a571917864fd41ee3bad765fc8a",
+  "actual_compiled_files_independently_rehashed": 444,
+  "common_source_bytes_identical": true,
+  "selected_cases": 5,
+  "fixed_pairs_per_case": 10,
+  "command": [
+    "python3",
+    "-B",
+    "-u",
+    "/home/agent-admin/methodcache-design-bench-20261015/cpu-filtered-pr133-v1/run.py",
+    "run"
+  ]
+}

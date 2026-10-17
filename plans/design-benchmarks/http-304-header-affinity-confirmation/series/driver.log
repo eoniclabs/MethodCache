@@ -1,0 +1,37 @@
+Waiting for exclusive capacity: round-1-prefix 2026-10-16T07:13:48.978756+00:00
+Finished round-1-prefix 2026-10-16T07:16:06.484735+00:00
+Waiting for exclusive capacity: round-1-candidate 2026-10-16T07:16:16.528552+00:00
+Finished round-1-candidate 2026-10-16T07:18:32.038902+00:00
+Waiting for exclusive capacity: round-2-candidate 2026-10-16T07:18:42.100820+00:00
+Finished round-2-candidate 2026-10-16T07:20:56.601733+00:00
+Waiting for exclusive capacity: round-2-prefix 2026-10-16T07:21:06.676865+00:00
+Finished round-2-prefix 2026-10-16T07:32:47.008295+00:00
+Waiting for exclusive capacity: round-3-prefix 2026-10-16T07:32:57.051838+00:00
+Finished round-3-prefix 2026-10-16T07:35:12.549710+00:00
+Waiting for exclusive capacity: round-3-candidate 2026-10-16T07:35:22.616926+00:00
+Finished round-3-candidate 2026-10-16T07:37:36.016202+00:00
+Waiting for exclusive capacity: round-4-candidate 2026-10-16T07:37:46.061261+00:00
+Finished round-4-candidate 2026-10-16T07:39:57.537960+00:00
+Waiting for exclusive capacity: round-4-prefix 2026-10-16T07:40:07.591198+00:00
+Finished round-4-prefix 2026-10-16T07:42:22.106431+00:00
+Waiting for exclusive capacity: round-5-prefix 2026-10-16T07:42:32.151188+00:00
+Finished round-5-prefix 2026-10-16T07:44:43.536391+00:00
+Waiting for exclusive capacity: round-5-candidate 2026-10-16T07:44:53.581152+00:00
+Finished round-5-candidate 2026-10-16T07:47:08.083847+00:00
+Waiting for exclusive capacity: round-6-candidate 2026-10-16T07:47:18.128395+00:00
+Finished round-6-candidate 2026-10-16T07:49:31.607208+00:00
+Waiting for exclusive capacity: round-6-prefix 2026-10-16T07:49:41.651875+00:00
+Finished round-6-prefix 2026-10-16T07:51:53.140881+00:00
+Waiting for exclusive capacity: round-7-prefix 2026-10-16T07:52:03.184553+00:00
+Finished round-7-prefix 2026-10-16T07:54:16.674185+00:00
+Waiting for exclusive capacity: round-7-candidate 2026-10-16T07:54:26.719297+00:00
+Finished round-7-candidate 2026-10-16T07:56:40.403628+00:00
+Waiting for exclusive capacity: round-8-candidate 2026-10-16T07:56:50.457585+00:00
+Finished round-8-candidate 2026-10-16T08:10:48.027928+00:00
+Waiting for exclusive capacity: round-8-prefix 2026-10-16T08:10:58.072809+00:00
+Finished round-8-prefix 2026-10-16T08:13:11.577705+00:00
+Waiting for exclusive capacity: round-9-prefix 2026-10-16T08:13:21.622238+00:00
+Finished round-9-prefix 2026-10-16T08:15:37.122227+00:00
+Waiting for exclusive capacity: round-9-candidate 2026-10-16T08:15:47.167166+00:00
+Finished round-9-candidate 2026-10-16T08:17:58.624341+00:00
+Fixed nine-pair CPU2 HTTP 304 confirmation complete; review independent-run intervals and allocations, never infer acceptance from exit alone. 2026-10-16T08:18:08.625629+00:00

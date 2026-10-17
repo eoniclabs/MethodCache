@@ -1,0 +1,602 @@
+{
+  "collected_utc": "2026-10-16T13:59:19.190401+00:00",
+  "scope": "Complete cumulative comparison only: eighteen launches, 63 cases per endpoint, three independent rounds",
+  "original_v6_metadata_sha256": "0c2eae484ab481f5b730cf08a9cc1a889786285ac790e96bebdbb8871f2d0f01",
+  "measurement_protocol_sha256": "7ed0602806c5a0934de83ba38b17cd4d5db9ffd75f879951c12a82b2ecb0e3d2",
+  "prepared_manifest_sha256": "96b25395fd0f3d8635235307e5e9abcaf28f944ee8b3aeebeea6b0c84a2d23eb",
+  "selection_sha256": "8b4aec90eb618257303c7ba449103d7496d3c6aeb0647ec916743af7dd10e018",
+  "runs": [
+    {
+      "round": 1,
+      "revision": "final",
+      "group": "local-contract",
+      "started": "2026-10-16T09:10:18.654048+00:00",
+      "finished": "2026-10-16T09:19:16.830482+00:00",
+      "exit": 0,
+      "origin": "v5"
+    },
+    {
+      "round": 1,
+      "revision": "final",
+      "group": "local-pressure",
+      "started": "2026-10-16T09:19:16.836678+00:00",
+      "finished": "2026-10-16T09:27:15.145337+00:00",
+      "exit": 0,
+      "origin": "v5"
+    },
+    {
+      "round": 1,
+      "revision": "final",
+      "group": "native",
+      "started": "2026-10-16T09:27:15.147104+00:00",
+      "finished": "2026-10-16T09:43:29.067865+00:00",
+      "exit": 0,
+      "origin": "v5"
+    },
+    {
+      "round": 1,
+      "revision": "base",
+      "group": "local-contract",
+      "started": "2026-10-16T11:21:08.485191+00:00",
+      "finished": "2026-10-16T11:30:18.780025+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 1,
+      "revision": "base",
+      "group": "local-pressure",
+      "started": "2026-10-16T11:30:28.784876+00:00",
+      "finished": "2026-10-16T11:39:55.656161+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 1,
+      "revision": "base",
+      "group": "native",
+      "started": "2026-10-16T11:40:05.658863+00:00",
+      "finished": "2026-10-16T11:51:57.991750+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "base",
+      "group": "local-contract",
+      "started": "2026-10-16T11:52:07.995226+00:00",
+      "finished": "2026-10-16T12:11:19.118146+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "base",
+      "group": "local-pressure",
+      "started": "2026-10-16T12:11:29.123124+00:00",
+      "finished": "2026-10-16T12:20:41.779175+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "base",
+      "group": "native",
+      "started": "2026-10-16T12:20:51.781597+00:00",
+      "finished": "2026-10-16T12:37:09.954297+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "final",
+      "group": "local-contract",
+      "started": "2026-10-16T12:37:19.959208+00:00",
+      "finished": "2026-10-16T12:46:20.326720+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "final",
+      "group": "local-pressure",
+      "started": "2026-10-16T12:46:30.331601+00:00",
+      "finished": "2026-10-16T12:54:26.620635+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 2,
+      "revision": "final",
+      "group": "native",
+      "started": "2026-10-16T12:54:36.625519+00:00",
+      "finished": "2026-10-16T13:01:12.744867+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "final",
+      "group": "local-contract",
+      "started": "2026-10-16T13:01:22.746735+00:00",
+      "finished": "2026-10-16T13:10:19.019135+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "final",
+      "group": "local-pressure",
+      "started": "2026-10-16T13:10:29.024074+00:00",
+      "finished": "2026-10-16T13:18:21.612477+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "final",
+      "group": "native",
+      "started": "2026-10-16T13:18:31.614735+00:00",
+      "finished": "2026-10-16T13:27:31.412840+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "base",
+      "group": "local-contract",
+      "started": "2026-10-16T13:27:41.417908+00:00",
+      "finished": "2026-10-16T13:37:01.705120+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "base",
+      "group": "local-pressure",
+      "started": "2026-10-16T13:37:11.710009+00:00",
+      "finished": "2026-10-16T13:46:36.402506+00:00",
+      "exit": 0,
+      "origin": "v6"
+    },
+    {
+      "round": 3,
+      "revision": "base",
+      "group": "native",
+      "started": "2026-10-16T13:46:46.407581+00:00",
+      "finished": "2026-10-16T13:53:22.612354+00:00",
+      "exit": 0,
+      "origin": "v6"
+    }
+  ],
+  "sources": {
+    "base": {
+      "runtime_root": "<benchmark-root>/guid-final-v2/checkouts/base",
+      "runtime_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "workloads_sha": "453be958abc7f57253341b8a43125404e180c551",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "harness_program_sha256": "596d8a1786f49314f89780c3ca16a8a2a599ae5f77d6a3c0b9659a3d3d6f65ff",
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.",
+      "canonical_harness_program_sha256": "6aa2f975b09b141fc88c041c3e22bbc9263bb8e5c3d11c5911e3c0e70f5c9237",
+      "preparation_extension_sha256": "0e944bc29191a8ab3fe586411fac6ba8342e1917197b56482640742001530943"
+    },
+    "final": {
+      "runtime_root": "<benchmark-root>/guid-final-v2/checkouts/final",
+      "runtime_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+      "workloads_sha": "453be958abc7f57253341b8a43125404e180c551",
+      "source_sha256": {
+        "Comparison/GeneratedContractBenchmarks.cs": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+        "Microbenchmarks/HttpResponsePathBenchmarks.cs": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+        "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      "harness_program_sha256": "596d8a1786f49314f89780c3ca16a8a2a599ae5f77d6a3c0b9659a3d3d6f65ff",
+      "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+      "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.",
+      "canonical_harness_program_sha256": "6aa2f975b09b141fc88c041c3e22bbc9263bb8e5c3d11c5911e3c0e70f5c9237",
+      "preparation_extension_sha256": "0e944bc29191a8ab3fe586411fac6ba8342e1917197b56482640742001530943"
+    }
+  },
+  "inventories": {
+    "local-contract": [
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.CollectionHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.FallbackHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.GenericHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.RecordHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.StringHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.SyncMiss",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.TaskMiss",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskHit",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks.ValueTaskMiss",
+        "report_type": "MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: False, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: False, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: True, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks.Miss(Listening: True, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: False, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: False, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: True, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.FreshHit(Listening: True, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: False, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.Revalidated(Listening: True, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: False, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: False, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: True, AfterInvalidation: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks.VariantHit(Listening: True, AfterInvalidation: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks"
+      }
+    ],
+    "local-pressure": [
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Local\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Local\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Local\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Local\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: False, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: False, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: True, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.ContendedHits(Listening: True, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: False, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: False, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: True, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening: True, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: False, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: False, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: True, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.Hit(Listening: True, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: False, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: False, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: True, Weighted: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening: True, Weighted: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks"
+      }
+    ],
+    "native": [
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Redis\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"Redis\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"SqlServer\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Fresh(Backend: \"SqlServer\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Redis\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"Redis\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"SqlServer\", KeepCookies: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks.Miss(Backend: \"SqlServer\", KeepCookies: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"Redis\", RoundTrip: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"Redis\", RoundTrip: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"SqlServer\", RoundTrip: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Read(Backend: \"SqlServer\", RoundTrip: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"Redis\", RoundTrip: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"Redis\", RoundTrip: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"SqlServer\", RoundTrip: False)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      },
+      {
+        "full_name": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks.Write(Backend: \"SqlServer\", RoundTrip: True)",
+        "report_type": "MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks"
+      }
+    ]
+  },
+  "native_images": {
+    "redis": {
+      "reference": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+      "image_id": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
+    },
+    "sqlserver": {
+      "reference": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+      "image_id": "sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+    }
+  },
+  "files": {
+    "focused-schedule-v6/cumulative-analysis-20261016-1354.json": "ac2986875af86d37be4bd9a57b57c696292a5af2e57a0c7d6edae60499ae1b2c",
+    "focused-schedule-v6/selection.json": "8b4aec90eb618257303c7ba449103d7496d3c6aeb0647ec916743af7dd10e018",
+    "focused-schedule-v6/run.py": "44ed13c3edfc9828c0b28c7d877993a615127c4020fcd198fd9afe971ea0dfd8",
+    "focused-schedule-v6/analyze.py": "ce65764a2f97b95548be4a3785120b4740469c0aabef1a426c8bdae045774d2d",
+    "focused-schedule-v6/launch.json": "347bf61e7105d6cd8cbe1c17201e4380136b6971d11c0ca5c67556df66141a52",
+    "focused-schedule-v6/stop-at-idle.json": "70a3a90e5b4ecbdcdaaaf6eb7b47de27411932e34e0531aff711b0330f80336f",
+    "guid-final-v5/timing-results/round-1-final-local-contract.log": "d81d076b222c33b27493abfa48c838c647931c9b660a7a99a5cabdaf8ba89b41",
+    "guid-final-v5/timing-results/round-1-final-local-contract-affinity.json": "c4d03a13704fe79ccb3ba6a5774b8cb506bf9bca407a6bead6ce1338686b26ce",
+    "guid-final-v5/timing-results/round-1-final-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-final-local-contract-lease.log": "54f604e6f4d2f941e559ef711bddc29e04f0f18f97e897043ece16f92569b5c9",
+    "guid-final-v5/timing-results/round-1-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "5a0c680922b956bc6c11db32e878a8c5012c7763b153dfa6205e70171e9bb3a2",
+    "guid-final-v5/timing-results/round-1-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "9e32a1ad3964601be1945b542eaee2df5c762e186b1300f6101d067f471b478b",
+    "guid-final-v5/timing-results/round-1-final-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "658e3047fab2708d18f9ac16bd14eadf7553eac5eb4266ee74d6948df200a91f",
+    "guid-final-v5/timing-results/round-1-final-local-pressure.log": "cb62cd1a2c3ed09f11a083e2fcbb3102b24f80c10657bcab51b70efa084269dc",
+    "guid-final-v5/timing-results/round-1-final-local-pressure-affinity.json": "6c7f49cb939d4b705f3ec5bccd595bc6fa9fa0853170c41811a94a7c2ddf7230",
+    "guid-final-v5/timing-results/round-1-final-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-final-local-pressure-lease.log": "16f603daef113d65ea3dff0613fedf6c5652bb28b376eaf73c5ce622d7a2f2d1",
+    "guid-final-v5/timing-results/round-1-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "d04a95eea9469b8d1a0667e2e972ed6ba348e5796c85ced05b9316a290c7314a",
+    "guid-final-v5/timing-results/round-1-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "dc8437ea0f81bc5e1a1db93cd08ad58c026ba7b50eb586fc19024f161c9d3de8",
+    "guid-final-v5/timing-results/round-1-final-native.log": "04d2d62015fdac05510f5504681a40d0131da2f59a82f76ac2813a24544864c1",
+    "guid-final-v5/timing-results/round-1-final-native-affinity.json": "c066be6a9ef259392f0759f766f8c2d74a4af50062d98ca7e4f2dd0e8b3893ca",
+    "guid-final-v5/timing-results/round-1-final-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-final-native-lease.log": "deb4a943520d0b7b3dcdffa4e30a7523003041eabeaacaea5e057d9826eab850",
+    "guid-final-v5/timing-results/round-1-final-native-backends.json": "328b551ad1ed7134b4e0149111a316e9fc5e7ed1a474144a557b186a6a1de301",
+    "guid-final-v5/timing-results/round-1-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "fc98406c8b1fa7242b2d9a91f66a174d627d42ed2ccb1b63a549d839478e7213",
+    "guid-final-v5/timing-results/round-1-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "94cb420350ad1d89acbe445e9ddabe25f865c928c926f92576e1be49a98f1c31",
+    "guid-final-v5/timing-results/round-1-base-local-contract.log": "2849c84691b0d00b12aca838713677ce2d5db24ec993f3e40000fd33be9bb974",
+    "guid-final-v5/timing-results/round-1-base-local-contract-affinity.json": "5d26c719bd7401558030efb24aa0e52baa288976fa988cd507fa48bded420853",
+    "guid-final-v5/timing-results/round-1-base-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-base-local-contract-lease.log": "ce8e130ec65a1f6db3ea38961fc10013a5c8a51d72a6cb15f0c35e5550d19bb4",
+    "guid-final-v5/timing-results/round-1-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "501c95d68938e8ca09ce796a61898e3fb710c5a1661df2464d34b942d06bcb55",
+    "guid-final-v5/timing-results/round-1-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "8b01781604bff7124cfcb1a4d56a38d0a073f27b998d9d23d355a0e634dc6c4f",
+    "guid-final-v5/timing-results/round-1-base-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "669c2a1a66b639e3078b6319d4afb46d878503f2c71676a16f0a466a05c64fc0",
+    "guid-final-v5/timing-results/round-1-base-local-pressure.log": "f83d978c002cb639b2de2c17e87040f593ab0ecc5f8756ccac8cffd44aa06e31",
+    "guid-final-v5/timing-results/round-1-base-local-pressure-affinity.json": "7e37daf9ac1c1b092cfae5ced15cd37b4ee577f5ec0666d71beebbb1dec567a4",
+    "guid-final-v5/timing-results/round-1-base-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-base-local-pressure-lease.log": "0f076d5c320eee5e0a41e3f141a8807baa35a189fbb28e7da4da152f284fe762",
+    "guid-final-v5/timing-results/round-1-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "e31ddeaaac104c0ceea1cbc92419201cf229ad7a8fa2ea887c5085a420a3946e",
+    "guid-final-v5/timing-results/round-1-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "3cbaaca5a629d83cb48c650c621c7e134f45b06209c4b19e75346c3f0aa301c3",
+    "guid-final-v5/timing-results/round-1-base-native.log": "e48e9c513197f62b1b92b358badcff2d3fdfef952d533a62248121c1d8dc1af2",
+    "guid-final-v5/timing-results/round-1-base-native-affinity.json": "ed444d14195689a78762ef4f0bb776155ed6e39447bdfd88da4b39128abbd8b1",
+    "guid-final-v5/timing-results/round-1-base-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-1-base-native-lease.log": "d956c47dc21e864a7a507d09be42f0826259390654573197353a88e3f3a30040",
+    "guid-final-v5/timing-results/round-1-base-native-backends.json": "246e77d0f21f6e0433849c6f2db16eeaf8cfa58ca1e125aeaa628d2857431d21",
+    "guid-final-v5/timing-results/round-1-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "a602a76f66a2352273ff9a8cca1fc3d00b4d4ce6d8c2bdc3acd04559d595bd66",
+    "guid-final-v5/timing-results/round-1-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "feaa8bcc06276abec621ed0a599a480c6cd1bdef13bca2a6ed660baee4993000",
+    "guid-final-v5/timing-results/round-2-base-local-contract.log": "79589235289516df4669ece157f3ce114bc6a869dcd7f9c51980ec7c416fb677",
+    "guid-final-v5/timing-results/round-2-base-local-contract-affinity.json": "d48a3ed2cc02d8e2484727545e8f34fc539581253f40cb47dd23cb5c5dc9b10c",
+    "guid-final-v5/timing-results/round-2-base-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-base-local-contract-lease.log": "52a68b84b45d0a6266706d5a05ef103253a853a8a62c52de76f1e6e883012bf4",
+    "guid-final-v5/timing-results/round-2-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "cd1aa99e5da3951f91259d5350d951a76a22a03082eb5bed8ab9a6005839c0ee",
+    "guid-final-v5/timing-results/round-2-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "d6cda06ee06eafa766080fae4bfbda875acc9e8bdc2bab8d910f7b807873510e",
+    "guid-final-v5/timing-results/round-2-base-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "98a5281c85f6a5addc10a76b9b4fe79e8dfafaf39fa1cf8b3afc295f2289bf07",
+    "guid-final-v5/timing-results/round-2-base-local-pressure.log": "9c9bc798981ad87e2131afe39e2225b077943e65d5c06656a192df993299fa22",
+    "guid-final-v5/timing-results/round-2-base-local-pressure-affinity.json": "8fd0eb9640d668ad8fed3624b3d5972b95c6aedf6ff09b5f84386fafb1bf77d7",
+    "guid-final-v5/timing-results/round-2-base-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-base-local-pressure-lease.log": "bab73c760dc4ab64728f263dbf25092a146b83f5805d87b2f56863b23b85ac92",
+    "guid-final-v5/timing-results/round-2-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "54ecad90849b856f1a7696fe796e88b02f5c5f1b47ef229203a260a086872f1b",
+    "guid-final-v5/timing-results/round-2-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "d465a98a3504e37c23e177ac824a55a69c6fabfa4cc779899f7c869b8e76635b",
+    "guid-final-v5/timing-results/round-2-base-native.log": "56423f9625a199694d67e46123eefa56005ad10a5e5d9ac3c199be0226b5e16f",
+    "guid-final-v5/timing-results/round-2-base-native-affinity.json": "16d5fecfb8b60bb0c7c977584aa8ef2ee4738dbe653e379da4dd9e6bb66c36c9",
+    "guid-final-v5/timing-results/round-2-base-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-base-native-lease.log": "8a098f689c48276c42ea458cb421412a95c7195d7e832bc5f6e4982961929805",
+    "guid-final-v5/timing-results/round-2-base-native-backends.json": "41965076e2a753a5b047dbec0f5c910f78a263bcef40c99f3fb07dbe33c269c6",
+    "guid-final-v5/timing-results/round-2-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "33b394bcd7dbb7055e47dd1763e016e2435d464036c24270a21254b724699a98",
+    "guid-final-v5/timing-results/round-2-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "aa0d0d6d405bf9d8369eff8dc4e996c13f75c5c8637219f239a5910f0791ce65",
+    "guid-final-v5/timing-results/round-2-final-local-contract.log": "1ba926c674d301221c65a07240aeb44825247d9af75f100e92810cbfedc326c9",
+    "guid-final-v5/timing-results/round-2-final-local-contract-affinity.json": "95c52eb0a1ca48a2ebce31d86f20aa94907dd29eed3d4222cca1f230e92f0fb8",
+    "guid-final-v5/timing-results/round-2-final-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-final-local-contract-lease.log": "d96967e10c4e6913e89725af7e52f05229479fafce655db0ae9facf103e32d9f",
+    "guid-final-v5/timing-results/round-2-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "501e74d11074bd136c0e6870ba3b8ded5c1dde6d0a258afa3d273cd3e63aea64",
+    "guid-final-v5/timing-results/round-2-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "f633e7eb5258985a91cd18690a130ecb1bd2df2d7fa5b71a60b583cf5ac91f6f",
+    "guid-final-v5/timing-results/round-2-final-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "e16224a99a3a4d8b758974500b1aaa0cce4a90877a0f92cec83e1c5e73b6bca4",
+    "guid-final-v5/timing-results/round-2-final-local-pressure.log": "a94adc20bb52aee9a1e8316f5171b7e9262fa8e459810fb5da2140fb53dc1175",
+    "guid-final-v5/timing-results/round-2-final-local-pressure-affinity.json": "531997755ba6d22e5f4e800e6d3a66b4cd9f15fc1539ce2c87dc2b271e2e537c",
+    "guid-final-v5/timing-results/round-2-final-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-final-local-pressure-lease.log": "fa59dc565a1a57f058cdbb6a926d09a03f4392ca2b7c21fc6c3fa198d4f68f62",
+    "guid-final-v5/timing-results/round-2-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "d5e4ddf532639ddd60df1f6d6375bd5ab4a4b4a7c0066c18172eadeedc59499d",
+    "guid-final-v5/timing-results/round-2-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "1fb7ba48a8b75d5508d26e6827983a63a9beaa0d4613e608c98fdf484153d4bf",
+    "guid-final-v5/timing-results/round-2-final-native.log": "e2f72c2584411322ca77beb5e187096fd42987d51eebe01ef0203d8e709425a3",
+    "guid-final-v5/timing-results/round-2-final-native-affinity.json": "8f3c0799538d22111bb781b351d2aaa03aa21a43fc1cddf6fb267978a05a3122",
+    "guid-final-v5/timing-results/round-2-final-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-2-final-native-lease.log": "e36727006791cf6d4bd3ea93018ed80e7c62f160da88c3e490f0258e6dd2b29d",
+    "guid-final-v5/timing-results/round-2-final-native-backends.json": "cd6cd617551b5a60b5318a7eed754035b5c61af371f60438785478e49b3ccad9",
+    "guid-final-v5/timing-results/round-2-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "85f97536dc319c63acb99f77a2000127436795b12ff5805f71c753fed52690d7",
+    "guid-final-v5/timing-results/round-2-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "09a6b09cd64444496bd2894e80cd79b1a24e3039fe06c539338df051c8d79868",
+    "guid-final-v5/timing-results/round-3-final-local-contract.log": "47ede06c89d47f42b9630d3094f25db1a5b127b1e2415f944e386e995d503a94",
+    "guid-final-v5/timing-results/round-3-final-local-contract-affinity.json": "9b28ba75f3a20f9ad02bd1603aea940f9fbd433b4e849fac13f9635ecfdfc10d",
+    "guid-final-v5/timing-results/round-3-final-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-final-local-contract-lease.log": "f450ce9fc6a2d4f20e0db88021662105fd5371d8a8bbfec3a22f3b8411d05d2a",
+    "guid-final-v5/timing-results/round-3-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "101a2338367802a2afdf7cacf0c9c69a2d6f940eb7b749200157fe608d892447",
+    "guid-final-v5/timing-results/round-3-final-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "77771105963443edca8d34281d369a48d53b565bc61f99693551134a892dfedb",
+    "guid-final-v5/timing-results/round-3-final-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "f2db4deb3146a7dacff3a4232bae5ce10cece55946580e4f0c1c9a4cae35cd38",
+    "guid-final-v5/timing-results/round-3-final-local-pressure.log": "d746400d1a958dc96fa3e6660c42d34a821215754d2b73c39d0bb2ebddeffebd",
+    "guid-final-v5/timing-results/round-3-final-local-pressure-affinity.json": "59eb738ad63f82032f326d609fa64d89e01d308ce66ec759b76676e783bae9a9",
+    "guid-final-v5/timing-results/round-3-final-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-final-local-pressure-lease.log": "e63c8eb554f682ec805f2ca384bb11afde5d531bbdb8cce53c53560a94f34abf",
+    "guid-final-v5/timing-results/round-3-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "9b5259124b38d9a1624ca973b85a8f0bc375b2489e2d114977bd039d10e645a2",
+    "guid-final-v5/timing-results/round-3-final-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "99a1809696ba18ee041416a6d731a2c09c07d91f547d376702827a4f26140394",
+    "guid-final-v5/timing-results/round-3-final-native.log": "70c8d94cb40bd25936ec8e2b19b0121cae2cef1d2e57cebfe3dd62c26c5a4ea2",
+    "guid-final-v5/timing-results/round-3-final-native-affinity.json": "7854469be57bec7a3d07722cde4ea5e2a2b6fe30f732b798e246fc636ccf93c0",
+    "guid-final-v5/timing-results/round-3-final-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-final-native-lease.log": "5ac7329e13aaf38e20dd56a790203c8764e682da2fde3c1b5b7880722b630a35",
+    "guid-final-v5/timing-results/round-3-final-native-backends.json": "eae546200d06395cc461b93025c6ada1b995c921222c902cbee809484f51431a",
+    "guid-final-v5/timing-results/round-3-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "95a32dd513405b0487266632eb9551b40bb3b54db01a0de8592c697b7d1e1220",
+    "guid-final-v5/timing-results/round-3-final-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "6ab23996cf585f7c9cf4acf3bc4797706714b689a16b955947ebc0e911baf754",
+    "guid-final-v5/timing-results/round-3-base-local-contract.log": "0fa9645ac8b0ed7a6afd1f03378dfef1aaa774edbed16347a51c38bd4b4193d7",
+    "guid-final-v5/timing-results/round-3-base-local-contract-affinity.json": "660a8efcf2ada59824644ef59e8a6fbbe84f8e5a8d255718cfa201df4ca820de",
+    "guid-final-v5/timing-results/round-3-base-local-contract-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-base-local-contract-lease.log": "4d8a9d90a73176064e7c586e0b2def913afa9833075d95e5d970fab5fe31fa81",
+    "guid-final-v5/timing-results/round-3-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-report-full-compressed.json": "3eaa4c2fc83eada82fbbf3250a1208c2ac0dd1751f6c0eb9200dcf5bda64027e",
+    "guid-final-v5/timing-results/round-3-base-local-contract/results/MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks-report-full-compressed.json": "d0e15079c64232968014cdddd2a3347eef12a944c417c6ba7ad63d7acc5930ae",
+    "guid-final-v5/timing-results/round-3-base-local-contract/results/MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks-report-full-compressed.json": "75450d46ccc961c0f2fcf8cdc9a69cfc71c958e75b1da6cd3c52d13cd0271cc7",
+    "guid-final-v5/timing-results/round-3-base-local-pressure.log": "de2b20d05f22c920f9e676d9396815ac86e58e0aa8e12cc334f7a26247f2593b",
+    "guid-final-v5/timing-results/round-3-base-local-pressure-affinity.json": "79808ce718e7372eb122160e082e319ecf1c4b90753acf015e02bd2bf48f5a9e",
+    "guid-final-v5/timing-results/round-3-base-local-pressure-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-base-local-pressure-lease.log": "4cf538b382a7109e791a2d0a89bcb6e45ad33374ddcecf51a8e9363b4819575d",
+    "guid-final-v5/timing-results/round-3-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks-report-full-compressed.json": "90bf5c5b188f240c19176eda7ecd826991209487ce7cfa295212cb4a524cc91a",
+    "guid-final-v5/timing-results/round-3-base-local-pressure/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "52ce812ed3a082d15c1542ed82f556cd2c2a3696ff3403a1b09847eaf00fc15c",
+    "guid-final-v5/timing-results/round-3-base-native.log": "467d34af12de7ffde7a6476a1a76eef66be2962da060eda011b76b4ea2523374",
+    "guid-final-v5/timing-results/round-3-base-native-affinity.json": "9171497dbb14cfcf78253160d2112be0785f7dffdffa82942c9e04adc90bd940",
+    "guid-final-v5/timing-results/round-3-base-native-interference.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "guid-final-v5/timing-results/round-3-base-native-lease.log": "0fb45a6f9e343802a19e529247ff76577e0e0e2edb7f53c1a3f69ce70e0d15d5",
+    "guid-final-v5/timing-results/round-3-base-native-backends.json": "f8aec9b614bfa86ea1cbef0ab268420d4e6decd145304156ef4a847514b9f164",
+    "guid-final-v5/timing-results/round-3-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignL2WorkloadBenchmarks-report-full-compressed.json": "80d9df775ee0cc911792d5b202a754f0c80e81b6bdbe87535feb11ce7bdc73e9",
+    "guid-final-v5/timing-results/round-3-base-native/results/MethodCache.Benchmarks.Microbenchmarks.DesignHttpWorkloadBenchmarks-report-full-compressed.json": "084dde18a57b4a134df4544d8b161982336c52b7c4cd14893c709ca8e9f548f9"
+  }
+}

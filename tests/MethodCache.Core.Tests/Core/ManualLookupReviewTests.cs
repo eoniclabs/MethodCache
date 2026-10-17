@@ -13,7 +13,7 @@ public class ManualLookupReviewTests
     public async Task Lookup_ReturnsAFreshValueRegardlessOfFastPathOrRefreshWindow(bool fastPath, bool refreshDue)
     {
         var time = new FakeTimeProvider();
-        using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = fastPath, EnableBackgroundCleanup = false }), time);
+        using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = fastPath, EnableBackgroundCleanup = false }), time);
         await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(7), options =>
         {
             options.WithDuration(TimeSpan.FromSeconds(60));
@@ -32,7 +32,7 @@ public class ManualLookupReviewTests
     public async Task Lookup_CachedNull_PreservesPresenceAndVersion(int? version)
     {
         var time = new FakeTimeProvider();
-        using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = false, CacheNullValues = true, EnableBackgroundCleanup = false }), time);
+        using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = false, CacheNullValues = true, EnableBackgroundCleanup = false }), time);
         await manager.GetOrCreateAsync<string?>("null", (_, _) => ValueTask.FromResult<string?>(null), options =>
         {
             options.WithDuration(TimeSpan.FromMinutes(1));

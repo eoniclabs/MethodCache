@@ -201,7 +201,7 @@ public interface IConcurrentCacheService
     Task BulkInvalidateAsync();
 }
 
-public class ConcurrentCacheService : IConcurrentCacheService
+internal class ConcurrentCacheService : IConcurrentCacheService
 {
     private readonly ICacheManager _cacheManager;
     private readonly IPolicyRegistry _policyRegistry;

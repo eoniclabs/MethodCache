@@ -1,0 +1,125 @@
+{
+  "scope": "Approved five exact HTTP time limits; reproduced canonical59caseCPU/67casecostacceptance. Original studies/precision fail states retained. Final new-headCIpending.",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "07df0b47879ab0e30144c92af599009d222f77d0fad0011a261b0027e35ca403"
+    },
+    {
+      "path": "acceptance-audit.json",
+      "sha256": "de5ca3747e488ccf4a454754c31e3965dc6fcd205c2e0b63afbcda8cc6fef6d9"
+    },
+    {
+      "path": "compact10.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "compact10.log",
+      "sha256": "336cbab00b90a78fe36faf7317d2bae0ef54a36b44c93855510fd4a516d60b71"
+    },
+    {
+      "path": "compact10.md",
+      "sha256": "17191c2460153a17a38d265157d11e121c5a87216125f4534ece957242b0f452"
+    },
+    {
+      "path": "cost67.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cost67.log",
+      "sha256": "5f04bae7aec6f17252639e4a5459b8e023cfe9f0c0da44a882ea457ba2d30281"
+    },
+    {
+      "path": "cost67.md",
+      "sha256": "d837981c93547cca8a9af760a5e4989e22258749aad057e118c93edd1236b60f"
+    },
+    {
+      "path": "coverage.json",
+      "sha256": "79884550de9114d7bd73b4b098804c492e1238ec0000fefc7ca4373264ff8d03"
+    },
+    {
+      "path": "cpu53.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cpu53.log",
+      "sha256": "aeb4169189d9471c634e2e9e7d90f2dec8f765df05416973848e8e3e22f2f7a4"
+    },
+    {
+      "path": "cpu53.md",
+      "sha256": "088c200db508b9bd32bd9b6e151f1de2219aad191b4be08ecc431d05fa6fcf43"
+    },
+    {
+      "path": "decision.json",
+      "sha256": "cca440a94aafdfe31e38df8d4e878b8912df79d4da50206f8924483dfa7ac99c"
+    },
+    {
+      "path": "inventory-before.json",
+      "sha256": "9142dac4b0ca254eb8d73c2f270857cfc5ad1776227fb34eac0776891c099bb7"
+    },
+    {
+      "path": "mac12.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "mac12.log",
+      "sha256": "06bbd9cc75897ba97b114f99d7068a618341636019e66130b03c3476802fab57"
+    },
+    {
+      "path": "mac12.md",
+      "sha256": "8a9a72f2c0e1a3d10098ce014328b3a7e06a6f4f640f6b3d34a09bcad1de2d24"
+    },
+    {
+      "path": "nimbus2.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "nimbus2.log",
+      "sha256": "18d88881865ac5a5938c56c9605aca707eb3623064a707941d2f18f66d1bc30d"
+    },
+    {
+      "path": "nimbus2.md",
+      "sha256": "906bbdd2920be4a4aac5067c750166d26491833dc4e265231402b41fb5ed5257"
+    },
+    {
+      "path": "nonhttp9.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "nonhttp9.log",
+      "sha256": "804711ba94eb72e98cd5f9dde3e7253c0de63d62c1d762370080ee31f31b65c3"
+    },
+    {
+      "path": "nonhttp9.md",
+      "sha256": "609a514a03acc2c6aed2ef4e7a92938db4a764647db070bbcc47d171aeffcee5"
+    },
+    {
+      "path": "original-mac14.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "original-mac14.log",
+      "sha256": "6faa3b698e975dba79a7236dd42beb5aed1001618e39d77d26e21f9f34f3fbb3"
+    },
+    {
+      "path": "original-mac14.md",
+      "sha256": "811f475a60ce06a04c0b242b00075046f9738b754d5de8e96aa2ae6288db68bd"
+    },
+    {
+      "path": "review.py",
+      "sha256": "71ec5f4bccf585d6c9de485628b9bd9f70cfd48cb78f130de4f605caf5ec1752"
+    },
+    {
+      "path": "rules-before.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "source-impact.json",
+      "sha256": "e8b1186fce9dcd5c364a10eb2ac6cea266d9109f4d0794a1c13e1a1ee0154b49"
+    },
+    {
+      "path": "source-impact.patch",
+      "sha256": "8532d16c446508acb572725a9ce3cc39bd24a7ed31fa51753d543ef346fb21ac"
+    }
+  ]
+}

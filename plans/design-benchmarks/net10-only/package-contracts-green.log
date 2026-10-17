@@ -1,0 +1,11 @@
+test_different_exact_dependency_fails (test_package_contracts.PackageContractTests.test_different_exact_dependency_fails) ... ok
+test_extra_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_extra_older_runtime_asset_fails) ... ok
+test_matching_exact_bounds_pass (test_package_contracts.PackageContractTests.test_matching_exact_bounds_pass) ... ok
+test_minimum_only_dependency_fails (test_package_contracts.PackageContractTests.test_minimum_only_dependency_fails) ... ok
+test_older_runtime_asset_fails (test_package_contracts.PackageContractTests.test_older_runtime_asset_fails) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.014s
+
+OK
+All seven packages target .NET 10; all six integrations require MethodCache [1.2.3].

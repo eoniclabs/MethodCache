@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T08:28:18.223488+00:00",
+  "published_head": "5257fb63fb72393c817d74292e989299ede374d2",
+  "source_files": 224,
+  "source_catalogue_sha256": "7b899cd124798dfa2e08937a029d71f15153a33033cea8bc321b9a439403489f",
+  "prepared_sha256": "e5b77ef895a80c7380b5a08fdc1e79d02738124b9859418c4a8d27b64bdf453c",
+  "scope": "Every tracked production source byte matches published5257fb63; recorded build flags/actual libraries retain their own provenance."
+}

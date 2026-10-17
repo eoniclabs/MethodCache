@@ -1,0 +1,40 @@
+  Determining projects to restore...
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  All projects are up-to-date for restore.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(259,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(261,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+  MethodCache.Core.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.13]     MethodCache.Core.Tests.Telemetry.TelemetryOperationAllocationTests.EnabledLoadScopes_DoNotReserveEightInlineTagsPerOperation [FAIL]
+  Failed MethodCache.Core.Tests.Telemetry.TelemetryOperationAllocationTests.EnabledLoadScopes_DoNotReserveEightInlineTagsPerOperation [7 ms]
+  Error Message:
+   A two-tag load scope allocates 200,0 B; unused tag capacity must stay on the recording stack.
+  Stack Trace:
+     at MethodCache.Core.Tests.Telemetry.TelemetryOperationAllocationTests.EnabledLoadScopes_DoNotReserveEightInlineTagsPerOperation() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Telemetry/TelemetryOperationAllocationTests.cs:line 32
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Results File: /tmp/methodcache-sparse-tags-v1/telemetry-size-red.trx
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 12 ms - MethodCache.Core.Tests.dll (net10.0)

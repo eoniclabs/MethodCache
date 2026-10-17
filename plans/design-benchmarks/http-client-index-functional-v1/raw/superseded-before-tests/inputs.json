@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-17T08:53:26.073475+00:00",
+  "base": "5257fb63fb72393c817d74292e989299ede374d2",
+  "wait_for_sequence_pid": 23806,
+  "scope": "Isolated trial: omit only the implicit local client tag from the publication index; preserve full metadata/tags/generations and physically reclaim matches by scanning resident HTTP nodes on explicit client invalidation. URL-slot and custom-tag indexes retained; native mode unchanged. Existing13semantics tests unchanged; new2cases cover encoded clients, explicit matches on other clients, selectors, admin and byte reclamation. Test only after whole frozen CPU cohort terminates; no performance claim yet.",
+  "sources": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "8682be8e654f970870496b1fbed97df7aff95f07e53c87cfb0ce1246b923d64e"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "4e5cc2c3bc2478ede8d5d52c33d4e558c082de0d0bb23a75816bfc149a343409"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+      "sha256": "4c40400646624664065f2a77f9cfcfe7f76bc2674499d043c40d8045c59d45ab"
+    }
+  ],
+  "controller_sha256": "d86a49936bcd2a60b63a17865d4dc53b6ca56ce1304ff13b47e8130199c89615"
+}

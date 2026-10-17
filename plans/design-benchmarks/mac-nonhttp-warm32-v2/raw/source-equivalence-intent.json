@@ -1,0 +1,24 @@
+{
+  "scope": "Candidate only;deferlocalHTTPopaqueadminIDuntilfirstinspection,memothread-safely;nativeobservationIDunchanged. No algorithm/layout/protocol/budget change. Formal ColdMiss gate failed before candidate; semantic admin regressions added first.",
+  "patch_sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+  "original_sources": [
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "cec5b38151d8772c304a29ad7fa077d7a2d4732173b1b5d5c6ed605dc54204be"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "4629acc00277652858063617607b8fa1282f86b9af62c77c029fcc430d0f6a4d"
+    }
+  ],
+  "candidate_sources": [
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+    }
+  ]
+}

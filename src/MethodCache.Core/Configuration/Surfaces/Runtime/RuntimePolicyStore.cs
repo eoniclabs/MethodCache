@@ -53,6 +53,15 @@ internal sealed class RuntimePolicyStore : IDisposable
     private const string MetadataTicketKey = "runtime.ticket";
     private const string MetadataExpiresAtKey = "runtime.expiresAt";
 
+    internal IReadOnlyCollection<RuntimeOverride> DescribeOverrides()
+    {
+        RemoveExpiredPolicies();
+        lock (_changesSync)
+            return _policies.Select(pair => new RuntimeOverride(pair.Key,
+                CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromPolicy(pair.Key, pair.Value.Policy, pair.Value.Fields), preparedKey: false),
+                pair.Value.Timestamp, pair.Value.Metadata)).ToArray();
+    }
+
     public IReadOnlyCollection<PolicySnapshot> GetSnapshots() => CaptureSnapshots().Snapshots;
 
     internal (IReadOnlyCollection<PolicySnapshot> Snapshots, long Revision) CaptureSnapshots()
@@ -119,6 +128,7 @@ internal sealed class RuntimePolicyStore : IDisposable
 
         var timestamp = _time.GetUtcNow();
         var policyWithMetadata = ApplyRuntimeMetadata(policy, metadata);
+        if (policyWithMetadata.Metadata.Count > 0) fields |= CachePolicyFields.Metadata;
         var contributionMetadata = BuildContributionMetadata(metadata);
         var enriched = CachePolicyMapper.AttachContribution(policyWithMetadata, PolicySourceIds.RuntimeOverrides, fields, timestamp, contributionMetadata);
         var stored = new StoredPolicy(enriched, fields, timestamp, metadata);

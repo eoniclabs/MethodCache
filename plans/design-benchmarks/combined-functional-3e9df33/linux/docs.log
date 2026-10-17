@@ -1,0 +1,123 @@
+=== docs
+Tool 'nbgv' (version '3.6.133') was restored. Available commands: nbgv
+Tool 'markdownsnippets.tool' (version '28.5.0') was restored. Available commands: mdsnippets
+Tool 'dotnet-stryker' (version '4.16.0') was restored. Available commands: dotnet-stryker
+
+A newer version of tool 'nbgv' is available (version '3.10.94'). Consider updating your manifest file.
+A newer version of tool 'markdownsnippets.tool' is available (version '28.5.1'). Consider updating your manifest file.
+A newer version of tool 'dotnet-stryker' is available (version '5.0.0'). Consider updating your manifest file.
+
+Restore was successful.
+Config:
+    TargetDirectory: /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da
+    UrlPrefix:
+    LinkFormat: GitHub
+    Convention: InPlaceOverwrite
+    TocLevel: 2
+    ValidateContent: False
+    OmitSnippetLinks: True
+    TreatMissingAsWarning: False
+    FileConfigPath: /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/mdsnippets.json (exists:True)
+    ExcludeDirectories:
+        benchmarks
+        artifacts
+        TestResults
+Found 646 files for snippets
+Added 77 snippets (21ms)
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs
+	ICacheManager
+	IMemoryCache
+	Loading
+	Helpers
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Conditional.cs
+	conditional-cache-when
+	conditional-when
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Configuration.cs
+	configuration-startup
+	configuration-appsettings
+	configuration-runtime-overrides
+	configuration-diagnostics
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Distributed.cs
+	distributed-redis
+	distributed-sqlserver
+	distributed-messagepack
+	messagepack-key-generator
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Expiration.cs
+	expiration-attributes
+	expiration-default
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/FailSafe.cs
+	failsafe-central
+	failsafe-per-method
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/GettingStarted.cs
+	getting-started-before
+	getting-started-interface
+	getting-started-registration
+	getting-started-factory
+	getting-started-shapes
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Invalidation.cs
+	invalidation-tags
+	invalidation-from-code
+	invalidation-by-key
+	invalidation-pattern
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Keys.cs
+	keys-arguments
+	keys-scoped
+	keys-versioned-and-overloaded
+	keys-provider
+	keys-json-generator
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Manual.cs
+	manual-basic
+	manual-options
+	manual-try-get
+	manual-many
+	manual-testing
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/MemoryCache.cs
+	memory-options
+	memory-statistics
+	memory-weigher
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Monitoring.cs
+	monitoring-administrator
+	monitoring-console-metrics
+	monitoring-metrics-provider-registration
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/NativeAot.cs
+	native-aot-context
+	native-aot-registration
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/Testing.cs
+	testing-with-caching
+	testing-without-caching
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Features/ThirdPartyPage.cs
+	third-party-per-method
+	third-party-module-selection
+	third-party-wrapper-registration
+	third-party-wrapper
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Packages.cs
+	http-basic
+	http-settings
+	http-storage-size
+	http-distributed
+	redis-basic
+	redis-options
+	redis-shared-connection
+	distributed-outage-options
+	sqlserver-basic
+	sqlserver-options
+	aspnetcore-setup
+	otel-setup
+	otel-baggage
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/Readme.cs
+	readme-quickstart-interface
+	explicit-factory-registration
+	readme-quickstart-registration
+	readme-before
+	readme-after
+	readme-invalidation
+	readme-configuration
+	readme-distributed
+	readme-monitoring
+	readme-native-aot
+Snippets extracted from /home/agent-admin/methodcache-ci/runs/20261017-041851-3e9df33eb9da/tests/MethodCache.Docs.Tests/Snippets/ThirdParty.cs
+	readme-cache-interface
+	readme-cache-interface-registration
+	readme-explicit-key
+MarkdownProcessor Finished. 12ms
+Finished 114ms

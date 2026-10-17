@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-16T23:17:12.365891+00:00",
+  "compiled_files_verified": 1110,
+  "points": {
+    "pr5": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "prefix": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "constructor-base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257"
+  },
+  "prepared_sha256": "fc011f01233dec4a7b426e6c4e72cc35da793ffdbaacccdf875bc5fa00a619a3",
+  "inputs_sha256": "2076cde2708669caabaa7120c15c228e7f913ac2806a0637482166c47ca63f96",
+  "complete_fresh_cohorts_no_pooling": true
+}

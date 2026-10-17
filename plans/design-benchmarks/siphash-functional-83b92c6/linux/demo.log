@@ -1,0 +1,106 @@
+=== demo
+
+  MethodCache, a guided tour
+  Add caching to any .NET method with one attribute. Every number below is measured live.
+
+  1. One attribute
+  ────────────────
+  Put [Cache] on an interface method and call AddMethodCache(). The source generator writes the decorator.
+
+    public interface IWeatherService
+    {
+        [Cache(Duration = "00:05:00", Tags = ["weather"])]
+        Task<Forecast> GetForecastAsync(string city);
+    }
+
+    services.AddSingleton<IWeatherService, WeatherService>();
+    services.AddMethodCache();
+
+    First call (runs the method)        417.7 ms
+    Second call (from the cache)          0.6 ms
+    Average of 1,000,000 cached calls     391 ns
+    Resolved type                     IWeatherServiceDecorator
+    ✓ The second call returned the same result without running the method
+    ✓ WeatherService ran once for 1,100,002 calls
+
+  2. Stampede protection
+  ──────────────────────
+  100 requests ask for the same uncached value at the same moment. Only one of them runs the method.
+
+    100 concurrent calls finished in    404.7 ms
+    ✓ WeatherService ran once
+    ✓ All 100 callers got the same result
+
+  3. Tags that understand your arguments
+  ──────────────────────────────────────
+  "user:{userId}" becomes user:1, user:2 ... Renaming user 1 invalidates user 1 and nothing else.
+
+    [Cache(Duration = "00:10:00", Tags = ["users", "user:{userId}"])]
+    Task<UserProfile> GetProfileAsync(int userId);
+
+    [CacheInvalidate(Tags = ["user:{userId}"])]
+    Task RenameAsync(int userId, string newName);
+
+    Load users 1 and 2, twice each    2 database queries
+    Rename user 1, load both again    1 new database query
+    ✓ User 1 is fresh: Ada King
+    ✓ User 2 still came from the cache: Alan Turing
+
+  4. Change policies without touching code
+  ────────────────────────────────────────
+  Durations can come from the attribute, a global default, appsettings.json (reloaded live) or a runtime override.
+
+    services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
+    services.AddMethodCacheFromConfiguration(configuration);   // the "MethodCache" section
+
+    At startup:
+    Method                            Duration  Comes from
+    IProductCatalog.GetPriceAsync     30 s      startup-fluent, attributes
+    IProductCatalog.GetProductAsync   15 min    startup-fluent, attributes, configuration-files
+    IWeatherService.GetForecastAsync  5 min     startup-fluent, attributes
+
+    After editing appsettings.json (15 → 20 min):
+    Method                            Duration  Comes from
+    IProductCatalog.GetPriceAsync     30 s      startup-fluent, attributes
+    IProductCatalog.GetProductAsync   20 min    startup-fluent, attributes, configuration-files
+    IWeatherService.GetForecastAsync  5 min     startup-fluent, attributes
+
+    ✓ appsettings.json was reloaded while the app was running
+    Runtime override, then a call     entry MethodCache.Demo.IProductCatalog.GetProductAsync:KB-1 lives 1 min
+    ✓ The runtime override applied to new entries at once
+    ✓ Clearing the override restored the appsettings.json value
+
+  5. Cache code you don't own
+  ───────────────────────────
+  IFxRatesClient comes from a vendor's package. One line caches its rate lookups; orders still reach the API.
+
+    [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
+        Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+
+    services.AddSingleton<IFxRatesClient, FxRatesClient>();   // the vendor's client, as usual
+
+    Three lookups of EUR → SEK          256.0 ms
+    ✓ The exchange-rate API was called once
+    ✓ PlaceOrderAsync isn't listed, so both orders reached the API
+
+  6. See what is cached
+  ─────────────────────
+  ICacheAdministrator (and the MethodCache.AspNetCore endpoints) show stats and live entries, and can invalidate them.
+
+    Hits / misses                     1,100,105 / 7  (hit ratio 100.0 %)
+    Entries                           5
+    Key                                                          Expires in  Tags
+    FxVendor.IFxRatesClient.GetRateAsync:EUR:SEK                 60 s        fx, fx:EUR
+    MethodCache.Demo.IUserProfiles.GetProfileAsync:1             9.9 min     users, user:1
+    MethodCache.Demo.IUserProfiles.GetProfileAsync:2             9.9 min     users, user:2
+    MethodCache.Demo.IWeatherService.GetForecastAsync:Malmö      4.9 min     weather
+    MethodCache.Demo.IWeatherService.GetForecastAsync:Stockholm  4.9 min     weather
+
+    Invalidate tag "weather"          2 → 0 entries
+    ✓ Every hit and miss is counted, including the million in chapter 1
+    ✓ Tag invalidation removed every weather entry
+
+  All 6 chapters behaved as described.
+
+  Next: the README has the full feature list, and samples/MethodCache.WebDemo shows the same
+  services in ASP.NET Core with admin endpoints, OpenTelemetry and Redis.

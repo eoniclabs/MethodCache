@@ -1,0 +1,7 @@
+Waiting for exclusive capacity: build-pr5 2026-10-15T15:51:06.002636+00:00
+Finished build-pr5 2026-10-15T15:56:41.358541+00:00
+Waiting for exclusive capacity: build-prefix 2026-10-15T15:56:51.358781+00:00
+Finished build-prefix 2026-10-15T17:27:56.982024+00:00
+Waiting for exclusive capacity: setup-guards 2026-10-15T17:28:06.982608+00:00
+Finished setup-guards 2026-10-15T17:42:37.864004+00:00
+Component harness preparation complete; timing requires a separately reviewed protocol. 2026-10-15T17:42:47.864205+00:00

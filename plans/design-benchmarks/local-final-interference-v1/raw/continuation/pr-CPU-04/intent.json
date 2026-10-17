@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-17T03:09:37.093838+00:00",
+  "inputs_sha256": "33d1bdd580acc9c78906fe51549aa6353cfeb33bd8ddf6d7c424efc07d1a40c5",
+  "prepared_sha256": "3145f195c562802d3cbbc5ef815582dda0f55aefe78d660c4017a16bfea9c072",
+  "comparison": {
+    "pr": "CPU-04",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True)",
+        "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+        "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+        "HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False)"
+      ],
+      "int": []
+    }
+  },
+  "cases": {
+    "main": [
+      "HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True)",
+      "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+      "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+      "HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False)"
+    ],
+    "int": []
+  }
+}

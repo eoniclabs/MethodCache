@@ -1,0 +1,24 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-final-int-controls-v1-prepare 2026-10-16T21:27:38.812319+00:00
+Preparing worktree (detached HEAD f43854d)
+HEAD is now at f43854d Publish NuGet releases through BWS with verified symbol credentials (#121)
+
+Build succeeded.
+    12 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:08.76
+Original baseline listener guard failed for the expected missing metrics 2026-10-16T21:27:48.210811+00:00
+
+Build succeeded.
+    12 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.51
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.50
+Prepared four int controls with real metric flow on both revisions 2026-10-16T21:27:58.375612+00:00
+Releasing exclusive lease methodcache-design-20261015-01a13a93-final-int-controls-v1-prepare exit 0 2026-10-16T21:27:58.657329+00:00

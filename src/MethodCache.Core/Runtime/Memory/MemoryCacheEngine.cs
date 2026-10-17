@@ -1,4 +1,7 @@
+using MethodCache.Core.Runtime.Keys;
+using MethodCache.Generated;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace MethodCache.Core.Runtime.Memory;
 
@@ -54,10 +57,10 @@ internal sealed class MemoryCacheEngine
     private readonly record struct WriteTask(Node Node, WriteKind Kind);
 
     private readonly ConcurrentDictionary<string, Node> _map;
-#if NET9_0_OR_GREATER
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
-#endif
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
+    private readonly bool _hasPrehashedLookup;
+    private readonly ConcurrentDictionary<string, TagNodeSet> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
     private readonly ConcurrentQueue<WriteTask> _writeBuffer = new();
     private readonly object _evictionLock = new();
@@ -91,20 +94,24 @@ internal sealed class MemoryCacheEngine
     // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
     private long _pendingAdds;
 
-    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems)
+    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null, bool useRuntimeStringComparer = false)
     {
         if (maximum <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(maximum), maximum, "Maximum must be greater than zero.");
         }
 
+        if (useRuntimeStringComparer && comparer != null)
+            throw new ArgumentException("A forced comparer cannot be combined with the runtime string comparer.", nameof(comparer));
         _maximum = maximum;
         _mode = mode;
         _clock = clock;
-        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024)); // default comparer enables the non-randomized string hashing fast path
-#if NET9_0_OR_GREATER
+        // String-only stores can retain the runtime's optimized ordinal comparer and its built-in
+        // collision defenses. Generated-method stores use the process-secret prefix comparer.
+        IEqualityComparer<string> selected = useRuntimeStringComparer ? StringComparer.Ordinal : comparer ?? KeyComparer.Instance;
+        _map = new ConcurrentDictionary<string, Node>(Environment.ProcessorCount, Math.Min(expectedItems, 1024), selected);
         _spanLookup = _map.GetAlternateLookup<ReadOnlySpan<char>>();
-#endif
+        _hasPrehashedLookup = _map.TryGetAlternateLookup<PrehashedKey>(out _keyLookup);
 
         if (mode == EngineEvictionMode.TinyLfu)
         {
@@ -152,16 +159,27 @@ internal sealed class MemoryCacheEngine
         => Accept(_map.TryGetValue(key, out node!), now, ref node);
 
     /// <summary>
-    /// Like <see cref="TryGet(string, long, out Node)"/>, for a key held in a buffer. On .NET 9 and later the
-    /// lookup does not allocate.
+    /// Like <see cref="TryGet(string, long, out Node)"/>, for a key held in a buffer. The lookup does not allocate.
     /// </summary>
     public bool TryGet(ReadOnlySpan<char> key, long now, out Node node)
     {
-#if NET9_0_OR_GREATER
         return Accept(_spanLookup.TryGetValue(key, out node!), now, ref node);
-#else
-        return TryGet(key.ToString(), now, out node);
-#endif
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryGet(ref KeyBuilder key, long now, out Node node)
+    {
+        return _hasPrehashedLookup
+            ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), key.LookupHash()), out node!), now, ref node)
+            : TryGet(key.AsSpan(), now, out node);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal bool TryGet(string key, MethodCache.Generated.CallSnapshot binding, long now, out Node node)
+    {
+        return _hasPrehashedLookup
+            ? Accept(_keyLookup.TryGetValue(new PrehashedKey(key.AsSpan(), binding.HashKey(key)), out node!), now, ref node)
+            : TryGet(key, now, out node);
     }
 
     private bool Accept(bool found, long now, ref Node node)
@@ -259,6 +277,7 @@ internal sealed class MemoryCacheEngine
     /// <summary>Removes <paramref name="node"/> only if it is still the current entry for its key.</summary>
     public bool RemoveNode(Node node)
     {
+        ProcessKeyHash.Remember(node.Key, node.KeyHash);
         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
         {
             Retire(node);
@@ -584,6 +603,7 @@ internal sealed class MemoryCacheEngine
     private bool OnTimerExpired(Node node)
     {
         // Already detached from the wheel by the caller.
+        ProcessKeyHash.Remember(node.Key, node.KeyHash);
         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
         {
             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
@@ -713,6 +733,7 @@ internal sealed class MemoryCacheEngine
 
     private void EvictNode(Node node)
     {
+        ProcessKeyHash.Remember(node.Key, node.KeyHash);
         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
         {
             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
@@ -734,8 +755,8 @@ internal sealed class MemoryCacheEngine
         {
             while (true)
             {
-                var nodes = _tagIndex.GetOrAdd(tag, static _ => new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance));
-                nodes.TryAdd(node, 0);
+                var nodes = _tagIndex.GetOrAdd(tag, static _ => new TagNodeSet());
+                nodes.Add(node);
 
                 // UnindexTags may have dropped this set as empty just before the add; retry on the live set.
                 if (_tagIndex.TryGetValue(tag, out var current) && ReferenceEquals(current, nodes))
@@ -761,9 +782,9 @@ internal sealed class MemoryCacheEngine
                 continue;
             }
 
-            nodes.TryRemove(node, out _);
+            nodes.Remove(node);
 
-            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, ConcurrentDictionary<Node, byte>>(tag, nodes)) && !nodes.IsEmpty)
+            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, TagNodeSet>(tag, nodes)) && !nodes.IsEmpty)
             {
                 // A concurrent writer added to the set while it was being dropped; put its nodes back.
                 var current = _tagIndex.GetOrAdd(tag, nodes);
@@ -771,7 +792,7 @@ internal sealed class MemoryCacheEngine
                 {
                     foreach (var survivor in nodes.Keys)
                     {
-                        current.TryAdd(survivor, 0);
+                        current.Add(survivor);
                     }
                 }
             }

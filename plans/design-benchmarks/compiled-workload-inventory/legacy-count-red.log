@@ -1,0 +1,5 @@
+local declared 46 actual 48
+native declared 16 actual 16
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+AssertionError: Timing matrix is stale: declared case counts do not cover the compiled workloads.

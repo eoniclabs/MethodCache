@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <DefineConstants Condition="Exists('../../src/MethodCache.Core/Runtime/Keys/SipHashState.cs')">$(DefineConstants);METHODCACHE_PREFIX_HASH;METHODCACHE_SIPHASH;METHODCACHE_KEY_BUILDER_CONSTRUCTOR</DefineConstants>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -30,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Compile the actual benchmark sources for every library framework including the CLI dispatch. -->
+    <Compile Include="../../benchmarks/MethodCache.CostProfile/Timing.cs" Link="CostProfile/Timing.cs" />
     <Compile Include="../../benchmarks/MethodCache.Benchmarks/**/*.cs"
              Exclude="../../benchmarks/MethodCache.Benchmarks/bin/**/*.cs;../../benchmarks/MethodCache.Benchmarks/obj/**/*.cs;../../benchmarks/MethodCache.Benchmarks/Program.cs"
              Link="Benchmarks/%(RecursiveDir)%(Filename)%(Extension)" />
@@ -38,5 +40,10 @@
     <ProjectReference Include="../../src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj" />
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../src/MethodCache.Analyzers/MethodCache.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SqlServer/MethodCache.SqlServer.csproj" />
+    <ProjectReference Include="../../src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj" />
   </ItemGroup>
 </Project>

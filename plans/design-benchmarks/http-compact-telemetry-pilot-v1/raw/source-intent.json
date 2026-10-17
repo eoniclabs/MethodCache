@@ -1,0 +1,35 @@
+{
+  "baseline_runtime": "f49264198631167d22d8c19e8b396d147646a87d",
+  "published_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
+  "adoption": "No full cumulative acceptance claimed; earlier precise cold failure remains open",
+  "patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
+  "candidate_sources": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+      "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
+    },
+    {
+      "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
+      "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+      "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
+    }
+  ],
+  "changes": "Full publication candidate plus compactTelemetryOperation one/two-tag fields, optionalerror tag on record stack; all labels/errors/durations/activity disposal preserved",
+  "red": "EnabledLoadScopes allocates200B before against unchanged128B bound; newtest passes after",
+  "local_tests": "1055Core passed/1intentionalsoakskip;343HTTPpassed. Existing transport telemetry covers one-tag success/failure; origin cases cover two-tag success/failure/cancellation/activity parenting."
+}

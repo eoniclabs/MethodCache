@@ -1,0 +1,31 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-cpu-filtered-pr133-v1-prepare 2026-10-16T21:59:05.404327+00:00
+Cloning into '/home/agent-admin/methodcache-design-bench-20261015/cpu-filtered-pr133-v1/tree'...
+HEAD is now at 4f6cd73 Record that 2-byte reads of GUID arguments gave no gain
+Preparing worktree (detached HEAD 2b3cb93)
+HEAD is now at 2b3cb93 Merge codex/design-final-gates-v1 into claude/faster-cache-hits-xft398
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:07.84
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.31
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.55
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.56
+Prepared five actual CPU-only PR cases and verified instrumented setup 2026-10-16T21:59:26.099951+00:00
+Releasing exclusive lease methodcache-design-20261015-01a13a93-cpu-filtered-pr133-v1-prepare exit 0 2026-10-16T21:59:26.341740+00:00

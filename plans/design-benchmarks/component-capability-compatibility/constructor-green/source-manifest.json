@@ -1,0 +1,16 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/design-constructor-check-v1/MethodCache",
+  "runtime_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+  "workload_sha": "83b92c61f20bee738afd3a332e059fab44f6d8a1",
+  "source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "524886ead0dc709478e3e5f77bc94a09c17df869ef66d891c809eca9c0af313a",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "ea4a300eb6f8245e70502bcbba52e4beacde6902a783ddf52a37735fefce3d5d",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "a6176fdcb5bba599eb3ec96b01393cdae58e9bf46367662c1650d2b8c394242b"
+  },
+  "compiled_capabilities": {
+    "prefix_hash": true,
+    "hash_algorithm": "Marvin32",
+    "in_place_key_builder": true
+  },
+  "statistics": "PR5 and later have no independent statistics toggle; each full facade/key-build case measures both MeterListener states. No ineffective flag is varied."
+}

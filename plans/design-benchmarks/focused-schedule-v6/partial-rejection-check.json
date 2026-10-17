@@ -1,0 +1,7 @@
+{
+  "at_utc": "2026-10-16T11:22:04.017123+00:00",
+  "expected_rejection": true,
+  "reason": "Comparison does not yet have three complete independent rounds",
+  "analysis_output_created": false,
+  "timing_means_reviewed": false
+}

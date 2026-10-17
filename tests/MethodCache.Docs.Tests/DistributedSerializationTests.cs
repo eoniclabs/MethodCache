@@ -24,8 +24,10 @@ public class DistributedSerializationTests
         public string Breed { get; set; } = "";
     }
 
-    private readonly MethodCache.TestSupport.AtomicTestCache _shared = new();
+    private readonly MethodCache.TestSupport.AtomicTestCache _shared;
     private readonly FakeTimeProvider _time = new();
+
+    public DistributedSerializationTests() => _shared = new(_time);
 
     private ServiceProvider Instance()
     {

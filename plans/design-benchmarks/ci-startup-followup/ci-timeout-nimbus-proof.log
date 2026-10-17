@@ -1,0 +1,2 @@
+{"command": ["timeout", "--signal=TERM", "--kill-after=30s", "1", "bash", "<owned-fixture>"], "exit": 125, "job_started": true, "only_owned_cleanup_called": true, "output": "=== tests (log: /tmp/methodcache-ci-timeout-proof-7w43sa0f/results/tests.log)\nTerminated\n"}
+Actual Nimbus timeout terminates its fixture job and runs exact-label cleanup; no real Docker commands were issued.

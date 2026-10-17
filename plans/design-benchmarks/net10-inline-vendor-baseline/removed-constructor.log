@@ -1,0 +1,43 @@
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(26,24): warning RS0026: Symbol 'RemoveAsync<TService, TResult>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(20,24): warning RS0026: Symbol 'RemoveAsync<TService, TResult>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(14,24): warning RS0026: Symbol 'RemoveAsync<TService>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(32,24): warning RS0026: Symbol 'RemoveAsync<TService>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(38,24): warning RS0026: Symbol 'UpsertAsync<TService>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(46,24): warning RS0026: Symbol 'UpsertAsync<TService, TResult>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(54,24): warning RS0026: Symbol 'UpsertAsync<TService, TResult>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs(62,24): warning RS0026: Symbol 'UpsertAsync<TService>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs(41,36): warning RS0026: Symbol 'GetOrCreateAsync<T>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+<worktree>/src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs(27,36): warning RS0026: Symbol 'GetOrCreateAsync<T>' violates the backcompat requirement: 'Do not add multiple overloads with optional parameters'. See 'https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md' for details. (https://github.com/dotnet/roslyn/blob/main/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md) [<worktree>/src/MethodCache.Core/MethodCache.Core.csproj]
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.CompatTests -> <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll
+Test run for <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.1+bf6400fd51 (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.CompatTests
+[xUnit.net 00:00:00.04]   Discovered:  MethodCache.CompatTests
+[xUnit.net 00:00:00.05]   Starting:    MethodCache.CompatTests
+[xUnit.net 00:00:00.11]     MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes [FAIL]
+[xUnit.net 00:00:00.11]       System.MissingMethodException : Method not found: 'Void MethodCache.Generated.KeyBuilder..ctor(MethodCache.Generated.MethodCall, System.Span`1<Char>)'.
+[xUnit.net 00:00:00.11]       Stack Trace:
+[xUnit.net 00:00:00.11]         <worktree>/tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs(68,0): at MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes()
+[xUnit.net 00:00:00.11]         <worktree>/tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs(89,0): at MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes()
+[xUnit.net 00:00:00.11]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.12]   Finished:    MethodCache.CompatTests
+  Failed MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes [47 ms]
+  Error Message:
+   System.MissingMethodException : Method not found: 'Void MethodCache.Generated.KeyBuilder..ctor(MethodCache.Generated.MethodCall, System.Span`1<Char>)'.
+  Stack Trace:
+     at MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes() in <worktree>/tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs:line 68
+   at MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes() in <worktree>/tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs:line 89
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 1
+     Failed: 1
+ Total time: 0,4012 Seconds

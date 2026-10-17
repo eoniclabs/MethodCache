@@ -1,0 +1,24 @@
+{
+  "utc": "2026-10-17T05:50:55.724180+00:00",
+  "scope": "All14fixedcases/10alternatingpairs/32warmups12actual. Same frozen workloads and shipping libraries; only growing-set misses use equal8192invocations on both sides without resets. Baseline src is clean at f438. Entire cohort reviewed only after terminal.",
+  "inputs_sha256": "f660165dca58da1155f4c4ad6ecaf34459d81632c816bf1e9dbacc9642404933",
+  "prepared_sha256": "10c114b27da1a08145fa493bbde9138d1a4f13196a9192cd7cd9b922023bcd54",
+  "binary_files": 210,
+  "source_files": 423,
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"
+  ]
+}

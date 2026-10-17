@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  Restored /tmp/methodcache-generated-prefix-six-runtimes-final/pr5/PrefixValidation.csproj (in 106 ms).
+  4 of 5 projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/core-telemetry-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  PrefixValidation -> /tmp/methodcache-generated-prefix-six-runtimes-final/pr5/bin/Release/net10.0/MethodCache.Benchmarks.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.59

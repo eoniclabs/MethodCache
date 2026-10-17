@@ -10,7 +10,7 @@ namespace MethodCache.HttpCaching.Internal;
 /// </summary>
 internal static class HttpCacheEntrySerializer
 {
-    private const byte FormatVersion = 2;
+    internal const byte FormatVersion = 2;
 
     public static byte[] Serialize(HttpCacheEntry entry, DateTimeOffset expiresAt)
     {

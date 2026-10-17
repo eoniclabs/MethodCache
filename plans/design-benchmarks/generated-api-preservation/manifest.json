@@ -1,0 +1,50 @@
+{
+  "collected_utc": "2026-10-16T12:06:32.160521+00:00",
+  "functional_parent_sha": "9758f3012e9a3758e081db921636c1fcef83e835",
+  "frozen_api_source_commit": "9294adb3bd562b502d18a428d452b0bc40199515",
+  "declaration_count": 103,
+  "snapshot_sha256": "a30c5ce3fb5edff1a4943d31d99f27b96f406dde69ef864a97d7381fda1de0e5",
+  "compatibility_tests_passed": 10,
+  "core_tests_passed": 1043,
+  "core_intentional_soak_skips": 1,
+  "diffcoverage": {
+    "covered": 1,
+    "total": 1,
+    "percentage": 100
+  },
+  "native_aot_rid": "osx-arm64",
+  "native_aot_smoke": "passed",
+  "original_and_net10_vendor_images_and_sources_unchanged": true,
+  "measurement_scope": "Restores only the supported legacy StartKey entry point. Current generated/benchmark constructor paths, fields, engine and workload binaries remain unchanged; frozen timing workers are not modified.",
+  "normalization": "Only absolute worktree and temporary receipt paths replaced",
+  "files": {
+    "api-surface-red.log": {
+      "original_sha256": "a9de4758371f6748401adcc9261380483a0481246943cb457b4629f0a3943fce",
+      "stored_sha256": "856fd4c2e9186eb62bfbfbc41ff80de5b6df1bcde4b78794b54fa71e5825e33a"
+    },
+    "api-surface-green.log": {
+      "original_sha256": "adb007bbe0a22a5103aa7a71cb4d2f8fc2c916e0a41471ece77f6ea3546adef6",
+      "stored_sha256": "3abe0a63c4010bf1cf5bf914324c0e5b1986767f2df1b930914f29f233eead0f"
+    },
+    "startkey-core-green.log": {
+      "original_sha256": "fe3bd547d53549f5b2929548fb3dd52e6b54dab04216ac7473fc374301f8d914",
+      "stored_sha256": "c20b8abfb1284e39fb7a59fc07144a60e818994c2bd72e29596d376aa06da1f2"
+    },
+    "startkey-coverage.log": {
+      "original_sha256": "7eaed5c657f25941acea1905e7733e9bd413561d13983a6b3f67ab66f3abf4f8",
+      "stored_sha256": "54f794635fd75574b23db3413d1900f9c9977e67d136281154545e1124485a57"
+    },
+    "startkey-diffcoverage.log": {
+      "original_sha256": "37a848d515717cb29dbd0bfdc7c7c45894b407e7eb20189aa88ff8f47ef7aa1e",
+      "stored_sha256": "37a848d515717cb29dbd0bfdc7c7c45894b407e7eb20189aa88ff8f47ef7aa1e"
+    },
+    "startkey-aot-publish.log": {
+      "original_sha256": "757b8b30e669dfdf2e48929774a46952135b11aaf9840533cfbb667f2c026d14",
+      "stored_sha256": "1c3b592eaac3f87c53b2c328ff582be13274e327afd91326bf94360ab5cfb863"
+    },
+    "startkey-aot-run.log": {
+      "original_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df",
+      "stored_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df"
+    }
+  }
+}

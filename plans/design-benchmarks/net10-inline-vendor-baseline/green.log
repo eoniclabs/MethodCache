@@ -1,0 +1,31 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.CompatTests -> <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll
+Test run for <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.1+bf6400fd51 (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.CompatTests
+[xUnit.net 00:00:00.04]   Discovered:  MethodCache.CompatTests
+[xUnit.net 00:00:00.05]   Starting:    MethodCache.CompatTests
+[xUnit.net 00:00:00.15]   Finished:    MethodCache.CompatTests
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenVendor_CurrentRuntime_PreservesReturnShapesTagsFallbackAndGenerics [69 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenVendor_KeyedScopedBindings_RemainIsolated [2 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_CurrentRuntime_PreservesInlineFallbackTagsAndReturnShapes [5 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenModule_UnknownContract_LoadsAndFailsAtStartupBeforeDescribe [2 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenImages_MatchRecordedHashes [1 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Images_MatchRecordedHashesAndTarget [< 1 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenImages_CoverInlineAndMaterializedKeyContracts [1 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Module_UnknownContract_FailsBeforeDescribe [< 1 ms]
+  Passed MethodCache.CompatTests.VendorCompatibilityTests.FrozenNet10Vendor_KeyedScopedBindings_RemainIsolated [< 1 ms]
+
+Test Run Successful.
+Total tests: 9
+     Passed: 9
+ Total time: 0,3999 Seconds

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using MethodCache.Extensibility;
+using MethodCache.Core.Telemetry;
 using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,12 +12,15 @@ namespace MethodCache.Infrastructure
     /// created per resolve, so this keeps that to one lookup instead of one per service.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class DecoratorServices
+    internal sealed class DecoratorServices
     {
         private readonly ConcurrentDictionary<Type, object> _sites = new();
 
         // The registry the decorators' methods are created with: the container's, or one registration's
         private readonly IPolicyRegistry _sitesRegistry;
+        internal IPolicyRegistry SitesRegistry => _sitesRegistry;
+        internal GeneratedDiagnostics Diagnostics { get; init; } = new(null);
+        internal IReadOnlyDictionary<string, string[]> ParameterNames { get; init; } = new Dictionary<string, string[]>();
 
         /// <summary>
         /// Creates the services a generated decorator takes in its constructor. Public only for generated code.
@@ -24,26 +28,30 @@ namespace MethodCache.Infrastructure
         /// <param name="cacheManager">The cache that stores method results.</param>
         /// <param name="policyRegistry">Resolves each method's cache policy.</param>
         /// <param name="keyGenerator">Builds cache keys from method arguments.</param>
-        /// <param name="metricsProvider">Receives hit, miss, error and latency reports; optional.</param>
+        /// <param name="telemetry">Container-owned Core instrumentation.</param>
         public DecoratorServices(
             ICacheManager cacheManager,
             IPolicyRegistry policyRegistry,
             ICacheKeyGenerator keyGenerator,
-            ICacheMetricsProvider? metricsProvider = null)
+            CoreTelemetry? telemetry = null)
         {
             CacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
+            FastMemory = cacheManager as InMemoryCacheManager;
             PolicyRegistry = policyRegistry ?? throw new ArgumentNullException(nameof(policyRegistry));
             KeyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
-            MetricsProvider = metricsProvider;
+            Telemetry = telemetry ?? FastMemory?.Telemetry;
             _sitesRegistry = policyRegistry;
         }
 
         private DecoratorServices(DecoratorServices container, RegistrationPolicyRegistry registration)
         {
+            Diagnostics = container.Diagnostics;
+            ParameterNames = container.ParameterNames;
             CacheManager = container.CacheManager;
+            FastMemory = container.FastMemory;
             PolicyRegistry = container.PolicyRegistry;
             KeyGenerator = container.KeyGenerator;
-            MetricsProvider = container.MetricsProvider;
+            Telemetry = container.Telemetry;
             _sitesRegistry = registration;
         }
 
@@ -67,11 +75,12 @@ namespace MethodCache.Infrastructure
                 provider.GetRequiredService<ICacheManager>(),
                 provider.GetRequiredService<IPolicyRegistry>(),
                 provider.GetRequiredService<ICacheKeyGenerator>(),
-                provider.GetService<ICacheMetricsProvider>());
+                provider.GetService<CoreTelemetry>());
         }
 
         /// <summary>The cache that stores method results.</summary>
         public ICacheManager CacheManager { get; }
+        internal InMemoryCacheManager? FastMemory { get; }
 
         /// <summary>Resolves each method's cache policy.</summary>
         public IPolicyRegistry PolicyRegistry { get; }
@@ -79,8 +88,8 @@ namespace MethodCache.Infrastructure
         /// <summary>Builds cache keys from method arguments.</summary>
         public ICacheKeyGenerator KeyGenerator { get; }
 
-        /// <summary>Receives hit, miss, error and latency reports; null when none is registered.</summary>
-        public ICacheMetricsProvider? MetricsProvider { get; }
+        /// <summary>Instrumentation owned by this container.</summary>
+        internal CoreTelemetry? Telemetry { get; }
 
         /// <summary>
         /// Returns the instance a generated loader calls. Public only for generated code.

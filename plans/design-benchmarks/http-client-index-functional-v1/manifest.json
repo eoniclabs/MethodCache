@@ -1,0 +1,114 @@
+{
+  "scope": "Client-index-only92764360correctness:targeted22/fullHTTP345/Core1055pass,oneintentionaloptinsoakskip. Existing13physicalremoval/replacementfactsunchanged;2newcases cover encodedclientnames,explicitmatchesonotherclients,selectors,adminandbyte reclamation. Metadata layout unchanged;exacttestedproduction retained. Onlytestinitializerwhitespaceformatted afterward;originalsource/failure/verifiedformatlogsretained. O(residententries)clientinvalidationtradeoff;not a timing gate.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "raw/core.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/core.log",
+      "sha256": "636fb083577667c00d37db0dfbf4bd1a2c827029f58e541583231a1c7390685e"
+    },
+    {
+      "path": "raw/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/format-before.log",
+      "sha256": "69f9feeb149b72624a5b5be040abaf3411705e441369956ece4ab7d61a089a56"
+    },
+    {
+      "path": "raw/format-fix.log",
+      "sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "raw/format-source-equivalence.json",
+      "sha256": "8d0866cc036d9e944ce3f3efcb9a347c19d8b9a49dee6d4d93fdf536dd145c09"
+    },
+    {
+      "path": "raw/format-verified.log",
+      "sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "raw/http.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/http.log",
+      "sha256": "4e401010e1002a7bc30d60f113d843cbfda5f58f09f0760b925c321399773b52"
+    },
+    {
+      "path": "raw/inputs.json",
+      "sha256": "5f5d5fb9e99c93e4428e4929df253eb65ee48a4e46f39c525bc41aae605fc891",
+      "original_sha256": "618a5119f4556aaa9d277e36f7321f19eefe7639169214548e265927747acb0e",
+      "catalogue_paths": [
+        [
+          "sources"
+        ]
+      ]
+    },
+    {
+      "path": "raw/observer.log",
+      "sha256": "e88c10dfd1acf7beff33e9f56949721bd6bb7a675aae1d6d6f7519c24d60b845"
+    },
+    {
+      "path": "raw/observer.pid",
+      "sha256": "39d4f2d143d93be82ae2c7e0778b73d58b39ea6ba723cc589cef89b995ec6a5e"
+    },
+    {
+      "path": "raw/production.patch",
+      "sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109"
+    },
+    {
+      "path": "raw/superseded-before-tests/inputs.json",
+      "sha256": "7c247cf4906aa34003a79a4e86a15250f75bd31407b510e89ba313d21077fe3d",
+      "original_sha256": "ba1b7619aa34cb1b324a7298cdb4d3a1b8939265f9da21a490a545be2d076f48",
+      "catalogue_paths": [
+        [
+          "sources"
+        ]
+      ]
+    },
+    {
+      "path": "raw/superseded-before-tests/observer.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw/superseded-before-tests/observer.pid",
+      "sha256": "de92bc81d6afc66fef326f97811101a5b61930ebcbc0a77a63e7a5384f722361"
+    },
+    {
+      "path": "raw/superseded-before-tests/stop-receipt.json",
+      "sha256": "2cb4eb75d0ba8c752a46107d33cf084869059941ca2e304218aaa729f714b1d7"
+    },
+    {
+      "path": "raw/targeted.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/targeted.log",
+      "sha256": "6595577d027ce051a3d1bc09ff4697e4db52f9a6c93db89368348d64fdd16817"
+    },
+    {
+      "path": "raw/tested-source/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+    },
+    {
+      "path": "raw/tested-source/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+    },
+    {
+      "path": "raw/tested-source/tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+      "sha256": "c5aa65d5575c1dda82ce5c66ae49d30ca1d7f3dc4f88565f218d4ba683372522"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "9b0cf445c1cf6b444be6c3035b4dba2d07784096c0cf84566fade7011a5ab71e"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

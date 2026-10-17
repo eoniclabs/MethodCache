@@ -1,0 +1,16 @@
+{
+  "started_utc": "2026-10-16T11:21:08.397380+00:00",
+  "pid": 109614,
+  "command": [
+    "taskset",
+    "--cpu-list",
+    "0-15",
+    "python3",
+    "-B",
+    "-u",
+    "/home/agent-admin/methodcache-design-bench-20261015/focused-schedule-v6/run.py",
+    "--run"
+  ],
+  "selection_sha256": "8b4aec90eb618257303c7ba449103d7496d3c6aeb0647ec916743af7dd10e018",
+  "controller_sha256": "44ed13c3edfc9828c0b28c7d877993a615127c4020fcd198fd9afe971ea0dfd8"
+}

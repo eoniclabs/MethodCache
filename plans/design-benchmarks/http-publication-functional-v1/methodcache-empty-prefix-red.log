@@ -1,0 +1,45 @@
+  Determining projects to restore...
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  All projects are up-to-date for restore.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Caching.Memory will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Configuration.Binder will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.DependencyInjection will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Hosting will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj : warning NU1510: PackageReference Microsoft.Extensions.Options will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(259,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(261,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj]
+  MethodCache.Core.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.14]     MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval [FAIL]
+  Failed MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval [28 ms]
+  Error Message:
+   CsCheck.CsCheckException : Set seed: "4Iyt9GoP-h_7" or -e CsCheck_Seed=4Iyt9GoP-h_7 to reproduce (1 shrinks, 928 skipped, 1 000 total).
+([], [])
+Assert.Same() Failure: Values are not the same instance
+Expected: HttpStorageInfo { Id = http:E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855, UrlTarget = , Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 0, LocalSlot = 3525 }
+Actual:   HttpStorageInfo { Id = http:E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855, UrlTarget = , Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 0, LocalSlot = 3525 }
+  Stack Trace:
+     at MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.<>c__DisplayClass0_0.<LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval>b__0(Int32[] prefixUnits, Int32[] suffixUnits) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs:line 37
+   at CsCheck.Check.<>c__DisplayClass13_0`2.<Sample>b__0(ValueTuple`2 t)
+   at CsCheck.Check.SampleActionWorker`1.Execute()
+WARNING: Overwriting results file: /tmp/methodcache-sparse-tags-v1/empty-prefix-red.trx
+Results File: /tmp/methodcache-sparse-tags-v1/empty-prefix-red.trx
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 33 ms - MethodCache.Core.Tests.dll (net10.0)

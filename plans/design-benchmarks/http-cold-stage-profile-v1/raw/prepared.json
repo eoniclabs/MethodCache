@@ -1,0 +1,1748 @@
+{
+  "scope": "Instrumented cold-HTTP storage-phase attribution only; sameoriginalcompiledlibrariesand8192boundedworkload;all4listener/invalidationcombos,no features removed,NOTpaired-timeacceptance. Threewarmtenactualbatchesperprocess. No backend started.",
+  "inputs_sha256": "a733ff6bdd349037c87f92a0d7b0a2d0c3e7fd06024e84d2b288ac1fac8958ef",
+  "utc": "2026-10-17T04:49:14.618902+00:00",
+  "shipping_binaries": {
+    "base": [
+      {
+        "path": "Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.dll",
+        "sha256": "4381714c0e4325b394125d780ecdbe9305f8287e1b0e4ce7c3dbced3e5bcd5c8"
+      },
+      {
+        "path": "Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "MethodCache.CodeFixes.deps.json",
+        "sha256": "ac5ba92e025a5c01688a1fb998c55d9f5940e573fa8195a399fb16cc642511ca"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "MethodCache.CodeFixes.dll",
+        "sha256": "c7e7cec4e3f620043c5679abc96d0a6127b8bcb99129a91ad028be39dfd4653e"
+      },
+      {
+        "path": "MethodCache.Analyzers.pdb",
+        "sha256": "5653f164ef33c67504e00f90da694afdbdd97257f1b3b9b488d115c175395bad"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.deps.json",
+        "sha256": "862286c575262ca8c2af0a32dbcb02d60017a9f0dfa38e77efb0e3e410535923"
+      },
+      {
+        "path": "System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.pdb",
+        "sha256": "b2524c7d7efc1da8b7c8b49b1ac8d7fec89fb9e60be50ba382c58527c6748f51"
+      },
+      {
+        "path": "Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.pdb",
+        "sha256": "1a8a7e023f7de26a3927ef2bd535edac8742c7f7d71c2c7f9135ac96c4100ea5"
+      },
+      {
+        "path": "CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      },
+      {
+        "path": "Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "MethodCache.SqlServer.pdb",
+        "sha256": "2dd333d7a7f20725f06372d6c41b1272f3b62a424c53de2052af20bc6b00866c"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "MethodCache.CostProfile",
+        "sha256": "e64d1a51d99250dd4f603c508c32ac2bb1f3416b7a775760c4adb9f66e9159d4"
+      },
+      {
+        "path": "Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.dll",
+        "sha256": "f5a75806a141d12bf9a91edaefbcdb758349bcc881fdc2df3375b1f5173e8b53"
+      },
+      {
+        "path": "MethodCache.Analyzers.xml",
+        "sha256": "391ee96b1d62e823952c6017e50e498a84abc6a3916b5ca57602056a3caf687a"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "MethodCache.Analyzers.dll",
+        "sha256": "22a5775695c6bcf878243742c888f85d434746f2b1b1fdf3b322803da328fffe"
+      },
+      {
+        "path": "Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "MethodCache.Core.deps.json",
+        "sha256": "0f70a0fef9b1e016e475cd99d02b98d579b6703fa4924827cc09c12030d85c28"
+      },
+      {
+        "path": "System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "MethodCache.Redis.pdb",
+        "sha256": "d72adfe9adadc6242ee7eb4f490624bf29948503273ca5af33fbfa40821b2697"
+      },
+      {
+        "path": "System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "MethodCache.Redis.xml",
+        "sha256": "3d035c01e2dd41ac8eeb9ec0ee98584f5caf22698090f4c399beffc60eebeddb"
+      },
+      {
+        "path": "MethodCache.SqlServer.deps.json",
+        "sha256": "9ce9e5186bf13edc7be63a8765042ff5e38fc828af43244614f39bcf25e9d936"
+      },
+      {
+        "path": "MethodCache.Redis.dll",
+        "sha256": "c080c4e32ccd26dd036f224b6bb515315056606e20c0e4077c7d2e79edd3869c"
+      },
+      {
+        "path": "Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "fea9fbb36234a84093d422caa184cb4fea5f64c43297a74eabf8e469c2fe5df4"
+      },
+      {
+        "path": "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "MethodCache.CostProfile.dll",
+        "sha256": "afe2ea3ef0622fbf712fb4d31bca6fc8bf8428dc7f8f063c70933ea4ea4d5f7e"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "MethodCache.CostProfile.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.xml",
+        "sha256": "6dd6ffad5da5ebfdb8545000d95d0652383df5d84b690754bbb22b780b4843b5"
+      },
+      {
+        "path": "Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "MethodCache.Analyzers.deps.json",
+        "sha256": "b2ec192c4cc9853835898e317dd988774ed6f4877b6aa593e07ac526558a4241"
+      },
+      {
+        "path": "Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "MethodCache.Core.xml",
+        "sha256": "05403b744c6b95676c60f851ae0e4e4529b5bda6725755864721d7a0a940691e"
+      },
+      {
+        "path": "MethodCache.SqlServer.xml",
+        "sha256": "77ab0aa919ef005e45e3c5a3729d81db7645fe3257cce590ee5cccffc0931eb3"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "MethodCache.CostProfile.deps.json",
+        "sha256": "402d14a5ed8bf2673d3e142d0efcab55e77a97ba694ed185ae9d92e6609d3648"
+      },
+      {
+        "path": "System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.deps.json",
+        "sha256": "29cf0fa4121c241c0460c61303926a39531eb7ea214d6fc161e4064b3da6c564"
+      },
+      {
+        "path": "MethodCache.Core.dll",
+        "sha256": "7f341bf348e505d5a202071a83d2e128007094a94eaeb1647eed483a6bc491f0"
+      },
+      {
+        "path": "MethodCache.CostProfile.pdb",
+        "sha256": "f954cd2b3142dec77478106aab281b2ffe54a71ccc7921ad1698e19f02590fdd"
+      },
+      {
+        "path": "System.Security.Cryptography.Pkcs.dll",
+        "sha256": "dfa1ee60ca07b74f7c4de24e3b9a93a302cb0f0e67813801562ffdf2fb89f219"
+      },
+      {
+        "path": "Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "MethodCache.HttpCaching.deps.json",
+        "sha256": "047db98a3fd5de0c8d078495e5a084a8515f7a3e869d7bf9274e8849acb9e1ac"
+      },
+      {
+        "path": "OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "MethodCache.Redis.deps.json",
+        "sha256": "aa655bb72a8af7402c97789dd5c1f979e8fbcdd7c4ddf82bce7623789d7bad35"
+      },
+      {
+        "path": "Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "MethodCache.CodeFixes.pdb",
+        "sha256": "28026b53e654fa4cb01b320edb3a859ce29f3a3853ac29a651357bcedd92e632"
+      },
+      {
+        "path": "MethodCache.HttpCaching.xml",
+        "sha256": "6c27ac66c1ea01c1f167acd63f3e7577fad88673788ca3a3043d7c2de75f8948"
+      },
+      {
+        "path": "MethodCache.HttpCaching.dll",
+        "sha256": "75fcb198998b471051ad2c0b265715e558ef3490db68f3cb2c5e5fb1bda8147d"
+      },
+      {
+        "path": "Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "MethodCache.HttpCaching.pdb",
+        "sha256": "9e7f9c1f0984eadc80aacb33be0b00ca280ba85d5edccb1890cf5f04be2651d8"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.xml",
+        "sha256": "08b70af1c8911d1e561d95a3664a0301faef8b73e6adb553f43b26527483433e"
+      },
+      {
+        "path": "MethodCache.CodeFixes.xml",
+        "sha256": "a3caedd7cf30930fcb19b9506312fbcf72b8766b5eb290dfd7cf1e7335f48177"
+      },
+      {
+        "path": "Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "MethodCache.SqlServer.dll",
+        "sha256": "9fbf47f6170d6755e0236c7dfae0658f710d468d5226d30b159ef0b2dea6b83a"
+      },
+      {
+        "path": "MethodCache.Core.pdb",
+        "sha256": "d7fa348983a92dae0ae50e5dd079833cc75a880def77f620321ccdc0362de008"
+      },
+      {
+        "path": "Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      }
+    ],
+    "head": [
+      {
+        "path": "Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.dll",
+        "sha256": "01d1bcb956db3ce8309a65fdb09bafde36c3eeab9a62eb657d855f5b6f37828e"
+      },
+      {
+        "path": "Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "MethodCache.CodeFixes.deps.json",
+        "sha256": "ac5ba92e025a5c01688a1fb998c55d9f5940e573fa8195a399fb16cc642511ca"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "MethodCache.CodeFixes.dll",
+        "sha256": "9263a41b69ff560db66fd7bf33b77f0f77961929c638b5f692d0c75ff433166c"
+      },
+      {
+        "path": "MethodCache.Analyzers.pdb",
+        "sha256": "b7d549c3c03a010a0d29e037e282aeeeb2562adc34e4626971f8cde0502da671"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.deps.json",
+        "sha256": "85add8477b0f5a0a6482834e823a921432c1fea30d8d88849a6bf773fdcf0d56"
+      },
+      {
+        "path": "System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.pdb",
+        "sha256": "1e9a1496d6746bf7d8df1ee58ab330476c9fc955c3f25a83d6554c1ee5265284"
+      },
+      {
+        "path": "Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.pdb",
+        "sha256": "a34d74251bd48cbe24039abe3706ea479613aafe478db11718b672b107cec6f7"
+      },
+      {
+        "path": "CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      },
+      {
+        "path": "Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "MethodCache.SqlServer.pdb",
+        "sha256": "e5cd8f3254407f9a29adf0aeb332fb42fd3bb45ae8e36238763f56d4c4f1af6e"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "MethodCache.CostProfile",
+        "sha256": "e64d1a51d99250dd4f603c508c32ac2bb1f3416b7a775760c4adb9f66e9159d4"
+      },
+      {
+        "path": "Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.dll",
+        "sha256": "8d19f0b745cc992763e29c7348b1e96ef7c1d9c61670cca99678e78d40f71ef6"
+      },
+      {
+        "path": "MethodCache.Analyzers.xml",
+        "sha256": "a348c705abcb6ff44eb4d1a15607b9b0bffa5526450a6878621935280bec4fbb"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "MethodCache.Analyzers.dll",
+        "sha256": "3c2bb40d333f2bf539fb2c6cd7ca61d31d68b8622c8e033d602aa7f5dc222ce6"
+      },
+      {
+        "path": "Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "MethodCache.Core.deps.json",
+        "sha256": "2a68b926b2a5759e8d2c59d216f9519fb5738848f227bb4df3ca4c89bc29ccd4"
+      },
+      {
+        "path": "System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "MethodCache.Redis.pdb",
+        "sha256": "a0e0a681124c3764cd5dab8c08757ea2f7f9dfba88aa94ae0eb6df69abe2e2fb"
+      },
+      {
+        "path": "System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "MethodCache.Redis.xml",
+        "sha256": "e2e2031dfedae9f7ce64ee5a6564fd276f61372be943844383df4cc30fb4a04a"
+      },
+      {
+        "path": "MethodCache.SqlServer.deps.json",
+        "sha256": "2a8fc536df60f8d109ea6b9054548b3f0b8c57df93c23fb00ab3acad019592fe"
+      },
+      {
+        "path": "MethodCache.Redis.dll",
+        "sha256": "37ab7138e1058aa914be44aea684019a1d8ff14fa28f2f79901a6f5cef451687"
+      },
+      {
+        "path": "Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "b2205b4ce4ca238a3d36ab36cd312d59e5189c581c5f5af5775b9853150cb871"
+      },
+      {
+        "path": "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "MethodCache.CostProfile.dll",
+        "sha256": "629a36b67d83982fc040b381b37a5563ef42a0f58f7d0e404fb42aa0fee07f5d"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "MethodCache.CostProfile.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.xml",
+        "sha256": "36d6885e64f889aac73279c11e73473953958857629d44595a34504ca20ca3b8"
+      },
+      {
+        "path": "Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "MethodCache.Analyzers.deps.json",
+        "sha256": "b2ec192c4cc9853835898e317dd988774ed6f4877b6aa593e07ac526558a4241"
+      },
+      {
+        "path": "Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "MethodCache.Core.xml",
+        "sha256": "d54cfd8b44748f98933168bf1cefbfff7582db402b75b3bc54987b95916affea"
+      },
+      {
+        "path": "MethodCache.SqlServer.xml",
+        "sha256": "4a98ccb94de021e4f26b3df81fc2cd11dfcb841c9edbe2a9fb87f9e6ceeefcea"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "MethodCache.CostProfile.deps.json",
+        "sha256": "f507ae7621def0993ac2d1e1ed00f1a86d1b851449c2ad47d19dde3042e3e461"
+      },
+      {
+        "path": "System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "MethodCache.SourceGenerator.deps.json",
+        "sha256": "29cf0fa4121c241c0460c61303926a39531eb7ea214d6fc161e4064b3da6c564"
+      },
+      {
+        "path": "MethodCache.Core.dll",
+        "sha256": "02d88b129b87026ac9211da91a83f0116b85ce61904f3a31364a5a31e64e9894"
+      },
+      {
+        "path": "MethodCache.CostProfile.pdb",
+        "sha256": "95016a4547e6f262286a1e7486962152b716528abb11d903bd9792a3df936628"
+      },
+      {
+        "path": "System.Security.Cryptography.Pkcs.dll",
+        "sha256": "6fd9ac565a32464c11b0ee1c3c0bc3d9abffcca27c31e22deac0b6f38b97be62"
+      },
+      {
+        "path": "Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "MethodCache.HttpCaching.deps.json",
+        "sha256": "6116e4c9fd282be69d1f3143784d18bbe92f8ac57ffba5954bae9ec1a54c815f"
+      },
+      {
+        "path": "OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "MethodCache.Redis.deps.json",
+        "sha256": "cf5c01bddc3fe672d25d9c0be55ef1d953bc72a744243a955d6de0e03fa573b2"
+      },
+      {
+        "path": "Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "MethodCache.CodeFixes.pdb",
+        "sha256": "b77e22c6a2b37da506b0f5e4e59415145ece36539ae9f4f1ff8491f8b6f04060"
+      },
+      {
+        "path": "MethodCache.HttpCaching.xml",
+        "sha256": "5d6a2e47590a015de42d8039667cf719c99d42c0adfc0b2dd683b4566d73f89a"
+      },
+      {
+        "path": "MethodCache.HttpCaching.dll",
+        "sha256": "f9b35dbdc042c20a80e1e5e9c847e987f17254aee344fc1726d4311dda07300b"
+      },
+      {
+        "path": "Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "MethodCache.HttpCaching.pdb",
+        "sha256": "cd2e4b4e2c08dbe86edb880db2b6d1de89ce6e746221c26e58f8f196707732e5"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "MethodCache.OpenTelemetry.xml",
+        "sha256": "47bc9acb334e179a16615dc8672d6e9acec5581f60f197d96b370bf2b99b5015"
+      },
+      {
+        "path": "MethodCache.CodeFixes.xml",
+        "sha256": "cfa120ce6bac8005d5955ea96d6208a74a992c499c679cc99b0ec161da81c20c"
+      },
+      {
+        "path": "Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "MethodCache.SqlServer.dll",
+        "sha256": "60292926ce814e709937b9999819d55d94a3bc27d3204a42e690372febccba96"
+      },
+      {
+        "path": "MethodCache.Core.pdb",
+        "sha256": "4959a483eebd1a40e1d562c1dbbba1a8c0f5ebcdbfe9099eb4822caf4eb817c1"
+      },
+      {
+        "path": "Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      }
+    ]
+  },
+  "diagnostic_builds": {
+    "base": [
+      {
+        "path": "bin/base/Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "bin/base/Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "bin/base/BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "bin/base/BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "bin/base/CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "bin/base/Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "bin/base/Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "bin/base/Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "bin/base/MethodCache.Analyzers.dll",
+        "sha256": "22a5775695c6bcf878243742c888f85d434746f2b1b1fdf3b322803da328fffe"
+      },
+      {
+        "path": "bin/base/MethodCache.Analyzers.pdb",
+        "sha256": "5653f164ef33c67504e00f90da694afdbdd97257f1b3b9b488d115c175395bad"
+      },
+      {
+        "path": "bin/base/MethodCache.Analyzers.xml",
+        "sha256": "391ee96b1d62e823952c6017e50e498a84abc6a3916b5ca57602056a3caf687a"
+      },
+      {
+        "path": "bin/base/MethodCache.CodeFixes.dll",
+        "sha256": "c7e7cec4e3f620043c5679abc96d0a6127b8bcb99129a91ad028be39dfd4653e"
+      },
+      {
+        "path": "bin/base/MethodCache.CodeFixes.pdb",
+        "sha256": "28026b53e654fa4cb01b320edb3a859ce29f3a3853ac29a651357bcedd92e632"
+      },
+      {
+        "path": "bin/base/MethodCache.CodeFixes.xml",
+        "sha256": "a3caedd7cf30930fcb19b9506312fbcf72b8766b5eb290dfd7cf1e7335f48177"
+      },
+      {
+        "path": "bin/base/MethodCache.Core.dll",
+        "sha256": "7f341bf348e505d5a202071a83d2e128007094a94eaeb1647eed483a6bc491f0"
+      },
+      {
+        "path": "bin/base/MethodCache.Core.pdb",
+        "sha256": "d7fa348983a92dae0ae50e5dd079833cc75a880def77f620321ccdc0362de008"
+      },
+      {
+        "path": "bin/base/MethodCache.Core.xml",
+        "sha256": "05403b744c6b95676c60f851ae0e4e4529b5bda6725755864721d7a0a940691e"
+      },
+      {
+        "path": "bin/base/MethodCache.CostProfile.dll",
+        "sha256": "afe2ea3ef0622fbf712fb4d31bca6fc8bf8428dc7f8f063c70933ea4ea4d5f7e"
+      },
+      {
+        "path": "bin/base/MethodCache.CostProfile.pdb",
+        "sha256": "f954cd2b3142dec77478106aab281b2ffe54a71ccc7921ad1698e19f02590fdd"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.Tests",
+        "sha256": "504931064538f0fcb04796d0e5e77fdd96596c96629d49de9c6ae0c558318b66"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.Tests.deps.json",
+        "sha256": "6ea6b2ac2c5b9c7d4aee162b474d292aacf33637de85a398916b2245977ba211"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.Tests.dll",
+        "sha256": "cba7d17072ad27afdeb604a34d8b8cf3e9114e8a5c3e27e9d91cdf4a8d5a8232"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.Tests.pdb",
+        "sha256": "16e2429030e67c60bb93a586e6a02bf513b4bca8dd01cc8ec0641ea8b7f5ab92"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.Tests.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.dll",
+        "sha256": "75fcb198998b471051ad2c0b265715e558ef3490db68f3cb2c5e5fb1bda8147d"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.pdb",
+        "sha256": "9e7f9c1f0984eadc80aacb33be0b00ca280ba85d5edccb1890cf5f04be2651d8"
+      },
+      {
+        "path": "bin/base/MethodCache.HttpCaching.xml",
+        "sha256": "6c27ac66c1ea01c1f167acd63f3e7577fad88673788ca3a3043d7c2de75f8948"
+      },
+      {
+        "path": "bin/base/MethodCache.OpenTelemetry.dll",
+        "sha256": "4381714c0e4325b394125d780ecdbe9305f8287e1b0e4ce7c3dbced3e5bcd5c8"
+      },
+      {
+        "path": "bin/base/MethodCache.OpenTelemetry.pdb",
+        "sha256": "b2524c7d7efc1da8b7c8b49b1ac8d7fec89fb9e60be50ba382c58527c6748f51"
+      },
+      {
+        "path": "bin/base/MethodCache.OpenTelemetry.xml",
+        "sha256": "08b70af1c8911d1e561d95a3664a0301faef8b73e6adb553f43b26527483433e"
+      },
+      {
+        "path": "bin/base/MethodCache.Redis.dll",
+        "sha256": "c080c4e32ccd26dd036f224b6bb515315056606e20c0e4077c7d2e79edd3869c"
+      },
+      {
+        "path": "bin/base/MethodCache.Redis.pdb",
+        "sha256": "d72adfe9adadc6242ee7eb4f490624bf29948503273ca5af33fbfa40821b2697"
+      },
+      {
+        "path": "bin/base/MethodCache.Redis.xml",
+        "sha256": "3d035c01e2dd41ac8eeb9ec0ee98584f5caf22698090f4c399beffc60eebeddb"
+      },
+      {
+        "path": "bin/base/MethodCache.SourceGenerator.dll",
+        "sha256": "f5a75806a141d12bf9a91edaefbcdb758349bcc881fdc2df3375b1f5173e8b53"
+      },
+      {
+        "path": "bin/base/MethodCache.SourceGenerator.pdb",
+        "sha256": "1a8a7e023f7de26a3927ef2bd535edac8742c7f7d71c2c7f9135ac96c4100ea5"
+      },
+      {
+        "path": "bin/base/MethodCache.SourceGenerator.xml",
+        "sha256": "6dd6ffad5da5ebfdb8545000d95d0652383df5d84b690754bbb22b780b4843b5"
+      },
+      {
+        "path": "bin/base/MethodCache.SqlServer.dll",
+        "sha256": "9fbf47f6170d6755e0236c7dfae0658f710d468d5226d30b159ef0b2dea6b83a"
+      },
+      {
+        "path": "bin/base/MethodCache.SqlServer.pdb",
+        "sha256": "2dd333d7a7f20725f06372d6c41b1272f3b62a424c53de2052af20bc6b00866c"
+      },
+      {
+        "path": "bin/base/MethodCache.SqlServer.xml",
+        "sha256": "77ab0aa919ef005e45e3c5a3729d81db7645fe3257cce590ee5cccffc0931eb3"
+      },
+      {
+        "path": "bin/base/Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "bin/base/Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "bin/base/Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "bin/base/Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "bin/base/Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "bin/base/Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "bin/base/Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "bin/base/Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "bin/base/Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "bin/base/Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "fea9fbb36234a84093d422caa184cb4fea5f64c43297a74eabf8e469c2fe5df4"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "bin/base/Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "bin/base/Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "bin/base/Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "bin/base/Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      },
+      {
+        "path": "bin/base/Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "bin/base/OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "bin/base/Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "bin/base/Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "bin/base/StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "bin/base/System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "bin/base/System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "bin/base/System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "bin/base/System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "bin/base/System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "bin/base/System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "bin/base/System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "bin/base/System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "bin/base/System.Security.Cryptography.Pkcs.dll",
+        "sha256": "dfa1ee60ca07b74f7c4de24e3b9a93a302cb0f0e67813801562ffdf2fb89f219"
+      },
+      {
+        "path": "bin/base/System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "bin/base/TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      }
+    ],
+    "head": [
+      {
+        "path": "bin/head/Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "bin/head/Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "bin/head/BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "bin/head/BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "bin/head/CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "bin/head/Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "bin/head/Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "bin/head/Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "bin/head/MethodCache.Analyzers.dll",
+        "sha256": "3c2bb40d333f2bf539fb2c6cd7ca61d31d68b8622c8e033d602aa7f5dc222ce6"
+      },
+      {
+        "path": "bin/head/MethodCache.Analyzers.pdb",
+        "sha256": "b7d549c3c03a010a0d29e037e282aeeeb2562adc34e4626971f8cde0502da671"
+      },
+      {
+        "path": "bin/head/MethodCache.Analyzers.xml",
+        "sha256": "a348c705abcb6ff44eb4d1a15607b9b0bffa5526450a6878621935280bec4fbb"
+      },
+      {
+        "path": "bin/head/MethodCache.CodeFixes.dll",
+        "sha256": "9263a41b69ff560db66fd7bf33b77f0f77961929c638b5f692d0c75ff433166c"
+      },
+      {
+        "path": "bin/head/MethodCache.CodeFixes.pdb",
+        "sha256": "b77e22c6a2b37da506b0f5e4e59415145ece36539ae9f4f1ff8491f8b6f04060"
+      },
+      {
+        "path": "bin/head/MethodCache.CodeFixes.xml",
+        "sha256": "cfa120ce6bac8005d5955ea96d6208a74a992c499c679cc99b0ec161da81c20c"
+      },
+      {
+        "path": "bin/head/MethodCache.Core.dll",
+        "sha256": "02d88b129b87026ac9211da91a83f0116b85ce61904f3a31364a5a31e64e9894"
+      },
+      {
+        "path": "bin/head/MethodCache.Core.pdb",
+        "sha256": "4959a483eebd1a40e1d562c1dbbba1a8c0f5ebcdbfe9099eb4822caf4eb817c1"
+      },
+      {
+        "path": "bin/head/MethodCache.Core.xml",
+        "sha256": "d54cfd8b44748f98933168bf1cefbfff7582db402b75b3bc54987b95916affea"
+      },
+      {
+        "path": "bin/head/MethodCache.CostProfile.dll",
+        "sha256": "629a36b67d83982fc040b381b37a5563ef42a0f58f7d0e404fb42aa0fee07f5d"
+      },
+      {
+        "path": "bin/head/MethodCache.CostProfile.pdb",
+        "sha256": "95016a4547e6f262286a1e7486962152b716528abb11d903bd9792a3df936628"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.Tests",
+        "sha256": "504931064538f0fcb04796d0e5e77fdd96596c96629d49de9c6ae0c558318b66"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.Tests.deps.json",
+        "sha256": "d1f7937ca28b68cd561356297152efacb1181d7a5a29cbc92f5a5f3d501aceba"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.Tests.dll",
+        "sha256": "fbeddac55619d9225bd081b7e2d3bea30fcb94f5ef382cda8a52d1f35ac794ff"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.Tests.pdb",
+        "sha256": "915e392e0317f6cea4ca6dec6c45e153153f77756725468b2220114599a56c3c"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.Tests.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.dll",
+        "sha256": "f9b35dbdc042c20a80e1e5e9c847e987f17254aee344fc1726d4311dda07300b"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.pdb",
+        "sha256": "cd2e4b4e2c08dbe86edb880db2b6d1de89ce6e746221c26e58f8f196707732e5"
+      },
+      {
+        "path": "bin/head/MethodCache.HttpCaching.xml",
+        "sha256": "5d6a2e47590a015de42d8039667cf719c99d42c0adfc0b2dd683b4566d73f89a"
+      },
+      {
+        "path": "bin/head/MethodCache.OpenTelemetry.dll",
+        "sha256": "01d1bcb956db3ce8309a65fdb09bafde36c3eeab9a62eb657d855f5b6f37828e"
+      },
+      {
+        "path": "bin/head/MethodCache.OpenTelemetry.pdb",
+        "sha256": "1e9a1496d6746bf7d8df1ee58ab330476c9fc955c3f25a83d6554c1ee5265284"
+      },
+      {
+        "path": "bin/head/MethodCache.OpenTelemetry.xml",
+        "sha256": "47bc9acb334e179a16615dc8672d6e9acec5581f60f197d96b370bf2b99b5015"
+      },
+      {
+        "path": "bin/head/MethodCache.Redis.dll",
+        "sha256": "37ab7138e1058aa914be44aea684019a1d8ff14fa28f2f79901a6f5cef451687"
+      },
+      {
+        "path": "bin/head/MethodCache.Redis.pdb",
+        "sha256": "a0e0a681124c3764cd5dab8c08757ea2f7f9dfba88aa94ae0eb6df69abe2e2fb"
+      },
+      {
+        "path": "bin/head/MethodCache.Redis.xml",
+        "sha256": "e2e2031dfedae9f7ce64ee5a6564fd276f61372be943844383df4cc30fb4a04a"
+      },
+      {
+        "path": "bin/head/MethodCache.SourceGenerator.dll",
+        "sha256": "8d19f0b745cc992763e29c7348b1e96ef7c1d9c61670cca99678e78d40f71ef6"
+      },
+      {
+        "path": "bin/head/MethodCache.SourceGenerator.pdb",
+        "sha256": "a34d74251bd48cbe24039abe3706ea479613aafe478db11718b672b107cec6f7"
+      },
+      {
+        "path": "bin/head/MethodCache.SourceGenerator.xml",
+        "sha256": "36d6885e64f889aac73279c11e73473953958857629d44595a34504ca20ca3b8"
+      },
+      {
+        "path": "bin/head/MethodCache.SqlServer.dll",
+        "sha256": "60292926ce814e709937b9999819d55d94a3bc27d3204a42e690372febccba96"
+      },
+      {
+        "path": "bin/head/MethodCache.SqlServer.pdb",
+        "sha256": "e5cd8f3254407f9a29adf0aeb332fb42fd3bb45ae8e36238763f56d4c4f1af6e"
+      },
+      {
+        "path": "bin/head/MethodCache.SqlServer.xml",
+        "sha256": "4a98ccb94de021e4f26b3df81fc2cd11dfcb841c9edbe2a9fb87f9e6ceeefcea"
+      },
+      {
+        "path": "bin/head/Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "bin/head/Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "bin/head/Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "bin/head/Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "bin/head/Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "bin/head/Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "bin/head/Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "bin/head/Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "bin/head/Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "bin/head/Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "b2205b4ce4ca238a3d36ab36cd312d59e5189c581c5f5af5775b9853150cb871"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "bin/head/Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "bin/head/Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "bin/head/Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "bin/head/Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      },
+      {
+        "path": "bin/head/Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "bin/head/OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "bin/head/Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "bin/head/Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "bin/head/StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "bin/head/System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "bin/head/System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "bin/head/System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "bin/head/System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "bin/head/System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "bin/head/System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "bin/head/System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "bin/head/System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "bin/head/System.Security.Cryptography.Pkcs.dll",
+        "sha256": "6fd9ac565a32464c11b0ee1c3c0bc3d9abffcca27c31e22deac0b6f38b97be62"
+      },
+      {
+        "path": "bin/head/System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "bin/head/TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      }
+    ]
+  },
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a"
+}

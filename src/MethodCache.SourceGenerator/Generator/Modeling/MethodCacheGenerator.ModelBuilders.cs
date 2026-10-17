@@ -58,18 +58,15 @@ namespace MethodCache.SourceGenerator
                 return (DiagnosticInfo.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
             }
 
-            // Framework types the key can't be written from, unless a raw key replaces the arguments
-            if (DecoratorEmitter.GetRawKeyParameter(method.Parameters) == null)
+            // Framework types must have a canonical key form.
+            var visited = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            foreach (var parameter in method.Parameters)
             {
-                var visited = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-                foreach (var parameter in method.Parameters)
+                if (!Utils.IsCancellationToken(parameter.Type) &&
+                    FindTypeWithoutKeyForm(parameter.Type, parameter.Name, visited) is { } found)
                 {
-                    if (!Utils.IsCancellationToken(parameter.Type) &&
-                        FindTypeWithoutKeyForm(parameter.Type, parameter.Name, visited) is { } found)
-                    {
-                        return (DiagnosticInfo.Create(Diagnostics.FrameworkTypeWithoutKeyForm, location, methodName, found.Path,
-                            found.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), false);
-                    }
+                    return (DiagnosticInfo.Create(Diagnostics.FrameworkTypeWithoutKeyForm, location, methodName, found.Path,
+                        found.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), false);
                 }
             }
 

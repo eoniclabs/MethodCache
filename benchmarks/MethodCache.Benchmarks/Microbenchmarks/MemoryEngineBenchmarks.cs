@@ -50,7 +50,7 @@ public class MemoryEngineBenchmarks
         _hitKeys = Enumerable.Range(0, Operations).Select(i => $"user:{i}:profile").ToArray();
         _missKeys = Enumerable.Range(0, 2_000_000).Select(i => $"miss:{i}").ToArray();
 
-        _engine = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity }));
+        _engine = new InMemoryCacheManager(MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity }));
         _memoryCache = new MemoryCache(new MsMemoryCacheOptions { SizeLimit = Capacity });
         _bitFaster = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).Build();
         _bitFasterAsync = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).AsAsyncCache().Build();

@@ -1,0 +1,77 @@
+test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass (test_design_summary.DesignSummaryGuards.test_complete_180_launches_are_accepted_as_complete_not_as_timing_pass) ... ok
+test_cookie_policy_addition_is_separate_from_ordinary_cached_hit (test_design_summary.DesignSummaryGuards.test_cookie_policy_addition_is_separate_from_ordinary_cached_hit) ... ok
+test_failed_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_failed_launch_is_rejected) ... ok
+test_generated_hits_and_unique_misses_have_distinct_allocation_roles (test_design_summary.DesignSummaryGuards.test_generated_hits_and_unique_misses_have_distinct_allocation_roles) ... ok
+test_missing_launch_is_rejected (test_design_summary.DesignSummaryGuards.test_missing_launch_is_rejected) ... ok
+test_missing_pr_edges_are_rejected_after_complete_measurements (test_design_summary.DesignSummaryGuards.test_missing_pr_edges_are_rejected_after_complete_measurements) ... ok
+test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) ...
+  test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) (edge=('pr3', 'pr4')) ... FAIL
+  test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) (edge=('base', 'final')) ... FAIL
+test_roundtrip_disabled_is_comparable_after_option_exists (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_comparable_after_option_exists) ... ok
+test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) ...
+  test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) (edge=('pr3', 'pr4')) ... FAIL
+  test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) (edge=('base', 'final')) ... FAIL
+test_roundtrip_is_comparable_between_historical_revisions (test_design_summary.DesignSummaryGuards.test_roundtrip_is_comparable_between_historical_revisions) ... ok
+test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) ...
+  test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) (backend='Redis', enabled='True') ... FAIL
+  test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) (backend='SqlServer', enabled='True') ... FAIL
+test_same_count_duplicate_substitution_is_rejected (test_design_summary.DesignSummaryGuards.test_same_count_duplicate_substitution_is_rejected) ... ok
+
+======================================================================
+FAIL: test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) (edge=('pr3', 'pr4'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 47, in test_roundtrip_disabled_is_a_new_write_opt_out
+    self.assertIn('opt-out',summary.new_work(*edge,row) or '')
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'opt-out' not found in ''
+
+======================================================================
+FAIL: test_roundtrip_disabled_is_a_new_write_opt_out (test_design_summary.DesignSummaryGuards.test_roundtrip_disabled_is_a_new_write_opt_out) (edge=('base', 'final'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 47, in test_roundtrip_disabled_is_a_new_write_opt_out
+    self.assertIn('opt-out',summary.new_work(*edge,row) or '')
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'opt-out' not found in ''
+
+======================================================================
+FAIL: test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) (edge=('pr3', 'pr4'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 41, in test_roundtrip_enabled_preserves_existing_write_validation
+    self.assertIsNone(summary.new_work(*edge,row))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'New serialization round-trip validation, absent at baseline' is not None
+
+======================================================================
+FAIL: test_roundtrip_enabled_preserves_existing_write_validation (test_design_summary.DesignSummaryGuards.test_roundtrip_enabled_preserves_existing_write_validation) (edge=('base', 'final'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 41, in test_roundtrip_enabled_preserves_existing_write_validation
+    self.assertIsNone(summary.new_work(*edge,row))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'New serialization round-trip validation, absent at baseline' is not None
+
+======================================================================
+FAIL: test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) (backend='Redis', enabled='True')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 54, in test_roundtrip_toggle_does_not_change_measured_reads
+    self.assertIsNone(summary.new_work('pr3','pr4',row))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'New serialization round-trip validation, absent at baseline' is not None
+
+======================================================================
+FAIL: test_roundtrip_toggle_does_not_change_measured_reads (test_design_summary.DesignSummaryGuards.test_roundtrip_toggle_does_not_change_measured_reads) (backend='SqlServer', enabled='True')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/methodcache-design-review-v1/test_design_summary.py", line 54, in test_roundtrip_toggle_does_not_change_measured_reads
+    self.assertIsNone(summary.new_work('pr3','pr4',row))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'New serialization round-trip validation, absent at baseline' is not None
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.001s
+
+FAILED (failures=6)

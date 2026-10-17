@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks-20261016-074615</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat) (container)
+11th Gen Intel Core i9-11900 2.50GHz (Max: 0.80GHz), 1 CPU, 16 logical and 8 physical cores
+.NET SDK 10.0.401
+  [Host]     : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+  Job-ACOERQ : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Concurrent=True  Server=False  IterationCount=12
+IterationTime=500ms  LaunchCount=1  WarmupCount=16
+</code></pre>
+
+<table>
+<thead><tr><th>Method</th><th>Listening</th><th>AfterInvalidation</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen0</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>Revalidated</td><td>False</td><td>False</td><td>12.78 &mu;s</td><td>0.939 &mu;s</td><td>0.559 &mu;s</td><td>12.96 &mu;s</td><td>0.8245</td><td>7 KB</td>
+</tr><tr><td>Revalidated</td><td>False</td><td>True</td><td>17.64 &mu;s</td><td>8.668 &mu;s</td><td>6.768 &mu;s</td><td>21.50 &mu;s</td><td>0.8509</td><td>7 KB</td>
+</tr><tr><td>Revalidated</td><td>True</td><td>False</td><td>18.15 &mu;s</td><td>8.170 &mu;s</td><td>6.379 &mu;s</td><td>21.03 &mu;s</td><td>0.8597</td><td>7.2 KB</td>
+</tr><tr><td>Revalidated</td><td>True</td><td>True</td><td>13.87 &mu;s</td><td>5.619 &mu;s</td><td>4.387 &mu;s</td><td>16.24 &mu;s</td><td>0.8597</td><td>7.23 KB</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -247,7 +247,8 @@ public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {
 public interface ISvc { [Cache] Task<string> Get(int id, CancellationToken ct); }
 public class Svc : ISvc {
   public int Calls; public readonly TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-  public async Task<string> Get(int id, CancellationToken ct) { Interlocked.Increment(ref Calls); Started.TrySetResult(); await Task.Delay(100, ct); return ""v"" + id; }
+  public readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+  public async Task<string> Get(int id, CancellationToken ct) { var call = Interlocked.Increment(ref Calls); Started.TrySetResult(); if (call == 1) await Release.Task.WaitAsync(ct); return ""v"" + id; }
 }
 public static class Startup { public static void Configure(IServiceCollection s) { s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>()); s.AddMethodCache(); } }
 public static class Probe { public static async Task<string> Go(ISvc s, Svc impl) {
@@ -256,11 +257,12 @@ public static class Probe { public static async Task<string> Go(ISvc s, Svc impl
   var b = s.Get(1, CancellationToken.None);
   cts.Cancel();
   var aResult = ""value""; try { await a; } catch (OperationCanceledException) { aResult = ""cancelled""; }
+  impl.Release.TrySetResult();
   return aResult + ""|"" + await b + ""|"" + impl.Calls;
 } }
 }", nameof(CallerCancellingASharedLoad_DoesNotFailTheOtherCaller), load: true);
         AssertCompiles(r);
-        Assert.Contains(r.Sources.Values, source => source.Contains("__policy, __mcArgument1);"));
+        Assert.Contains(r.Sources.Values, source => source.Contains("global::System.Array.Empty<object?>()), __mcArgument1);"));
         var svc = Resolve(r.Assembly!, "App.ISvc", out var sp);
         var impl = sp.GetRequiredService(r.Assembly!.GetType("App.Svc")!);
         var text = await (Task<string>)r.Assembly!.GetType("App.Probe")!.GetMethod("Go")!.Invoke(null, new[] { svc, impl })!;
@@ -363,7 +365,7 @@ public interface ISvc {
   [Cache] IAsyncEnumerable<int> Stream(int n);
   [Cache] Task<IEnumerable<int>> Loaded(int n);
 }}", nameof(LazySequences_AreReportedAndNotCached));
-        Assert.Equal(2, r.GeneratorDiagnostics.Count(d => d.Id == "MCG014"));
+        Assert.Equal(2, r.GeneratorDiagnostics.Count(d => d.Id == "MC0015"));
         Assert.Empty(r.Errors);
     }
 
@@ -374,7 +376,7 @@ public interface ISvc {
 public interface ISvc { [Cache(Tags = new[] { ""user:{userid}"", ""order:{orderId}"" })] Task<string> Get(int userId); }
 }", nameof(UnknownParameterInCacheTag_IsReported));
         AssertCompiles(r);
-        var warning = Assert.Single(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+        var warning = Assert.Single(r.GeneratorDiagnostics, d => d.Id == "MC0010");
         Assert.Contains("orderId", warning.GetMessage());
     }
 
@@ -389,14 +391,14 @@ public interface ISvc {
   [CacheInvalidate(Tags = new[] { ""product:{product?.Id}"" })] Task Update(Product product);
 }}", nameof(TagPlaceholderThatIsNotAParameterName_IsReported));
         AssertCompiles(r);
-        var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MCG015").Select(d => d.GetMessage()).ToList();
+        var placeholders = r.GeneratorDiagnostics.Where(d => d.Id == "MC0016").Select(d => d.GetMessage()).ToList();
         Assert.Equal(5, placeholders.Count);
         Assert.Contains(placeholders, m => m.Contains("'{π.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{product.Id}'"));
         Assert.Contains(placeholders, m => m.Contains("'{ userId }'"));
         Assert.Contains(placeholders, m => m.Contains("'{day:yyyy-MM-dd}'"));
         Assert.Contains(placeholders, m => m.Contains("'{product?.Id}'"));
-        Assert.DoesNotContain(r.GeneratorDiagnostics, d => d.Id == "MCG009");
+        Assert.DoesNotContain(r.GeneratorDiagnostics, d => d.Id == "MC0010");
     }
 
     [Fact]
@@ -527,8 +529,7 @@ public class Svc : ISvc {
 public static class Startup { public static void Configure(IServiceCollection s) {
   s.AddSingleton<Svc>(); s.AddSingleton<ISvc>(sp => sp.GetRequiredService<Svc>());
   s.AddMethodCache(config => {
-    var svc = config.ForService<ISvc>();
-    svc.Method(x => x.Find(Any<(int Id, string Name)>.Value)).CacheWhen(v => false);
+    config.Method((ISvc x) => x.Find(Any<(int Id, string Name)>.Value)).CacheWhen(v => false);
   });
 } }
 public static class Probe { public static async Task<int> Go(ISvc s, Svc impl) {

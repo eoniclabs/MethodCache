@@ -1,0 +1,30 @@
+{
+  "utc": "2026-10-17T04:30:58.316762+00:00",
+  "inputs_sha256": "c4571fa2afe96fe0fccea4e5fc8d255d42a5baf89f69934e9e694a0e1203a4d1",
+  "prepared_sha256": "bb046ac93f4613bf317cfe907df6a8bf24b849f92868f3556bf210d9fff568e1",
+  "comparison": {
+    "pr": "CPU-12",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"
+      ],
+      "int": [
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int)",
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)"
+      ]
+    }
+  },
+  "cases": {
+    "main": [
+      "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"
+    ],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)"
+    ]
+  }
+}

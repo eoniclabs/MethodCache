@@ -1,0 +1,18 @@
+Acquired bounded existing coordinator reservation measure 19016 2026-10-17T03:09:37.089970+00:00
+Complete fixed pair CPU-04 1 2026-10-17T03:11:23.253750+00:00
+Complete fixed pair CPU-04 2 2026-10-17T03:12:03.442737+00:00
+Complete fixed pair CPU-04 3 2026-10-17T03:12:41.515558+00:00
+Complete fixed pair CPU-04 4 2026-10-17T03:13:21.093824+00:00
+Complete fixed pair CPU-04 5 2026-10-17T03:14:01.879451+00:00
+Released own coordinator reservation measure 2026-10-17T03:14:34.956884+00:00
+Traceback (most recent call last):
+  File "/private/tmp/methodcache-final-local-cpu-continuation-v3/run.py", line 189, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/private/tmp/methodcache-final-local-cpu-continuation-v3/run.py", line 173, in main
+    elif mode=='measure':measure(sys.argv[2])
+                         ~~~~~~~^^^^^^^^^^^^^
+  File "/private/tmp/methodcache-final-local-cpu-continuation-v3/run.py", line 123, in measure
+    assert not sample['external'],sample
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'utc': '2026-10-17T03:14:34.945688+00:00', 'external': [{'pid': 22186, 'kind': 'build/test/publish'}, {'pid': 22187, 'kind': 'build/test/publish'}], 'other_process_cpu_percent': 57.0, 'phase': 'measurement'}

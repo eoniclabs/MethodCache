@@ -1,0 +1,57 @@
+{
+  "scope": "Independent quiet-Mac cumulative confirmation of all three precise Nimbus CPU regressions, f43854d to finalabd,60freshprocesses/threecases/tenpairs; no source change, no pooling or individual-run selection. Comparison id7 means final design stage, not GitHubPR7.",
+  "points": {
+    "baseline": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "final": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "cases": {
+    "main": [
+      "GeneratedContractBenchmarks.SyncHit()",
+      "GeneratedContractBenchmarks.TaskMiss()",
+      "GeneratedContractBenchmarks.ValueTaskMiss()"
+    ],
+    "int": []
+  },
+  "comparisons": [
+    {
+      "pr": 7,
+      "base": "baseline",
+      "head": "final"
+    }
+  ],
+  "source_sha256": {
+    "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+    "benchmarks/MethodCache.CostProfile/AllocationSites.cs": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82",
+    "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b",
+    "benchmarks/MethodCache.CostProfile/Program.cs": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f",
+    "benchmarks/MethodCache.CostProfile/Timing.cs": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5",
+    "benchmarks/MethodCache.IntProfile/AllocationSites.cs": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82",
+    "benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330",
+    "benchmarks/MethodCache.IntProfile/PrefixSetup.cs": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658",
+    "benchmarks/MethodCache.IntProfile/Program.cs": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777",
+    "benchmarks/MethodCache.IntProfile/Timing.cs": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+  },
+  "controller_sha256": "a46e5f4c3cc506d9fa3192924743b4c88ba71138374e1bc5f74106529d6b0a2a",
+  "activity_sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+  "host_quiet_limit_other_process_cpu_percent": 200,
+  "lease_limit_seconds": 1470,
+  "preflight_only_predecessor": {
+    "folder": "/private/tmp/methodcache-local-cpu-v1",
+    "actual_timing_launches": 0,
+    "failed_at_other_process_cpu_percent": 124.5,
+    "quiet_limit_unchanged": 100,
+    "change": "Wait for60consecutivequietseconds before measuring instead of aborting on the first busy preflight sample; record all readiness observations."
+  },
+  "preserved_earlier_attempts": [],
+  "scheduling_fix": "Only GlobalSetup/native scheduling helpers change in common sources, equally for both sides. Native QoS eligibility checked before setter; explicit POSIX scheduling retained. Six new normal/Highest scheduling regressions and all126 benchmarktests pass. No measured method, runtime source, case count, warmup/iteration setting, quiet threshold or acceptance changes.",
+  "host_load_accounting": {
+    "logical_cpus": 10,
+    "machine_capacity_percent_limit": 20,
+    "ps_units": "100percent per logicalCPU; aggregate limit200percent on this10coreMac",
+    "earlier_strict_guard": "V3usedonecore100percent and aborted the first process at111.3percent (11.13percent machine capacity). No completed validated measurement launches; all aborted outputs retained. This correction precedes any completed Mac comparison; no ns values were reviewed."
+  },
+  "measurement_activity_policy": "Same as current Mac V5:continuous60secondreadiness;retainallCPUobservations;rejectactivecompetingbuild/test;unchanged6percentpairedprecision. No cross-machine or interrupted-attempt pooling."
+}

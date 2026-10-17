@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T02:36:46.000325+00:00",
+  "inputs_sha256": "0061e27f27ec75b4438c7620481a1b8b1bb3b961ba33ab86a4ad5a81f8ba7245",
+  "prepared_sha256": "5e68e5d53b6505018f2afaba545be8f768c41adb801227f206525202bd81fd62",
+  "binary_files_verified": 222,
+  "scope": "Diagnosticonly:oneconstructorargumentselectsruntimehash/lookup;unchangedbinding/livegenerationandtelemetry;NOTproductionadoption",
+  "base_is_exact_verified_hash_reuse_candidate": true
+}

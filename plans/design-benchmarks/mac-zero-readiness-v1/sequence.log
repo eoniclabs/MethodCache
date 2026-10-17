@@ -1,0 +1,6 @@
+Completefixedstage prepare 2026-10-17T05:33:37.082536+00:00
+Traceback (most recent call last):
+  File "/tmp/methodcache-nonhttp-warm32-v1/queue.py", line 14, in <module>
+    if code!=0:(f/'sequence.exit').write_text(str(code)+'\n');raise RuntimeError((name,code))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: ('measure-NG-00', 143)

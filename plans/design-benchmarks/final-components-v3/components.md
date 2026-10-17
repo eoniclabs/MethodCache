@@ -1,0 +1,32 @@
+| Component | ns/op | Allocated bytes/op |
+|---|---:|---:|
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=128,Listening=False) | 9.3 | 0 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=128,Listening=True) | 9.4 | 0 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=512,Listening=False) | 21.1 | 0 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=512,Listening=True) | 20.5 | 0 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=128,Listening=False) | 111.1 | 2008 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=128,Listening=True) | 116.5 | 2008 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=512,Listening=False) | 24.4 | 0 |
+| PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=512,Listening=True) | 24.4 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=4,ArgumentKind=Int) | 5.2 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=4,ArgumentKind=Int) | 8.4 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=4,ArgumentKind=Int) | 8.3 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=4,ArgumentKind=Guid) | 5.2 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=4,ArgumentKind=Guid) | 19.6 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=4,ArgumentKind=Guid) | 18.1 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=80,ArgumentKind=Int) | 5.1 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=80,ArgumentKind=Int) | 34.4 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=80,ArgumentKind=Int) | 8.1 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=80,ArgumentKind=Guid) | 5.2 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=80,ArgumentKind=Guid) | 46.3 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=80,ArgumentKind=Guid) | 18.1 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=256,ArgumentKind=Int) | 5.2 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=256,ArgumentKind=Int) | 95.3 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=256,ArgumentKind=Int) | 8.2 | 0 |
+| KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=256,ArgumentKind=Guid) | 5.2 | 0 |
+| KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=256,ArgumentKind=Guid) | 107.0 | 0 |
+| KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=256,ArgumentKind=Guid) | 18.1 | 0 |
+| MemoryCacheLookupReferenceBenchmarks.ReadyKeySync() | 27.9 | 0 |
+| MemoryCacheLookupReferenceBenchmarks.BuiltKeySync() | 53.9 | 104 |
+| MemoryCacheLookupReferenceBenchmarks.ReadyKeyTask() | 34.3 | 72 |
+| MemoryCacheLookupReferenceBenchmarks.BuiltKeyTask() | 61.8 | 176 |

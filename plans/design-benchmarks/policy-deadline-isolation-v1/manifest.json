@@ -1,0 +1,265 @@
+{
+  "scope": "ActualnativeCIfailure,2deterministicbarrierredfacts,3greenfacts;23freshnativeprocesses,full1047Core;identicalCoreDLL",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "8d4f9ef1192c8436d5531eb2a13e132955962234447e89df2066532cedd96eea"
+    },
+    {
+      "path": "barrier-green.log",
+      "sha256": "b26d4a3706a77936e523bf90b59bf051c832173833c4b89e0640c3ecb73b5259"
+    },
+    {
+      "path": "barrier-red.log",
+      "sha256": "4206d86be7b6ab758fa80cfd659b837c829185d66f6555c95040423ee836363a"
+    },
+    {
+      "path": "format.log",
+      "sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "original-ci-diffcoverage.log",
+      "sha256": "0975d8079d0a159f38e40a1b1bf13cd57d87f70f07f06a0bcff9ba35ceca09c3"
+    },
+    {
+      "path": "raw/dispatcher.log",
+      "sha256": "5d5c081833fa55296ba726aa4f3e3d1727a64f553fe3fe1c1faacd05c9c6979b"
+    },
+    {
+      "path": "raw/dispatcher.pid",
+      "sha256": "a83cb6426cfd1f772bdf707ce823464482706984de0d143fbcab44861f4f7cca"
+    },
+    {
+      "path": "raw/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/index.json",
+      "sha256": "424bd39a931d5f8870a04df02f9a6c1e2098f6a913233eeddba33c86a295a18a"
+    },
+    {
+      "path": "raw/inputs.json",
+      "sha256": "e865d322d0cc6ab5163481f986b0a2d9543cb932d43a3683a5492dc72ee7d86b"
+    },
+    {
+      "path": "raw/receipt.json",
+      "sha256": "cd3f68d7458c40e0cb688cb7b77f0414bdcb070643a6608f01e8dcde8c033810"
+    },
+    {
+      "path": "raw/results/base-Redis-01/result.trx",
+      "sha256": "ff74d4ffd3a6b281bb43f615a2d5e29d9bf60dd2946e1f8c90d9be478ef0190e"
+    },
+    {
+      "path": "raw/results/base-Redis-01.log",
+      "sha256": "c646e530bd931360ba64631722f52e79af6840038ce8c19a1a99af4660191fe9"
+    },
+    {
+      "path": "raw/results/base-Redis-02/result.trx",
+      "sha256": "6cf9c5948c768fd68824aa48a74b2d7ad6a28987a80ceb43d1d6aec212f1fd5d"
+    },
+    {
+      "path": "raw/results/base-Redis-02.log",
+      "sha256": "75501b9e07a3758a7daae1a2f0ba6fd7ed268281393e56f9945826d4e891b383"
+    },
+    {
+      "path": "raw/results/base-Redis-03/result.trx",
+      "sha256": "98bd9bc88b751b97fa47991fffe5d663bae1af1e3d121b4571917ff82fa2eb25"
+    },
+    {
+      "path": "raw/results/base-Redis-03.log",
+      "sha256": "9e1663451b507bcb09c6536c9c714b21f7390b4deca3871a166d09548d168f87"
+    },
+    {
+      "path": "raw/results/base-Redis-04/result.trx",
+      "sha256": "450b4fb63c409034a06543bc67e3c365945a7f08c4d821c28187dc812e5b3213"
+    },
+    {
+      "path": "raw/results/base-Redis-04.log",
+      "sha256": "77a3456eb72b641884f0e184580214a9f21882e27c9545be1b7e194d78a05383"
+    },
+    {
+      "path": "raw/results/base-Redis-05/result.trx",
+      "sha256": "ae7ecd54616d9ca30ad337ddc6a49889dd73bf0eb77b349301745d707f1ebe0c"
+    },
+    {
+      "path": "raw/results/base-Redis-05.log",
+      "sha256": "27dbe5e8ecb66b96122609db035a5f6fc9e3c54d3ab1f105bf303f40a16bcba1"
+    },
+    {
+      "path": "raw/results/base-Redis-06/result.trx",
+      "sha256": "01976f751d7733d117e4c609dcdc544f1baa308e14b7389926c7b76eafcbfe52"
+    },
+    {
+      "path": "raw/results/base-Redis-06.log",
+      "sha256": "beaf8c3021776ad3be93dfe181463a2c91797e94cf25403d8277c7c0a6b6bd46"
+    },
+    {
+      "path": "raw/results/base-Redis-07/result.trx",
+      "sha256": "36795828680e37f94f8c3054c9f62c76bdb4da68d99392f310c63fd3bb378a56"
+    },
+    {
+      "path": "raw/results/base-Redis-07.log",
+      "sha256": "83d58cda970eeb5be95423e1d4fe4d6f3416f46138e6d41433c68a1e09a22f25"
+    },
+    {
+      "path": "raw/results/base-Redis-08/result.trx",
+      "sha256": "04f0f13804a401666e3494802cd4ee9862b65e43473321aacf64f0918b3f1a51"
+    },
+    {
+      "path": "raw/results/base-Redis-08.log",
+      "sha256": "fbf822faf070d41bfb823a95f4ad3fd1f66cf5a685742d0fba8e4f2d8ee11e75"
+    },
+    {
+      "path": "raw/results/base-Redis-09/result.trx",
+      "sha256": "a86ce3e458eebd92fca8312630f13bae4b8f9cf9f8a94ffe2f4cf430726445eb"
+    },
+    {
+      "path": "raw/results/base-Redis-09.log",
+      "sha256": "7ea970fa686c763ee6eac9c6081fc8da0f2847cc4ee702d0dda5ecc31f6340ca"
+    },
+    {
+      "path": "raw/results/base-Redis-10/result.trx",
+      "sha256": "8360e1af714e1da64d1a61bf60175f7f95a208d39cc7d1728a6c214c6090a867"
+    },
+    {
+      "path": "raw/results/base-Redis-10.log",
+      "sha256": "32fd8cf249da2db999c22832aca3c7432ff0535ef02693f5590dd9fe7566a1cf"
+    },
+    {
+      "path": "raw/results/base-Redis-build.log",
+      "sha256": "41051969c2346614fc1148a37cd5741d2ba2b8ca1235c4645f8e4cb425325d39"
+    },
+    {
+      "path": "raw/results/core-tests.log",
+      "sha256": "30888335ea5a4e4766b83f16105aeed2c8536905d545a6409d9023741324263b"
+    },
+    {
+      "path": "raw/results/head-Redis-01/result.trx",
+      "sha256": "f4e10dff281275bea45692c668407170ddd99e10bfdce24731439c3d74d8e7e9"
+    },
+    {
+      "path": "raw/results/head-Redis-01.log",
+      "sha256": "6839e38a51753683162dacc7428dda0bf9d423db01d69885cfb3bcd7f81a5744"
+    },
+    {
+      "path": "raw/results/head-Redis-02/result.trx",
+      "sha256": "90e5b32650de2121b1f2f24cd048fcdc0455a2ae146339214d3b4106333fb791"
+    },
+    {
+      "path": "raw/results/head-Redis-02.log",
+      "sha256": "7953d69d5799f0ac5cf83c91d8ddea941d7e1763bddc6638f405f7002300290b"
+    },
+    {
+      "path": "raw/results/head-Redis-03/result.trx",
+      "sha256": "16cb02cd783ca70f76fb397926b900a2a84d998098cf997290b73432ef06a0ad"
+    },
+    {
+      "path": "raw/results/head-Redis-03.log",
+      "sha256": "88640f5a352ccfe346ed0e8fbd0f11c820d124a43c59fdc1ce3fbf4769d27ffc"
+    },
+    {
+      "path": "raw/results/head-Redis-04/result.trx",
+      "sha256": "643c22996a1fe6b4699fd29bc0f3adaad6f49b944a2c01a88604f0818e935853"
+    },
+    {
+      "path": "raw/results/head-Redis-04.log",
+      "sha256": "52e35f576ce8daccf7443247ae7bd2cab71ab989cbf37e4f0953bc46f1bafea3"
+    },
+    {
+      "path": "raw/results/head-Redis-05/result.trx",
+      "sha256": "10307050b643082b15402343aa0262cb6e89f089f4f65257d95e8b6e0cd791c0"
+    },
+    {
+      "path": "raw/results/head-Redis-05.log",
+      "sha256": "8f8af4416aefba691ea37f4778530460f70bf61ff413b6351a7a8f4a1d94017b"
+    },
+    {
+      "path": "raw/results/head-Redis-06/result.trx",
+      "sha256": "9894b4b421304002cdae0eca507803c9e5d42101ef557e6ad32a37ffcad8d464"
+    },
+    {
+      "path": "raw/results/head-Redis-06.log",
+      "sha256": "cd66d9a8f242e9ae941cc25fb94cb08a9f10e136822c786bf6f752489d8f4d79"
+    },
+    {
+      "path": "raw/results/head-Redis-07/result.trx",
+      "sha256": "5d583c98d815309eb5e1b3c89593a2548ed1ff80231e2712f3b41fa5b8ebd6f7"
+    },
+    {
+      "path": "raw/results/head-Redis-07.log",
+      "sha256": "31ff150c565c44986e60bf8fe3b72edb44e808bce41046f7115491d951bc4f4e"
+    },
+    {
+      "path": "raw/results/head-Redis-08/result.trx",
+      "sha256": "d8ec00325131badcc5b99351816ca4c290588c37d4a8af8cd0d35618a5a2d6ef"
+    },
+    {
+      "path": "raw/results/head-Redis-08.log",
+      "sha256": "9255430c8b459de708db3aba8e762f058f3c31bbea584aa6feb54ad8b03c987e"
+    },
+    {
+      "path": "raw/results/head-Redis-09/result.trx",
+      "sha256": "32cbe5cdf835b83313d4bb13d7aeb272114fd48d8b0e238f25e0af6c23d2758f"
+    },
+    {
+      "path": "raw/results/head-Redis-09.log",
+      "sha256": "87f5077278e82be95ef958ee200b236ffc2a0bfd21b86dcee4252c34d1985dcb"
+    },
+    {
+      "path": "raw/results/head-Redis-10/result.trx",
+      "sha256": "c463df273a602f94e64a7e11df8e11c7449c84223bdbdbcffb6133390c2c7483"
+    },
+    {
+      "path": "raw/results/head-Redis-10.log",
+      "sha256": "57885021c318336cb402f192a2f14f5d8ea59df914341a4e9cc052e53a7b942d"
+    },
+    {
+      "path": "raw/results/head-Redis-build.log",
+      "sha256": "be34ce59d972005117d78f60b47881216a3297c1d11e835dd1e4e18c27f6149a"
+    },
+    {
+      "path": "raw/results/head-SqlServer-01/result.trx",
+      "sha256": "9906f77e7680d274c8ce0b4c22e7c4d88f992fc9a917558b9689995c15b566ed"
+    },
+    {
+      "path": "raw/results/head-SqlServer-01.log",
+      "sha256": "b8cdbf514c91fd0ec093835174aa3505f4ddcca5114411784cc3d0b6822e5924"
+    },
+    {
+      "path": "raw/results/head-SqlServer-02/result.trx",
+      "sha256": "6c48faed7b419e10628e0e8dde1c39254048f00d3169b62445ab787088a66807"
+    },
+    {
+      "path": "raw/results/head-SqlServer-02.log",
+      "sha256": "f94b6a34bade06407060bd941d9e4c4e420c0f3f0ffcdd87914310cfb2562079"
+    },
+    {
+      "path": "raw/results/head-SqlServer-03/result.trx",
+      "sha256": "3af314b6766e61fee253211cbf1f1c862245d3ec55aa832407582980b4aaa212"
+    },
+    {
+      "path": "raw/results/head-SqlServer-03.log",
+      "sha256": "442b7f8d331275ccb7565cdf53a034a56cb0f1fd9da8cf440973050476ce7d8e"
+    },
+    {
+      "path": "raw/results/head-SqlServer-build.log",
+      "sha256": "a1944698870b70fdfb220a1e24b9f4ad5ec4df744e33fa7a9625034fbc267eab"
+    },
+    {
+      "path": "raw/run.py",
+      "sha256": "3dc37d03f40d96d94300f62ee35f098d57e4e96e55d933da36bf285f60ed5aaf"
+    },
+    {
+      "path": "raw/started.json",
+      "sha256": "307954f07b6aaaa1627626732d629202fd75900ab067202aaebd2e200c973518"
+    },
+    {
+      "path": "raw/test.patch",
+      "sha256": "49d2d7bcbb0361e376a3977f2d116fd83b4da62eccdbc07d190c8d11d4959940"
+    },
+    {
+      "path": "raw/worker.log",
+      "sha256": "6df8af1343d736b7b9f780e6e2ba2f1a90921ddb0ca7da4d3433f967d8366a2d"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "pairs": 10,
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "redis_image": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+  "sql_image": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+  "purpose": "Exact group01 reconfirmation: original group rejected for concurrent own source checkout before any mean review; fixed ten full pairs, same original compiled binaries and cases",
+  "files_sha256": {
+    "run.py": "5d8619e09a7b2c7ab8ffbf1b3914588f674bf9203164e34f1ba853c661f9e80d",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "source.bundle": "4d25cb0f0fcc038250f582de1e64cbff748aa88f33b979f6ed363fffdfee1e28"
+  },
+  "lease_helper_sha256": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+  "preparation_attempt": "v2 after v1 failed before compiling or timing because Path.home resolved inside the image; original v1 inputs/logs/checkouts retained"
+}

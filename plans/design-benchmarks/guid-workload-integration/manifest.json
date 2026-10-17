@@ -1,0 +1,83 @@
+{
+  "upstream_guid_head": "0c09fc1d36c68a87fb7d55b414b8616f3082de05",
+  "base_before_integration": "c4e954b1e16a1e643d016f408f9690873ec667e5",
+  "scope": "GUID workload merge and component setup verification only; not final source freeze or performance acceptance.",
+  "files": {
+    "pr5/source-manifest.json": {
+      "original_sha256": "5c935e1ee285f1f796ad5d2ea8b71fb7e0439d8d56343907d7df3884c41f96c8",
+      "stored_sha256": "5c935e1ee285f1f796ad5d2ea8b71fb7e0439d8d56343907d7df3884c41f96c8"
+    },
+    "pr5/PrefixValidation.csproj": {
+      "original_sha256": "99c627ae5c10198cd0936ace0c8df675c685c4a1eb21ba6821a0754b2d4e0efc",
+      "stored_sha256": "99c627ae5c10198cd0936ace0c8df675c685c4a1eb21ba6821a0754b2d4e0efc"
+    },
+    "pr5.log": {
+      "original_sha256": "d500bc6c8adf002969620de2883afd226d8e3735d96491e28dc736373a0435b8",
+      "stored_sha256": "d500bc6c8adf002969620de2883afd226d8e3735d96491e28dc736373a0435b8"
+    },
+    "marvin/source-manifest.json": {
+      "original_sha256": "257edb29eec6ae1cdb0a4c238866aa9d76af1dcbea602e8320c0863bfdaaada7",
+      "stored_sha256": "257edb29eec6ae1cdb0a4c238866aa9d76af1dcbea602e8320c0863bfdaaada7"
+    },
+    "marvin/PrefixValidation.csproj": {
+      "original_sha256": "6cabf460a1fb614c8c711114181f7b45b1b8bb2e4c38bc7e80c3638557306f46",
+      "stored_sha256": "6cabf460a1fb614c8c711114181f7b45b1b8bb2e4c38bc7e80c3638557306f46"
+    },
+    "marvin.log": {
+      "original_sha256": "601bcc9403e2ed8eb71c4c0a2528c3bbb86e018b077b5bc6b31022461c13a33c",
+      "stored_sha256": "601bcc9403e2ed8eb71c4c0a2528c3bbb86e018b077b5bc6b31022461c13a33c"
+    },
+    "constructor/source-manifest.json": {
+      "original_sha256": "0044c06fe32b8f31864c76fa681211f83400e00663498864569441e665d304bd",
+      "stored_sha256": "0044c06fe32b8f31864c76fa681211f83400e00663498864569441e665d304bd"
+    },
+    "constructor/PrefixValidation.csproj": {
+      "original_sha256": "a8ebfd43f11b18a385fe4f939fcc0fde509ede61646893f4f9d9838d3faf2fc2",
+      "stored_sha256": "a8ebfd43f11b18a385fe4f939fcc0fde509ede61646893f4f9d9838d3faf2fc2"
+    },
+    "constructor.log": {
+      "original_sha256": "771c63dae365fad07e1bfee43eaa25e52bb530ecd3e0cfd20bdd75fbb9a03deb",
+      "stored_sha256": "771c63dae365fad07e1bfee43eaa25e52bb530ecd3e0cfd20bdd75fbb9a03deb"
+    },
+    "siphash/source-manifest.json": {
+      "original_sha256": "377b1302e46ce6e8d0291d42d12c3e93dedca8f654dc927d2042c83d719bbca5",
+      "stored_sha256": "377b1302e46ce6e8d0291d42d12c3e93dedca8f654dc927d2042c83d719bbca5"
+    },
+    "siphash/PrefixValidation.csproj": {
+      "original_sha256": "334ef015163db126fc1cfb978f4e219cb7c3b4c084e5a6a34672028378cfe6a8",
+      "stored_sha256": "334ef015163db126fc1cfb978f4e219cb7c3b4c084e5a6a34672028378cfe6a8"
+    },
+    "siphash.log": {
+      "original_sha256": "a54e5757365a16431a6c1d261664040509d6e9f6c1b18674789583e99a33122f",
+      "stored_sha256": "a54e5757365a16431a6c1d261664040509d6e9f6c1b18674789583e99a33122f"
+    },
+    "common-source/PrefixHitPathBenchmarks.cs": {
+      "original_sha256": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+      "stored_sha256": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1"
+    },
+    "common-source/KeyHashLookupBenchmarks.cs": {
+      "original_sha256": "ea4a300eb6f8245e70502bcbba52e4beacde6902a783ddf52a37735fefce3d5d",
+      "stored_sha256": "ea4a300eb6f8245e70502bcbba52e4beacde6902a783ddf52a37735fefce3d5d"
+    },
+    "common-source/MemoryCacheLookupReferenceBenchmarks.cs": {
+      "original_sha256": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120",
+      "stored_sha256": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+    },
+    "common-source/Program.cs": {
+      "original_sha256": "a913beea62168ea7cf9a7a015421d122fc1e74887fadec754fdc77824d066cce",
+      "stored_sha256": "a913beea62168ea7cf9a7a015421d122fc1e74887fadec754fdc77824d066cce"
+    },
+    "benchmark-tests.log": {
+      "original_sha256": "859166f17c821a6dad43d6f382fbde34ae67eb167ca76862b27825a4257f7366",
+      "stored_sha256": "859166f17c821a6dad43d6f382fbde34ae67eb167ca76862b27825a4257f7366"
+    },
+    "format.log": {
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    "GeneratedContractBenchmarks.cs.txt": {
+      "original_sha256": "9ac49fe34bb7f5e97d7368c4450df8f1a6b9ee390f864eb6e05a2166f91a5c08",
+      "stored_sha256": "9ac49fe34bb7f5e97d7368c4450df8f1a6b9ee390f864eb6e05a2166f91a5c08"
+    }
+  }
+}

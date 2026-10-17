@@ -1,0 +1,33 @@
+{
+  "verified_utc": "2026-10-17T12:09:48.923344+00:00",
+  "published_head": "6a2cc0020274e53f77778a8c906980423e19543d",
+  "baseline_files": 200,
+  "candidate_files": 224,
+  "runtime_and_build_source_bytes_match": true,
+  "documentation_only_differences": [
+    {
+      "path": "src/MethodCache.HttpCaching/README.md",
+      "compiled_source_sha256": "4d6d0bee466c8304bf423e4c24e305b9b3ff4b1aac6413830c8f3698040f1e05",
+      "published_documentation_sha256": "65a4eb52e93639f73bb0d32e3ed7998e508cedeff15748a772c8d8a3bcc3a0ab",
+      "reason": "Uncompiled README only; runtime/build source bytes unchanged."
+    }
+  ],
+  "common_compiled_harness_sources": 8,
+  "historical_harness_differences": [
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "measured_sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+      "current_sha256": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4",
+      "scope": "The only differences are macOS-only QoS inspection/guard and PInvoke declarations. Linux behavior and both selected ColdMiss methods/Setup are unchanged. Exact full source diff inspected before launch. Both sides use the same measured source."
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "measured_sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248",
+      "current_sha256": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e",
+      "scope": "The only differences are macOS-only QoS inspection/guard and PInvoke declarations. Linux behavior and both selected ColdMiss methods/Setup are unchanged. Exact full source diff inspected before launch. Both sides use the same measured source."
+    }
+  ],
+  "origin_prepared_sha256": "1cf5f7df47d1d91f61c010b226020d558c6ead77ead3714af2706cb2dff3ef38",
+  "inputs_sha256": "781e26d6bd73f6f6719e583fc9d33bbb86d32095fd73eca3603e662f35e281c4",
+  "prepared_sha256": "24f5c9332c5391526cc67314d4db796c6b7b346e482cbf8158b62dfaa7adb2da"
+}

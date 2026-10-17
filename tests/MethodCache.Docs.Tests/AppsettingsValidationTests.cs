@@ -1,4 +1,3 @@
-using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -35,7 +34,7 @@ public class AppsettingsValidationTests
     {
         using var provider = Build(new() { [key] = value });
 
-        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "Sample.Type.Method"));
         Assert.Contains(message, error.Message);
     }
 
@@ -49,7 +48,7 @@ public class AppsettingsValidationTests
             ["MethodCache:Services:Sample.Type.Method:failsafe"] = "off",
         });
 
-        var policy = provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method").Policy;
+        var policy = provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "Sample.Type.Method").Options;
         Assert.Equal(TimeSpan.FromMinutes(5), policy.Duration);
         Assert.Equal(new[] { "users" }, policy.Tags);
     }
@@ -68,7 +67,7 @@ public class AppsettingsValidationTests
             services.AddMethodCacheFromConfiguration(configuration);
             using var provider = services.BuildServiceProvider();
 
-            var policy = provider.GetRequiredService<IPolicyRegistry>().GetPolicy("MyApp.IUserService.FindAsync(int)").Policy;
+            var policy = provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "MyApp.IUserService.FindAsync(int)").Options;
             Assert.Equal(TimeSpan.FromMinutes(2), policy.Duration);
         }
         finally

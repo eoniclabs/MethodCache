@@ -1,0 +1,205 @@
+{
+  "utc": "2026-10-17T00:45:27.557096+00:00",
+  "scope": "Full fixed final cohort: all 71 cases, ten alternating pairs; retain rejected original evidence and all independent replacements",
+  "archive_sha256": "d80329ffcc04600af3e8186280a993b62513b570f8244a6e0542d48b7f592e2d",
+  "original_indexed_files_verified": 1830,
+  "native_continuation_archive_sha256": "f4afcb0f174584e852d05ef85fd060148c81761f4d6a101c02910251978321ac",
+  "native_indexed_files_verified": 965,
+  "formal_launches_verified": 1420,
+  "cases": 71,
+  "pairs": 10,
+  "actual_iterations": 12,
+  "runtime": ".NET 10.0.12",
+  "gc": "ConcurrentWorkstation,Interactive",
+  "case_provenance": [
+    {
+      "original_group": 0,
+      "formal_source": "raw",
+      "source_group": 0,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 2,
+      "formal_source": "raw",
+      "source_group": 2,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 3,
+      "formal_source": "raw",
+      "source_group": 3,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 4,
+      "formal_source": "raw",
+      "source_group": 4,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 5,
+      "formal_source": "raw",
+      "source_group": 5,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 6,
+      "formal_source": "raw",
+      "source_group": 6,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 7,
+      "formal_source": "raw",
+      "source_group": 7,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 8,
+      "formal_source": "raw",
+      "source_group": 8,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 9,
+      "formal_source": "raw",
+      "source_group": 9,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 10,
+      "formal_source": "raw",
+      "source_group": 10,
+      "launches": 80,
+      "reason": "Original complete group; no launches selected or omitted",
+      "input_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+      "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c"
+    },
+    {
+      "original_group": 11,
+      "formal_source": "native",
+      "source_group": 11,
+      "launches": 80,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 12,
+      "formal_source": "native",
+      "source_group": 12,
+      "launches": 80,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 13,
+      "formal_source": "native",
+      "source_group": 13,
+      "launches": 80,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 14,
+      "formal_source": "native",
+      "source_group": 14,
+      "launches": 80,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 15,
+      "formal_source": "native",
+      "source_group": 15,
+      "launches": 80,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 16,
+      "formal_source": "native",
+      "source_group": 16,
+      "launches": 60,
+      "reason": "Previously unmeasured group after orchestration-only Docker CLI correction; exact same frozen compiled workloads and paired protocol",
+      "input_sha256": "99aee719e2b4ad857672abdfa5690e77e633689312f0779ba2e735ebc99d2aec",
+      "prepared_sha256": "1609a45a0a5d9803fc85b364c4e29b8c70e3820408e0edfd6344bf26db989bae"
+    },
+    {
+      "original_group": 1,
+      "formal_source": "aux/methodcache-group01-reconfirmation-evidence",
+      "source_group": 0,
+      "launches": 80,
+      "reason": "Entire original group rejected for recorded source-checkout overlap; all four cases independently reconfirmed",
+      "input_sha256": "0254c65ca7cd8baca5a9fac6268ee1134ef7b6d6170cccfd5387d40356109ad5",
+      "prepared_sha256": "64d0d3aa01d0f4c45da27975cab6b1f085bf2b3423287b0df7b436c2eef2081c",
+      "indexed_files_verified": 174
+    },
+    {
+      "original_group": 17,
+      "formal_source": "aux/methodcache-corrected-int-evidence",
+      "source_group": 0,
+      "launches": 80,
+      "reason": "Legacy listener registration corrected equally before this independent complete int-control cohort; original controls remain diagnostic",
+      "input_sha256": "6a6b4f0b06e9e983c6316df568ed46347efb4a3ed86d9945da8f71deb555209b",
+      "prepared_sha256": "bda4a7390403010aca7b1506c2d94b1be5509d7dc45ff9307b34655e0a22f133",
+      "indexed_files_verified": 199
+    }
+  ],
+  "review_exit_codes": {
+    "all": 1,
+    "all-accepted": 1,
+    "comparable": 1,
+    "comparable-accepted": 1,
+    "new-work": 1,
+    "new-work-accepted": 1,
+    "local-cpu": 1,
+    "local-cpu-accepted": 1,
+    "distributed-io": 1,
+    "distributed-io-accepted": 1
+  },
+  "new_work_classification": {
+    "DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=False)": "New serialization round-trip opt-out; historical writes always verified. Report changed work separately; both Read labels remain comparable.",
+    "DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=False)": "New serialization round-trip opt-out; historical writes always verified. Report changed work separately; both Read labels remain comparable.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim."
+  },
+  "time_acceptance": "Two exact sync/int 8% limits authorized by Johan and confirmed by complete quiet-Mac PR133 studies. Original rules/reports retained; no GUID/byte/command/precision waiver.",
+  "original_rules_sha256": "476d5c922ad8138a2f74500845e227b3e8d510baa7eee863f9795dc12caca084",
+  "accepted_rules_sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+}

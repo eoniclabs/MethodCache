@@ -1,14 +1,14 @@
 namespace MethodCache
 {
     /// <summary>
-    /// Context passed to fluent cache factories, exposing the cache key and optional services.
+    /// Context passed to cache factories, exposing the logical key and per-invocation items.
     /// </summary>
     public sealed class CacheContext
     {
-        internal CacheContext(string key, IServiceProvider? services)
+        /// <summary>Creates a factory context for the logical key.</summary>
+        public CacheContext(string key)
         {
             Key = key ?? throw new ArgumentNullException(nameof(key));
-            Services = services;
             Items = new Dictionary<object, object?>();
         }
 
@@ -16,11 +16,6 @@ namespace MethodCache
         /// Gets the cache key associated with the current operation.
         /// </summary>
         public string Key { get; }
-
-        /// <summary>
-        /// Gets the scoped service provider, when available.
-        /// </summary>
-        public IServiceProvider? Services { get; }
 
         /// <summary>
         /// Gets a dictionary for sharing state during cache factory execution.

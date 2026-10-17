@@ -1,38 +1,26 @@
 # MethodCache.OpenTelemetry
 
-OpenTelemetry metrics and traces for MethodCache.
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 
-The package depends only on the OpenTelemetry API, as instrumentation libraries should, so it works the same in
-console apps, workers and ASP.NET Core. Your app brings the SDK and exporters. For request spans, add
-`OpenTelemetry.Instrumentation.AspNetCore` to your app as usual.
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Package smoke tests promote NU1608 to a restore error.
 
-## What you get
+Core produces standard .NET metrics and activities. This package provides just two SDK builder extensions,
+`AddMethodCacheInstrumentation()` for `AddMeter(MethodCacheTelemetry.Name)` and `AddSource(MethodCacheTelemetry.Name)`.
+The package depends on the OpenTelemetry API; your app supplies the SDK and exporters. It does not decorate the cache
+manager or change its registration, lifetime, keyed services or disposal ownership.
 
-- **Metrics for every call**:
-  - hits, misses and errors per method;
-  - how long the cached method took on a miss;
-  - entries, memory and hit ratio of the in-memory cache.
-- **Spans for misses and invalidations**:
-  - Each span has the method, hit or miss, TTL, group and version. Keys and tags only when you turn them on, since they contain argument values.
-  - Spans are children of the current request span and copy its `http.*` and `url.*` attributes.
-- **Hits stay allocation-free**: generated decorators answer hits from the cache's fast path, which has no span. Hits still count in `methodcache.hits_total`.
-
-A cached `null` counts as a hit. On `TryGetAsync` spans, `cache.hit` means found in memory: `TryGetAsync` never reads
-the distributed cache.
-
-## Installation
+## Setup
 
 ```bash
 dotnet add package MethodCache.OpenTelemetry
-dotnet add package OpenTelemetry.Extensions.Hosting   # the SDK and AddOpenTelemetry(), if your app doesn't have it yet
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
 ```
-
-## Setup
 
 <!-- snippet: otel-setup -->
 ```cs
 builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
@@ -45,99 +33,75 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-`AddMethodCacheOpenTelemetry()` throws `InvalidOperationException` when it is called before `AddMethodCache()`.
-Sampling, export intervals and the service name are set on the OpenTelemetry SDK as for any other library.
+SDK configuration and `AddMethodCache()` can appear in either order. Sampling, resources and export intervals are app
+settings. Core uses the container's `IMeterFactory` and creates a container-owned activity source. The meter/source
+name is `MethodCache`, available as `MethodCacheTelemetry.Name`; version comes from the assembly.
 
-## Options
+## Privacy options
 
-Pass options to the registration, for example `AddMethodCacheOpenTelemetry(o => o.RecordCacheKeys = true)`, or bind
-them with `services.Configure<OpenTelemetryOptions>(...)`. Each call sets only what its delegate sets, so a second
-call or an earlier `Configure` keeps the other values. With `EnableMetrics = false`, an `ICacheMetricsProvider` you
-registered yourself keeps receiving hits and misses.
-
-| Option | Default | What it does |
-|--------|---------|--------------|
-| `EnableTracing` | `true` | Creates spans |
-| `EnableMetrics` | `true` | Records metrics |
-| `RecordCacheKeys` | `false` | Puts the cache key on spans. Keys can contain argument values |
-| `HashCacheKeys` | `true` | With `RecordCacheKeys`, records a SHA-256 hash of the key instead of the key |
-| `RecordCacheTags` | `false` | Puts the cache tags and invalidation patterns on spans. Tags such as `user:{userId}` contain argument values |
-| `ExportSensitiveData` | `false` | Puts the user and tenant ids from `IBaggagePropagator` into span baggage |
-| `EnableHttpCorrelation` | `true` | Copies the request's `http.*` and `url.*` attributes onto cache spans |
-| `EnableBaggagePropagation` | `true` | Carries `cache.*` baggage between spans |
-
-## Baggage
-
-`IBaggagePropagator` carries a correlation id, an invalidation id, a user id and a tenant id along the async flow,
-and puts them into the baggage of cache spans, which travels to downstream services. The user and tenant ids
-identify people, so they are left out unless `ExportSensitiveData` is on. A value set in a child task stays in that
-task. Setting `null` or an empty string removes the value, so a worker that handles messages one after another can
-clear the previous message's user with `SetCacheUserId(msg.UserId)` even when a message has none.
+Configure `MethodCacheTelemetryOptions` in Core:
 
 <!-- snippet: otel-baggage -->
 ```cs
-_baggagePropagator.SetCacheCorrelationId(Guid.NewGuid().ToString());
-_baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensitiveData = true
+builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+{
+    options.RecordCacheKeys = true; // hashes by default; raw keys can contain secrets
+    options.RecordCacheTags = false;
+});
 ```
 <!-- endSnippet -->
 
-## Span attributes
+| Option | Default | Meaning |
+|---|---|---|
+| `RecordCacheKeys` | `false` | Include keys on operation spans |
+| `HashCacheKeys` | `true` | Record SHA-256 of lossless UTF-16 key bytes instead of raw keys when enabled |
+| `RecordCacheTags` | `false` | Include application tags on operation spans |
 
-Spans come from the `MethodCache` activity source. Lookups and misses are named `MethodCache.cache.get`, invalidations
-`MethodCache.cache.delete`.
+Hashes are stable identifiers, not anonymization. Raw keys/tags can contain secrets. These options never add metric
+dimensions. The library adds no user/tenant baggage, copies no request HTTP/URL attributes, and records no exception
+messages or stack traces. Application-owned ambient .NET baggage/context still flows normally; the app controls its
+propagation and export. See [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
-| Attribute | Description | Example |
-|-----------|-------------|---------|
-| `cache.operation` | `cache.get` or `cache.delete` | `cache.get` |
-| `cache.method` | Method id, or the invalidation call | `MyApp.IUserService.GetUserAsync` |
-| `cache.hit` | Whether the value came from the cache | `true` |
-| `cache.key` | The key, with `RecordCacheKeys` and `HashCacheKeys = false` | `MyApp.IUserService.GetUserAsync:42` |
-| `cache.key_hash` | Base64 SHA-256 of the key, with `RecordCacheKeys` | `3q2+7w...=` |
-| `cache.ttl_seconds` | Time-to-live | `600` |
-| `cache.tags` | Cache tags, with `RecordCacheTags` | `user,profile` |
-| `cache.pattern` | Invalidation pattern, with `RecordCacheTags` | `user:*` |
-| `cache.group` | Group | `users` |
-| `cache.version` | Version | `2` |
-| `cache.keys_count` | Number of keys invalidated | `3` |
-| `cache.error` | Set when the operation failed | `true` |
-| `cache.error_type` | Exception type name | `TimeoutException` |
+## Spans
 
-A failed operation also sets the span status to Error and adds an `exception` event with `exception.type`,
-`exception.message` and `exception.stacktrace`.
+| Span | Kind | Attributes |
+|---|---|---|
+| `MethodCache.load` | Internal | `kind`, `name`; `error.type` on failure |
+| `MethodCache.distributed` | Client | `operation`; `error.type` on failure |
+| `MethodCache.invalidate` | Internal | `type` |
+
+Loads measure only actual origin work, including refreshes. Flight joiners and L2 hits create no origin span. Pure
+hits create no spans. Failures set Error status without an exception description/event payload. Opt-in identities use
+`methodcache.key`, `methodcache.keys` and `methodcache.tags`.
 
 ## Metrics
 
-Metric dimensions are kept to values with few variants (`method`, `group`, `version`, `error.type`), so a tag such
-as `user:42` never becomes a time series of its own. `method` is the method id that `GET /methodcache/methods` and
-`appsettings.json` use, such as `MyApp.IUserService.GetUserAsync`, so `IUserService.GetAsync` and
-`IOrderService.GetAsync` are two series; a generic interface reports its closed type, such as `IRepository<User>.Get`.
+| Instrument | Type / unit | Dimensions |
+|---|---|---|
+| `methodcache.requests` | Counter / `{request}` | `kind=method/http`, `name=method-id/client`, `result=hit/miss/stale/revalidated/bypass/error` |
+| `methodcache.load.duration` | Histogram / `s` | `kind`, `name`, `error.type` on failure |
+| `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `kind`; actual locally resident entries |
+| `methodcache.http.size` | ObservableUpDownCounter / `By` | Local HTTP storage cost; zero body storage in L2 mode |
+| `methodcache.invalidations` | Counter / `{invalidation}` | `type=key/tag/method`, `stage=local/distributed/queued/published/publication_queued` |
+| `methodcache.distributed.duration` | Histogram / `s` | `operation=get/set/remove/invalidate`, `error.type` on failure |
+| `methodcache.distributed.queue` | ObservableUpDownCounter / `{invalidation}` | `stage=storage/publication`; distinct pending targets |
 
-| Metric | Type | Description | Dimensions |
-|--------|------|-------------|------------|
-| `methodcache.hits_total` | Counter | Cache hits, including fast-path hits | method |
-| `methodcache.misses_total` | Counter | Cache misses | method |
-| `methodcache.errors_total` | Counter | Errors: `error.type` is `load_failed` when the cached method throws, otherwise the exception type name | method, error.type |
-| `methodcache.load_duration` | Histogram (ms) | Time the cached method took on a miss or refresh, with sub-millisecond precision | method |
-| `methodcache.operation_duration` | Histogram (ms) | Duration of instrumented operations (misses, invalidations) | method, group, version |
-| `methodcache.key_generation_duration` | Histogram (ms) | Key generation on instrumented operations | method |
-| `methodcache.entries_count` | Gauge | Entries in the in-memory cache | |
-| `methodcache.memory_bytes` | Gauge | Estimated memory of the in-memory cache | |
-| `methodcache.hit_ratio` | Gauge | Hits / (hits + misses), from the in-memory cache's statistics | |
+Exactly one outcome is recorded per completed caller; a failed fast probe is not another miss. Background refresh has
+its own load duration and no extra user request. Bulk calls count once and time the actual batch factory. A cached
+`null` is a hit. `TryGetAsync` can read L2 and retains presence independently of the returned value.
+
+Generated `name` values use canonical declared method ids, including declared generic parameters; arguments and closed
+runtime types do not create series. Invalidation stages count targets separately and must not be summed into an
+operation count. Entry gauges exclude the bounded HTTP observation registry and are never global L2 estimates.
+Method weight is exposed through administrator `TotalWeight` in configured units; no method-object byte estimate or
+hit-ratio instrument is invented. Calculate ratios from counters in the dashboard.
 
 ## Troubleshooting
 
-**No spans.** Check that the SDK listens to the source with `.AddMethodCacheInstrumentation()` on the tracer
-provider. `TracingConstants.ActivitySource.HasListeners()` is true once it does.
-
-**No HTTP attributes on cache spans.** Cache spans copy them from the request span, so enable ASP.NET Core
-instrumentation: `.WithTracing(t => t.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())`.
+If no spans appear, subscribe on the tracer builder and check the SDK's parent sampling policy. If metrics are absent,
+subscribe on the meter builder. Core works with ordinary `MeterListener`/`ActivityListener` without this package or an
+SDK. Late subscribers see current local storage gauges; counters start when their listener attaches.
 
 ## License
 
 MIT. See [LICENSE](https://github.com/eoniclabs/MethodCache/blob/main/LICENSE).
-
-OpenTelemetry instruments the unkeyed `ICacheManager` registration and leaves unrelated keyed managers untouched. A keyed-only registration does not satisfy its requirement for a default manager.
-
-OpenTelemetry preserves the original cache manager registration lifetime and DI disposal ownership. Type/factory-created managers remain container-owned; supplied instances remain caller-owned, including asynchronous disposal.
-
-An instrumented cache lookup generates the application cache key once and reuses it for tracing and the presence-aware inner lookup, preserving the original method and arguments without a second serialization/hash pass.

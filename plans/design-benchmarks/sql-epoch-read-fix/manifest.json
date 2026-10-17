@@ -1,0 +1,29 @@
+{
+  "at_utc": "2026-10-16T14:06:23.029979+00:00",
+  "source_parent": "eb3856dca32dca9c7acd542961ed1a54a887019e",
+  "regression": "A trigger rejecting UPDATE on the isolated epoch table fails a repeated EnsureEpochs read before correction",
+  "epoch_contract_facts": 4,
+  "sql_integration_facts": 66,
+  "sql_unit_facts": 42,
+  "infrastructure_skips": 0,
+  "scope": "Local correctness evidence; SQL performance confirmation and final-head CI remain required",
+  "normalization": "Absolute worktree path replaced; line endings normalized and trailing whitespace removed; original hashes retained",
+  "files": {
+    "red.log": {
+      "original_sha256": "d428ba2233fe088a776508a6d44080924ee2d91c5f0458cb7ea4e04ad9aabbab",
+      "stored_sha256": "eac3528b4ff30d88dfaf3f686800ed25947c56932af5f9d715b0f71e36793f6c"
+    },
+    "green.log": {
+      "original_sha256": "ee5767cd07abd2f67464a6c4430d0c40d2971b428955a3765b9ffad9a9bde0f7",
+      "stored_sha256": "647225157c6b21b980ec7a1513b4bfd39e45dcb923a3cc797446b12b9ce5dc79"
+    },
+    "full-integration.log": {
+      "original_sha256": "c4d0922762d0963d9c379759c3555a4025e85687abe5d60cc5d50f04f799c2ed",
+      "stored_sha256": "12504e2741a746b51485d26358f7f0dd58848b82a285c4e94ff1a5dd0c5d8786"
+    },
+    "unit.log": {
+      "original_sha256": "a67c05fcf35c8a325a4bfba49414f7a3b438ba6c93a1712b05c966135641250b",
+      "stored_sha256": "2d67332cff865166580d95bc53dc75d3a44afe72ea7e0b11e300ec35ff0b97e5"
+    }
+  }
+}

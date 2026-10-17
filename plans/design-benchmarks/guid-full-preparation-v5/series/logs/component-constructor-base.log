@@ -1,0 +1,24 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-guid-final-v5-component-constructor-base 2026-10-16T09:01:17.983246+00:00
+/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/MethodCache.Benchmarks.csproj
+  Determining projects to restore...
+  Restored /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/MethodCache.Benchmarks.csproj (in 206 ms).
+  4 of 5 projects are up-to-date for restore.
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v3/checkouts/constructor-base/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Benchmarks -> /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.87
+// start dotnet  restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/publish/" in /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1
+// command took 1.41 sec and exited with 0
+// start dotnet  build -c Release --no-restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/" /p:OutDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/bin/Release/net10.0/" /p:OutputPath="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/bin/Release/net10.0/" /p:PublishDir="/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/publish/" --output "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1/bin/Release/net10.0/" in /home/agent-admin/methodcache-design-bench-20261015/guid-final-v5/component-harness/constructor-base/bin/Release/net10.0/MethodCache.Benchmarks-Job-UITVRW-1
+// command took 8.49 sec and exited with 0
+Compiled generated BDN programs for 102 cases; no benchmarks executed.
+Verified compiled capabilities: prefix=True, SipHash=False, in-place builder=False.
+Verified all component prefix/growth/listener/cache/reference setup combinations.
+Releasing exclusive lease methodcache-design-20261015-01a13a93-guid-final-v5-component-constructor-base exit 0 2026-10-16T09:01:32.910710+00:00

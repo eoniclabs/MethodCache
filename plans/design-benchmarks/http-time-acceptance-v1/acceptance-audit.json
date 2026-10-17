@@ -1,0 +1,303 @@
+{
+  "spec_rows": 76,
+  "unique_source_report_references": 72,
+  "spec_sha256": "6b027d20c56d7daa53cb9f42fe4e6008b2571e5c7e8308cd398df215ebc44ffa",
+  "reviewed_file_hashes": [
+    {
+      "path": "docs/developer/design-pr1-validation.md",
+      "sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43"
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
+      "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
+    },
+    {
+      "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Infrastructure/SourceGeneratorTestEngine.cs",
+      "sha256": "54d02f22c7e291a7eb1210cc45157769cbbd59b094043b1cdfe1ed4488e00af5"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs",
+      "sha256": "9cf8db3984eb34786ea56c20694f9d9880135dc30dc6cc20c29788292890f85b"
+    },
+    {
+      "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/QuickStartRegistrationTests.cs",
+      "sha256": "9b4ae9d65fc94242f762d467be75434b3eab0d25e5c79785867cd168f9dc22f8"
+    },
+    {
+      "path": "tests/MethodCache.AotSmokeTest/Program.cs",
+      "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1"
+    },
+    {
+      "path": "tests/MethodCache.Docs.Tests/KeyedRegistrationTests.cs",
+      "sha256": "65e2196b170b9e2e10b17ee88e422ed5c292291e40bbf87798de16ee63d342ce"
+    },
+    {
+      "path": "build/ci/check_package_restore.py",
+      "sha256": "cbbd3e6b867bdf228235fadd2c0dfab525bd58fd9a2f196bc208cc7e81ea8acf"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/GeneratedKeyPropertyTests.cs",
+      "sha256": "6bda5ff4a6cfa1fbf6bad1376610b649198326e56ce06375c700f730c2d950c8"
+    },
+    {
+      "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/SignatureCorpusTests.cs",
+      "sha256": "88450fbf0ad32d496383c48a9019b57f25e9600ec3bc441603e0a28e60478e21"
+    },
+    {
+      "path": "tests/Directory.Build.props",
+      "sha256": "572cb65d677339dd446b4112ae275907bc4e14dfc85dd0deb4409da9c887f7bd"
+    },
+    {
+      "path": "build/ci/jobs.sh",
+      "sha256": "5360850795a1b563d3416e7dd9d53195543bba517653252aec0ded63c9578a05"
+    },
+    {
+      "path": "docs/developer/design-pr2-validation.md",
+      "sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/PolicyTransitionTests.cs",
+      "sha256": "b14aafbb25f35acab9a51eee7654c8fe9d1744af9564a0902b1e3ab594030aa9"
+    },
+    {
+      "path": "tests/TestSupport/PolicyBackendContract.cs",
+      "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02"
+    },
+    {
+      "path": "tests/TestSupport/PolicyBackendAcceptanceContract.cs",
+      "sha256": "6a2b8dabcb1f27d285ebafca85dd0bc9187d7579f5b1c9454041b19dbd62ec9e"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs",
+      "sha256": "ee9c1d17f4158394845dbd96dc3ca1df3ab6b458f50b7abd043ab0f3a8b6a029"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/UserApiShapeTests.cs",
+      "sha256": "5454ff5623cd903c2abc88f5b9ca2ee749ecf1dc98c612361547814894ca652b"
+    },
+    {
+      "path": "src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs",
+      "sha256": "e62bec71b8c26b1277f9cefa3eb7c7e2114d169c90f5afac0f58511b90a7575f"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/DistributedCacheTests.cs",
+      "sha256": "53c77cc4590ba4e6f3cee37f199dc779b5867c7130e7dd8aa0e219c3e7615082"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/Extensions/CacheManagerExtensionsTests.cs",
+      "sha256": "14befd9af0a36c94d5ae6ff5d3b89d984fba9a1dc671747ed2124b247deee58c"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/Extensions/CacheLookupTests.cs",
+      "sha256": "e811fe27d2a00180fb18bc6ee0cbfcf57544436bd23e9bb9bdc824e135cdb2ac"
+    },
+    {
+      "path": "docs/developer/design-pr3-validation.md",
+      "sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b"
+    },
+    {
+      "path": "tests/MethodCache.SourceGenerator.Tests/SourceGenerator/DurationGrammarTests.cs",
+      "sha256": "a1ca72e12f7b5da1b597443a69787a1c53aa0738e5cd7e65ae38a3d813ecf550"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/AttributeContractTests.cs",
+      "sha256": "3654f9d969fd9c20d60a511a2637e1072772ead021c67aa58d6c15d0d95ef34b"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/DistributedTagIdentityPropertyTests.cs",
+      "sha256": "5f4571031e8e394913a9f5c47987ef066cd8e4d308873412f8ea15307cb3da56"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/KeyInjectionPropertyTests.cs",
+      "sha256": "fe8948a94cb6db809b3cb15bc98a0f653ccac0588def692cf9b979c9737e545c"
+    },
+    {
+      "path": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/GeneratedCodeEdgeCaseTests.cs",
+      "sha256": "a872c4eff8219ebaa02353ffef7c013ad4f8e81f6568c46eb4766095e4b8e271"
+    },
+    {
+      "path": "docs/developer/design-pr4-validation.md",
+      "sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/FaultInjection/CrossFormatInvalidationTests.cs",
+      "sha256": "b0bd6c04ba2d762a96a39756003927da8984d3f02b104a424068dfdba0ef31e6"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/BackplaneWireTests.cs",
+      "sha256": "62848b0971b27d96d1e04dd571e2e438c8306ac5eb95eae88aa2d7b2e04ecf3c"
+    },
+    {
+      "path": "tests/MethodCache.SqlServer.IntegrationTests/BackplaneAcknowledgementTests.cs",
+      "sha256": "8322b8bada68d2a4246bd797b3f490409b06a82badfd7c6be977c32800b7b68b"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/FaultInjection/RetentionPublicationTests.cs",
+      "sha256": "1c9bb744f8fd68af1bef490c26efe1b5927891d39d1f6e5026f55cbeb0a05828"
+    },
+    {
+      "path": "tests/TestSupport/EpochBackendContract.cs",
+      "sha256": "72d4abb10d817eb574e0edfc0ca0a2b734aa9aa793d014fd058ada72b7ac6e67"
+    },
+    {
+      "path": "tests/MethodCache.Redis.Tests/OwnedTransportOptionsTests.cs",
+      "sha256": "ea69983a4f7d9d101b90b822e724c75c111cd2672c53a97ac045a3fde1b3aefe"
+    },
+    {
+      "path": "tests/MethodCache.SqlServer.IntegrationTests/SchemaContractTests.cs",
+      "sha256": "e9e3d3233354b0127a383048fb8b1b2939add7562624aed49ec524c3b7d5137a"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/PolymorphicContextTests.cs",
+      "sha256": "0e59e52951ef400d36fa7446113128f11de43eb976be6e601721ed57dc4ab076"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/FaultInjection/BackplaneShutdownTests.cs",
+      "sha256": "24eb1da702f47ca987b45ceacd27b487393e5ff3eb5379d1100ff86f6e3cf998"
+    },
+    {
+      "path": "docs/developer/design-pr5-validation.md",
+      "sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryRequestTests.cs",
+      "sha256": "35a6fc84888b1998b28519e16ea8a362db50083119593a04d0ecae037e09326e"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryPrivacyTests.cs",
+      "sha256": "59c16149e500d928ba9035aaf20dea2c6dbc113ecad49c355b278b9afd4fcca5"
+    },
+    {
+      "path": "tests/MethodCache.OpenTelemetry.Tests/CoreInstrumentationTests.cs",
+      "sha256": "f16e4e087405a6bdad83fe3036ab3286e47dda7cd9ca266778635a46750173a5"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Telemetry/CoreTelemetryTests.cs",
+      "sha256": "2baeaabb9a4a1daa7a439bd3f9227a3f7a2bc35f2f945050cd227bf84f16a333"
+    },
+    {
+      "path": "tests/MethodCache.AspNetCore.Tests/HealthCapabilityTests.cs",
+      "sha256": "581952a72a4ed51aa4cd2a6eb83f426215704f83301f38fec62fa3d79f80259f"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Contracts/MemoryStatisticsTests.cs",
+      "sha256": "43526a65b684a9aa0efdee471d95da8c8b716fe222ca6a0e981870e196501b45"
+    },
+    {
+      "path": "docs/developer/design-prefix-validation.md",
+      "sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/PrefixHashPropertyTests.cs",
+      "sha256": "79ee276b20e924f041adab6e1584bceae21d15357e045b406dee6c8331112f09"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/PrefixCollisionTests.cs",
+      "sha256": "516af47c6c2ec694d4d31fa0dc3b8cd28b6ffc98b0a4927857c7d30b305182a2"
+    },
+    {
+      "path": "tests/MethodCache.PackageSmokeTest.AddOns/SeedIsolationCheck.cs",
+      "sha256": "c7ed097fd81906cd251838b8542ef932aad5fab997ecfd662b2896d8e74717b3"
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Net10VendorCompatibilityTests.cs",
+      "sha256": "a188eef738346d83c6f8d0e288a3b173190a185a2953049acb72a7bdf2f06f94"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+    },
+    {
+      "path": "tests/MethodCache.AotSmokeTest/PrefixAotChecks.cs",
+      "sha256": "4ee98780386cae47f0ff04dfe10dbf5b4ef3c03abe4d055c20b7bbc28aff847a"
+    },
+    {
+      "path": "docs/developer/design-pr6-validation.md",
+      "sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpCacheCorrectnessTests.cs",
+      "sha256": "68c14c77b5732952840d947115e7d607e88d1191d4d5964723d1d9f9808c4100"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpCacheIsolationTests.cs",
+      "sha256": "bc178510b38b633c55ae5a76c287da943f3073a6c8348b7da30fbc6110dd7998"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
+      "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+      "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+      "sha256": "cb841e1414a8d78298e0c4fa07de494aa2aadb372932142ad16054170e5dd284"
+    },
+    {
+      "path": "tests/TestSupport/HttpNativeContract.cs",
+      "sha256": "2474e897abc0bdce98669cf7188f993265158da13b5234588eb9265372a9a393"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpGenerationFaultTests.cs",
+      "sha256": "c36aa4b3326afd1deb38476b20b823731f78d6b09454e8f8c3e36d02da7288fa"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/TransportCookieIsolationTests.cs",
+      "sha256": "6725dedeb02382d8bbbaf8383935a3605ce0f5219f4e0d016d304b633c0c2b7e"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpObservationAcceptanceTests.cs",
+      "sha256": "cbbddc33992b17713dc41e2d965a08d1d4faf6d55b3f5e38b209ed040a2da3ce"
+    },
+    {
+      "path": "docs/developer/design-final-validation.md",
+      "sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc"
+    },
+    {
+      "path": "build/ci/windows.ps1",
+      "sha256": "d5ceeed1dbb2b9f5dd241d484a09084a9a78612bdad3da8b4fa9aff5c19d327f"
+    },
+    {
+      "path": "Directory.Build.props",
+      "sha256": "f55bd201827482878be9a3b02e09128e7643f213f5d2bee61c059be579df4034"
+    },
+    {
+      "path": "tests/MethodCache.Docs.Tests/ReadmeTests.cs",
+      "sha256": "471f766fa22c5b68d01cc3382190aab61da1d828a476c696b668f0c3214032d5"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/paired.py",
+      "sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/accepted.json",
+      "sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02"
+    }
+  ],
+  "worktree_CRLF_only_equivalence": [
+    "build/ci/windows.ps1"
+  ],
+  "functional_head": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "functional_evidence_sha256": "0cf84ed838cb85cbfbb0d400925a959dd7a84ad0d6b14a6ffc8065704de6f5ef",
+  "performance_coverage_sha256": "79884550de9114d7bd73b4b098804c492e1238ec0000fefc7ca4373264ff8d03",
+  "inventory_sha256": "8164ea1d7ade1f1829ded1986ba0db6aa65d5aa564fe796b8bada208b36bd205",
+  "pending": "Exact approval-publication CI; no source/runtime/API/build/test change."
+}

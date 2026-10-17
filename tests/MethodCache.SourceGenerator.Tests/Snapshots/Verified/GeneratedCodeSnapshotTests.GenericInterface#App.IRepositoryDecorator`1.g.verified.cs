@@ -8,10 +8,6 @@ using global::System.Collections.Concurrent;
 using global::System.Linq;
 using global::System.Threading;
 using global::System.Threading.Tasks;
-using global::MethodCache;
-using global::MethodCache.Extensibility;
-using global::MethodCache.Infrastructure;
-using global::MethodCache.Policies;
 
 namespace App
 {
@@ -24,24 +20,20 @@ namespace App
     /// for high-throughput scenarios due to runtime type resolution for cache keys.
     /// For maximum performance in critical paths, consider using non-generic interfaces.
     /// </remarks>
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCode]
     internal sealed class IRepositoryDecorator<__mcClassArgument0> : global::App.IRepository<__mcClassArgument0>
     {
         private readonly global::App.IRepository<__mcClassArgument0> _decorated;
-        private readonly global::MethodCache.ICacheManager _cacheManager;
-        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
-        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
+        private readonly global::MethodCache.Generated.GeneratedServices _services;
 
-        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
+        private readonly global::MethodCache.Generated.CachedMethod _method_Method0;
 
-        public IRepositoryDecorator(global::App.IRepository<__mcClassArgument0> decorated, global::MethodCache.Infrastructure.DecoratorServices services)
+        public IRepositoryDecorator(global::App.IRepository<__mcClassArgument0> decorated, global::MethodCache.Generated.GeneratedServices services)
         {
             _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
-            _cacheManager = services.CacheManager;
-            _keyGenerator = services.KeyGenerator;
-            _metricsProvider = services.MetricsProvider;
+            _services = services;
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
@@ -50,48 +42,33 @@ namespace App
 
         private sealed class CachedMethodSites
         {
-            public readonly global::MethodCache.Infrastructure.CachedMethod Method0;
+            public readonly global::MethodCache.Generated.CachedMethod Method0;
 
-            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
+            public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IRepository<T>.GetAsync"), typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
+                Method0 = registry.Method("App.IRepository<T>.GetAsync", typeof(global::App.IRepository<__mcClassArgument0>), "GetAsync", "IRepository<" + string.Join(",", typeof(global::App.IRepository<__mcClassArgument0>).GetGenericArguments().Select(t => t.Name)) + ">.GetAsync");
             }
         }
 
+        [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         global::System.Threading.Tasks.Task<__mcClassArgument0?> global::App.IRepository<__mcClassArgument0>.GetAsync(int __mcArgument0)
         {
-            var __mcSnapshot = this._method_Method0.Current;
-#if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
-            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
+            var __mcCall = this._method_Method0.Capture();
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
+            if (__mcCall.TryGetTask<__mcClassArgument0?>(ref __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
-                return __mcCachedTask;
+                return __mcCachedValue!;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
-
-            if (this._cacheManager.TryGetFastTask<__mcClassArgument0?>(__mcKey, out var __mcCachedTask))
-            {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
-                return __mcCachedTask;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = __mcSnapshot.Policy;
-            if (global::System.Linq.Enumerable.Any(__mcPolicy.Tags, static __mcTag => __mcTag.Contains('{')))
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "id" }, new object?[] { __mcArgument0 });
-            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0);
+            return __Load_Method0(__mcKey, __mcCall, __mcArgument0);
         }
 
-        private global::System.Threading.Tasks.Task<__mcClassArgument0?> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0)
-            => this._cacheManager.GetOrCreateFastAsync<__mcClassArgument0?>(__cacheKey, this._method_Method0.Name, () => ((global::App.IRepository<__mcClassArgument0>)global::MethodCache.Infrastructure.DecoratorServices.ForLoad(this._method_Method0, this._decorated)).GetAsync(__mcArgument0)!, __policy);
+        private global::System.Threading.Tasks.Task<__mcClassArgument0?> __Load_Method0(string __cacheKey, global::MethodCache.Generated.MethodCall __call, int __mcArgument0)
+            => __call.LoadAsync(__cacheKey, (Inner: this._decorated, Arg0: __mcArgument0), static (__invocation, __state) => ((global::App.IRepository<__mcClassArgument0>)__invocation.ServiceForLoad(__state.Inner)).GetAsync(__state.Arg0), (__call.NeedsTagArguments ? new object?[] { __mcArgument0 } : global::System.Array.Empty<object?>()), default);
 
     }
 }

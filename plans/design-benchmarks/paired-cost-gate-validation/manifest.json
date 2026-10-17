@@ -1,0 +1,29 @@
+{
+  "base": "5d9c829a857bd377049b3bd18703e97cdb254547",
+  "scope": "Paired evidence validator only; runtime and benchmark workload are unchanged",
+  "red": "7 tests: 4 failures prove wide faster/accepted intervals and unmatched/duplicate input wrongly pass before fix",
+  "green": "60 complete benchmark Python validation tests pass after fix",
+  "normalization": "Worktree root replaced; line endings and trailing whitespace normalized; original SHA256 retained",
+  "files": [
+    {
+      "path": "red.log",
+      "original_sha256": "9a2466280c3ced9867ced87004d96a72c983b5ae0c07e85d10553f843985bc08",
+      "stored_sha256": "e097c2cb02a973e637dcafc79bcbf6abea0800908b5290e6afec404ebc6072a9"
+    },
+    {
+      "path": "green.log",
+      "original_sha256": "3fd7cdfd8bf59bcd6ec1a94767cab02927b1cd8b0062115a17f9ea26c329a0e7",
+      "stored_sha256": "3fd7cdfd8bf59bcd6ec1a94767cab02927b1cd8b0062115a17f9ea26c329a0e7"
+    }
+  ],
+  "source": [
+    {
+      "path": "benchmarks/MethodCache.CostProfile/paired.py",
+      "sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/validation/test_cost_profile_timing.py",
+      "sha256": "4f576db195c4995b5bf07c3398960d9c82a04c2376a2dbb75f37ab0337ca307e"
+    }
+  ]
+}

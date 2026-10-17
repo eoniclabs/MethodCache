@@ -1,20 +1,23 @@
 #nullable enable
-const MethodCache.Extensibility.JsonKeyGenerator.MaxReadableLength = 200 -> int
-const MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize = 256 -> int
-const MethodCache.MethodCacheKeys.Null = "\\0" -> string!
-const MethodCache.MethodCacheKeys.Separator = ":" -> string!
 MethodCache.Any<T>
 MethodCache.CacheAttribute
-MethodCache.CacheAttribute.CacheAttribute(string? groupName = null) -> void
+MethodCache.CacheAttribute.CacheAttribute() -> void
+MethodCache.CacheAttribute.Distributed.get -> bool
+MethodCache.CacheAttribute.Distributed.set -> void
 MethodCache.CacheAttribute.Duration.get -> string?
 MethodCache.CacheAttribute.Duration.set -> void
+MethodCache.CacheAttribute.Enabled.get -> bool
+MethodCache.CacheAttribute.Enabled.set -> void
 MethodCache.CacheAttribute.FailSafe.get -> string?
 MethodCache.CacheAttribute.FailSafe.set -> void
 MethodCache.CacheAttribute.FailSafeTimeout.get -> string?
 MethodCache.CacheAttribute.FailSafeTimeout.set -> void
-MethodCache.CacheAttribute.GroupName.get -> string?
+MethodCache.CacheAttribute.Group.get -> string?
+MethodCache.CacheAttribute.Group.set -> void
 MethodCache.CacheAttribute.RefreshAhead.get -> string?
 MethodCache.CacheAttribute.RefreshAhead.set -> void
+MethodCache.CacheAttribute.RetryAfter.get -> string?
+MethodCache.CacheAttribute.RetryAfter.set -> void
 MethodCache.CacheAttribute.SlidingExpiration.get -> string?
 MethodCache.CacheAttribute.SlidingExpiration.set -> void
 MethodCache.CacheAttribute.Tags.get -> string![]?
@@ -22,27 +25,27 @@ MethodCache.CacheAttribute.Tags.set -> void
 MethodCache.CacheAttribute.Version.get -> int
 MethodCache.CacheAttribute.Version.set -> void
 MethodCache.CacheContext
+MethodCache.CacheContext.CacheContext(string! key) -> void
 MethodCache.CacheContext.Items.get -> System.Collections.Generic.IDictionary<object!, object?>!
 MethodCache.CacheContext.Key.get -> string!
-MethodCache.CacheContext.Services.get -> System.IServiceProvider?
-MethodCache.CachedMethodInfo
-MethodCache.CachedMethodInfo.CachedMethodInfo(string! MethodId, System.TimeSpan? Duration, System.Collections.Generic.IReadOnlyList<string!>! Tags, int? Version, System.Collections.Generic.IReadOnlyList<string!>! Sources) -> void
-MethodCache.CachedMethodInfo.Duration.get -> System.TimeSpan?
-MethodCache.CachedMethodInfo.Duration.init -> void
-MethodCache.CachedMethodInfo.MethodId.get -> string!
-MethodCache.CachedMethodInfo.MethodId.init -> void
-MethodCache.CachedMethodInfo.Sources.get -> System.Collections.Generic.IReadOnlyList<string!>!
-MethodCache.CachedMethodInfo.Sources.init -> void
-MethodCache.CachedMethodInfo.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
-MethodCache.CachedMethodInfo.Tags.init -> void
-MethodCache.CachedMethodInfo.Version.get -> int?
-MethodCache.CachedMethodInfo.Version.init -> void
 MethodCache.CacheEntryInfo
 MethodCache.CacheEntryInfo.Age.get -> System.TimeSpan
 MethodCache.CacheEntryInfo.Age.init -> void
 MethodCache.CacheEntryInfo.CacheEntryInfo(string! Key, string? ValueType, System.TimeSpan Age, System.TimeSpan? TimeToLive, System.Collections.Generic.IReadOnlyList<string!>! Tags, long Weight) -> void
+MethodCache.CacheEntryInfo.Client.get -> string?
+MethodCache.CacheEntryInfo.Client.init -> void
+MethodCache.CacheEntryInfo.Description.get -> string?
+MethodCache.CacheEntryInfo.Description.init -> void
+MethodCache.CacheEntryInfo.Format.get -> int?
+MethodCache.CacheEntryInfo.Format.init -> void
 MethodCache.CacheEntryInfo.Key.get -> string!
 MethodCache.CacheEntryInfo.Key.init -> void
+MethodCache.CacheEntryInfo.Kind.get -> MethodCache.CacheEntryKind
+MethodCache.CacheEntryInfo.Kind.init -> void
+MethodCache.CacheEntryInfo.SizeBytes.get -> long?
+MethodCache.CacheEntryInfo.SizeBytes.init -> void
+MethodCache.CacheEntryInfo.Storage.get -> MethodCache.CacheEntryStorage
+MethodCache.CacheEntryInfo.Storage.init -> void
 MethodCache.CacheEntryInfo.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CacheEntryInfo.Tags.init -> void
 MethodCache.CacheEntryInfo.TimeToLive.get -> System.TimeSpan?
@@ -51,36 +54,47 @@ MethodCache.CacheEntryInfo.ValueType.get -> string?
 MethodCache.CacheEntryInfo.ValueType.init -> void
 MethodCache.CacheEntryInfo.Weight.get -> long
 MethodCache.CacheEntryInfo.Weight.init -> void
+MethodCache.CacheEntryKind
+MethodCache.CacheEntryKind.Http = 1 -> MethodCache.CacheEntryKind
+MethodCache.CacheEntryKind.Method = 0 -> MethodCache.CacheEntryKind
 MethodCache.CacheEntryOptions
 MethodCache.CacheEntryOptions.Builder
 MethodCache.CacheEntryOptions.Builder.Build() -> MethodCache.CacheEntryOptions!
 MethodCache.CacheEntryOptions.Builder.Builder() -> void
+MethodCache.CacheEntryOptions.Builder.CacheWhen<T>(System.Func<T, bool>! predicate) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.OnHit(System.Action<MethodCache.CacheContext!>! callback) -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.OnMiss(System.Action<MethodCache.CacheContext!>! callback) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.RefreshAhead(System.TimeSpan window) -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.When(System.Func<MethodCache.CacheContext!, bool>! predicate) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.WithDistributed(bool distributed) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.WithMetrics(MethodCache.Extensibility.ICacheMetrics! metrics) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.WithEnabled(bool enabled) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithSlidingExpiration(System.TimeSpan slidingExpiration) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithTags(params string![]! tags) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithVersion(int version) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.CanCache<T>(T value) -> bool
+MethodCache.CacheEntryOptions.ClearsTags.get -> bool
+MethodCache.CacheEntryOptions.Distributed.get -> bool?
 MethodCache.CacheEntryOptions.Duration.get -> System.TimeSpan?
+MethodCache.CacheEntryOptions.Enabled.get -> bool?
 MethodCache.CacheEntryOptions.FailSafe.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.FailSafeRetryAfter.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.FailSafeTimeout.get -> System.TimeSpan?
-MethodCache.CacheEntryOptions.Metrics.get -> MethodCache.Extensibility.ICacheMetrics?
-MethodCache.CacheEntryOptions.OnHitCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.CacheContext!>!>!
-MethodCache.CacheEntryOptions.OnMissCallbacks.get -> System.Collections.Generic.IReadOnlyList<System.Action<MethodCache.CacheContext!>!>!
-MethodCache.CacheEntryOptions.Predicate.get -> System.Func<MethodCache.CacheContext!, bool>?
+MethodCache.CacheEntryOptions.GetCacheKey(string! key) -> string!
 MethodCache.CacheEntryOptions.RefreshAhead.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.SlidingExpiration.get -> System.TimeSpan?
 MethodCache.CacheEntryOptions.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CacheEntryOptions.Version.get -> int?
+MethodCache.CacheEntryStorage
+MethodCache.CacheEntryStorage.LocalMemory = 0 -> MethodCache.CacheEntryStorage
+MethodCache.CacheEntryStorage.ObservedDistributed = 1 -> MethodCache.CacheEntryStorage
 MethodCache.CacheInterfaceAttribute
 MethodCache.CacheInterfaceAttribute.CacheInterfaceAttribute(System.Type! interfaceType, params string![]! methods) -> void
+MethodCache.CacheInterfaceAttribute.Distributed.get -> bool
+MethodCache.CacheInterfaceAttribute.Distributed.set -> void
 MethodCache.CacheInterfaceAttribute.Duration.get -> string?
 MethodCache.CacheInterfaceAttribute.Duration.set -> void
+MethodCache.CacheInterfaceAttribute.Enabled.get -> bool
+MethodCache.CacheInterfaceAttribute.Enabled.set -> void
 MethodCache.CacheInterfaceAttribute.FailSafe.get -> string?
 MethodCache.CacheInterfaceAttribute.FailSafe.set -> void
 MethodCache.CacheInterfaceAttribute.FailSafeTimeout.get -> string?
@@ -91,6 +105,8 @@ MethodCache.CacheInterfaceAttribute.InterfaceType.get -> System.Type!
 MethodCache.CacheInterfaceAttribute.Methods.get -> string![]!
 MethodCache.CacheInterfaceAttribute.RefreshAhead.get -> string?
 MethodCache.CacheInterfaceAttribute.RefreshAhead.set -> void
+MethodCache.CacheInterfaceAttribute.RetryAfter.get -> string?
+MethodCache.CacheInterfaceAttribute.RetryAfter.set -> void
 MethodCache.CacheInterfaceAttribute.SlidingExpiration.get -> string?
 MethodCache.CacheInterfaceAttribute.SlidingExpiration.set -> void
 MethodCache.CacheInterfaceAttribute.Tags.get -> string![]?
@@ -101,10 +117,6 @@ MethodCache.CacheInvalidateAttribute
 MethodCache.CacheInvalidateAttribute.CacheInvalidateAttribute() -> void
 MethodCache.CacheInvalidateAttribute.Tags.get -> string![]?
 MethodCache.CacheInvalidateAttribute.Tags.set -> void
-MethodCache.CacheKeyAttribute
-MethodCache.CacheKeyAttribute.CacheKeyAttribute() -> void
-MethodCache.CacheKeyAttribute.UseAsRawKey.get -> bool
-MethodCache.CacheKeyAttribute.UseAsRawKey.set -> void
 MethodCache.CacheLookupResult<T>
 MethodCache.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.CacheLookupResult<T>.Found.get -> bool
@@ -112,17 +124,40 @@ MethodCache.CacheLookupResult<T>.Value.get -> T?
 MethodCache.CacheManagerExtensions
 MethodCache.CacheStats
 MethodCache.CacheStats.CacheStats() -> void
-MethodCache.CacheStats.Entries.get -> long
-MethodCache.CacheStats.Entries.init -> void
 MethodCache.CacheStats.Evictions.get -> long
 MethodCache.CacheStats.Evictions.init -> void
-MethodCache.CacheStats.HitRatio.get -> double
 MethodCache.CacheStats.Hits.get -> long
 MethodCache.CacheStats.Hits.init -> void
-MethodCache.CacheStats.MemoryUsage.get -> long
-MethodCache.CacheStats.MemoryUsage.init -> void
+MethodCache.CacheStats.LocalHttpBytes.get -> long
+MethodCache.CacheStats.LocalHttpBytes.init -> void
+MethodCache.CacheStats.LocalHttpEntries.get -> long
+MethodCache.CacheStats.LocalHttpEntries.init -> void
+MethodCache.CacheStats.LocalMethodEntries.get -> long
+MethodCache.CacheStats.LocalMethodEntries.init -> void
 MethodCache.CacheStats.Misses.get -> long
 MethodCache.CacheStats.Misses.init -> void
+MethodCache.CacheStats.ObservedDistributedEntries.get -> long
+MethodCache.CacheStats.ObservedDistributedEntries.init -> void
+MethodCache.CacheStats.TotalWeight.get -> long
+MethodCache.CacheStats.TotalWeight.init -> void
+MethodCache.CachedMethodInfo
+MethodCache.CachedMethodInfo.CachedMethodInfo(string! MethodId, System.TimeSpan? Duration, System.Collections.Generic.IReadOnlyList<string!>! Tags, int? Version, System.Collections.Generic.IReadOnlyList<string!>! Sources) -> void
+MethodCache.CachedMethodInfo.Duration.get -> System.TimeSpan?
+MethodCache.CachedMethodInfo.Duration.init -> void
+MethodCache.CachedMethodInfo.L2Namespace.get -> string!
+MethodCache.CachedMethodInfo.L2Namespace.init -> void
+MethodCache.CachedMethodInfo.MethodId.get -> string!
+MethodCache.CachedMethodInfo.MethodId.init -> void
+MethodCache.CachedMethodInfo.Options.get -> MethodCache.CacheEntryOptions!
+MethodCache.CachedMethodInfo.Options.init -> void
+MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+MethodCache.CachedMethodInfo.SettingSources.init -> void
+MethodCache.CachedMethodInfo.Sources.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.CachedMethodInfo.Sources.init -> void
+MethodCache.CachedMethodInfo.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.CachedMethodInfo.Tags.init -> void
+MethodCache.CachedMethodInfo.Version.get -> int?
+MethodCache.CachedMethodInfo.Version.init -> void
 MethodCache.DistributedCacheOptions
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.set -> void
@@ -133,101 +168,106 @@ MethodCache.DistributedCacheOptions.KeyPrefix.get -> string!
 MethodCache.DistributedCacheOptions.KeyPrefix.set -> void
 MethodCache.DistributedCacheOptions.OperationTimeout.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.OperationTimeout.set -> void
+MethodCache.DistributedCacheOptions.SerializerVersion.get -> int
+MethodCache.DistributedCacheOptions.SerializerVersion.set -> void
 MethodCache.DistributedCacheOptions.TagCheckInterval.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagCheckInterval.set -> void
 MethodCache.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagRetention.set -> void
-MethodCache.Extensibility.BackplaneMessage
-MethodCache.Extensibility.BackplaneMessage.BackplaneMessage() -> void
-MethodCache.Extensibility.BackplaneMessage.InstanceId.get -> string!
-MethodCache.Extensibility.BackplaneMessage.InstanceId.init -> void
-MethodCache.Extensibility.BackplaneMessage.Key.get -> string?
-MethodCache.Extensibility.BackplaneMessage.Key.init -> void
-MethodCache.Extensibility.BackplaneMessage.Tag.get -> string?
-MethodCache.Extensibility.BackplaneMessage.Tag.init -> void
-MethodCache.Extensibility.BackplaneMessage.Timestamp.get -> System.DateTimeOffset
-MethodCache.Extensibility.BackplaneMessage.Timestamp.init -> void
-MethodCache.Extensibility.BackplaneMessage.Type.get -> MethodCache.Extensibility.BackplaneMessageType
-MethodCache.Extensibility.BackplaneMessage.Type.init -> void
-MethodCache.Extensibility.BackplaneMessageType
-MethodCache.Extensibility.BackplaneMessageType.ClearAll = 2 -> MethodCache.Extensibility.BackplaneMessageType
-MethodCache.Extensibility.BackplaneMessageType.KeyInvalidation = 0 -> MethodCache.Extensibility.BackplaneMessageType
-MethodCache.Extensibility.BackplaneMessageType.TagInvalidation = 1 -> MethodCache.Extensibility.BackplaneMessageType
-MethodCache.Extensibility.FastHashKeyGenerator
-MethodCache.Extensibility.FastHashKeyGenerator.FastHashKeyGenerator() -> void
-MethodCache.Extensibility.FastHashKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy) -> string!
-MethodCache.Extensibility.IBackplane
-MethodCache.Extensibility.IBackplane.InstanceId.get -> string!
-MethodCache.Extensibility.IBackplane.PublishInvalidationAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.IBackplane.PublishTagInvalidationAsync(string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.IBackplane.SubscribeAsync(System.Func<MethodCache.Extensibility.BackplaneMessage!, System.Threading.Tasks.Task!>! onMessage, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.IBackplane.UnsubscribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.ICacheKeyGenerator
-MethodCache.Extensibility.ICacheKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy) -> string!
-MethodCache.Extensibility.ICacheMetrics
-MethodCache.Extensibility.ICacheMetrics.RecordError(string! key, System.Exception! exception) -> void
-MethodCache.Extensibility.ICacheMetrics.RecordHit(string! key, System.TimeSpan? duration, object? value) -> void
-MethodCache.Extensibility.ICacheMetrics.RecordMiss(string! key) -> void
-MethodCache.Extensibility.ICacheMetricsProvider
-MethodCache.Extensibility.ICacheMetricsProvider.CacheError(string! methodName, string! errorMessage) -> void
-MethodCache.Extensibility.ICacheMetricsProvider.CacheHit(string! methodName) -> void
-MethodCache.Extensibility.ICacheMetricsProvider.CacheLatency(string! methodName, System.TimeSpan elapsed) -> void
-MethodCache.Extensibility.ICacheMetricsProvider.CacheMiss(string! methodName) -> void
-MethodCache.Extensibility.InMemoryCacheManager
-MethodCache.Extensibility.InMemoryCacheManager.ClearAsync() -> System.Threading.Tasks.ValueTask
-MethodCache.Extensibility.InMemoryCacheManager.Dispose() -> void
-MethodCache.Extensibility.InMemoryCacheManager.ExistsAsync(string! key) -> System.Threading.Tasks.ValueTask<bool>
-MethodCache.Extensibility.InMemoryCacheManager.GetAsync<T>(string! key) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.Extensibility.InMemoryCacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Extensibility.InMemoryCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
-MethodCache.Extensibility.InMemoryCacheManager.GetStatsAsync() -> System.Threading.Tasks.ValueTask<MethodCache.ICacheStats!>
-MethodCache.Extensibility.InMemoryCacheManager.InMemoryCacheManager(MethodCache.Extensibility.ICacheMetricsProvider! metricsProvider, Microsoft.Extensions.Options.IOptions<MethodCache.MethodCacheMemoryOptions!>? options = null) -> void
-MethodCache.Extensibility.InMemoryCacheManager.InMemoryCacheManager(MethodCache.Extensibility.ICacheMetricsProvider! metricsProvider, Microsoft.Extensions.Options.IOptions<MethodCache.MethodCacheMemoryOptions!>? options, System.TimeProvider? timeProvider) -> void
-MethodCache.Extensibility.InMemoryCacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.InMemoryCacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.InMemoryCacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.InMemoryCacheManager.RemoveAsync(string! key) -> System.Threading.Tasks.ValueTask<bool>
-MethodCache.Extensibility.InMemoryCacheManager.RemoveMultipleAsync(params string![]! keys) -> System.Threading.Tasks.ValueTask<int>
-MethodCache.Extensibility.InMemoryCacheManager.SetAsync<T>(string! key, T value, System.TimeSpan expiration) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.InMemoryCacheManager.TryGetAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.Extensibility.InMemoryCacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
-MethodCache.Extensibility.InMemoryCacheManager.TryGetFast<T>(System.ReadOnlySpan<char> cacheKey, out T? value) -> bool
-MethodCache.Extensibility.InMemoryCacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.Extensibility.InMemoryCacheManager.TryGetFastTask<T>(string! cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
-MethodCache.Extensibility.InMemoryCacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
-MethodCache.Extensibility.ISerializer
-MethodCache.Extensibility.ISerializer.ContentType.get -> string!
-MethodCache.Extensibility.ISerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
-MethodCache.Extensibility.ISerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
-MethodCache.Extensibility.JsonCacheSerializer
-MethodCache.Extensibility.JsonCacheSerializer.ContentType.get -> string!
-MethodCache.Extensibility.JsonCacheSerializer.Deserialize<T>(System.Buffers.ReadOnlySequence<byte> source) -> T?
-MethodCache.Extensibility.JsonCacheSerializer.JsonCacheSerializer(System.Text.Json.JsonSerializerOptions? options = null) -> void
-MethodCache.Extensibility.JsonCacheSerializer.Serialize<T>(T value, System.Buffers.IBufferWriter<byte>! destination) -> void
-MethodCache.Extensibility.JsonKeyGenerator
-MethodCache.Extensibility.JsonKeyGenerator.GenerateKey(string! methodName, object?[]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy) -> string!
-MethodCache.Extensibility.JsonKeyGenerator.JsonKeyGenerator() -> void
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
+MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
 MethodCache.Extensibility.NoOpCacheManager
-MethodCache.Extensibility.NoOpCacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.Extensibility.NoOpCacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
-MethodCache.Extensibility.NoOpCacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.NoOpCacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
-MethodCache.Extensibility.NoOpCacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
 MethodCache.Extensibility.NoOpCacheManager.NoOpCacheManager() -> void
-MethodCache.Extensibility.NoOpCacheManager.NoOpCacheManager(MethodCache.Extensibility.ICacheMetricsProvider? metricsProvider) -> void
-MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.Extensibility.NoOpCacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
-MethodCache.Extensibility.NoOpCacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.Extensibility.NullCacheMetricsProvider
-MethodCache.Extensibility.NullCacheMetricsProvider.CacheError(string! methodName, string! errorMessage) -> void
-MethodCache.Extensibility.NullCacheMetricsProvider.CacheHit(string! methodName) -> void
-MethodCache.Extensibility.NullCacheMetricsProvider.CacheLatency(string! methodName, System.TimeSpan elapsed) -> void
-MethodCache.Extensibility.NullCacheMetricsProvider.CacheMiss(string! methodName) -> void
-MethodCache.Extensibility.NullCacheMetricsProvider.NullCacheMetricsProvider() -> void
+MethodCache.Generated.CachedMethod
+MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall
+MethodCache.Generated.GeneratedCode
+MethodCache.Generated.GeneratedMethodOptions
+MethodCache.Generated.GeneratedMethodOptions.CanonicalTagParts.get -> bool
+MethodCache.Generated.GeneratedMethodOptions.CanonicalTagParts.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Distributed.get -> bool?
+MethodCache.Generated.GeneratedMethodOptions.Distributed.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Duration.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.Duration.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Enabled.get -> bool?
+MethodCache.Generated.GeneratedMethodOptions.Enabled.init -> void
+MethodCache.Generated.GeneratedMethodOptions.FailSafe.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.FailSafe.init -> void
+MethodCache.Generated.GeneratedMethodOptions.FailSafeRetryAfter.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.FailSafeRetryAfter.init -> void
+MethodCache.Generated.GeneratedMethodOptions.FailSafeTimeout.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.FailSafeTimeout.init -> void
+MethodCache.Generated.GeneratedMethodOptions.GeneratedMethodOptions() -> void
+MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.init -> void
+MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.get -> System.TimeSpan?
+MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>?
+MethodCache.Generated.GeneratedMethodOptions.Tags.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Version.get -> int?
+MethodCache.Generated.GeneratedMethodOptions.Version.init -> void
+MethodCache.Generated.GeneratedModule
+MethodCache.Generated.GeneratedModule.GeneratedModule() -> void
+MethodCache.Generated.GeneratedModuleBuilder
+MethodCache.Generated.GeneratedModuleBuilder.DeclareService(System.Type! serviceType) -> void
+MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds) -> void
+MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void
+MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void
+MethodCache.Generated.GeneratedServices
+MethodCache.Generated.GeneratedServices.GetSites<T>(System.Func<MethodCache.Generated.GeneratedServices!, T!>! factory) -> T!
+MethodCache.Generated.GeneratedServices.InvalidateTags(string![]! tags) -> void
+MethodCache.Generated.GeneratedServices.InvalidateTagsAsync(string![]! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+MethodCache.Generated.GeneratedServices.Method(string! methodId, System.Type! serviceType, string! methodName, string! displayName) -> MethodCache.Generated.CachedMethod!
+MethodCache.Generated.KeyBuilder
+MethodCache.Generated.KeyBuilder.Append(string! value) -> void
+MethodCache.Generated.KeyBuilder.KeyBuilder(MethodCache.Generated.MethodCall call, System.Span<char> buffer) -> void
+MethodCache.Generated.KeyBuilder.AppendNullPart() -> void
+MethodCache.Generated.KeyBuilder.AppendPart(System.DateTime value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(System.DateTimeOffset value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(System.Guid value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(bool value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(byte value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(char value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(decimal value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(double value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(float value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(int value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(long value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(sbyte value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(short value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(string? value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(uint value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(ulong value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart(ushort value) -> void
+MethodCache.Generated.KeyBuilder.AppendPart<TEnum>(TEnum value) -> void
+MethodCache.Generated.KeyBuilder.AsSpan() -> System.ReadOnlySpan<char>
+MethodCache.Generated.KeyBuilder.KeyBuilder() -> void
+MethodCache.Generated.KeyParts
+MethodCache.Generated.MethodCall
+MethodCache.Generated.MethodCall.BindKey(string! key) -> MethodCache.Generated.KeyBuilder
+MethodCache.Generated.MethodCall.BindTextKey(string! key) -> MethodCache.Generated.TextKey
+MethodCache.Generated.MethodCall.CreateFallbackKey(object?[]! arguments) -> MethodCache.Generated.KeyBuilder
+MethodCache.Generated.MethodCall.KeyPrefix.get -> string!
+MethodCache.Generated.MethodCall.Load<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, T>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> T
+MethodCache.Generated.MethodCall.LoadAsync<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, System.Threading.Tasks.Task<T>!>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
+MethodCache.Generated.MethodCall.LoadValueAsync<T, TState>(string! key, TState state, System.Func<MethodCache.Generated.MethodCall, TState, System.Threading.Tasks.ValueTask<T>>! loader, object?[]! parameterValues, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T>
+MethodCache.Generated.MethodCall.MethodCall() -> void
+MethodCache.Generated.MethodCall.NeedsTagArguments.get -> bool
+MethodCache.Generated.MethodCall.ServiceForLoad<TService>(TService! service) -> TService!
+MethodCache.Generated.MethodCall.StartKey(System.Span<char> buffer) -> MethodCache.Generated.KeyBuilder
+MethodCache.Generated.MethodCall.TryGetTask<T>(in MethodCache.Generated.TextKey key, out System.Threading.Tasks.Task<T>? task) -> bool
+MethodCache.Generated.MethodCall.TryGetTask<T>(ref MethodCache.Generated.KeyBuilder key, out System.Threading.Tasks.Task<T>? task) -> bool
+MethodCache.Generated.MethodCall.TryGetValue<T>(in MethodCache.Generated.TextKey key, out T? value) -> bool
+MethodCache.Generated.MethodCall.TryGetValue<T>(ref MethodCache.Generated.KeyBuilder key, out T? value) -> bool
+MethodCache.Generated.MethodCall.TryGetValueTask<T>(in MethodCache.Generated.TextKey key, out System.Threading.Tasks.ValueTask<T> value) -> bool
+MethodCache.Generated.MethodCall.TryGetValueTask<T>(ref MethodCache.Generated.KeyBuilder key, out System.Threading.Tasks.ValueTask<T> value) -> bool
+MethodCache.Generated.MethodCall.WithTypeArguments(string! typeArguments) -> MethodCache.Generated.MethodCall
+MethodCache.Generated.TextKey
+MethodCache.Generated.TextKey.TextKey() -> void
 MethodCache.ICacheAdministrator
 MethodCache.ICacheAdministrator.CheckDistributedCacheAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool?>
 MethodCache.ICacheAdministrator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.ICacheAdministrator.GetEntry(string! key) -> MethodCache.CacheEntryInfo?
+MethodCache.ICacheAdministrator.GetInvalidationQueues() -> MethodCache.InvalidationQueues!
 MethodCache.ICacheAdministrator.GetMethods() -> System.Collections.Generic.IReadOnlyList<MethodCache.CachedMethodInfo!>!
 MethodCache.ICacheAdministrator.GetStatsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.ICacheStats!>
 MethodCache.ICacheAdministrator.InvalidateTagsAsync(System.Collections.Generic.IReadOnlyCollection<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -236,31 +276,19 @@ MethodCache.ICacheAdministrator.RemoveEntryAsync(string! key, System.Threading.C
 MethodCache.ICacheKeyProvider
 MethodCache.ICacheKeyProvider.CacheKeyPart.get -> string!
 MethodCache.ICacheManager
-MethodCache.ICacheManager.GetOrCreateAsync<T>(string! methodName, object![]! args, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.Task<T>!
-MethodCache.ICacheManager.GetOrCreateFastAsync<T>(string! cacheKey, string! methodName, System.Func<System.Threading.Tasks.Task<T>!>! factory, MethodCache.Infrastructure.CacheRuntimePolicy! policy, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
-MethodCache.ICacheManager.InvalidateByKeysAsync(params string![]! keys) -> System.Threading.Tasks.Task!
-MethodCache.ICacheManager.InvalidateByTagPatternAsync(string! pattern) -> System.Threading.Tasks.Task!
-MethodCache.ICacheManager.InvalidateByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task!
-MethodCache.ICacheManager.TryGetAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.ICacheManager.TryGetFast<T>(string! cacheKey, out T? value) -> bool
-MethodCache.ICacheManager.TryGetFast<T>(System.ReadOnlySpan<char> cacheKey, out T? value) -> bool
-MethodCache.ICacheManager.TryGetFastAsync<T>(string! cacheKey) -> System.Threading.Tasks.ValueTask<T?>
-MethodCache.ICacheManager.TryGetFastTask<T>(string! cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
-MethodCache.ICacheManager.TryGetFastTask<T>(System.ReadOnlySpan<char> cacheKey, out System.Threading.Tasks.Task<T>? task) -> bool
+MethodCache.ICacheManager.GetOrCreateAsync<T>(string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
+MethodCache.ICacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+MethodCache.ICacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+MethodCache.ICacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.ICacheStats
-MethodCache.ICacheStats.Entries.get -> long
 MethodCache.ICacheStats.Evictions.get -> long
-MethodCache.ICacheStats.HitRatio.get -> double
 MethodCache.ICacheStats.Hits.get -> long
-MethodCache.ICacheStats.MemoryUsage.get -> long
+MethodCache.ICacheStats.LocalHttpBytes.get -> long
+MethodCache.ICacheStats.LocalHttpEntries.get -> long
+MethodCache.ICacheStats.LocalMethodEntries.get -> long
 MethodCache.ICacheStats.Misses.get -> long
-MethodCache.IFluentGroupConfiguration
-MethodCache.IFluentGroupConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration
-MethodCache.IFluentMethodCacheConfiguration.DefaultPolicy(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.FailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.IFluentMethodCacheConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForGroup(string! name) -> MethodCache.IFluentGroupConfiguration!
-MethodCache.IFluentMethodCacheConfiguration.ForService<TService>() -> MethodCache.IFluentServiceConfiguration<TService>!
+MethodCache.ICacheStats.ObservedDistributedEntries.get -> long
+MethodCache.ICacheStats.TotalWeight.get -> long
 MethodCache.IFluentMethodConfiguration
 MethodCache.IFluentMethodConfiguration.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration!
 MethodCache.IFluentMethodConfiguration.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration!
@@ -270,270 +298,83 @@ MethodCache.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, b
 MethodCache.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithVersion(int version) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.IFluentMethodConfiguration!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentServiceConfiguration<TService>.Method<TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.Infrastructure.CachedMethod
-MethodCache.Infrastructure.CachedMethod.CachedMethod(MethodCache.Infrastructure.PolicyHandle! handle, System.Type! serviceType, string! methodName, string? displayName = null) -> void
-MethodCache.Infrastructure.CachedMethod.Current.get -> MethodCache.Infrastructure.CachedMethod.Snapshot!
-MethodCache.Infrastructure.CachedMethod.KeyMethod.get -> string!
-MethodCache.Infrastructure.CachedMethod.Name.get -> string!
-MethodCache.Infrastructure.CachedMethod.Snapshot
-MethodCache.Infrastructure.CachedMethod.Snapshot.KeyPrefix.get -> string!
-MethodCache.Infrastructure.CachedMethod.Snapshot.Policy.get -> MethodCache.Infrastructure.CacheRuntimePolicy!
-MethodCache.Infrastructure.CachePolicyMapper
-MethodCache.Infrastructure.CacheRuntimePolicy
-MethodCache.Infrastructure.CacheRuntimePolicy.CacheWhen.get -> System.Func<object?, bool>?
-MethodCache.Infrastructure.CacheRuntimePolicy.CacheWhen.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.Duration.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.Duration.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafe.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafe.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafeRetryAfter.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafeRetryAfter.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafeTimeout.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.FailSafeTimeout.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.Fields.get -> MethodCache.Policies.CachePolicyFields
-MethodCache.Infrastructure.CacheRuntimePolicy.Fields.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.HasDuration.get -> bool
-MethodCache.Infrastructure.CacheRuntimePolicy.HasRuntimeOptions.get -> bool
-MethodCache.Infrastructure.CacheRuntimePolicy.HasTags.get -> bool
-MethodCache.Infrastructure.CacheRuntimePolicy.HasVersion.get -> bool
-MethodCache.Infrastructure.CacheRuntimePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
-MethodCache.Infrastructure.CacheRuntimePolicy.Metadata.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.MethodId.get -> string!
-MethodCache.Infrastructure.CacheRuntimePolicy.MethodId.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.RefreshAhead.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.RefreshAhead.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.SlidingExpiration.get -> System.TimeSpan?
-MethodCache.Infrastructure.CacheRuntimePolicy.SlidingExpiration.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
-MethodCache.Infrastructure.CacheRuntimePolicy.Tags.init -> void
-MethodCache.Infrastructure.CacheRuntimePolicy.Version.get -> int?
-MethodCache.Infrastructure.CacheRuntimePolicy.Version.init -> void
-MethodCache.Infrastructure.CacheTagTemplates
-MethodCache.Infrastructure.DecoratorRegistration
-MethodCache.Infrastructure.DecoratorRegistration.AddPolicies.get -> System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>?
-MethodCache.Infrastructure.DecoratorRegistration.Decorate.get -> System.Func<System.IServiceProvider!, object!, object!>!
-MethodCache.Infrastructure.DecoratorRegistration.DecoratorRegistration(System.Type! serviceType, System.Func<System.IServiceProvider!, object!, object!>! decorate, System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>? addPolicies = null, System.Type? implementationType = null) -> void
-MethodCache.Infrastructure.DecoratorRegistration.ImplementationType.get -> System.Type?
-MethodCache.Infrastructure.DecoratorRegistration.ServiceType.get -> System.Type!
-MethodCache.Infrastructure.DecoratorServices
-MethodCache.Infrastructure.DecoratorServices.CacheManager.get -> MethodCache.ICacheManager!
-MethodCache.Infrastructure.DecoratorServices.DecoratorServices(MethodCache.ICacheManager! cacheManager, MethodCache.Policies.IPolicyRegistry! policyRegistry, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator, MethodCache.Extensibility.ICacheMetricsProvider? metricsProvider = null) -> void
-MethodCache.Infrastructure.DecoratorServices.GetSites<TSites>(System.Func<MethodCache.Policies.IPolicyRegistry!, TSites!>! factory) -> TSites!
-MethodCache.Infrastructure.DecoratorServices.KeyGenerator.get -> MethodCache.Extensibility.ICacheKeyGenerator!
-MethodCache.Infrastructure.DecoratorServices.MetricsProvider.get -> MethodCache.Extensibility.ICacheMetricsProvider?
-MethodCache.Infrastructure.DecoratorServices.PolicyRegistry.get -> MethodCache.Policies.IPolicyRegistry!
-MethodCache.Infrastructure.MethodCacheDecorators
-MethodCache.Infrastructure.MethodCacheKeyBuilder
-MethodCache.Infrastructure.MethodCacheKeyBuilder.Append(string! value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendNullPart() -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(bool value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(byte value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(char value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(decimal value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(double value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(float value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(int value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(long value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(sbyte value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(short value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(string? value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(System.DateTime value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(System.DateTimeOffset value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(System.Guid value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(uint value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(ulong value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart(ushort value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AppendPart<TEnum>(TEnum value) -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.AsSpan() -> System.ReadOnlySpan<char>
-MethodCache.Infrastructure.MethodCacheKeyBuilder.MethodCacheKeyBuilder() -> void
-MethodCache.Infrastructure.MethodCacheKeyBuilder.MethodCacheKeyBuilder(System.Span<char> initialBuffer) -> void
-MethodCache.Infrastructure.PolicyHandle
-MethodCache.Infrastructure.PolicyHandle.Current.get -> MethodCache.Infrastructure.CacheRuntimePolicy!
-MethodCache.Infrastructure.PolicyHandle.MethodId.get -> string!
-MethodCache.Infrastructure.PolicySourceAsyncEnumerable
 MethodCache.IRuntimeCacheConfigurator
-MethodCache.IRuntimeCacheConfigurator.ApplyAsync(System.Action<MethodCache.IFluentMethodCacheConfiguration!>! configure) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.ClearAsync() -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.GetOverrideAsync(string! methodId) -> System.Threading.Tasks.Task<MethodCache.Policies.PolicySnapshot?>!
-MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.Policies.PolicySnapshot!>!>!
-MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, MethodCache.Policies.CachePolicy! policy, MethodCache.Policies.CachePolicyFields fields = MethodCache.Policies.CachePolicyFields.None, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.UpsertBatchAsync(System.Collections.Generic.IEnumerable<MethodCache.RuntimeOverrideEntry!>! overrides) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyChange!>!
-MethodCache.MemoryCacheEvictionPolicy
-MethodCache.MemoryCacheEvictionPolicy.Fifo = 2 -> MethodCache.MemoryCacheEvictionPolicy
-MethodCache.MemoryCacheEvictionPolicy.Lru = 1 -> MethodCache.MemoryCacheEvictionPolicy
-MethodCache.MemoryCacheEvictionPolicy.TinyLfu = 0 -> MethodCache.MemoryCacheEvictionPolicy
-MethodCache.MemoryUsageCalculationMode
-MethodCache.MemoryUsageCalculationMode.Accurate = 1 -> MethodCache.MemoryUsageCalculationMode
-MethodCache.MemoryUsageCalculationMode.Disabled = 3 -> MethodCache.MemoryUsageCalculationMode
-MethodCache.MemoryUsageCalculationMode.Fast = 0 -> MethodCache.MemoryUsageCalculationMode
-MethodCache.MemoryUsageCalculationMode.Sampling = 2 -> MethodCache.MemoryUsageCalculationMode
+MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.RuntimeOverride!>!>!
+MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.InvalidationQueues
+MethodCache.InvalidationQueues.Distributed.get -> int
+MethodCache.InvalidationQueues.Distributed.init -> void
+MethodCache.InvalidationQueues.InvalidationQueues(int Distributed, int Publication) -> void
+MethodCache.InvalidationQueues.Publication.get -> int
+MethodCache.InvalidationQueues.Publication.init -> void
+MethodCache.InvalidationResult
+MethodCache.InvalidationResult.Distributed.get -> int
+MethodCache.InvalidationResult.Distributed.init -> void
+MethodCache.InvalidationResult.Local.get -> int
+MethodCache.InvalidationResult.Local.init -> void
+MethodCache.InvalidationResult.PublicationQueued.get -> int
+MethodCache.InvalidationResult.PublicationQueued.init -> void
+MethodCache.InvalidationResult.Published.get -> int
+MethodCache.InvalidationResult.Published.init -> void
+MethodCache.InvalidationResult.Queued.get -> int
+MethodCache.InvalidationResult.Queued.init -> void
+MethodCache.InvalidationResult.Requested.get -> int
+MethodCache.InvalidationResult.Requested.init -> void
+MethodCache.MethodCacheBuilder
+MethodCache.MethodCacheBuilder.AutoRegister(Microsoft.Extensions.DependencyInjection.ServiceLifetime lifetime) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.Defaults(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.FromAssembly(System.Reflection.Assembly! assembly) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.FromAssemblyOf<T>() -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.FromConfiguration(Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.Group(string! name, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.Memory(System.Action<MethodCache.MethodCacheMemoryOptions!>! configure) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.MethodCacheBuilder.Method<TService>(System.Linq.Expressions.Expression<System.Action<TService>!>! method) -> MethodCache.IFluentMethodConfiguration!
+MethodCache.MethodCacheBuilder.Method<TService>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! method) -> MethodCache.IFluentMethodConfiguration!
+MethodCache.MethodCacheBuilder.UseJson() -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.JsonSerializerOptions! options) -> MethodCache.MethodCacheBuilder!
+MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.Serialization.JsonSerializerContext! context) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheKeys
 MethodCache.MethodCacheMemoryOptions
-MethodCache.MethodCacheMemoryOptions.AccurateModeRecalculationInterval.get -> int
-MethodCache.MethodCacheMemoryOptions.AccurateModeRecalculationInterval.set -> void
 MethodCache.MethodCacheMemoryOptions.CacheNullValues.get -> bool
 MethodCache.MethodCacheMemoryOptions.CacheNullValues.set -> void
-MethodCache.MethodCacheMemoryOptions.CleanupInterval.get -> System.TimeSpan
-MethodCache.MethodCacheMemoryOptions.CleanupInterval.set -> void
-MethodCache.MethodCacheMemoryOptions.DefaultExpiration.get -> System.TimeSpan
-MethodCache.MethodCacheMemoryOptions.DefaultExpiration.set -> void
-MethodCache.MethodCacheMemoryOptions.EnableBackgroundCleanup.get -> bool
-MethodCache.MethodCacheMemoryOptions.EnableBackgroundCleanup.set -> void
-MethodCache.MethodCacheMemoryOptions.EnableFastPath.get -> bool
-MethodCache.MethodCacheMemoryOptions.EnableFastPath.set -> void
-MethodCache.MethodCacheMemoryOptions.EnableStatistics.get -> bool
-MethodCache.MethodCacheMemoryOptions.EnableStatistics.set -> void
-MethodCache.MethodCacheMemoryOptions.EvictionPolicy.get -> MethodCache.MemoryCacheEvictionPolicy
-MethodCache.MethodCacheMemoryOptions.EvictionPolicy.set -> void
 MethodCache.MethodCacheMemoryOptions.JitterMaxDuration.get -> System.TimeSpan
 MethodCache.MethodCacheMemoryOptions.JitterMaxDuration.set -> void
 MethodCache.MethodCacheMemoryOptions.MaxExpiration.get -> System.TimeSpan
 MethodCache.MethodCacheMemoryOptions.MaxExpiration.set -> void
+MethodCache.MethodCacheMemoryOptions.MaxHttpBytes.get -> long
+MethodCache.MethodCacheMemoryOptions.MaxHttpBytes.set -> void
 MethodCache.MethodCacheMemoryOptions.MaxItems.get -> long
 MethodCache.MethodCacheMemoryOptions.MaxItems.set -> void
-MethodCache.MethodCacheMemoryOptions.MaxMemoryBytes.get -> long
-MethodCache.MethodCacheMemoryOptions.MaxMemoryBytes.set -> void
-MethodCache.MethodCacheMemoryOptions.MemoryCalculationMode.get -> MethodCache.MemoryUsageCalculationMode
-MethodCache.MethodCacheMemoryOptions.MemoryCalculationMode.set -> void
 MethodCache.MethodCacheMemoryOptions.MethodCacheMemoryOptions() -> void
-MethodCache.MethodCacheMemoryOptions.SamplingPercentage.get -> double
-MethodCache.MethodCacheMemoryOptions.SamplingPercentage.set -> void
+MethodCache.MethodCacheMemoryOptions.SizeLimit.get -> long
+MethodCache.MethodCacheMemoryOptions.SizeLimit.set -> void
 MethodCache.MethodCacheMemoryOptions.Weigher.get -> System.Func<string!, object?, long>?
 MethodCache.MethodCacheMemoryOptions.Weigher.set -> void
-MethodCache.Policies.CachePolicy
-MethodCache.Policies.CachePolicy.CacheWhen.get -> System.Func<object?, bool>?
-MethodCache.Policies.CachePolicy.CacheWhen.init -> void
-MethodCache.Policies.CachePolicy.Duration.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.Duration.init -> void
-MethodCache.Policies.CachePolicy.FailSafe.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.FailSafe.init -> void
-MethodCache.Policies.CachePolicy.FailSafeRetryAfter.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.FailSafeRetryAfter.init -> void
-MethodCache.Policies.CachePolicy.FailSafeTimeout.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.FailSafeTimeout.init -> void
-MethodCache.Policies.CachePolicy.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
-MethodCache.Policies.CachePolicy.Metadata.init -> void
-MethodCache.Policies.CachePolicy.RefreshAhead.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.RefreshAhead.init -> void
-MethodCache.Policies.CachePolicy.SlidingExpiration.get -> System.TimeSpan?
-MethodCache.Policies.CachePolicy.SlidingExpiration.init -> void
-MethodCache.Policies.CachePolicy.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
-MethodCache.Policies.CachePolicy.Tags.init -> void
-MethodCache.Policies.CachePolicy.Version.get -> int?
-MethodCache.Policies.CachePolicy.Version.init -> void
-MethodCache.Policies.CachePolicyDelta
-MethodCache.Policies.CachePolicyDelta.CachePolicyDelta(MethodCache.Policies.CachePolicyFields setMask, MethodCache.Policies.CachePolicyFields clearMask, MethodCache.Policies.CachePolicy! snapshot) -> void
-MethodCache.Policies.CachePolicyDelta.ClearMask.get -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyDelta.IsEmpty.get -> bool
-MethodCache.Policies.CachePolicyDelta.SetMask.get -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyDelta.Snapshot.get -> MethodCache.Policies.CachePolicy!
-MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.CacheWhen = 64 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.Duration = 1 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.FailSafe = 128 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.FailSafeRetryAfter = 512 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.FailSafeTimeout = 256 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.Metadata = 16 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.None = 0 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.RefreshAhead = 32 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.SlidingExpiration = 4 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.Tags = 2 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.CachePolicyFields.Version = 8 -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.IPolicyRegistry
-MethodCache.Policies.IPolicyRegistry.GetAllPolicies() -> System.Collections.Generic.IReadOnlyCollection<MethodCache.Policies.PolicyResolutionResult!>!
-MethodCache.Policies.IPolicyRegistry.GetPolicy(string! methodId) -> MethodCache.Policies.PolicyResolutionResult!
-MethodCache.Policies.IPolicyRegistry.GetPolicyVersion(string! methodId) -> long
-MethodCache.Policies.IPolicyRegistry.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyResolutionResult!>!
-MethodCache.Policies.IPolicySource
-MethodCache.Policies.IPolicySource.GetSnapshotAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.Policies.PolicySnapshot!>!>!
-MethodCache.Policies.IPolicySource.SourceId.get -> string!
-MethodCache.Policies.IPolicySource.WatchAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyChange!>!
-MethodCache.Policies.PolicyChange
-MethodCache.Policies.PolicyChange.Delta.get -> MethodCache.Policies.CachePolicyDelta!
-MethodCache.Policies.PolicyChange.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
-MethodCache.Policies.PolicyChange.MethodId.get -> string!
-MethodCache.Policies.PolicyChange.PolicyChange(string! sourceId, string! methodId, MethodCache.Policies.CachePolicyDelta! delta, MethodCache.Policies.PolicyChangeReason reason, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> void
-MethodCache.Policies.PolicyChange.Reason.get -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChange.SourceId.get -> string!
-MethodCache.Policies.PolicyChange.Timestamp.get -> System.DateTimeOffset
-MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChangeReason.Added = 1 -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChangeReason.InitialLoad = 0 -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChangeReason.Reloaded = 4 -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChangeReason.Removed = 3 -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyChangeReason.Updated = 2 -> MethodCache.Policies.PolicyChangeReason
-MethodCache.Policies.PolicyContribution
-MethodCache.Policies.PolicyContribution.AppliedAt.get -> System.DateTimeOffset
-MethodCache.Policies.PolicyContribution.AppliedAt.init -> void
-MethodCache.Policies.PolicyContribution.Fields.get -> MethodCache.Policies.CachePolicyFields
-MethodCache.Policies.PolicyContribution.Fields.init -> void
-MethodCache.Policies.PolicyContribution.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
-MethodCache.Policies.PolicyContribution.Metadata.init -> void
-MethodCache.Policies.PolicyContribution.Notes.get -> string?
-MethodCache.Policies.PolicyContribution.Notes.init -> void
-MethodCache.Policies.PolicyContribution.PolicyContribution(string! SourceId, MethodCache.Policies.CachePolicyFields Fields, System.DateTimeOffset AppliedAt, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? Metadata = null, string? Notes = null) -> void
-MethodCache.Policies.PolicyContribution.SourceId.get -> string!
-MethodCache.Policies.PolicyContribution.SourceId.init -> void
-MethodCache.Policies.PolicyDiagnosticsReport
-MethodCache.Policies.PolicyDiagnosticsReport.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
-MethodCache.Policies.PolicyDiagnosticsReport.Contributions.init -> void
-MethodCache.Policies.PolicyDiagnosticsReport.ContributionsBySource.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!>!
-MethodCache.Policies.PolicyDiagnosticsReport.ContributionsBySource.init -> void
-MethodCache.Policies.PolicyDiagnosticsReport.GetContributionsFrom(string! sourceId) -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
-MethodCache.Policies.PolicyDiagnosticsReport.MethodId.get -> string!
-MethodCache.Policies.PolicyDiagnosticsReport.MethodId.init -> void
-MethodCache.Policies.PolicyDiagnosticsReport.Policy.get -> MethodCache.Policies.CachePolicy!
-MethodCache.Policies.PolicyDiagnosticsReport.Policy.init -> void
-MethodCache.Policies.PolicyDiagnosticsReport.PolicyDiagnosticsReport(string! MethodId, MethodCache.Policies.CachePolicy! Policy, System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>! Contributions, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!>! ContributionsBySource, System.DateTimeOffset ResolvedAt) -> void
-MethodCache.Policies.PolicyDiagnosticsReport.ResolvedAt.get -> System.DateTimeOffset
-MethodCache.Policies.PolicyDiagnosticsReport.ResolvedAt.init -> void
-MethodCache.Policies.PolicyDiagnosticsService
-MethodCache.Policies.PolicyDiagnosticsService.FindBySource(string! sourceId) -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyDiagnosticsReport!>!
-MethodCache.Policies.PolicyDiagnosticsService.GetAllPolicies() -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyDiagnosticsReport!>!
-MethodCache.Policies.PolicyDiagnosticsService.GetContributions(string! methodId, string! sourceId) -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
-MethodCache.Policies.PolicyDiagnosticsService.GetPolicy(string! methodId) -> MethodCache.Policies.PolicyDiagnosticsReport!
-MethodCache.Policies.PolicyDiagnosticsService.PolicyDiagnosticsService(MethodCache.Policies.IPolicyRegistry! registry) -> void
-MethodCache.Policies.PolicyResolutionResult
-MethodCache.Policies.PolicyResolutionResult.Contributions.get -> System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>!
-MethodCache.Policies.PolicyResolutionResult.MethodId.get -> string!
-MethodCache.Policies.PolicyResolutionResult.Policy.get -> MethodCache.Policies.CachePolicy!
-MethodCache.Policies.PolicyResolutionResult.PolicyResolutionResult(string! methodId, MethodCache.Policies.CachePolicy! policy, System.Collections.Generic.IReadOnlyList<MethodCache.Policies.PolicyContribution!>! contributions, System.DateTimeOffset resolvedAt, long version = 0) -> void
-MethodCache.Policies.PolicyResolutionResult.ResolvedAt.get -> System.DateTimeOffset
-MethodCache.Policies.PolicyResolutionResult.Version.get -> long
-MethodCache.Policies.PolicySnapshot
-MethodCache.Policies.PolicySnapshot.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
-MethodCache.Policies.PolicySnapshot.MethodId.get -> string!
-MethodCache.Policies.PolicySnapshot.Policy.get -> MethodCache.Policies.CachePolicy!
-MethodCache.Policies.PolicySnapshot.PolicySnapshot(string! sourceId, string! methodId, MethodCache.Policies.CachePolicy! policy, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> void
-MethodCache.Policies.PolicySnapshot.SourceId.get -> string!
-MethodCache.Policies.PolicySnapshot.Timestamp.get -> System.DateTimeOffset
-MethodCache.Policies.PolicySourceRegistration
-MethodCache.Policies.PolicySourceRegistration.PolicySourceRegistration(MethodCache.Policies.IPolicySource! Source, int Priority) -> void
-MethodCache.Policies.PolicySourceRegistration.Priority.get -> int
-MethodCache.Policies.PolicySourceRegistration.Priority.init -> void
-MethodCache.Policies.PolicySourceRegistration.Source.get -> MethodCache.Policies.IPolicySource!
-MethodCache.Policies.PolicySourceRegistration.Source.init -> void
-MethodCache.Policies.PolicySourceRegistration.SourceId.get -> string!
+MethodCache.MethodCacheTelemetry
+MethodCache.MethodCacheTelemetryOptions
+MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.get -> bool
+MethodCache.MethodCacheTelemetryOptions.HashCacheKeys.set -> void
+MethodCache.MethodCacheTelemetryOptions.MethodCacheTelemetryOptions() -> void
+MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.get -> bool
+MethodCache.MethodCacheTelemetryOptions.RecordCacheKeys.set -> void
+MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.get -> bool
+MethodCache.MethodCacheTelemetryOptions.RecordCacheTags.set -> void
 MethodCache.RuntimeCacheConfiguratorExtensions
-MethodCache.RuntimeOverrideEntry
-MethodCache.RuntimeOverrideEntry.Fields.get -> MethodCache.Policies.CachePolicyFields
-MethodCache.RuntimeOverrideEntry.Fields.init -> void
-MethodCache.RuntimeOverrideEntry.Metadata.get -> MethodCache.RuntimeOverrideMetadata?
-MethodCache.RuntimeOverrideEntry.Metadata.init -> void
-MethodCache.RuntimeOverrideEntry.MethodId.get -> string!
-MethodCache.RuntimeOverrideEntry.MethodId.init -> void
-MethodCache.RuntimeOverrideEntry.Policy.get -> MethodCache.Policies.CachePolicy!
-MethodCache.RuntimeOverrideEntry.Policy.init -> void
-MethodCache.RuntimeOverrideEntry.RuntimeOverrideEntry(string! MethodId, MethodCache.Policies.CachePolicy! Policy, MethodCache.Policies.CachePolicyFields Fields = MethodCache.Policies.CachePolicyFields.None, MethodCache.RuntimeOverrideMetadata? Metadata = null) -> void
+MethodCache.RuntimeOverride
+MethodCache.RuntimeOverride.Metadata.get -> MethodCache.RuntimeOverrideMetadata?
+MethodCache.RuntimeOverride.Metadata.init -> void
+MethodCache.RuntimeOverride.MethodId.get -> string!
+MethodCache.RuntimeOverride.MethodId.init -> void
+MethodCache.RuntimeOverride.Options.get -> MethodCache.CacheEntryOptions!
+MethodCache.RuntimeOverride.Options.init -> void
+MethodCache.RuntimeOverride.RuntimeOverride(string! MethodId, MethodCache.CacheEntryOptions! Options, System.DateTimeOffset UpdatedAt, MethodCache.RuntimeOverrideMetadata? Metadata) -> void
+MethodCache.RuntimeOverride.UpdatedAt.get -> System.DateTimeOffset
+MethodCache.RuntimeOverride.UpdatedAt.init -> void
 MethodCache.RuntimeOverrideMetadata
 MethodCache.RuntimeOverrideMetadata.ExpiresAt.get -> System.DateTimeOffset?
 MethodCache.RuntimeOverrideMetadata.ExpiresAt.init -> void
@@ -544,31 +385,54 @@ MethodCache.RuntimeOverrideMetadata.Reason.init -> void
 MethodCache.RuntimeOverrideMetadata.RuntimeOverrideMetadata(string? Owner = null, string? Reason = null, string? Ticket = null, System.DateTimeOffset? ExpiresAt = null) -> void
 MethodCache.RuntimeOverrideMetadata.Ticket.get -> string?
 MethodCache.RuntimeOverrideMetadata.Ticket.init -> void
-Microsoft.Extensions.DependencyInjection.MethodCacheMetricsServiceCollectionExtensions
 Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions
-override MethodCache.Infrastructure.MethodCacheKeyBuilder.ToString() -> string!
+abstract MethodCache.Generated.GeneratedModule.Describe(MethodCache.Generated.GeneratedModuleBuilder! builder) -> void
+const MethodCache.Generated.KeyBuilder.StackBufferSize = 256 -> int
+const MethodCache.Generated.KeyParts.Null = "\\0" -> string!
+const MethodCache.Generated.KeyParts.Separator = ":" -> string!
+const MethodCache.MethodCacheKeys.Null = "\\0" -> string!
+const MethodCache.MethodCacheKeys.Separator = ":" -> string!
+const MethodCache.MethodCacheTelemetry.Name = "MethodCache" -> string!
+override MethodCache.Generated.KeyBuilder.ToString() -> string!
+override MethodCache.Generated.TextKey.ToString() -> string!
 static MethodCache.Any<T>.Value.get -> T
 static MethodCache.CacheLookupResult<T>.Hit(T value) -> MethodCache.CacheLookupResult<T>
 static MethodCache.CacheLookupResult<T>.Miss.get -> MethodCache.CacheLookupResult<T>
-static MethodCache.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
-static MethodCache.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.IServiceProvider? services = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>
+static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version = null) -> string!
+static MethodCache.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
+static MethodCache.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
+static MethodCache.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IDictionary<string!, T>!>
+static MethodCache.CacheManagerExtensions.InvalidateKeyAsync(this MethodCache.ICacheManager! cacheManager, string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+static MethodCache.CacheManagerExtensions.InvalidateTagAsync(this MethodCache.ICacheManager! cacheManager, string! tag, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 static MethodCache.CacheManagerExtensions.TryGetAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
-static MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(MethodCache.Policies.CachePolicy! policy, string! sourceId, MethodCache.Policies.CachePolicyFields fields, System.DateTimeOffset timestamp, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null, string? notes = null) -> MethodCache.Policies.CachePolicy!
-static MethodCache.Infrastructure.CacheRuntimePolicy.Empty(string! methodId) -> MethodCache.Infrastructure.CacheRuntimePolicy!
-static MethodCache.Infrastructure.CacheRuntimePolicy.FromPolicy(string! methodId, MethodCache.Policies.CachePolicy! policy, MethodCache.Policies.CachePolicyFields fields, System.Collections.Generic.IReadOnlyDictionary<string!, string?>? metadata = null) -> MethodCache.Infrastructure.CacheRuntimePolicy!
-static MethodCache.Infrastructure.CacheRuntimePolicy.FromResolverResult(MethodCache.Policies.PolicyResolutionResult! result) -> MethodCache.Infrastructure.CacheRuntimePolicy!
-static MethodCache.Infrastructure.CacheTagTemplates.Expand(MethodCache.Infrastructure.CacheRuntimePolicy! policy, string![]! parameterNames, string![]! values) -> MethodCache.Infrastructure.CacheRuntimePolicy!
-static MethodCache.Infrastructure.CacheTagTemplates.Expand(MethodCache.Infrastructure.CacheRuntimePolicy! policy, string![]! parameterNames, object?[]! values) -> MethodCache.Infrastructure.CacheRuntimePolicy!
-static MethodCache.Infrastructure.DecoratorServices.From(System.IServiceProvider! provider) -> MethodCache.Infrastructure.DecoratorServices!
-static MethodCache.Infrastructure.MethodCacheDecorators.All() -> System.Collections.Generic.IReadOnlyList<MethodCache.Infrastructure.DecoratorRegistration!>!
-static MethodCache.Infrastructure.MethodCacheDecorators.For(System.Reflection.Assembly! assembly) -> System.Collections.Generic.IReadOnlyList<MethodCache.Infrastructure.DecoratorRegistration!>!
-static MethodCache.Infrastructure.MethodCacheDecorators.Register(MethodCache.Infrastructure.DecoratorRegistration! registration) -> void
-static MethodCache.Infrastructure.MethodCacheDecorators.TryGet(System.Type! serviceType, out MethodCache.Infrastructure.DecoratorRegistration? registration) -> bool
-static MethodCache.Infrastructure.PolicyHandle.Fixed(MethodCache.Infrastructure.CacheRuntimePolicy! policy) -> MethodCache.Infrastructure.PolicyHandle!
-static MethodCache.Infrastructure.PolicyHandle.For(MethodCache.Policies.IPolicyRegistry! registry, string! methodId) -> MethodCache.Infrastructure.PolicyHandle!
-static MethodCache.Infrastructure.PolicySourceAsyncEnumerable.Empty(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<MethodCache.Policies.PolicyChange!>!
+static MethodCache.Generated.GeneratedCode.Register(int contractVersion, MethodCache.Generated.GeneratedModule! module) -> void
+static MethodCache.Generated.KeyParts.Part(System.DateTime value) -> string!
+static MethodCache.Generated.KeyParts.Part(System.DateTimeOffset value) -> string!
+static MethodCache.Generated.KeyParts.Part(System.Guid value) -> string!
+static MethodCache.Generated.KeyParts.Part(bool value) -> string!
+static MethodCache.Generated.KeyParts.Part(byte value) -> string!
+static MethodCache.Generated.KeyParts.Part(char value) -> string!
+static MethodCache.Generated.KeyParts.Part(decimal value) -> string!
+static MethodCache.Generated.KeyParts.Part(double value) -> string!
+static MethodCache.Generated.KeyParts.Part(float value) -> string!
+static MethodCache.Generated.KeyParts.Part(int value) -> string!
+static MethodCache.Generated.KeyParts.Part(long value) -> string!
+static MethodCache.Generated.KeyParts.Part(sbyte value) -> string!
+static MethodCache.Generated.KeyParts.Part(short value) -> string!
+static MethodCache.Generated.KeyParts.Part(string? value) -> string!
+static MethodCache.Generated.KeyParts.Part(uint value) -> string!
+static MethodCache.Generated.KeyParts.Part(ulong value) -> string!
+static MethodCache.Generated.KeyParts.Part(ushort value) -> string!
+static MethodCache.Generated.KeyParts.Part<TEnum>(TEnum value) -> string!
+static MethodCache.Generated.KeyParts.Provider(MethodCache.ICacheKeyProvider! value) -> string!
+static MethodCache.Generated.KeyParts.Sequence<T>(System.Collections.Generic.IEnumerable<T>? values, System.Func<T, string!>! part) -> string!
+static MethodCache.Generated.KeyParts.TagPart(object? value) -> string!
 static MethodCache.MethodCacheKeys.For(System.Type! serviceType, string! methodName, params string![]! parts) -> string!
 static MethodCache.MethodCacheKeys.ForVersion(System.Type! serviceType, string! methodName, int? version, params string![]! parts) -> string!
+static MethodCache.MethodCacheKeys.KeyedMethodName(string! methodName, object! serviceKey) -> string!
+static MethodCache.MethodCacheKeys.Part(System.DateTime value) -> string!
+static MethodCache.MethodCacheKeys.Part(System.DateTimeOffset value) -> string!
+static MethodCache.MethodCacheKeys.Part(System.Guid value) -> string!
 static MethodCache.MethodCacheKeys.Part(bool value) -> string!
 static MethodCache.MethodCacheKeys.Part(byte value) -> string!
 static MethodCache.MethodCacheKeys.Part(char value) -> string!
@@ -580,9 +444,6 @@ static MethodCache.MethodCacheKeys.Part(long value) -> string!
 static MethodCache.MethodCacheKeys.Part(sbyte value) -> string!
 static MethodCache.MethodCacheKeys.Part(short value) -> string!
 static MethodCache.MethodCacheKeys.Part(string? value) -> string!
-static MethodCache.MethodCacheKeys.Part(System.DateTime value) -> string!
-static MethodCache.MethodCacheKeys.Part(System.DateTimeOffset value) -> string!
-static MethodCache.MethodCacheKeys.Part(System.Guid value) -> string!
 static MethodCache.MethodCacheKeys.Part(uint value) -> string!
 static MethodCache.MethodCacheKeys.Part(ulong value) -> string!
 static MethodCache.MethodCacheKeys.Part(ushort value) -> string!
@@ -590,37 +451,18 @@ static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.MethodCacheKeys.Pattern(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.MethodCacheKeys.Prefix(System.Type! serviceType, string! methodName, int? version = null) -> string!
 static MethodCache.MethodCacheKeys.Sequence<T>(System.Collections.Generic.IEnumerable<T>? values, System.Func<T, string!>! part) -> string!
-static MethodCache.Policies.CachePolicy.Empty.get -> MethodCache.Policies.CachePolicy!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Action<TService>!>! methodExpression) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Action<TService>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null) -> System.Threading.Tasks.Task!
-static Microsoft.Extensions.DependencyInjection.MethodCacheMetricsServiceCollectionExtensions.AddConsoleCacheMetrics(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.IFluentMethodCacheConfiguration!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.IFluentMethodCacheConfiguration!>? configure = null, params System.Reflection.Assembly![]? assemblies) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheDistributedCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Microsoft.Extensions.Caching.Distributed.IDistributedCache!>! cacheFactory, System.Action<MethodCache.DistributedCacheOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Action<TService>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Action<TService>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.MethodCacheBuilder!>! configureBuilder) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCacheFromConfiguration(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, string! sectionName = "MethodCache") -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-MethodCache.MethodCacheMemoryOptions.SamplingMaxEntries.get -> int
-MethodCache.MethodCacheMemoryOptions.SamplingMaxEntries.set -> void
-MethodCache.MethodCacheMemoryOptions.SamplingRecalculationInterval.get -> int
-MethodCache.MethodCacheMemoryOptions.SamplingRecalculationInterval.set -> void
-MethodCache.Extensibility.IAtomicInvalidationStore
-MethodCache.Extensibility.IAtomicInvalidationStore.WriteInvalidationStampAsync(string! key, long timestamp, System.TimeSpan retention, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.ICacheManagerDecorator
-MethodCache.ICacheManagerDecorator.InnerManager.get -> MethodCache.ICacheManager!
-
-MethodCache.Extensibility.InMemoryCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
-MethodCache.Extensibility.NoOpCacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
-MethodCache.ICacheManager.LookupAsync<T>(string! methodName, object![]! args, MethodCache.Infrastructure.CacheRuntimePolicy! policy, MethodCache.Extensibility.ICacheKeyGenerator! keyGenerator) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
-
-static MethodCache.CacheManagerExtensions.GetCacheKey(string! key, int? version = null) -> string!
-MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.ClearsTags.get -> bool
-MethodCache.Policies.CachePolicyFields.ClearTags = 1024 -> MethodCache.Policies.CachePolicyFields
-static MethodCache.Infrastructure.DecoratorServices.ForLoad<TService>(MethodCache.Infrastructure.CachedMethod! method, TService! service) -> TService!
-static MethodCache.MethodCacheKeys.KeyedMethodName(string! methodName, object! serviceKey) -> string!
+virtual MethodCache.Extensibility.NoOpCacheManager.GetOrCreateAsync<T>(string! key, System.Func<MethodCache.CacheContext!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions? options, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T>
+virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+virtual MethodCache.Extensibility.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+virtual MethodCache.Extensibility.NoOpCacheManager.TryGetAsync<T>(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>

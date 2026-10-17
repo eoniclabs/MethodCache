@@ -8,7 +8,7 @@ namespace MethodCache.Extensibility;
 /// cannot provide the contract across processes. Redis and SQL Server providers implement it with backend
 /// atomic operations; custom providers must supply the same guarantee.
 /// </remarks>
-public interface IAtomicInvalidationStore : IDistributedCache
+internal interface IAtomicInvalidationStore : IDistributedCache
 {
     /// <summary>
     /// Stores the maximum of the incoming timestamp and the unexpired stored timestamp under <paramref name="key"/>.

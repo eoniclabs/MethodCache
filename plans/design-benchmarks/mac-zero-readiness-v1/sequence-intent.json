@@ -1,0 +1,16 @@
+{
+  "inputs_sha256": "ea69afbf60ea8ffcda1bf221538a6cc5d40a920423f9ed8ab7f80b1907e11878",
+  "queue_sha256": "ae85d118e7a10c4e14272b4eab1c316bdb12affb25a4ee75bf6f67f1c43aa3a1",
+  "scope": "Independent9case non-HTTP cumulative whole-case confirmation:20alternatingpairs/32warmups12actual150ms/freshprocess;existingstrictprecision/acceptedrulesunchanged. Samef438/A2libraryandworkloadbinaries;HTTP-onlycandidatehasnocallpathinthesescenarios. ActualsourceprovenanceandallowlistedHTTP-onlysourceequivalenceexplicit. No original launch discarded or pooled.",
+  "cases": [
+    "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False)",
+    "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True)",
+    "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False)",
+    "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True)",
+    "DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True)",
+    "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+    "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)",
+    "GeneratedContractBenchmarks.FallbackHit()",
+    "GeneratedContractBenchmarks.SyncHit()"
+  ]
+}

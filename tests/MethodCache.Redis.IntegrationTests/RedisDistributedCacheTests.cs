@@ -36,11 +36,10 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         var configuration = _redis.RequireConfiguration();
         var services = new ServiceCollection();
         services.AddMethodCache();
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = _prefix);
         services.AddMethodCacheRedis(options =>
         {
             options.Configuration = configuration;
-            options.KeyPrefix = _prefix;
-            options.BackplaneChannel = _prefix + "invalidations";
         });
 
         var provider = services.BuildServiceProvider();
@@ -50,6 +49,9 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         // calls to memory only; these tests are about two nodes that both reach Redis
         var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
         await WaitUntil(() => Task.FromResult(connection.IsConnected));
+        // Establish pub/sub before the manager attaches its reconnect clear callback. These assertions
+        // concern connected nodes, not a first pub/sub handshake retiring an in-flight initial load.
+        await RedisFixture.WaitForSubscriberAsync(connection);
 
         return provider.GetRequiredService<ICacheManager>();
     }

@@ -1,0 +1,69 @@
+{
+  "at_utc": "2026-10-16T14:49:39.783092+00:00",
+  "source_parent": "85af9cb2575af2a8b26a15c7dd40cf6093c20793",
+  "scope": "Local HTTP allocation/correctness correction; full timing acceptance remains open",
+  "normalization": "Absolute worktree path replaced; line endings normalized and trailing whitespace removed; original hashes retained",
+  "http_tests": 326,
+  "benchmark_tests": 115,
+  "new_theory_cases": 4,
+  "changed_source_coverage": "2/2 executable lines",
+  "selection_bytes_before": {
+    "private": 536,
+    "shared": 152
+  },
+  "selection_budget_bytes_after": {
+    "private": 48,
+    "shared": 8
+  },
+  "diagnostic_cold_miss_bytes_before": 8336.158218383789,
+  "diagnostic_cold_miss_bytes_after": 7842.165374755859,
+  "files": {
+    "red.log": {
+      "original_sha256": "35fa423f69d4ca8d6a617ff405c02a2692e156fa1a1e2aee196e4cee5637fd4d",
+      "stored_sha256": "a492b432f8862c7c531a14a98b71f85f683d0b1ff19537f61f864edb6d04aee9"
+    },
+    "green.log": {
+      "original_sha256": "05390d12a6dafc24f0ef03161dba7976ee241df8f9295959393d6393c1388424",
+      "stored_sha256": "3803abd081c66a47285d783334b0b5cd6049ce60930a5e804a486ff50681659b"
+    },
+    "benchmark-tests.log": {
+      "original_sha256": "eac9a70d8910a16737cbd2436890114548129c5ee376cab011306f9060e4b9be",
+      "stored_sha256": "30e69e67b2f150f7edd34a68b63c0997b17bf255e21dfae9088ce673b72b8fcc"
+    },
+    "diffcoverage.log": {
+      "original_sha256": "354ed79544e60077445c2f0a0e396fa4568988463861ed698f93e8ca7db83318",
+      "stored_sha256": "354ed79544e60077445c2f0a0e396fa4568988463861ed698f93e8ca7db83318"
+    },
+    "format.log": {
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    "diagnostic-before.log": {
+      "original_sha256": "92800b7f08e306a0d55c5ce60e6b1535fe6d724a03a7961fadf3b279a8d8ced7",
+      "stored_sha256": "92800b7f08e306a0d55c5ce60e6b1535fe6d724a03a7961fadf3b279a8d8ced7"
+    },
+    "diagnostic-after.log": {
+      "original_sha256": "43946a531707fbe56340d3c04b328176eb953e9707cecfbccb71f18acbc93de8",
+      "stored_sha256": "43946a531707fbe56340d3c04b328176eb953e9707cecfbccb71f18acbc93de8"
+    },
+    "probe.cs.txt": {
+      "original_sha256": "3b93e66d565723e282bfd7d3b13f2b90408a97a22182787cfbea5056f04d4b72",
+      "stored_sha256": "3b93e66d565723e282bfd7d3b13f2b90408a97a22182787cfbea5056f04d4b72"
+    },
+    "probe.csproj.txt": {
+      "original_sha256": "f4beaf997d05fd1b8360a0be2cf5a37059c09239e4a0d19f8b4ee44cd4791ea6",
+      "stored_sha256": "f4beaf997d05fd1b8360a0be2cf5a37059c09239e4a0d19f8b4ee44cd4791ea6"
+    }
+  },
+  "candidate_sources": [
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheKeys.cs",
+      "sha256": "9e82894fbabdd9cc377eb2191f6888e1843132ba0f53d85d55291203b0f34342"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpSelectingHeaderAllocationTests.cs",
+      "sha256": "81db5ba4f5d0da404a60f0d135a87f2c1864205cfa5f7d4de2b7fa9eaacb1c48"
+    }
+  ],
+  "provenance_note": "The source checksum mapping is written as path/sha256 records after independently rehashing the file, to avoid classifying its Keys filename and SHA256 as a credential. No scanner exemption added."
+}

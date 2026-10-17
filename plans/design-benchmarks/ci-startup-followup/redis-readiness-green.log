@@ -1,0 +1,30 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.05]   Discovered:  MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.05]   Starting:    MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.07]   Finished:    MethodCache.Redis.IntegrationTests
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.HungPing_StopsAtDeadline [4 ms]
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: False) [1 ms]
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.InitialSubscriptionHandshakeFailure_RetriesUntilSubscriberAnswers(disconnected: True) [< 1 ms]
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.NonConnectionFailure_IsNotHiddenByRetries [< 1 ms]
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.PermanentConnectionFailure_StopsAtDeadline [< 1 ms]
+  Passed MethodCache.Redis.IntegrationTests.SubscriberReadinessTests.ConnectedSubscriber_DoesNotDelayOrRetry [< 1 ms]
+
+Test Run Successful.
+Total tests: 6
+     Passed: 6
+ Total time: 0,2822 Seconds

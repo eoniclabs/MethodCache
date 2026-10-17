@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-16T23:46:41.656477+00:00",
+  "compiled_files_verified": 444,
+  "source_and_git_revisions_verified": true,
+  "production_diff_empty": true,
+  "cases": {
+    "main": [],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)"
+    ]
+  },
+  "points": {
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257"
+  },
+  "inputs_sha256": "d4324d1c51d95efe9f69ae3080cb82267bad86e93b347d657802ebc49e37d9e8",
+  "prepared_sha256": "1a57ec31f7c24a253df759252e51add1d8b0b0b69915bff2cc3b9c56a2dba08e"
+}

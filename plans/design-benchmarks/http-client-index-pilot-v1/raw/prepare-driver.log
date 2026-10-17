@@ -1,0 +1,43 @@
+Acquired bounded existing coordinator reservation prepare 71954 2026-10-17T09:33:26.934138+00:00
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.54
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.78
+A fatal error was encountered. The library 'libhostpolicy.dylib' required to execute the application was not found in '/private/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/'.
+Failed to run as a self-contained app.
+  - The application was run as a self-contained app because '/private/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.CostProfile.runtimeconfig.json' was not found.
+  - If this should be a framework-dependent app, add the '/private/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.CostProfile.runtimeconfig.json' file and specify the appropriate framework.
+Released own coordinator reservation prepare 2026-10-17T09:33:32.186130+00:00
+Traceback (most recent call last):
+  File "/tmp/methodcache-http-client-index-pilot-v1/run.py", line 178, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/tmp/methodcache-http-client-index-pilot-v1/run.py", line 161, in main
+    if mode=='prepare':prepare()
+                       ~~~~~~~^^
+  File "/tmp/methodcache-http-client-index-pilot-v1/run.py", line 44, in prepare
+    prepare_host.prepare(globals())
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/private/tmp/methodcache-http-client-index-pilot-v1/prepare_host.py", line 36, in prepare
+    names=capture(['dotnet',folder/'bin'/point/'main/MethodCache.CostProfile.dll','--list'],env=dict(os.environ,METHODCACHE_REDIS_URL='localhost:1',METHODCACHE_SQLSERVER_CONNECTION='inventory-only')).splitlines()
+          ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/methodcache-http-client-index-pilot-v1/run.py", line 14, in capture
+    return subprocess.check_output(list(map(str,args)),text=True,**kw).strip()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 473, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               **kwargs).stdout
+               ^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['dotnet', '/private/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.CostProfile.dll', '--list']' returned non-zero exit status 131.

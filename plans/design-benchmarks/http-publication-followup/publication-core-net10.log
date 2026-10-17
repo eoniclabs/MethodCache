@@ -1,0 +1,17 @@
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/InMemoryCacheManagerTests.cs(24,15): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net10.0]
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(233,30): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net10.0]
+/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Core/GeneratedContractTests.cs(235,35): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/MethodCache.Core.Tests.csproj::TargetFramework=net10.0]
+  MethodCache.Core.Tests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49, Duration: 482 ms - MethodCache.Core.Tests.dll (net10.0)

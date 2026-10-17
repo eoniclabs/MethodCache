@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-16T21:14:53.404088+00:00",
+  "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c",
+  "inputs_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+  "review_protocol_sha256": "edf520c611a90da91df3225602b58b1c26ab9789f844f77d0f06385fecc88253",
+  "all_444_compiled_files_rehashed": true,
+  "groups": 18,
+  "cases": 71,
+  "pairs_per_case": 10,
+  "command": [
+    "python3",
+    "-B",
+    "-u",
+    "/home/agent-admin/methodcache-design-bench-20261015/final-paired-cost-v2/run.py",
+    "run"
+  ]
+}

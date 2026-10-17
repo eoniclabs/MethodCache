@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-16T21:30:14.957655+00:00",
+  "inputs_sha256": "6a6b4f0b06e9e983c6316df568ed46347efb4a3ed86d9945da8f71deb555209b",
+  "prepared_sha256": "bda4a7390403010aca7b1506c2d94b1be5509d7dc45ff9307b34655e0a22f133",
+  "review_protocol_sha256": "0b9ac47b5b036d7028c054ad285ab744cd8b222860efd880b9cc0737372b3728",
+  "scope": "Four corrected controls, fixed ten pairs; separate frozen data and full original guards",
+  "command": [
+    "python3",
+    "-B",
+    "-u",
+    "/home/agent-admin/methodcache-design-bench-20261015/final-int-controls-v1/run.py",
+    "run"
+  ]
+}

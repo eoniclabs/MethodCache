@@ -1,0 +1,119 @@
+=== docs
+Tool 'nbgv' (version '3.6.133') was restored. Available commands: nbgv
+Tool 'markdownsnippets.tool' (version '28.5.0') was restored. Available commands: mdsnippets
+Tool 'dotnet-stryker' (version '4.16.0') was restored. Available commands: dotnet-stryker
+
+Restore was successful.
+Config:
+    TargetDirectory: /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache
+    UrlPrefix:
+    LinkFormat: GitHub
+    Convention: InPlaceOverwrite
+    TocLevel: 2
+    ValidateContent: False
+    OmitSnippetLinks: True
+    TreatMissingAsWarning: False
+    FileConfigPath: /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/mdsnippets.json (exists:True)
+    ExcludeDirectories:
+        benchmarks
+        artifacts
+        TestResults
+Found 623 files for snippets
+Added 77 snippets (77ms)
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs
+	ICacheManager
+	IMemoryCache
+	Loading
+	Helpers
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Conditional.cs
+	conditional-cache-when
+	conditional-when
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Configuration.cs
+	configuration-startup
+	configuration-appsettings
+	configuration-runtime-overrides
+	configuration-diagnostics
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Distributed.cs
+	distributed-redis
+	distributed-sqlserver
+	distributed-messagepack
+	messagepack-key-generator
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Expiration.cs
+	expiration-attributes
+	expiration-default
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/FailSafe.cs
+	failsafe-central
+	failsafe-per-method
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/GettingStarted.cs
+	getting-started-before
+	getting-started-interface
+	getting-started-registration
+	getting-started-factory
+	getting-started-shapes
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Invalidation.cs
+	invalidation-tags
+	invalidation-from-code
+	invalidation-by-key
+	invalidation-pattern
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Keys.cs
+	keys-arguments
+	keys-scoped
+	keys-versioned-and-overloaded
+	keys-provider
+	keys-json-generator
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Manual.cs
+	manual-basic
+	manual-options
+	manual-try-get
+	manual-many
+	manual-testing
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/MemoryCache.cs
+	memory-options
+	memory-statistics
+	memory-weigher
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Monitoring.cs
+	monitoring-administrator
+	monitoring-console-metrics
+	monitoring-metrics-provider-registration
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/NativeAot.cs
+	native-aot-context
+	native-aot-registration
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/Testing.cs
+	testing-with-caching
+	testing-without-caching
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Features/ThirdPartyPage.cs
+	third-party-per-method
+	third-party-module-selection
+	third-party-wrapper-registration
+	third-party-wrapper
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Packages.cs
+	http-basic
+	http-settings
+	http-storage-size
+	http-distributed
+	redis-basic
+	redis-options
+	redis-shared-connection
+	distributed-outage-options
+	sqlserver-basic
+	sqlserver-options
+	aspnetcore-setup
+	otel-setup
+	otel-baggage
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/Readme.cs
+	readme-quickstart-interface
+	explicit-factory-registration
+	readme-quickstart-registration
+	readme-before
+	readme-after
+	readme-invalidation
+	readme-configuration
+	readme-distributed
+	readme-monitoring
+	readme-native-aot
+Snippets extracted from /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/Snippets/ThirdParty.cs
+	readme-cache-interface
+	readme-cache-interface-registration
+	readme-explicit-key
+MarkdownProcessor Finished. 15ms
+Finished 158ms

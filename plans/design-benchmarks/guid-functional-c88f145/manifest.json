@@ -1,0 +1,229 @@
+{
+  "sha": "c88f145e0009b6416aa460a6e7015342f86412e2",
+  "ci_run": "20261015-223009-c88f145e0009",
+  "collected_utc": "2026-10-15T20:54:41.073779+00:00",
+  "scope": "GUID workload/origin/inventory guards and controlled synchronization-context fixture; precedes the new HTTP header-copy candidate. No section-10 performance acceptance.",
+  "platforms": {
+    "linux": {
+      "aot": 0,
+      "build": 0,
+      "cultures": 0,
+      "demo": 0,
+      "diffcoverage": 0,
+      "docs": 0,
+      "packages": 0,
+      "properties": 0,
+      "soak": 0,
+      "tests": 0
+    },
+    "macos": {
+      "build": 0,
+      "unit": 0
+    },
+    "windows": {
+      "build": 0,
+      "unit": 0
+    }
+  },
+  "files": {
+    "linux/aot.log": "8899a741cf2186b498d7cc58c9c663ebf6f1dfd3c5bbf5e4ffa700f18b59b08c",
+    "linux/build.log": "c1185dd1574120b116ae310378b7a79c1fb09f7265ec3e74ec23cf65170dbebd",
+    "linux/cultures.log": "6d083326440eb08419532f8ec8e61cbfbbf0535d4810c4133b319a4310fbd9fc",
+    "linux/demo.log": "4f52a1acfc7d70c7e004de5d96a6d5c0a6c737eaea215c88d7841fc9b728fcf7",
+    "linux/diffcoverage.log": "7ff8aeaa9fc329de138bd7df0bc6a051b0a02c3a46879164f29a06113d691200",
+    "linux/docs.log": "bb624eb8fda1701dfbec326e9e7b3f8189443e091adce253a596ea75446204dd",
+    "linux/packages.log": "dd3185b1dd9cf864e7319f61506e6b93bd1926caba8957c470de78325f21cf93",
+    "linux/properties.log": "4af2dff4e52d4ee3d139330dee6d61d3da83e33f78d016e9e1d6a89891c8cd3c",
+    "linux/soak.log": "7bda422106d5f6c730dfdb8b158abd45194c55c60af94eb4efe680a44e665ab4",
+    "linux/tests.log": "213bfe6026a32490fdf0370baa64ed24ad302d75b5f97cb94813c8612b9e24d9",
+    "macos/build.log": "f0f7f49ec6b8e63bfee8c3d0feda2c4ca5ec74178a224d0a0c94955b1fa74a8e",
+    "macos/unit.log": "5818577764810359d2a27c45dafec3dc941858d3a468b70a88bed9c921828ea6",
+    "windows/build.log": "6b6ae4531d25185831d5c637c5b608a00c2b5a05e212cca9472f110a0d3fa7b9",
+    "windows/unit.log": "cb0943a31e1c1d06ae04aeb2597b0fb2a17a51110cfcb8b87f0242d99994822e"
+  },
+  "original_source_sha256": {
+    "linux/aot.log": "8899a741cf2186b498d7cc58c9c663ebf6f1dfd3c5bbf5e4ffa700f18b59b08c",
+    "linux/build.log": "c1185dd1574120b116ae310378b7a79c1fb09f7265ec3e74ec23cf65170dbebd",
+    "linux/cultures.log": "6d083326440eb08419532f8ec8e61cbfbbf0535d4810c4133b319a4310fbd9fc",
+    "linux/demo.log": "bdf4949f348cb29764e68b88a28394bc8508da4b51bde563970e98b8bad3dc57",
+    "linux/diffcoverage.log": "7ff8aeaa9fc329de138bd7df0bc6a051b0a02c3a46879164f29a06113d691200",
+    "linux/docs.log": "ec21e02093ea6e02e8c89dd51ff0672c3d55329438a0772e3f4365478d3869ab",
+    "linux/packages.log": "dd3185b1dd9cf864e7319f61506e6b93bd1926caba8957c470de78325f21cf93",
+    "linux/properties.log": "4af2dff4e52d4ee3d139330dee6d61d3da83e33f78d016e9e1d6a89891c8cd3c",
+    "linux/soak.log": "7bda422106d5f6c730dfdb8b158abd45194c55c60af94eb4efe680a44e665ab4",
+    "linux/tests.log": "213bfe6026a32490fdf0370baa64ed24ad302d75b5f97cb94813c8612b9e24d9",
+    "macos/build.log": "f0f7f49ec6b8e63bfee8c3d0feda2c4ca5ec74178a224d0a0c94955b1fa74a8e",
+    "macos/unit.log": "5818577764810359d2a27c45dafec3dc941858d3a468b70a88bed9c921828ea6",
+    "windows/build.log": "47026e0d358d5c3566f65dac840df57dbf9dce09d2628c91fd40a5032a1519ed",
+    "windows/unit.log": "a0715c6dc8c2394ae2baa70fb7412938e9b1aa823cafbb129297b5bca8baeb9d"
+  },
+  "unit_test_suites": [
+    {
+      "failed": 0,
+      "passed": 16,
+      "skipped": 0,
+      "total": 16,
+      "assembly": "MethodCache.HttpCaching.IntegrationTests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 52,
+      "skipped": 0,
+      "total": 52,
+      "assembly": "MethodCache.Redis.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 4,
+      "skipped": 0,
+      "total": 4,
+      "assembly": "MethodCache.CompatTests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 2,
+      "skipped": 0,
+      "total": 2,
+      "assembly": "MethodCache.Samples.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 29,
+      "skipped": 0,
+      "total": 29,
+      "assembly": "MethodCache.OpenTelemetry.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 320,
+      "skipped": 0,
+      "total": 320,
+      "assembly": "MethodCache.HttpCaching.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 49,
+      "skipped": 0,
+      "total": 49,
+      "assembly": "MethodCache.AspNetCore.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 119,
+      "skipped": 0,
+      "total": 119,
+      "assembly": "MethodCache.Docs.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 99,
+      "skipped": 0,
+      "total": 99,
+      "assembly": "MethodCache.Benchmarks.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 27,
+      "skipped": 0,
+      "total": 27,
+      "assembly": "MethodCache.Redis.IntegrationTests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 71,
+      "skipped": 0,
+      "total": 71,
+      "assembly": "MethodCache.Analyzers.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 66,
+      "skipped": 0,
+      "total": 66,
+      "assembly": "MethodCache.SourceGenerator.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 42,
+      "skipped": 0,
+      "total": 42,
+      "assembly": "MethodCache.SqlServer.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 1036,
+      "skipped": 1,
+      "total": 1037,
+      "assembly": "MethodCache.Core.Tests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 63,
+      "skipped": 0,
+      "total": 63,
+      "assembly": "MethodCache.SqlServer.IntegrationTests.dll",
+      "framework": "net10.0"
+    },
+    {
+      "failed": 0,
+      "passed": 533,
+      "skipped": 0,
+      "total": 533,
+      "assembly": "MethodCache.SourceGenerator.IntegrationTests.dll",
+      "framework": "net10.0"
+    }
+  ],
+  "passed": 2528,
+  "failed": 0,
+  "skipped": 1,
+  "statuses": [
+    {
+      "context": "MethodCache CI (Linux)",
+      "state": "success",
+      "description": "aot \u2713, build \u2713, cultures \u2713, demo \u2713, diffcoverage \u2713, docs \u2713, packages \u2713, properties \u2713, soak \u2713, tests \u2713",
+      "updated_at": "2026-10-15T20:39:48Z"
+    },
+    {
+      "context": "MethodCache CI (Windows)",
+      "state": "success",
+      "description": "build \u2713, unit \u2713",
+      "updated_at": "2026-10-15T20:39:49Z"
+    },
+    {
+      "context": "MethodCache CI (macOS)",
+      "state": "success",
+      "description": "build \u2713, unit \u2713",
+      "updated_at": "2026-10-15T20:39:50Z"
+    },
+    {
+      "context": "MethodCache CI",
+      "state": "success",
+      "description": "All platforms passed in 10 min",
+      "updated_at": "2026-10-15T20:39:51Z"
+    }
+  ],
+  "randomized_properties_passed": 91,
+  "enabled_soak_passed": 1,
+  "aot_signature_cases": 172,
+  "packed_packages": 7,
+  "cumulative_diff_coverage": {
+    "covered": 3468,
+    "changed": 3690,
+    "percent": 94.0
+  },
+  "precedes_header_candidate": "f0dd6c204cd3eefb8fb08ef0509340caf242da92"
+}

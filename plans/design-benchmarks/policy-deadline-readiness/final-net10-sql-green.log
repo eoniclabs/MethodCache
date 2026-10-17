@@ -1,0 +1,118 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.SqlServer.IntegrationTests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.04]   Discovering: MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.06]   Discovered:  MethodCache.SqlServer.IntegrationTests
+[xUnit.net 00:00:00.08]   Starting:    MethodCache.SqlServer.IntegrationTests
+[testcontainers.org 00:00:00.06] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.13] Docker container 77d6f6d4f261 created
+[testcontainers.org 00:00:00.15] Start Docker container 77d6f6d4f261
+[testcontainers.org 00:00:00.23] Wait for Docker container 77d6f6d4f261 to complete readiness checks
+[testcontainers.org 00:00:01.26] Docker container 77d6f6d4f261 ready
+[testcontainers.org 00:00:01.30] Docker container afae6aa21300 created
+[testcontainers.org 00:00:01.30] Start Docker container afae6aa21300
+  Passed MethodCache.SqlServer.IntegrationTests.FixtureReadinessTests.TableCreationStillPendingAfterHostedStartup_TestWaitsForIt [3 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.FixtureReadinessTests.TableCreationFails_TestSetupReportsTheFailure [< 1 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.FixtureReadinessTests.CancelledSetup_DoesNotTreatPendingTablesAsReady [< 1 ms]
+[testcontainers.org 00:00:01.40] Wait for Docker container afae6aa21300 to complete readiness checks
+[testcontainers.org 00:00:01.40] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container afae6aa21300
+[testcontainers.org 00:00:01.46] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container afae6aa21300
+[testcontainers.org 00:00:07.16] Docker container afae6aa21300 ready
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+  Passed MethodCache.SqlServer.IntegrationTests.FaultInjection.LockedGapReviewTests.PersistentLockedGap_NewerInvalidationsKeepArriving(foreignScope: True, commit: True) [262 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.FaultInjection.LockedGapReviewTests.PersistentLockedGap_NewerInvalidationsKeepArriving(foreignScope: False, commit: False) [69 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.FaultInjection.LockedGapReviewTests.PersistentLockedGap_NewerInvalidationsKeepArriving(foreignScope: True, commit: False) [69 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.FaultInjection.LockedGapReviewTests.PersistentLockedGap_NewerInvalidationsKeepArriving(foreignScope: False, commit: True) [80 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.LongTransactionReviewTests.Backplane_LateTransactionBeyondGapLifetime_ResolvesWithoutLosingInvalidation(commit: True) [67 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.LongTransactionReviewTests.Backplane_LateTransactionBeyondGapLifetime_ResolvesWithoutLosingInvalidation(commit: False) [56 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.ABurstOfInvalidations_DoesNotDelayNewOnes [449 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.Cleanup_RemovesEveryExpiredInvalidation [526 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.AnInvalidationThatCommitsAfterManyLaterOnes_StillArrives [1 s]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.TagInvalidation_ReachesTheOtherInstancesMemory [320 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.KeyInvalidation_ReachesTheOtherInstancesMemory [309 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.CreatesTheTables_AndTheSecondInstanceReadsTheValueTheFirstStored [95 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SqlServerDistributedCacheTests.LongKeyAndTag_AreSharedAndInvalidated_WithoutDisablingTheDistributedCache [289 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.VersionOneWithIncompatibleColumns_IsRejected(shape: "backplane-target") [61 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.VersionOneWithIncompatibleColumns_IsRejected(shape: "cache-value") [43 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.VersionOneWithIncompatibleColumns_IsRejected(shape: "version-shape") [41 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.ExistingUnversionedSchema_RequiresTheDeliveredExplicitMigration [88 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.DeliveredMigration_RejectsAnIncompatibleLegacyLayout [69 ms]
+Reload generation ready before confirmation: False
+Reload generation ready before confirmation: False
+  Passed MethodCache.SqlServer.IntegrationTests.SchemaContractTests.CreationDisabled_DoesNotRecreateMissingIndexes [50 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "specificity") [112 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "unready-sync") [60 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "custom") [54 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "equivalent") [81 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [72 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "disabled") [87 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [99 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "reload") [105 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "refresh") [79 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "validation") [71 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "cancellation") [61 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyContractTests.NativeInvalidationFaults_ConformToSharedContract(scenario: "partial") [63 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [235 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.HttpContractTests.HttpEpochs_WithDroppedBackplane_NoOpAndRollingFormats_ConformToContract [413 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.EpochContractTests.NativeAtomicEpochs_ConformAcrossIndependentInstances [177 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneStateTests.PollingState_TracksEstablishedDeliveryFailureAndRecovery [57 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.Backplane_PreservesLoneSurrogatesThroughSqlTransport [65 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(prefix: "tenant-a:", otherPrefix: "tenant-b:") [57 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(prefix: "tenant-İ:", otherPrefix: "tenant-i:") [58 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(prefix: "tenant-a:", otherPrefix: "Tenant-a:") [59 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.SharedTable_OtherPrefixesRows_AreNotTrackedAsGaps_AndALateOwnRowStillArrives [93 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.ExistingTable_IncompatibleScope_IsRejectedWithoutChangingRows(scopeColumn: "") [53 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.ExistingTable_IncompatibleScope_IsRejectedWithoutChangingRows(scopeColumn: "Scope binary(32) NULL,") [48 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.ExistingTable_IncompatibleScope_IsRejectedWithoutChangingRows(scopeColumn: "Scope varbinary(32) NOT NULL,") [50 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.ExistingTable_IncompatibleScope_IsRejectedWithoutChangingRows(scopeColumn: "Scope binary(16) NOT NULL,") [49 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.CurrentSchema_RepeatedInitialization_PreservesMessagesAndIndexes [60 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneIsolationTests.Cleanup_OnlyRemovesExpiredRowsForItsOwnPrefix [62 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.CallbackCancellation_DoesNotStopThePollingLoop [58 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.FailureInSecondBatch_PreservesFirstBatchAndResumesRemainingRows [78 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.MalformedFrames_ClearFilledLocalCache_AndWarnOnceWithoutPayload [63 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.FailedOutageClear_DoesNotAdvanceTheRecoveryWatermark [46 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.FailedSubscriber_RetriesFailedAndRemainingMessages(cancellation: True) [58 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.FailedSubscriber_RetriesFailedAndRemainingMessages(cancellation: False) [55 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.PoisonMessage_IsReplacedByAClearAfterAFewPolls_AndLaterMessagesArrive [55 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.BackplaneAcknowledgementTests.FailedGapMessage_RemainsPendingAfterGapDiscoveryWindowExpires [61 ms]
+[testcontainers.org 00:00:15.00] Delete Docker container afae6aa21300
+[xUnit.net 00:00:15.31]   Finished:    MethodCache.SqlServer.IntegrationTests
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.IndependentCacheInstances_PreserveSignedMaximumAndConcurrentStamps(concurrent: True) [75 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.IndependentCacheInstances_PreserveSignedMaximumAndConcurrentStamps(concurrent: False) [80 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.DistinctLogicalMetadataKeys_DoNotAliasUnderSqlCollation(first: "é", second: "é") [73 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.DistinctLogicalMetadataKeys_DoNotAliasUnderSqlCollation(first: "\0clear", second: "\0\0clear") [67 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.DistinctLogicalMetadataKeys_DoNotAliasUnderSqlCollation(first: "tag", second: "tag ") [62 ms]
+  Passed MethodCache.SqlServer.IntegrationTests.AtomicInvalidationTests.OlderStampWithShortRetention_DoesNotShortenNewerRetention [62 ms]
+
+Test Run Successful.
+Total tests: 63
+     Passed: 63
+ Total time: 15,5311 Seconds

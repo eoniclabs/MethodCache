@@ -1,0 +1,37 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "prepare_label": "design-http-compact-telemetry-pilot-v1-prepare",
+  "pairs": 10,
+  "warmups": 32,
+  "remaining_groups": [
+    0
+  ],
+  "cases": [
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Fixed single-case listening304 confirmation only: f438 vs full publication candidate plus compactTelemetryOperation; ten alternating pairs,32warm12actual150ms. ColdNoListener failure retained and not rerun because this change affects enabled operations. Same frozen helper/workload/binary guards/SDK/runtime/workstationGC/affinity; no new bound or full cumulative acceptance.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "6634b267d017a02e8f6b1372bc09eda9437b5fe11e5467eed8862ed9d862fa77"
+    },
+    {
+      "path": "run.py",
+      "sha256": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "publication.patch",
+      "sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "2d9581c0f2958cedd47c98f96ad32097853d96da75f66b754cd9b45fa4fba52d"
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+{
+  "purpose": "Source-scoped family selection before any V5 timing means are reviewed",
+  "measurement_protocol_sha256": "7ed0602806c5a0934de83ba38b17cd4d5db9ffd75f879951c12a82b2ecb0e3d2",
+  "measurement_settings_unchanged": true,
+  "independent_rounds": 3,
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "pr1-base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+    "pr1": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "pr2": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "pr3": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "pr4": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "pr5": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "prefix": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "http": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "net10": "1bafff182df69a4cf156280f904b9248bae8ce74",
+    "constructor-base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "final": "b92553dac51d0a29f1784508ca4cbacedeea73ea"
+  },
+  "counts": {
+    "local-contract": 27,
+    "local-pressure": 20,
+    "native": 16,
+    "component-lookup": 18,
+    "component-facade": 36,
+    "component-generated": 48
+  },
+  "comparisons": [
+    {
+      "pr": 123,
+      "base": "pr1-base",
+      "change": "pr1",
+      "base_sha": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+      "change_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "verified_merge_base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 124,
+      "base": "pr1",
+      "change": "pr2",
+      "base_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "change_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "verified_merge_base": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 125,
+      "base": "pr2",
+      "change": "pr3",
+      "base_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "change_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "verified_merge_base": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 126,
+      "base": "pr3",
+      "change": "pr4",
+      "base_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "change_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "verified_merge_base": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 127,
+      "base": "pr4",
+      "change": "pr5",
+      "base_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "change_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "verified_merge_base": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 128,
+      "base": "pr5",
+      "change": "prefix",
+      "base_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "change_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "verified_merge_base": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native",
+        "component-lookup",
+        "component-facade",
+        "component-generated"
+      ]
+    },
+    {
+      "pr": 129,
+      "base": "prefix",
+      "change": "http",
+      "base_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "change_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "verified_merge_base": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 130,
+      "base": "http",
+      "change": "net10",
+      "base_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "change_sha": "1bafff182df69a4cf156280f904b9248bae8ce74",
+      "verified_merge_base": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    },
+    {
+      "pr": 132,
+      "base": "constructor-base",
+      "change": "constructor",
+      "base_sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "change_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "verified_merge_base": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "groups": [
+        "local-contract",
+        "component-generated"
+      ]
+    },
+    {
+      "pr": 133,
+      "base": "constructor",
+      "change": "siphash",
+      "base_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "change_sha": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+      "verified_merge_base": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native",
+        "component-lookup",
+        "component-generated"
+      ]
+    },
+    {
+      "pr": "cumulative",
+      "base": "base",
+      "change": "final",
+      "base_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "change_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+      "groups": [
+        "local-contract",
+        "local-pressure",
+        "native"
+      ]
+    }
+  ],
+  "selected_families": {
+    "base": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr1-base": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr1": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr2": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr3": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr4": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "pr5": [
+      "local-contract",
+      "local-pressure",
+      "native",
+      "component-lookup",
+      "component-facade",
+      "component-generated"
+    ],
+    "prefix": [
+      "local-contract",
+      "local-pressure",
+      "native",
+      "component-lookup",
+      "component-facade",
+      "component-generated"
+    ],
+    "http": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "net10": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ],
+    "constructor-base": [
+      "local-contract",
+      "component-generated"
+    ],
+    "constructor": [
+      "local-contract",
+      "local-pressure",
+      "native",
+      "component-lookup",
+      "component-generated"
+    ],
+    "siphash": [
+      "local-contract",
+      "local-pressure",
+      "native",
+      "component-lookup",
+      "component-generated"
+    ],
+    "final": [
+      "local-contract",
+      "local-pressure",
+      "native"
+    ]
+  },
+  "family_launches": 153,
+  "individual_case_launches": 3690,
+  "previous_family_launches": 180,
+  "previous_individual_case_launches": 4482,
+  "priority": "Cumulative three alternating final/base pairs before remaining PR comparisons",
+  "means_reviewed_before_selection": false
+}

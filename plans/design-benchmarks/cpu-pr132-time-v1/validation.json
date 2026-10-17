@@ -1,0 +1,9 @@
+{
+  "archive_sha256": "0b3eaeefc09fce3162ee45af5924a091d562df505af5b0dace13be2d663bd97a",
+  "indexed_files_verified": 237,
+  "launches_verified": 100,
+  "cases": 5,
+  "pairs": 10,
+  "actual_iterations": 12,
+  "runtime_gc_affinity_quiet_guards": "verified for every launch"
+}

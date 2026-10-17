@@ -1,0 +1,99 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.OpenTelemetry -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.OpenTelemetry/bin/Release/net10.0/MethodCache.OpenTelemetry.dll
+  MethodCache.Serialization.MessagePack -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Serialization.MessagePack/bin/Release/net10.0/MethodCache.Serialization.MessagePack.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.SqlServer -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SqlServer/bin/Release/net10.0/MethodCache.SqlServer.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Benchmarks.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/bin/Release/net10.0/MethodCache.Benchmarks.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: False) [FAIL]
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: True) [FAIL]
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: False) [FAIL]
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: True) [FAIL]
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: False) [FAIL]
+[xUnit.net 00:00:00.12]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: True) [FAIL]
+[xUnit.net 00:00:00.13]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: False) [FAIL]
+[xUnit.net 00:00:00.13]     MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: True) [FAIL]
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: False) [36 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: True) [2 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: True, listening: False) [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: True) [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: False, listening: False) [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: True) [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Guid, longPrefix: False, listening: False) [2 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(argumentKind: Int, longPrefix: True, listening: True) [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : Generated prefix miss reused an existing key.
+  Stack Trace:
+     at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.VerifyUniqueMisses() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 87
+   at MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks.Setup() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:line 67
+   at MethodCache.Benchmarks.Tests.GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(PrefixArgumentKind argumentKind, Boolean longPrefix, Boolean listening) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Benchmarks.Tests/GeneratedPrefixSetupTests.cs:line 22
+   at InvokeStub_GeneratedPrefixSetupTests.GeneratedPrefix_AllReturnShapesHit_AndEachMissLoads(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+
+Failed!  - Failed:     8, Passed:     0, Skipped:     0, Total:     8, Duration: 48 ms - MethodCache.Benchmarks.Tests.dll (net10.0)

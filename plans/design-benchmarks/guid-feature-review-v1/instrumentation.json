@@ -1,0 +1,172 @@
+{
+  "scope": "Source-only setup review for frozen matrix; does not replace compiled setup/native checks or timing. Workloads retain default statistics. No deployed protocol/workload changes.",
+  "listener_setup": "DesignWorkloadSetup.Listen enables existing historical AddMethodCacheOpenTelemetry registration only when Listening=true; later Core emits its own instruments. GeneratedContractBenchmarks has no listener, defaults retained. Component PR5+ cases vary MeterListener states only.",
+  "revisions": [
+    {
+      "revision": "base",
+      "runtime_sha": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "135ffca956ee7816d204be92dcea39f844463887c97f6a065671166f92bfdb11",
+      "default_statistics": {
+        "line": 144,
+        "text": "public bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "f43854dbcd3646893f490e78a0a1d9651e9c4521:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:132:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr1-base",
+      "runtime_sha": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "135ffca956ee7816d204be92dcea39f844463887c97f6a065671166f92bfdb11",
+      "default_statistics": {
+        "line": 144,
+        "text": "public bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "a023336088c0df4fe887ee336dabcbbdb41f5b26:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:132:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr1",
+      "runtime_sha": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "135ffca956ee7816d204be92dcea39f844463887c97f6a065671166f92bfdb11",
+      "default_statistics": {
+        "line": 144,
+        "text": "public bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "8abc020b8f118331b1c5b74d676ae0957af1b91e:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:102:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr2",
+      "runtime_sha": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "61d419baf563ad8d77491dbbaa65798b98e585c4ec8cc5d1998c43e74761d70d",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "e368484321cbb1c846ade78e10991e64f8cb41dc:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:102:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr3",
+      "runtime_sha": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "61d419baf563ad8d77491dbbaa65798b98e585c4ec8cc5d1998c43e74761d70d",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:102:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr4",
+      "runtime_sha": "399e16587487a65a064c067b91a31ac4ab2c2527",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "61d419baf563ad8d77491dbbaa65798b98e585c4ec8cc5d1998c43e74761d70d",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": [
+        "399e16587487a65a064c067b91a31ac4ab2c2527:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:102:            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();"
+      ]
+    },
+    {
+      "revision": "pr5",
+      "runtime_sha": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "5ef0d8019e8ea7cc4a628faa981e85ae0b36705f438eed0b1768ef1ae30b1cc4",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "prefix",
+      "runtime_sha": "9c31e3b150b269d10dec99e2e93043918a718579",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "5ef0d8019e8ea7cc4a628faa981e85ae0b36705f438eed0b1768ef1ae30b1cc4",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "http",
+      "runtime_sha": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "net10",
+      "runtime_sha": "1bafff182df69a4cf156280f904b9248bae8ce74",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "constructor-base",
+      "runtime_sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "constructor",
+      "runtime_sha": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "siphash",
+      "runtime_sha": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    },
+    {
+      "revision": "final",
+      "runtime_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+      "statistics_options_path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+      "statistics_options_sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38",
+      "default_statistics": {
+        "line": 154,
+        "text": "internal bool EnableStatistics { get; set; } = true;"
+      },
+      "default_null_provider_registration": []
+    }
+  ]
+}

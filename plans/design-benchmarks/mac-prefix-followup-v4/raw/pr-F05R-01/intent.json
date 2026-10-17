@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-17T04:50:48.035737+00:00",
+  "inputs_sha256": "6ae9adeb73caf776cb0fdfbc687f828cfbf3b00c2b622f2d832a51a6f9b49766",
+  "prepared_sha256": "94a137fa3027a43c39c5be6e77b40c614c6d9d7ce0eeaa3a6ca583e9b774a196",
+  "comparison": {
+    "pr": "F05R-01",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [],
+      "int": [
+        "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+        "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+        "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+        "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)"
+      ]
+    }
+  },
+  "cases": {
+    "main": [],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)"
+    ]
+  }
+}

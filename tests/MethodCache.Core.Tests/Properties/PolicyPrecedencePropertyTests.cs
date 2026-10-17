@@ -140,7 +140,7 @@ public class PolicyPrecedencePropertyTests
         {
             var mask = Mask(masks, layer, scope);
 
-            // Every cached method is listed by the attribute layer; the group comes from its [Cache("g")]
+            // Every cached method is listed by the attribute layer; the group comes from its [Cache(Group = "g")]
             var listsMethod = scope == Scope.Method && layer == 0;
             if (mask == 0 && !listsMethod)
             {

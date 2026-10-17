@@ -1,0 +1,60 @@
+{
+  "purpose": "Fresh fixed cohort after V4 zero-execution generated-build failure. Async reset is unchanged behind a synchronous iteration hook; component assembly name is unchanged and project filename matches it. Compile every generated BDN program before timing. No V4 sample is carried forward.",
+  "parent_folder": "guid-final-v4",
+  "parent_prepared_sha256": "d7ac2434c52a0e97efe4821a27b78244ab013c90eb8d471f7d6bf2bacad60166",
+  "primary_workloads_sha": "453be958abc7f57253341b8a43125404e180c551",
+  "component_workloads_sha": "bbff4a6dfaebfe57235f6457a62baa57170c6417",
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "pr1-base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+    "pr1": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "pr2": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "pr3": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "pr4": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "pr5": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "prefix": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "http": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "net10": "1bafff182df69a4cf156280f904b9248bae8ce74",
+    "constructor-base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "final": "b92553dac51d0a29f1784508ca4cbacedeea73ea"
+  },
+  "component_revisions": [
+    "pr5",
+    "prefix",
+    "constructor-base",
+    "constructor",
+    "siphash",
+    "final"
+  ],
+  "image": "sha256:28177d4fc98bf285dd0a62da2d22d2ef5f9e8d6adbc2500c8e49046b4ca4cdbf",
+  "primary_sources_sha256": {
+    "Comparison/GeneratedContractBenchmarks.cs": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+    "Microbenchmarks/HttpResponsePathBenchmarks.cs": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+    "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+  },
+  "component_sources_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "source_bundle_sha256": "94900795a237acffafcbb8d444e98ad32ee5ce7ab1914bca9ed293355a25ebc3",
+  "protocol_sha256": {
+    "prepare.py": "2f812cebd4f2259e72b59fd23f070f09b3731410f29aa45ad8b734b874523fc0",
+    "prepare-all.py": "2ea2f7682b6b897d7bd209b79d7a9c6cc92b148c89fc1083cba5badeb4f5b9fb",
+    "timing-all.py": "c37bbb78ece30860085709f8c71a9c138abcf6a9309cd453bc91c6d48d6fd78b",
+    "timing-worker.py": "7c84ce11d865f397adc8fe96e57760dc28fbd895a7e91d08d1960c36bdbbdcbc",
+    "validate-timing.py": "bfa3247854c1836d79cbf645a169a5c2435e4d91a853b7fdd5aca123c57b0eae",
+    "validate-all.py": "2217d56e3bd7c93643219c4306c2ec7731a2f6be2b166e8665b796c7caaf13af",
+    "bdn_affinity.py": "e354dbe522842cfcacc335972d3403cac00298a255d191566f7d3f6079ec7065",
+    "workload_inventory.py": "7ba3f0a88d7208e58e066eb9449c5a28f9b766c876c51c8f6178a11ef403ab77",
+    "summarize-design.py": "d10b416c58d5e6b9496aaa0e5d4477324da20ec124c0aca414372f93d6e5cca1",
+    "summarize-pair.py": "9d8f78f664d9dd06206d0ec26b576f13bf02ad45954a9c443c7129afca40bd95",
+    "extra-setup.cs.txt": "0e944bc29191a8ab3fe586411fac6ba8342e1917197b56482640742001530943",
+    "comparison-edges.json": "75028e14ce4a6fe769bd8675158394d9617618c55a293e35494e4ae84b8c40f3",
+    "revisions.json": "fb7d9577517cd43a8e2fec342a6a269775c80911c54c986ffd8dede318f9a70d"
+  },
+  "leased_batch_sha256": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830"
+}

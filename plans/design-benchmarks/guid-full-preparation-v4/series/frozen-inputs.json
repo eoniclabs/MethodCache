@@ -1,0 +1,52 @@
+{
+  "owner": "methodcache-design-20261015-01a13a93",
+  "image": "sha256:28177d4fc98bf285dd0a62da2d22d2ef5f9e8d6adbc2500c8e49046b4ca4cdbf",
+  "parent_folder": "guid-final-v3",
+  "parent_frozen_inputs_sha256": "dfe36a5a879ecc0cb4117c8238d72dc44f36dd28f6bcc1ca47fcbc0093b6b1ec",
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "pr1-base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+    "pr1": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "pr2": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "pr3": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "pr4": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "pr5": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "prefix": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "http": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "net10": "1bafff182df69a4cf156280f904b9248bae8ce74",
+    "constructor-base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "constructor": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "siphash": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "final": "b92553dac51d0a29f1784508ca4cbacedeea73ea"
+  },
+  "component_revisions": [
+    "pr5",
+    "prefix",
+    "constructor-base",
+    "constructor",
+    "siphash",
+    "final"
+  ],
+  "primary_workloads_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "component_workloads_sha": "bbff4a6dfaebfe57235f6457a62baa57170c6417",
+  "source_bundle_sha256": "84cd112bdca52e765da8e21fe9f6bec06172cb6d81d74bf9c6b39df98d7f6821",
+  "leased_batch_sha256": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+  "measurement_not_started": true,
+  "batch_limit_seconds": 1500,
+  "component_source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "protocol_sha256": {
+    "prepare.py": "56581c23d77575d1b243c34ac68c7c118c80f7cf8d13f893a909de70c34339f5",
+    "prepare-all.py": "cfcca08b1a34baa296e4acae4d9dd703f068048fdc4e6d97e26f5922b90923aa",
+    "revisions.json": "fb7d9577517cd43a8e2fec342a6a269775c80911c54c986ffd8dede318f9a70d",
+    "comparison-edges.json": "75028e14ce4a6fe769bd8675158394d9617618c55a293e35494e4ae84b8c40f3",
+    "native-runner/Program.cs": "d9ffdbfa70c21ce09d39715f4f98a9aa456cb9df14535a15f711e22f1800cae0",
+    "native-runner/ImageValidation.cs": "e9217976b6a6d353e6f7317bce586dd3b5cd2d35d154c821f3299cf167b0a238",
+    "native-runner/Runner.csproj": "f6fae7b6a186f28648736c9a35a8ea1a78e5d9f88e4b016d5a9b6f11134e9436",
+    "native-runner/backend-images.json": "c3d7a496f5e96a43dc72e84b1f9dfcda3e978e365336c4b940909c7fa49ce07d"
+  }
+}

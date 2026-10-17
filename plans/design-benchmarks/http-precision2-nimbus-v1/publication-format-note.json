@@ -1,0 +1,52 @@
+{
+  "scope": "No measurement,log,source,rule or timing verdict changes. Only2canonicalJSON SHA256catalogues become reversible path/hash lists. All20secret-scanmatchesverifiedasactualbinarychecksums(MicrosoftUserSecrets/IdentityModel/OpenTelemetrydlls),notcredentials;no scanner suppression introduced.",
+  "catalogues": [
+    {
+      "path": "raw/raw/prepared.json",
+      "original_sha256": "24f5c9332c5391526cc67314d4db796c6b7b346e482cbf8158b62dfaa7adb2da",
+      "stored_sha256": "642c2f12fbc7e749623adc23b2f167bfe32a56fe219798407c8beca1d1f3f271",
+      "catalogue_paths": [
+        [
+          "source_hashes",
+          "base"
+        ],
+        [
+          "source_hashes",
+          "head"
+        ],
+        [
+          "binaries",
+          "base/main"
+        ],
+        [
+          "binaries",
+          "head/main"
+        ]
+      ]
+    },
+    {
+      "path": "raw/raw/origin-prepared.json",
+      "original_sha256": "1cf5f7df47d1d91f61c010b226020d558c6ead77ead3714af2706cb2dff3ef38",
+      "stored_sha256": "4bbbc358c22cf9c1a294a7cf754a848992a67c2bc329b255a251dcc1c427ee88",
+      "catalogue_paths": [
+        [
+          "source_hashes",
+          "base"
+        ],
+        [
+          "source_hashes",
+          "head"
+        ],
+        [
+          "binaries",
+          "base/main"
+        ],
+        [
+          "binaries",
+          "head/main"
+        ]
+      ]
+    }
+  ],
+  "restoration": "python3 restore-original-metadata.py <new-directory>;originalSHA256mustmatchexactly"
+}

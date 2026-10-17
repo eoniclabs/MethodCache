@@ -1,0 +1,12 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False) | 225838.5 | 367903.0 | 1.559 | 1.408-1.726 | **too noisy** |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False) | 504158.9 | 605176.4 | 1.223 | 1.090-1.373 | **too noisy** |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False) | 543535.7 | 644450.5 | 1.206 | 1.125-1.293 | **too noisy** |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=False) | 23267888.2 | 22765315.3 | 0.992 | 0.936-1.052 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=False) | 91979.6 | 106180.3 | 1.108 | 0.993-1.237 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=True) | 97287.7 | 102037.2 | 1.072 | 0.991-1.158 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=False) | 222133.6 | 199838.0 | 0.917 | 0.880-0.956 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=True) | 208855.3 | 196661.7 | 0.958 | 0.896-1.024 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=True) | 278425.3 | 290308.6 | 1.039 | 0.976-1.107 | **too noisy** |
+| DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=True) | 11441187.6 | 11219506.8 | 0.990 | 0.945-1.037 | **too noisy** |

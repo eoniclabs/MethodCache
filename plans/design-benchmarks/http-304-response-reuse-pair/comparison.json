@@ -1,0 +1,50 @@
+{
+  "verdict": "Directional evidence only: candidate remains slower in this one pair; neither a section-10 regression conclusion nor a pass. Fresh fixed three-pair confirmation required.",
+  "cases": {
+    "Listening=False&AfterInvalidation=False": {
+      "prefix": {
+        "mean_ns": 5158.440009523423,
+        "bytes_per_operation": 8256
+      },
+      "candidate": {
+        "mean_ns": 5662.17665318496,
+        "bytes_per_operation": 7536
+      },
+      "change_percent": 9.765290334510945
+    },
+    "Listening=False&AfterInvalidation=True": {
+      "prefix": {
+        "mean_ns": 5318.337695379594,
+        "bytes_per_operation": 8256
+      },
+      "candidate": {
+        "mean_ns": 5461.092473287809,
+        "bytes_per_operation": 7536
+      },
+      "change_percent": 2.6841992006682025
+    },
+    "Listening=True&AfterInvalidation=False": {
+      "prefix": {
+        "mean_ns": 5172.983646485018,
+        "bytes_per_operation": 8256
+      },
+      "candidate": {
+        "mean_ns": 5647.609886432009,
+        "bytes_per_operation": 7736
+      },
+      "change_percent": 9.175096470090228
+    },
+    "Listening=True&AfterInvalidation=True": {
+      "prefix": {
+        "mean_ns": 5204.138426738208,
+        "bytes_per_operation": 8256
+      },
+      "candidate": {
+        "mean_ns": 5610.387934580947,
+        "bytes_per_operation": 7736
+      },
+      "change_percent": 7.80627789905588
+    }
+  },
+  "native_setup": "Queued separately after the pair; not proven by these results."
+}

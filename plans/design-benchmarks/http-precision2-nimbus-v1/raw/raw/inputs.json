@@ -1,0 +1,24 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "published_runtime_equivalent": "6a2cc0020274e53f77778a8c906980423e19543d",
+  "origin_prepared_sha256": "1cf5f7df47d1d91f61c010b226020d558c6ead77ead3714af2706cb2dff3ef38",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "pairs": 10,
+  "warmups": 32,
+  "remaining_groups": [
+    0
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Fixed2caseprecisionconfirmation:currentMac14casecohortfailsonlythese2precisionchecks.10alternatingpairs/40freshprocesses,samedeclared32warm12actual150msBenchmarkDotNetjobonNimbus.Reuseunchangedcompiledhelper/workloadsonbothsides;no runtimerebuild,newsettings,newtimebounds,poolingoromissions.OriginalMacfailuresandall3slowcasesretained.One<=1470sownexclusivecapacityleaseafterCI;existingservicesuntouched.HistoricalmacOS-onlyharnessguarddifferencesexplicitandirrelevanttoLinux/selectedHTTPcases.",
+  "files_sha256": {
+    "run.py": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "paired.py": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5",
+    "compare.py": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4",
+    "accepted.json": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+  }
+}

@@ -1,0 +1,41 @@
+using System.Diagnostics.Tracing;
+using System.Text.Json;
+using MethodCache.Benchmarks.Comparison;
+
+foreach (var type in typeof(MethodCache.MethodCacheMemoryOptions).Assembly.GetTypes().Where(t => t.Name.Contains("DisplayClass66_0", StringComparison.Ordinal) || t.Name.Contains("DisplayClass87_0", StringComparison.Ordinal) || t.Name == "Flight"))
+    Console.WriteLine(type.FullName+" fields: "+string.Join(", ",type.GetFields(System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic).Select(f=>f.Name+":"+f.FieldType)));
+var bench = new GeneratedContractBenchmarks { SelectPerformanceCores = false };
+bench.Setup();
+try
+{
+    for (var i=0;i<10000;i++) _=bench.TaskMiss().GetAwaiter().GetResult();
+    using var listener = new AllocationListener();
+    var before=GC.GetAllocatedBytesForCurrentThread();
+    for (var i=0;i<500000;i++) _=bench.TaskMiss().GetAwaiter().GetResult();
+    var after=GC.GetAllocatedBytesForCurrentThread();
+    Console.WriteLine("Diagnostic allocated bytes per synchronous-completing Task miss: "+(after-before)/500000.0);
+    // This is an event-delivery diagnostic, never a behavioral or timing assertion.
+    Thread.Sleep(500);
+    Console.WriteLine(JsonSerializer.Serialize(listener.Snapshot()));
+}
+finally { bench.Cleanup(); }
+
+sealed class AllocationListener : EventListener
+{
+    private readonly Dictionary<string,long> _samples = new(StringComparer.Ordinal);
+    protected override void OnEventSourceCreated(EventSource source)
+    {
+        if(source.Name=="Microsoft-Windows-DotNETRuntime") EnableEvents(source,EventLevel.Verbose,(EventKeywords)1);
+    }
+    protected override void OnEventWritten(EventWrittenEventArgs data)
+    {
+        if(data.EventName?.StartsWith("GCAllocationTick",StringComparison.Ordinal)!=true || data.PayloadNames is null || data.Payload is null) return;
+        var type=data.PayloadNames.IndexOf("TypeName");
+        if(type<0 || data.Payload[type] is not string name)return;
+        lock(_samples) _samples[name]=_samples.GetValueOrDefault(name)+1;
+    }
+    public object Snapshot()
+    {
+        lock(_samples) return _samples.OrderByDescending(p=>p.Value).Select(p=>new{type=p.Key,samples=p.Value}).ToArray();
+    }
+}

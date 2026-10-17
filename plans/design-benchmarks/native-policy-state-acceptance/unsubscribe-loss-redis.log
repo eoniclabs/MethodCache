@@ -1,0 +1,77 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.Redis -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.Redis/bin/Release/net10.0/MethodCache.Redis.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.Redis.IntegrationTests -> /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll
+Test run for /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/bin/Release/net10.0/MethodCache.Redis.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.05]   Discovered:  MethodCache.Redis.IntegrationTests
+[xUnit.net 00:00:00.06]   Starting:    MethodCache.Redis.IntegrationTests
+[testcontainers.org 00:00:00.06] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 28.3.2
+  Kernel Version: 6.10.14-linuxkit
+  API Version: 1.51
+  Operating System: Docker Desktop
+  Total Memory: 7.65 GB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/johan/Library/Containers/com.docker.docker/Data/docker-cli.sock
+[testcontainers.org 00:00:00.13] Docker container 1f88b72c4a78 created
+[testcontainers.org 00:00:00.15] Start Docker container 1f88b72c4a78
+[testcontainers.org 00:00:00.21] Wait for Docker container 1f88b72c4a78 to complete readiness checks
+[testcontainers.org 00:00:01.23] Docker container 1f88b72c4a78 ready
+[testcontainers.org 00:00:01.28] Docker container ddbedd9777c8 created
+[testcontainers.org 00:00:01.29] Start Docker container ddbedd9777c8
+[testcontainers.org 00:00:01.37] Wait for Docker container ddbedd9777c8 to complete readiness checks
+[testcontainers.org 00:00:01.38] Execute "redis-cli ping" at Docker container ddbedd9777c8
+[testcontainers.org 00:00:01.43] Docker container ddbedd9777c8 ready
+Reload generation ready before confirmation: False
+Reload generation ready before confirmation: False
+[xUnit.net 00:00:01.75]     MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [FAIL]
+[xUnit.net 00:00:01.75]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:01.75]       Expected: 101
+[xUnit.net 00:00:01.75]       Actual:   201
+[xUnit.net 00:00:01.75]       Stack Trace:
+[xUnit.net 00:00:01.75]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(219,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:01.75]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(222,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:01.75]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(222,0): at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:01.75]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs(26,0): at MethodCache.TestSupport.PolicyBackendContract.RunAcceptanceAsync(String scenario, Func`3 create, FakeTimeProvider time)
+[xUnit.net 00:00:01.75]         /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/PolicyStateAcceptanceTests.cs(41,0): at MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(String scenario)
+[xUnit.net 00:00:01.75]         --- End of stack trace from previous location ---
+[testcontainers.org 00:00:01.70] Delete Docker container ddbedd9777c8
+[xUnit.net 00:00:01.95]   Finished:    MethodCache.Redis.IntegrationTests
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "disabled") [130 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "reload") [21 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "equivalent") [11 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "specificity") [4 ms]
+  Failed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "lost-message") [8 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 101
+Actual:   201
+  Stack Trace:
+     at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 219
+   at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 222
+   at MethodCache.TestSupport.PolicyBackendContract.LostMessageAsync(Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 222
+   at MethodCache.TestSupport.PolicyBackendContract.RunAcceptanceAsync(String scenario, Func`3 create, FakeTimeProvider time) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/TestSupport/PolicyBackendAcceptanceContract.cs:line 26
+   at MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(String scenario) in /Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache/tests/MethodCache.Redis.IntegrationTests/PolicyStateAcceptanceTests.cs:line 41
+--- End of stack trace from previous location ---
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "sync") [7 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "custom") [6 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyStateAcceptanceTests.PolicyState_ConformsToSharedNativeContract(scenario: "refresh") [11 ms]
+  Passed MethodCache.Redis.IntegrationTests.PolicyContractTests.PolicyTransitionsAndDeadlines_ConformToSharedContract [46 ms]
+
+Test Run Failed.
+Total tests: 9
+     Passed: 8
+     Failed: 1
+ Total time: 2,1444 Seconds

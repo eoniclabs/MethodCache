@@ -1,0 +1,18 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/design-final-gates-v1/MethodCache",
+  "runtime_sha": "9767fec6adcfe41cbe83862915ba922e06770030",
+  "workload_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "source_sha256": {
+    "Microbenchmarks/PrefixHitPathBenchmarks.cs": "c4706c76992238a3bf18a11ad88ab49ed393d48093311128f97747b12f718df1",
+    "Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c",
+    "Microbenchmarks/KeyHashLookupBenchmarks.cs": "b69f2cff541d48773964a208566ab4458fd81d1d500fd0802cbef904a91f6470",
+    "Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs": "25c6bb0cd0a37089a2f5047a3bcac42b4e8a57867c2f46682d4fc1e73cad4120"
+  },
+  "harness_program_sha256": "88302c4364bd514eb05acfe7d6beb94c9f4e61f54137839f1823dcad147238f6",
+  "compiled_capabilities": {
+    "prefix_hash": true,
+    "hash_algorithm": "Marvin32",
+    "in_place_key_builder": false
+  },
+  "statistics": "PR5 and later have no independent statistics toggle; facade and generated-interface cases measure both MeterListener states. No ineffective flag is varied."
+}

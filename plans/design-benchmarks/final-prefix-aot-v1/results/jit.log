@@ -1,0 +1,3 @@
+Native prefix hit/miss checks passed: short/long, int/Guid, sync/Task/ValueTask, listeners off/on.
+PASS Native AOT HTTP private variants, HTTP-only administration and metadata JSON
+AOT smoke test passed

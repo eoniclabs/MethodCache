@@ -1,0 +1,2 @@
+Warnings were encountered while loading the workspace. Set the verbosity option to the 'diagnostic' level to log warnings.
+<worktree>/tests/MethodCache.Benchmarks.Tests/InProcessSchedulingTests.cs(41,11): error WHITESPACE: Fix whitespace formatting. Replace 1 characters with '\n\s\s\s\s\s\s\s\s'. [<worktree>/tests/MethodCache.Benchmarks.Tests/MethodCache.Benchmarks.Tests.csproj]

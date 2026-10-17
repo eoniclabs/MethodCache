@@ -108,7 +108,7 @@ public sealed class ChaosDistributedCache : MethodCache.Extensibility.IAtomicInv
 
     public ChaosDistributedCache(IDistributedCache? inner = null, TimeProvider? time = null)
     {
-        _inner = inner ?? new MethodCache.TestSupport.AtomicTestCache();
+        _inner = inner ?? new MethodCache.TestSupport.AtomicTestCache(time);
         _time = time ?? TimeProvider.System;
     }
 

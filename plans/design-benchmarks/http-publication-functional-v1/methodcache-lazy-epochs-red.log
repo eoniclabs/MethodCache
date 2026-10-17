@@ -1,0 +1,26 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs(17,97): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj]
+/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs(22,63): warning xUnit1031: Test methods should not use blocking task operations, as they can cause deadlocks. Use an async test method and await instead. (https://xunit.net/xunit.analyzers/rules/xUnit1031) [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/MethodCache.HttpCaching.Tests.csproj]
+  MethodCache.HttpCaching.Tests -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.11]     MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors [FAIL]
+  Failed MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors [17 ms]
+  Error Message:
+   Initial slot metadata costs 240,0 B; unused epoch vectors must stay lazy.
+  Stack Trace:
+     at MethodCache.HttpCaching.Tests.Storage.LocalEpochAllocationTests.InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors() in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs:line 26
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Results File: /tmp/methodcache-sparse-tags-v1/lazy-epochs-red.trx
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 22 ms - MethodCache.HttpCaching.Tests.dll (net10.0)

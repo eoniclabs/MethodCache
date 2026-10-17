@@ -1,0 +1,96 @@
+diff --git a/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs b/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
+index a0aef763..2327aa59 100644
+--- a/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
++++ b/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
+@@ -223,7 +223,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+         }
+     }
+ 
+-    internal bool StoreLocal(string key, object payload, HttpStorageInfo info)
++    internal bool StoreLocal(string key, object payload, HttpStorageInfo info, int clientTagIndex = -1)
+     {
+         if (_local == null || info.Cost <= 0 || info.Cost > MaximumBytes || info.Deadline <= _time.GetUtcNow()) return false;
+         var now = _local.Now;
+@@ -231,7 +231,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+         _local.Add(new ValueNode<object>(key, payload)
+         {
+             Weight = info.Cost,
+-            Tags = IndexTags(info, local: true),
++            Tags = IndexTags(info, local: true, clientTagIndex: clientTagIndex),
+             Policy = info,
+             CreatedAt = now,
+             LogicalExpiresAt = deadline,
+@@ -369,6 +369,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+     {
+         if (_tagEpochs?.ContainsKey(tag) == true) _tagEpochs.AddOrUpdate(tag, static _ => LocalEpoch.Fresh(), static (_, _) => LocalEpoch.Fresh());
+         _local?.RemoveByTag(ApplicationTag(tag));
++        if (_local != null && tag.StartsWith("http:", StringComparison.Ordinal))
++        {
++            // The implicit client tag is common to every response from that client. Avoid
++            // indexing it on every publication; client invalidation visits resident nodes.
++            // Explicit application tags and URL slots retain their existing indexes.
++            foreach (var pair in _local.Map)
++                if (pair.Value.Policy is HttpStorageInfo info && Array.IndexOf(info.Tags, tag) >= 0)
++                    _local.Remove(pair.Key);
++        }
+         _observations.RemoveByTag(ApplicationTag(tag));
+     }
+ 
+@@ -508,7 +517,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+     }
+     private static string UrlTag(string target) => "\0http-url:" + target;
+     private static string ApplicationTag(string tag) => "\0http-tag:" + Convert.ToBase64String(LosslessUtf16.GetBytes(tag));
+-    private string[] IndexTags(HttpStorageInfo info, bool local)
++    private string[] IndexTags(HttpStorageInfo info, bool local, int clientTagIndex = -1)
+     {
+         // Adapter-owned tag snapshots are immutable. Weak keys avoid retaining retired client/options views.
+         var application = _applicationIndexes.GetValue(info.Tags, static tags =>
+@@ -517,8 +526,14 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+             for (var i = 0; i < tags.Length; i++) encoded[i] = ApplicationTag(tags[i]);
+             return encoded;
+         });
+-        var indexed = new string[application.Length + 1];
+-        application.CopyTo(indexed, 0);
++        var skipClient = local && clientTagIndex >= 0 && clientTagIndex < application.Length;
++        var indexed = new string[application.Length + (skipClient ? 0 : 1)];
++        if (skipClient)
++        {
++            application.AsSpan(0, clientTagIndex).CopyTo(indexed);
++            application.AsSpan(clientTagIndex + 1).CopyTo(indexed.AsSpan(clientTagIndex));
++        }
++        else application.CopyTo(indexed, 0);
+         indexed[^1] = local ? LocalSlotTag(info.LocalSlot >= 0 ? info.LocalSlot : Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
+         return indexed;
+     }
+diff --git a/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs b/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
+index 18892160..46558a18 100644
+--- a/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
++++ b/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
+@@ -39,6 +39,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+         private readonly TimeProvider _time;
+         private readonly string _client;
+         private readonly string[] _tags;
++        private readonly int _clientTagIndex;
+         private readonly HttpResponseStore.UrlSlotPrefix _slotPrefix;
+         private readonly bool _defaultTags;
+         private const string Unavailable = "|generation:unavailable:";
+@@ -50,7 +51,9 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+             _defaultTags = options.Tags.Count == 0;
+             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
+                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
+-            _tags = options.Tags.Append("http:" + MethodCacheKeys.Part(client)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
++            var clientTag = "http:" + MethodCacheKeys.Part(client);
++            _tags = options.Tags.Append(clientTag).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
++            _clientTagIndex = Array.IndexOf(_tags, clientTag);
+         }
+         /// <inheritdoc />
+         public long BodyBudget(string key, HttpCacheEntry metadata)
+@@ -112,7 +115,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+             if (lifetime <= TimeSpan.Zero || key.Contains(Unavailable, StringComparison.Ordinal)) return false;
+             var deadline = _time.GetUtcNow() + lifetime;
+             var info = Info(key, entry, deadline);
+-            if (!_core.Distributed) return _core.StoreLocal(key, entry, info);
++            if (!_core.Distributed) return _core.StoreLocal(key, entry, info, _clientTagIndex);
+             var data = HttpCacheEntrySerializer.Serialize(entry, deadline);
+             if (!await _core.WriteBytesAsync(key, data, deadline, token).ConfigureAwait(false)) return false;
+             _core.ObserveRepresentation(info);

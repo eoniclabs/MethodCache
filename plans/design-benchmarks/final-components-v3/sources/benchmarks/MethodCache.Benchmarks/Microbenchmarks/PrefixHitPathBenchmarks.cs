@@ -1,0 +1,147 @@
+using System.Diagnostics.Metrics;
+using System.Runtime.InteropServices;
+using BenchmarkDotNet.Attributes;
+using MethodCache.Generated;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace MethodCache.Benchmarks.Microbenchmarks;
+
+internal static class PrefixBenchmarkSetup
+{
+    internal static void PreferPerformanceCores()
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            if (GetThreadQos(CurrentThread(), out var quality, out _) != 0)
+                throw new InvalidOperationException("Could not inspect benchmark thread QoS.");
+            // POSIX scheduling opts a thread out of QoS permanently. In-process BDN
+            // owns that priority; retain it instead of attempting a forbidden override.
+            if (quality != 0 && SetQos(0x19, 0) != 0)
+                throw new InvalidOperationException("Could not select benchmark thread QoS.");
+        }
+    }
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_self")]
+    private static extern nint CurrentThread();
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_get_qos_class_np")]
+    private static extern int GetThreadQos(nint thread, out uint quality, out int priority);
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_set_qos_class_self_np")]
+    private static extern int SetQos(uint quality, int priority);
+}
+
+// This source uses only generated contract 1, so the identical workload can be compiled against its pre-hash base.
+[MemoryDiagnoser]
+public class PrefixHitPathBenchmarks
+{
+    private static readonly Guid Id = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
+    // Compile-time selection keeps the constructor in the benchmark's local, without a return-value copy.
+    public static bool UsesInPlaceKeyBuilder
+    {
+        get
+        {
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    private ServiceProvider _provider = null!;
+    private CachedMethod _method = null!;
+    private MeterListener? _listener;
+    internal int OriginLoads { get; private set; }
+    [Params(4, 256)] public int MethodNameLength { get; set; }
+    [Params(128, 512)] public int BufferCharacters { get; set; }
+    [Params(false, true)] public bool Listening { get; set; }
+    public bool SelectPerformanceCores { get; set; } = true;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        if (SelectPerformanceCores) PrefixBenchmarkSetup.PreferPerformanceCores();
+        var services = new ServiceCollection();
+        services.AddSingleton<IPrefixSource, PrefixSource>();
+        services.AddMethodCache();
+        _provider = services.BuildServiceProvider();
+        if (Listening)
+        {
+            _listener = new MeterListener();
+            _listener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "MethodCache") listener.EnableMeasurementEvents(instrument);
+            };
+            _listener.SetMeasurementEventCallback<long>(static (_, _, _, _) => { });
+            _listener.SetMeasurementEventCallback<double>(static (_, _, _, _) => { });
+            _listener.Start();
+        }
+        _method = _provider.GetRequiredService<GeneratedServices>().Method(typeof(IPrefixSource).FullName + ".Read",
+            typeof(IPrefixSource), new string('M', MethodNameLength), "PrefixBench.Read");
+        _ = SyncHit();
+        _ = TaskHit().GetAwaiter().GetResult();
+        _ = ValueTaskHit().GetAwaiter().GetResult();
+    }
+
+    [Benchmark]
+    public int SyncHit()
+    {
+        var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
+        key.AppendPart(Id);
+        if (call.TryGetValue<int>(ref key, out var value)) return value;
+        return call.Load(key.ToString(), this, static (_, state) => { state.OriginLoads++; return 42; }, [], CancellationToken.None);
+    }
+
+    [Benchmark]
+    public Task<int> TaskHit()
+    {
+        var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
+        key.AppendPart(Id);
+        if (call.TryGetTask<int>(ref key, out var value)) return value;
+        return call.LoadAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return Task.FromResult(42); }, [], CancellationToken.None);
+    }
+
+    [Benchmark]
+    public ValueTask<int> ValueTaskHit()
+    {
+        var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
+        key.AppendPart(Id);
+        if (call.TryGetValueTask<int>(ref key, out var value)) return value;
+        return call.LoadValueAsync(key.ToString(), this, static (_, state) => { state.OriginLoads++; return ValueTask.FromResult(42); }, [], CancellationToken.None);
+    }
+
+    [Benchmark]
+    public int KeyBuild()
+    {
+        var call = _method.Capture();
+#if METHODCACHE_KEY_BUILDER_CONSTRUCTOR
+        var key = new KeyBuilder(call, stackalloc char[BufferCharacters]);
+#else
+        var key = call.StartKey(stackalloc char[BufferCharacters]);
+#endif
+        key.AppendPart(Id);
+        return key.AsSpan().Length;
+    }
+
+    [GlobalCleanup]
+    public void Cleanup() { _listener?.Dispose(); _provider.Dispose(); }
+}
+
+public interface IPrefixSource { [Cache] int Read(Guid id); }
+public sealed class PrefixSource : IPrefixSource { public int Read(Guid id) => 42; }

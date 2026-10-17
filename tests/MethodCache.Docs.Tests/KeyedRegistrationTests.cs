@@ -76,7 +76,7 @@ public class KeyedRegistrationTests
         services.AddKeyedSingleton<IKeyedRates>(7, new KeyedRates(3));
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
-        var cache = (MethodCache.Extensibility.InMemoryCacheManager)provider.GetRequiredService<ICacheManager>();
+        var cache = provider.GetRequiredService<ICacheAdministrator>();
 
         provider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(5);
         provider.GetRequiredKeyedService<IKeyedRates>(KeyedRegion.Eu).Get(5);
@@ -85,25 +85,21 @@ public class KeyedRegistrationTests
         foreach (var key in new object[] { "ecb", KeyedRegion.Eu, 7 })
         {
             var expected = MethodCacheKeys.For(typeof(IKeyedRates), MethodCacheKeys.KeyedMethodName(nameof(IKeyedRates.Get), key), MethodCacheKeys.Part(5));
-            Assert.True(cache.TryGetFast<int>(expected, out _), $"No entry under {expected}");
+            Assert.NotNull(cache.GetEntry(expected));
         }
     }
 
-    // The docs say a KeyedService.AnyKey registration is left uncached: its implementation gets the requested key
+    // A cacheable AnyKey registration must fail instead of silently bypassing its generated binding.
     [Fact]
-    public void AnyKeyRegistration_IsNotCached()
+    public void AnyKeyRegistration_ReportsUnsupportedBinding()
     {
         var rates = new KeyedRates(1);
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IKeyedRates>(KeyedService.AnyKey, rates);
-        services.AddMethodCache();
-        using var provider = services.BuildServiceProvider();
-
-        var service = provider.GetRequiredKeyedService<IKeyedRates>("any");
-        service.Get(1);
-        service.Get(1);
-        Assert.Same(rates, service);
-        Assert.Equal(2, rates.Calls);
+        var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
+        Assert.Contains("AnyKey", error.Message);
+        Assert.Contains(nameof(IKeyedRates), error.Message);
+        Assert.Equal(0, rates.Calls);
     }
 
     // A null service key makes an unkeyed registration, cached like one

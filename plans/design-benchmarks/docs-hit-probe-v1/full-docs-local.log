@@ -1,0 +1,7 @@
+Test run for /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   120, Skipped:     0, Total:   120, Duration: 838 ms - MethodCache.Docs.Tests.dll (net10.0)

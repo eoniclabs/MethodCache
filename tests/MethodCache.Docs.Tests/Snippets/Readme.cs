@@ -88,9 +88,9 @@ namespace Docs.Readme
         public static async Task FromCode(ICacheManager cache)
         {
             // begin-snippet: readme-invalidation
-            await cache.InvalidateByTagsAsync("user:42");
-            await cache.InvalidateByKeysAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
-            await cache.InvalidateByTagPatternAsync("tenant:7:*");   // in-memory only
+            await cache.InvalidateTagAsync("user:42");
+            await cache.InvalidateKeyAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+            await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
             // end-snippet
         }
     }
@@ -101,7 +101,7 @@ namespace Docs.Readme
         {
             // begin-snippet: readme-configuration
             builder.Services.AddMethodCache(config =>
-                config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(5))));
+                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
             builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
             // end-snippet
         }
@@ -118,7 +118,6 @@ namespace Docs.Readme
         {
             // begin-snippet: readme-monitoring
             builder.Services.AddHealthChecks().AddMethodCache();         // MethodCache.AspNetCore
-            builder.Services.AddMethodCacheOpenTelemetry();               // MethodCache.OpenTelemetry
             builder.Services.AddOpenTelemetry()
                 .WithTracing(t => t.AddMethodCacheInstrumentation())
                 .WithMetrics(m => m.AddMethodCacheInstrumentation());
@@ -131,7 +130,7 @@ namespace Docs.Readme
         public static void NativeAot(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-native-aot
-            builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(AppJsonContext.Default.Options));
+            builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
             // end-snippet
         }
     }

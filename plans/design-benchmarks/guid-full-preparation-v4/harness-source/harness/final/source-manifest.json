@@ -1,0 +1,15 @@
+{
+  "runtime_root": "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v2/checkouts/final",
+  "runtime_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "workloads_sha": "b92553dac51d0a29f1784508ca4cbacedeea73ea",
+  "source_sha256": {
+    "Comparison/GeneratedContractBenchmarks.cs": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+    "Microbenchmarks/HttpResponsePathBenchmarks.cs": "26a7340764c6365248a4f557f3cf3eaf387e6ffb158f62699ba0fbb4a0841c9c",
+    "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+  },
+  "harness_program_sha256": "29b14d2140c7b9ef69eb999fda9e5bd8c5f56f2fdcedb65c05c3198ce6817888",
+  "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+  "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature.",
+  "canonical_harness_program_sha256": "6c99ccdb3c33c72809ce4aba1432582d7fa2fbc9defc304ca03fc85984743131",
+  "preparation_extension_sha256": "4ffb8abda8cb0240690d87726592396617246c262e40c734ecbda42d7c6e069f"
+}

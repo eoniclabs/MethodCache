@@ -1,0 +1,8 @@
+Unhandled exception. System.InvalidOperationException: BDN generation failed.
+ ---> System.NotSupportedException: Unable to find MethodCache.Benchmarks in /private/tmp/methodcache-iteration-component-green and its subfolders. Most probably the name of output exe is different than the name of the .(c/f)sproj
+   at BenchmarkDotNet.Toolchains.CsProj.CsProjGenerator.GetProjectFilePath(Type benchmarkTarget, ILogger logger)
+   at BenchmarkDotNet.Toolchains.CsProj.CsProjGenerator.GenerateProject(BuildPartition buildPartition, ArtifactsPaths artifactsPaths, ILogger logger)
+   at BenchmarkDotNet.Toolchains.GeneratorBase.GenerateProject(BuildPartition buildPartition, ILogger logger, String rootArtifactsFolderPath)
+   --- End of inner exception stack trace ---
+   at Program.<Main>$(String[] args) in /private/tmp/methodcache-iteration-component-green/Program.cs:line 38
+   at Program.<Main>(String[] args)

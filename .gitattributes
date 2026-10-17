@@ -11,3 +11,6 @@
 *.ps1 text eol=crlf
 # Verify snapshots of generated code
 *.verified.cs text eol=lf working-tree-encoding=UTF-8
+
+# Evidence manifests hash exact retained bytes, including original line endings.
+plans/design-benchmarks/** -text

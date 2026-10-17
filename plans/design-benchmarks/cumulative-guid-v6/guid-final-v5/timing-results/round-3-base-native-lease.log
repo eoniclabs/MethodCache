@@ -1,0 +1,27 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-guid-timing-v6-round-3-base-native 2026-10-16T13:46:46.422312+00:00
+[testcontainers.org 00:00:00.10] Connected to Docker:
+  Host: unix:///var/run/docker.sock
+  Server Version: 29.1.3
+  Kernel Version: 6.17.0-41-generic
+  API Version: 1.52
+  Operating System: Ubuntu 25.10
+  Total Memory: 61.40 GB
+[testcontainers.org 00:00:00.37] Docker container de62ca973a51 created
+[testcontainers.org 00:00:00.38] Docker container ff3140c0295a created
+[testcontainers.org 00:00:00.40] Start Docker container ff3140c0295a
+[testcontainers.org 00:00:00.40] Start Docker container de62ca973a51
+[testcontainers.org 00:00:00.61] Wait for Docker container ff3140c0295a to complete readiness checks
+[testcontainers.org 00:00:00.62] Execute "redis-cli ping" at Docker container ff3140c0295a
+[testcontainers.org 00:00:00.65] Wait for Docker container de62ca973a51 to complete readiness checks
+[testcontainers.org 00:00:00.65] Execute "/bin/sh -c find /opt/mssql-tools*/bin/sqlcmd -type f -print -quit" at Docker container de62ca973a51
+[testcontainers.org 00:00:00.68] Docker container ff3140c0295a ready
+[testcontainers.org 00:00:00.68] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container de62ca973a51
+[testcontainers.org 00:00:09.24] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container de62ca973a51
+[testcontainers.org 00:00:10.28] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container de62ca973a51
+[testcontainers.org 00:00:11.32] Execute "/opt/mssql-tools18/bin/sqlcmd -C -b -r 1 -d master -Q SELECT 1;" at Docker container de62ca973a51
+[testcontainers.org 00:00:11.37] Docker container de62ca973a51 ready
+Verified complete measured cases: 16 2026-10-16T13:53:21.743174+00:00
+Verified both actual native container image IDs against their frozen digests; connection strings omitted.
+[testcontainers.org 00:06:34.90] Delete Docker container de62ca973a51
+[testcontainers.org 00:06:35.25] Delete Docker container ff3140c0295a
+Releasing exclusive lease methodcache-design-20261015-01a13a93-guid-timing-v6-round-3-base-native exit 0 2026-10-16T13:53:22.605272+00:00

@@ -1,0 +1,65 @@
+{
+  "purpose": "Warmup-quality diagnostic only: fixed8processes(originalf438/A2,Revalidated/ColdMiss,warmups4/32),sameoriginalcompiledlibraries/workload,12actual150ms,GC/affinity/quiet. No statistical acceptance or candidate adoption from this probe.",
+  "label": "design-warmup-probe-v1",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "launches": [
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "base",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "head",
+      "warmups": 32,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "head",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+    },
+    {
+      "side": "base",
+      "warmups": 4,
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+    }
+  ],
+  "files_sha256": [
+    {
+      "path": "project/Profile.csproj",
+      "sha256": "76fb06b75bf60ea9bd106f4f1bf0d7c1240d9a6f55cb63b49b27af48a9599efd"
+    },
+    {
+      "path": "project/Program.cs",
+      "sha256": "aa6516bded5ae81c98cf72ac44ccba492d5473135ca1e603834590a5f516a6fe"
+    },
+    {
+      "path": "run.py",
+      "sha256": "cc81d9898f44e4d7f36023cde7b3cdb91c34032015455dc4f3717069fc0d0aa7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "prepare_label": "design-sparse-tags-lazy-epochs-pilot-v1-prepare",
+  "pairs": 5,
+  "warmups": 32,
+  "remaining_groups": [
+    0
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Diagnostic fixed two-case cumulative pilot only: f438 vs A2+A3+sparseTagNodeSet+lazy initial local epochs; five alternating pairs,32warm12actual150ms. Exact frozen helper/workload. Slot identifiers still use unique UUIDs once referred to by a nonempty generation vector; no reused identity or native L2 change. Both earlier complete failures and sparse-only pilot retained; not full HTTP/cumulative acceptance.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "b09bda914728d3e24355b779d85cb9c419efda899298ad2739f3bb5d1c168e80"
+    },
+    {
+      "path": "run.py",
+      "sha256": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "sparse-tags.patch",
+      "sha256": "eb63446bbb1726704e3664da6a4fe67561a4ceae2e890c735e09446179792e0b"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "1067fa0559ec97076ca8d5081f3edafd2712bcc446610ed68dedaeef043324da"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "published_runtime": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "original_cpu53_runtime": "abd0eae840e9b277358ca643a1d4ddb3d56653cf plus measured two-line node-hash reuse patch",
+  "patch_sha256": "8532d16c446508acb572725a9ce3cc39bd24a7ed31fa51753d543ef346fb21ac",
+  "current_files": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+      "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+    },
+    {
+      "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
+      "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+      "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/README.md",
+      "sha256": "65a4eb52e93639f73bb0d32e3ed7998e508cedeff15748a772c8d8a3bcc3a0ab"
+    }
+  ],
+  "analysis": {
+    "MemoryCacheEngine": "Node hash reuse was already in the cpu53 measured patch. Sparse tag sets only change indexing/unindexing; none of the retained generated/memory cases registers tags. Node layout and resident lookup paths are unchanged. Current enabled-origin eviction/single-flight CPU scenarios are confirmed separately in compact10.",
+    "CoreTelemetry": "Only BeginLoad/BeginDistributed operation scopes change; request/hit recording remains unchanged. Retained hits allocate no operation scope. Enabled-origin misses and pressure use the complete compact10 confirmation; HTTP origin paths use current Mac14/Nimbus2. No-listener operations still return null before allocation.",
+    "HTTP": "LocalEpoch/generation values and metadata text are materialized lazily; implicit-client indexing and direct invalidation are updated. These affect key/generation setup, publication and administration. For the retained resident hit cases, setup primes the cached generation vector and metadata and no origin/publication/admin operation runs inside the measurement. TryGetLocal and handler resident-return bodies are unchanged; added View/HttpStorageInfo fields are initialized outside the measured hit and do not change Node layout. Changed miss/revalidation paths use the current14case confirmation with exact2case precision follow-up.",
+    "readme": "Uncompiled documentation only."
+  },
+  "scope": "Source-impact qualification of earlier precise whole cases, not a claim that all measured binaries equal current. Actual source points/raw files remain explicit in coverage.json."
+}

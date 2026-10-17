@@ -13,6 +13,7 @@ public class HttpCachingRegistrationTests
     public void AddHttpCaching_LeavesTheAppsMemoryCacheAlone()
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("api").AddHttpCaching();
         services.AddMemoryCache();
 
@@ -27,6 +28,7 @@ public class HttpCachingRegistrationTests
     public void AddHttpCaching_DoesNotRegisterAnIMemoryCache()
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("api").AddHttpCaching();
 
         Assert.Null(services.BuildServiceProvider().GetService<IMemoryCache>());
@@ -36,6 +38,7 @@ public class HttpCachingRegistrationTests
     public void EachHttpClient_GetsItsOwnOptions()
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("fast").AddHttpCaching(o => o.DefaultMaxAge = TimeSpan.FromMinutes(1));
         services.AddHttpClient("slow").AddHttpCaching(o => o.DefaultMaxAge = TimeSpan.FromHours(1));
 
@@ -50,6 +53,7 @@ public class HttpCachingRegistrationTests
     {
         var origin = new CountingOrigin();
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("a").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
         services.AddHttpClient("b").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
         var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
@@ -66,6 +70,7 @@ public class HttpCachingRegistrationTests
     {
         var origin = new CountingOrigin();
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("api", c => c.BaseAddress = new Uri("https://api.example.com/"))
             .AddHttpCaching(o => o.AllowUnverifiedTransport = true)
             .ConfigurePrimaryHttpMessageHandler(() => origin);
@@ -87,8 +92,8 @@ public class HttpCachingRegistrationTests
         IHttpClientFactory CreateInstance()
         {
             var services = new ServiceCollection();
-            services.AddSingleton<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(distributed);
-            services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+            services.AddMethodCache();
+            services.AddMethodCacheDistributedCache(_ => MethodCache.TestSupport.HttpEpochTestCache.Wrap(distributed));
             services.AddHttpClient("api").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => origin);
             return services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
         }
@@ -102,24 +107,13 @@ public class HttpCachingRegistrationTests
     }
 
     [Fact]
-    public void UseDistributedCache_WithoutADistributedCache_ExplainsWhatIsMissing()
-    {
-        var services = new ServiceCollection();
-        services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
-        services.AddHttpClient("api").AddHttpCaching();
-
-        var error = Assert.Throws<InvalidOperationException>(() => services.BuildServiceProvider().GetRequiredService<IHttpCacheStorage>());
-        Assert.Contains("IDistributedCache", error.Message);
-    }
-
-    [Fact]
     public async Task Requests_AreCountedOnTheMethodCacheMeter()
     {
         var outcomes = new List<string>();
         using var listener = new System.Diagnostics.Metrics.MeterListener();
         listener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == "MethodCache" && instrument.Name == "methodcache.http.requests_total")
+            if (instrument.Meter.Name == "MethodCache" && instrument.Name == "methodcache.requests")
             {
                 l.EnableMeasurementEvents(instrument);
             }
@@ -128,7 +122,7 @@ public class HttpCachingRegistrationTests
         {
             foreach (var tag in tags)
             {
-                if (tag.Key == "outcome")
+                if (tag.Key == "result")
                 {
                     lock (outcomes)
                     {
@@ -140,6 +134,7 @@ public class HttpCachingRegistrationTests
         listener.Start();
 
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("metered").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => new CountingOrigin());
         services.AddHttpClient("down").AddHttpCaching(o => o.AllowUnverifiedTransport = true).ConfigurePrimaryHttpMessageHandler(() => new FailingOrigin());
         var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
@@ -148,9 +143,12 @@ public class HttpCachingRegistrationTests
         await client.GetStringAsync("https://api.example.com/metered");
         await Assert.ThrowsAsync<HttpRequestException>(() => factory.CreateClient("down").GetStringAsync("https://api.example.com/down"));
 
-        Assert.Contains("miss", outcomes);
-        Assert.Contains("hit", outcomes);
-        Assert.Contains("error", outcomes);
+        lock (outcomes)
+        {
+            Assert.Contains("miss", outcomes);
+            Assert.Contains("hit", outcomes);
+            Assert.Contains("error", outcomes);
+        }
     }
 
     private sealed class FailingOrigin : HttpMessageHandler

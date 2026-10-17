@@ -1,0 +1,13 @@
+{
+  "runtime_root": "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache",
+  "runtime_sha": "3700ade78a1450e16ad25cd90035268972e3e949",
+  "workloads_sha": "3700ade78a1450e16ad25cd90035268972e3e949",
+  "source_sha256": {
+    "Comparison/GeneratedContractBenchmarks.cs": "333cc879a1391b6a4e2c156d3ea9c88480c227727bdfc84b9d259067119d437d",
+    "Microbenchmarks/HttpResponsePathBenchmarks.cs": "26a7340764c6365248a4f557f3cf3eaf387e6ffb158f62699ba0fbb4a0841c9c",
+    "Microbenchmarks/DesignWorkloadBenchmarks.cs": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+  },
+  "harness_program_sha256": "82eeb85edde8bc5f7bedb623110aa01e1a0935034ca544541214066973080342",
+  "roundtrip_before_pr4": "Feature absent; both labels retain the existing baseline behavior; report separately.",
+  "keepcookies_before_pr6": "HttpClient without AddHttpCaching, preserving cookie behavior; new workload, not a previous cache feature."
+}

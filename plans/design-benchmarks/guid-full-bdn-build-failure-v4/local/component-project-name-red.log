@@ -1,0 +1,19 @@
+F
+======================================================================
+FAIL: test_component_project_is_discoverable_by_benchmark_assembly_name (test_harness_project_names.HarnessProjectNameTests.test_component_project_is_discoverable_by_benchmark_assembly_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/benchmarks/MethodCache.Benchmarks/validation/test_harness_project_names.py", line 21, in test_component_project_is_discoverable_by_benchmark_assembly_name
+    self.assertEqual(assembly, projects[0].stem,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     'BDN must discover the project by its benchmark assembly name')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'MethodCache.Benchmarks' != 'PrefixValidation'
+- MethodCache.Benchmarks
++ PrefixValidation
+ : BDN must discover the project by its benchmark assembly name
+
+----------------------------------------------------------------------
+Ran 1 test in 0.058s
+
+FAILED (failures=1)

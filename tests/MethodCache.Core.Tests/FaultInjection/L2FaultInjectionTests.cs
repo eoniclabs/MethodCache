@@ -26,7 +26,7 @@ public class L2FaultInjectionTests
     // Only bounds the real time a test waits for work that the fake clock already released
     private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
 
-    private const string EntryKey = "methodcache:e:key";
+    private const string EntryKey = "methodcache:e6:s1:key";
 
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
     private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
@@ -52,8 +52,7 @@ public class L2FaultInjectionTests
             _time);
 
         var node = new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             _time,
             layer);
         return (node, layer);
@@ -201,7 +200,9 @@ public class L2FaultInjectionTests
         var miss = Get(node, "key", () => "loaded");
         for (var roundTrip = 1; roundTrip <= 3; roundTrip++)
         {
-            await WaitUntil(() => chaos.FaultsStarted == roundTrip && chaos.Blocked == 1);
+            try { await WaitUntil(() => chaos.FaultsStarted == roundTrip && chaos.Blocked == 1); }
+            catch (Exception error)
+            { throw new InvalidOperationException($"Waiting for round trip {roundTrip}: started={chaos.FaultsStarted}, blocked={chaos.Blocked}, load={miss.Status}.", error); }
             miss.IsCompleted.Should().BeFalse();
             _time.Advance(delay);
         }
@@ -216,7 +217,7 @@ public class L2FaultInjectionTests
     {
         { "half", ChaosFault.Truncated() },
         { "empty", ChaosFault.Truncated(0) },
-        { "header only", ChaosFault.Truncated(22) },
+        { "header only", ChaosFault.Truncated(30) },
         { "inverted", ChaosFault.Corrupted() },
         { "random", ChaosFault.Corrupted(bytes => { new Random(42).NextBytes(bytes); return bytes; }) },
         { "last byte cut", ChaosFault.Corrupted(bytes => bytes[..^1]) },
@@ -492,10 +493,10 @@ public class L2FaultInjectionTests
     }
 
     [Fact]
-    public async Task WriteThatTimesOut_AndLandsAfterTheRetry_StaysUntilItExpires()
+    public async Task WriteThatTimesOut_AndLandsAfterTheRetry_IsRejectedByRemovalMetadata()
     {
-        // Observed and documented, not guaranteed: once the queued removal has run, nothing watches the key, so a
-        // write that lands even later stays until its own expiry
+        // A late transport may replace the physical bytes, but its original load timestamp
+        // predates the removal metadata and must never become readable again.
         var chaos = Chaos().Inject(ChaosOperations.Set, ChaosFault.HangIgnoringToken() with { Keys = static key => key == EntryKey, Times = 1 });
         var (late, lateLayer) = CreateNode(chaos, backplane: true);
         var (writer, _) = CreateNode(backplane: true);
@@ -514,7 +515,7 @@ public class L2FaultInjectionTests
         chaos.ReleaseHeld();
         await WaitUntil(() => chaos.LandedLate == 1);
 
-        (await Get(CreateNode().Node, "key", () => "unused")).Should().Be("old", "the late write replaced the newer value");
+        (await Get(CreateNode().Node, "key", () => "unused")).Should().Be("unused", "the late write predates the removal metadata");
         _time.Advance(OneMinute);
         (await Get(CreateNode().Node, "key", () => "fresh")).Should().Be("fresh");
     }

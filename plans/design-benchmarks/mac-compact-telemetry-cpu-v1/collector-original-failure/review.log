@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/tmp/methodcache-review-compact-nonhttp-v1.py", line 52, in <module>
+    path=Path(lib['location']);assert path.is_relative_to(source/'bin'/row['point']/row['family'])and sha(path)==lib['sha256'].lower()
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

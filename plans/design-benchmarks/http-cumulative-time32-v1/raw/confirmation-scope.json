@@ -1,0 +1,277 @@
+{
+  "scope": "Planning inventory fixed before any candidate paired result is inspected. No launch exclusion, no changed precision/slowdown rule, no new accepted cost. Original complete53case report remains failed. Cases include all existing uncertainty/slowness plus additional observed phase-drift concerns; candidate affected cases may add coverage, never remove this list.",
+  "source_sha256": "eea7024fb95ca5646b5ec35abf0744f8e28b8e70ca0aa844e6701784b4968e6c",
+  "original_report_sha256": "8e40fc504788fbcdd8382a0ed434c01a441ef605013144fe8fba05f57fd2de80",
+  "phase_drift_selection_threshold": 0.05,
+  "cases": [
+    {
+      "case": "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0962366507239274,
+        "head": 2.2852575715862384
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0772457280284233,
+        "head": 1.0200572589403634
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0309611740956555,
+        "head": 1.007159131719615
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0093931121211326,
+        "head": 1.0134336699061541
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0616270991882182,
+        "head": 1.0042023434550282
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0100041570994336,
+        "head": 0.9956733596130004
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+      "original_verdict": "faster",
+      "reasons": [
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0908151594496003,
+        "head": 0.9912744916830447
+      }
+    },
+    {
+      "case": "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)",
+      "original_verdict": "faster",
+      "reasons": [
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0604774564939867,
+        "head": 1.0014933609920507
+      }
+    },
+    {
+      "case": "GeneratedContractBenchmarks.FallbackHit()",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.320002290152486,
+        "head": 1.181756990652461
+      }
+    },
+    {
+      "case": "GeneratedContractBenchmarks.SyncHit()",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 0.9960969287775425,
+        "head": 0.9918018244371669
+      }
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.3893818325299696,
+        "head": 1.3894758620942262
+      }
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.305047282671834,
+        "head": 1.2694782248107956
+      }
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+      "original_verdict": "**slower**",
+      "reasons": [
+        "Original full-study precise slowdown",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.2587728661556368,
+        "head": 1.2513993220682242
+      }
+    },
+    {
+      "case": "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+      "original_verdict": "**slower**",
+      "reasons": [
+        "Original full-study precise slowdown",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.30135257807259,
+        "head": 1.2172076544531119
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.0759139306686327,
+        "head": 1.976510747791956
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.5644029860928081,
+        "head": 2.1093064689707766
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.5222130320539524,
+        "head": 2.450107121181494
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.1155344185559426,
+        "head": 2.143800536735899
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.447389212510313,
+        "head": 2.234371966804482
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.5034333872209387,
+        "head": 2.2342233063897883
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.4398153557023659,
+        "head": 2.204316713412959
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement",
+        "Replicated phase drift: median first3/last3 differs by>5% on at least one side; confirmation concern, not an acceptance waiver"
+      ],
+      "phase_ratio": {
+        "base": 1.6923769636920891,
+        "head": 2.2395497863795644
+      }
+    },
+    {
+      "case": "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)",
+      "original_verdict": "**too noisy**",
+      "reasons": [
+        "Original 95% interval exceeds unchanged6%precision requirement"
+      ],
+      "phase_ratio": {
+        "base": 1.0037171021181845,
+        "head": 0.9989926837913292
+      }
+    }
+  ]
+}

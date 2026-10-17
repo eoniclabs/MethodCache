@@ -1,0 +1,16 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False) | 7322.3 | 7305.6 | 0.998 | 0.981-1.015 | same |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7243.6 | 9936.9 | 1.371 | 1.344-1.398 | **slower** |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7263.0 | 9916.2 | 1.365 | 1.340-1.390 | **slower** |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 7248.1 | 9994.7 | 1.384 | 1.364-1.405 | **slower** |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7234.2 | 10122.0 | 1.395 | 1.373-1.417 | **slower** |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7778.0 | 7596.4 | 0.973 | 0.958-0.988 | same |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7680.8 | 7594.9 | 0.995 | 0.983-1.007 | same |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 7728.6 | 7666.0 | 0.987 | 0.967-1.007 | same |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7694.2 | 7680.1 | 0.994 | 0.986-1.001 | same |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False) | 5235.3 | 5371.4 | 1.022 | 1.007-1.037 | same |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True) | 5282.0 | 5332.8 | 1.012 | 0.994-1.030 | same |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False) | 5289.8 | 5525.3 | 1.048 | 1.014-1.082 | **too noisy** |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True) | 5242.3 | 5570.7 | 1.065 | 1.047-1.083 | **slower** |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False) | 3711.4 | 3057.3 | 0.821 | 0.805-0.838 | faster |

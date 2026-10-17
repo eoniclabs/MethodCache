@@ -15,7 +15,37 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         {
             var ids = new MethodCacheAnalyzer().SupportedDiagnostics.Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal);
 
-            Assert.Equal(new[] { "MC0001", "MC0004" }, ids);
+            Assert.Equal(new[] { "MC0001", "MC0002", "MC0021" }, ids);
+        }
+
+        [Theory]
+        [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.Values), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
+        public async Task SharedDurationCorpus_ValidValues(string text, long ticks)
+        {
+            _ = ticks;
+            Assert.Empty(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Duration = \"" + text + "\")] int Read(); }"));
+        }
+
+        [Theory]
+        [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.Invalid), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
+        public async Task SharedDurationCorpus_InvalidValues(string text)
+        {
+            Assert.Equal("MC0002", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Duration = \"" + text + "\")] int Read(); }")).Id);
+        }
+
+        [Fact]
+        public async Task ExplicitNegativeVersion_IsAnError()
+            => Assert.Equal("MC0021", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Version = -1)] int Read(); }")).Id);
+
+        [Fact]
+        public async Task ArrayValuedTags_DoNotCrashDurationValidation()
+        {
+            var source = """
+                using MethodCache;
+                [assembly: CacheInterface(typeof(IReader), "Read", Tags = new[] { "users" }, Duration = "1m")]
+                public interface IReader { [Cache(Tags = new[] { "users", "{id}" }, Duration = "1m")] int Read(int id); }
+                """;
+            Assert.Empty(await AnalyzeAsync(source));
         }
 
         [Theory]
@@ -150,7 +180,7 @@ public class Generated
         [InlineData("RefreshAhead", "-00:01:00")]
         [InlineData("FailSafe", "1 hour")]
         [InlineData("FailSafeTimeout", "00:00:00")]
-        public async Task CacheWithInvalidTimeSpan_ReportsMC0004(string property, string value)
+        public async Task CacheWithInvalidTimeSpan_ReportsMC0002(string property, string value)
         {
             var source = $@"
 using MethodCache;
@@ -164,7 +194,7 @@ public interface IService
             var diagnostic = Assert.Single(await AnalyzeAsync(source));
             Assert.Equal(MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId, diagnostic.Id);
             Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Equal($"{property} = \"{value}\" is not a positive time span; use a value such as \"00:05:00\"", diagnostic.GetMessage());
+            Assert.Equal($"{property} = \"{value}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"", diagnostic.GetMessage());
         }
 
         [Theory]
@@ -188,7 +218,7 @@ public interface IService
         [Theory]
         [InlineData("Duration", "5 minutes")]
         [InlineData("RefreshAhead", "00:00:00")]
-        public async Task CacheInterfaceWithInvalidTimeSpan_ReportsMC0004(string property, string value)
+        public async Task CacheInterfaceWithInvalidTimeSpan_ReportsMC0002(string property, string value)
         {
             var source = $@"
 using MethodCache;

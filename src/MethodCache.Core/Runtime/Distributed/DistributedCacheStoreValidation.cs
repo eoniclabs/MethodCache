@@ -21,11 +21,11 @@ namespace MethodCache.Core.Runtime.Distributed
         {
             public ValidateOptionsResult Validate(string? name, DistributedCacheStoreValidation options)
             {
-                var cache = services.GetKeyedService<IDistributedCache>(ownCacheKey) ?? services.GetService<IDistributedCache>();
+                var cache = services.GetKeyedService<IDistributedCache>(ownCacheKey);
                 if (cache == null)
                 {
                     return ValidateOptionsResult.Fail(
-                        "AddMethodCacheDistributedCache() needs an IDistributedCache: register one that implements IAtomicInvalidationStore, " +
+                        "MethodCache needs an owned IDistributedCache implementing IAtomicInvalidationStore; the application cache is not a fallback. " +
                         "or use AddMethodCacheRedis() or AddMethodCacheSqlServer().");
                 }
 

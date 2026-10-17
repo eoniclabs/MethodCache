@@ -1,0 +1,8 @@
+  Failed MethodCache.Core.Tests.Telemetry.TelemetryPrivacyTests.FailedPolicyWatcher_DoesNotLogExceptionPayload [12 s]
+  Error Message:
+   System.TimeoutException : The operation has timed out.
+  Stack Trace:
+     at MethodCache.Core.Tests.Telemetry.TelemetryPrivacyTests.FailedPolicyWatcher_DoesNotLogExceptionPayload() in /_/tests/MethodCache.Core.Tests/Telemetry/TelemetryPrivacyTests.cs:line 156
+   at MethodCache.Core.Tests.Telemetry.TelemetryPrivacyTests.FailedPolicyWatcher_DoesNotLogExceptionPayload() in /_/tests/MethodCache.Core.Tests/Telemetry/TelemetryPrivacyTests.cs:line 159
+--- End of stack trace from previous location ---
+Starting test execution, please wait...

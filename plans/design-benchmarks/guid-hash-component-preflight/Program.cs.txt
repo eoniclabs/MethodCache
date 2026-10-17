@@ -1,0 +1,60 @@
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Running;
+using MethodCache.Benchmarks.Microbenchmarks;
+using MethodCache.Generated;
+if (args.Contains("--verify-components"))
+{
+    var core = typeof(CachedMethod).Assembly;
+    var expectedPrefixHash = core.GetType("MethodCache.Core.Runtime.Keys.PrehashedKey") != null;
+    var expectedSipHash = core.GetType("MethodCache.Core.Runtime.Keys.SipHashState") != null;
+    var expectedConstructor = typeof(KeyBuilder).GetConstructors().Any(constructor =>
+    {
+        var parameters = constructor.GetParameters();
+        return parameters.Length == 2 && parameters[0].ParameterType == typeof(MethodCall) && parameters[1].ParameterType == typeof(Span<char>);
+    });
+    if (KeyHashLookupBenchmarks.UsesPrefixHash != expectedPrefixHash || KeyHashLookupBenchmarks.UsesSipHash != expectedSipHash ||
+        PrefixHitPathBenchmarks.UsesInPlaceKeyBuilder != expectedConstructor)
+        throw new Exception("Compiled component paths do not match the referenced Core implementation.");
+    Console.WriteLine($"Verified compiled capabilities: prefix={expectedPrefixHash}, SipHash={expectedSipHash}, in-place builder={expectedConstructor}.");
+    foreach (var length in new[] { 4, 80, 256 })
+    foreach (var argument in new[] { "Int", "Guid" })
+    {
+        var lookup = new KeyHashLookupBenchmarks { PrefixCharacters = length, ArgumentKind = argument, SelectPerformanceCores = false };
+        lookup.Setup();
+        if (lookup.ReadyStringLookup() != 42 || lookup.FullSpanLookup() != 42 || lookup.PrefixLookup() != 42)
+            throw new Exception("Component lookup missed.");
+    }
+    foreach (var length in new[] { 4, 256 })
+    foreach (var buffer in new[] { 128, 512 })
+    foreach (var listening in new[] { false, true })
+    {
+        var hit = new PrefixHitPathBenchmarks
+        { MethodNameLength = length, BufferCharacters = buffer, Listening = listening, SelectPerformanceCores = false };
+        // Preserve a setup exception: cleanup requires a successfully created provider.
+        hit.Setup();
+        try
+        {
+            for (var i = 0; i < 100; i++)
+                if (hit.SyncHit() != 42 || await hit.TaskHit() != 42 || await hit.ValueTaskHit() != 42)
+                    throw new Exception("Facade component missed.");
+            var keyLength = hit.KeyBuild();
+            if (hit.OriginLoads != 1 || keyLength <= length || (length == 256 && buffer == 128 && keyLength <= buffer))
+                throw new Exception("Component setup did not exercise its declared prefix/growth or caching.");
+        }
+        finally { hit.Cleanup(); }
+    }
+    var reference = new MemoryCacheLookupReferenceBenchmarks { SelectPerformanceCores = false };
+    reference.Setup();
+    try
+    {
+        if (reference.ReadyKeySync() != 42 || reference.BuiltKeySync() != 42 ||
+            await reference.ReadyKeyTask() != 42 || await reference.BuiltKeyTask() != 42)
+            throw new Exception("Reference cache missed.");
+    }
+    finally { reference.Cleanup(); }
+    Console.WriteLine("Verified all component prefix/growth/listener/cache/reference setup combinations.");
+    return;
+}
+BenchmarkSwitcher.FromTypes(new[] {typeof(PrefixHitPathBenchmarks),typeof(KeyHashLookupBenchmarks),typeof(MemoryCacheLookupReferenceBenchmarks)})
+ .Run(args,DefaultConfig.Instance.AddJob(Job.Default.WithGcServer(false).WithGcConcurrent(true)));

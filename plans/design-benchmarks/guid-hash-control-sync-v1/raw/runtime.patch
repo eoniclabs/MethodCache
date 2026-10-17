@@ -1,0 +1,31 @@
+diff --git a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+index 4c115708..8e50eebf 100644
+--- a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
++++ b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+@@ -603,6 +603,7 @@ internal sealed class MemoryCacheEngine
+     private bool OnTimerExpired(Node node)
+     {
+         // Already detached from the wheel by the caller.
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -732,6 +733,7 @@ internal sealed class MemoryCacheEngine
+ 
+     private void EvictNode(Node node)
+     {
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+--- a/src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs
++++ b/src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs
+@@ -83,7 +83,7 @@
+             _jitter = ToNanos(_options.JitterMaxDuration);
+ 
+             var maximum = _weigher != null ? _options.MaxMemoryBytes : _options.MaxItems;
+-            _engine = new MemoryCacheEngine(maximum, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)Math.Min(_options.MaxItems, int.MaxValue));
++            _engine = new MemoryCacheEngine(maximum, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)Math.Min(_options.MaxItems, int.MaxValue), useRuntimeStringComparer: true);
+ 
+             if (_options.EnableBackgroundCleanup)
+             {

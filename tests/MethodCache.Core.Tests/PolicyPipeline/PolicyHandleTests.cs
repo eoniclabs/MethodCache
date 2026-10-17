@@ -15,6 +15,22 @@ public class PolicyHandleTests
     private static readonly string MethodId = $"{typeof(IOrders).FullName!.Replace('+', '.')}.Get";
 
     [Fact]
+    public void Handle_AuditOnlyUpdate_PreservesGeneration()
+    {
+        var policy = CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(5), Tags = new[] { "a", "b" } };
+        var handle = new PolicyHandle(new PolicyResolutionResult(MethodId, policy, [], DateTimeOffset.UnixEpoch, version: 1));
+        var generation = handle.Current.Generation;
+        handle.Update(new PolicyResolutionResult(MethodId, policy with
+        {
+            Tags = new[] { "b", "a", "a" },
+            Metadata = new Dictionary<string, string?> { ["audit.owner"] = "another-owner" }
+        }, [], DateTimeOffset.UnixEpoch.AddDays(1), version: 2));
+        Assert.Same(generation, handle.Current.Generation);
+        Assert.True(generation!.IsCurrent);
+        Assert.Equal("another-owner", handle.Current.Metadata["audit.owner"]);
+    }
+
+    [Fact]
     public async Task Handle_FollowsRuntimeOverrides_AsSoonAsTheCallReturns()
     {
         await using var provider = BuildProvider();
@@ -100,16 +116,21 @@ public class PolicyHandleTests
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddMethodCache(
-            config => config.ForService<IOrders>().Method(o => o.Get(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(5))),
-            Assembly.GetExecutingAssembly());
+        services.AddSingleton<IOrders, Orders>();
+        services.AddMethodCache(config =>
+        {
+            config.FromAssembly(Assembly.GetExecutingAssembly());
+            config.Method((IOrders o) => o.Get(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(5)));
+        });
         return services.BuildServiceProvider();
     }
 
     public interface IOrders
     {
-        Task<string> Get(int id);
+        [Cache] Task<string> Get(int id);
     }
+
+    public sealed class Orders : IOrders { public Task<string> Get(int id) => Task.FromResult(id.ToString()); }
 
     private sealed class Sites
     {

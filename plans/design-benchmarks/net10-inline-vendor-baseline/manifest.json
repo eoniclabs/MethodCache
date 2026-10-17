@@ -1,0 +1,77 @@
+{
+  "collected_utc": "2026-10-16T11:43:16.437538+00:00",
+  "baseline_source_commit": "ba86985c9c7a1e248a5a0a0ee07b0dc570f7b3d2",
+  "target_framework": "net10.0",
+  "baseline_package": "1.0.0-gba86985c9c",
+  "local_sdk": "10.0.103",
+  "aot_rid": "osx-arm64",
+  "compat_tests": {
+    "passed": 9,
+    "failed": 0
+  },
+  "freezer_tests": {
+    "passed": 2,
+    "failed": 0
+  },
+  "aot_smoke": "passed",
+  "red_before_fix": "Existing frozen vendor images have no KeyBuilder constructor reference",
+  "runtime_mutation": "Removing constructor is first blocked by RS0017; after suppressing only RS0017 for that mutation invocation the frozen vendor fails MissingMethodException",
+  "production_source_restored_and_unchanged_from": "908a94efa23fe27629ed9f00070a6bbd116740d0",
+  "original_baseline_files_unchanged": {
+    "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.Contract1.dll": "18a21d41a3f909334887f94c8389641f86e966b80b260970a220f8a22f126ec9",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.Contract99.dll": "7c34e96164d848ebbf02d70495ba50fdc5d24eddc4abedce9f52c9544b32ec05",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.ThirdParty.dll": "0c04fa60a407815d9d8ef573eda503f2ab53d2ecd10c6c31d24d6d88501ba186",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/README.md": "e96bfabf68f3d4cfdd4eb22591643684e97c3896877da61f3f6a8fea9b36f326",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/manifest.json": "e710aba8df3755073d336885ce2b3f3c94ffabcd8f426c92b0b266b49b56d974",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/Incompatible/Incompatible.csproj": "64ea7c21f356e4f7fcc77cf2d93904c4d37e889f3400e2d99a1fa0285b88438e",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/Incompatible/Module.cs": "a463f8060f86072acf36f1abe718eb1b848376dd63df2a0ab46a9e4388924327",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/ThirdParty/Client.cs": "a6acf749f8e114ce54bca4c5d6bd09579e5337710c1523c99168813565cc683a",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/ThirdParty/ThirdParty.csproj": "473ebbd7a12d1b46a6e2f3e8f3f61daf93ceb426433f123c517d0395a2650eed",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/Vendor/Services.cs": "4a92b56767b27e962fd31bbe668f9af5c40b860d960a4c0000e43e1cfbad90f8",
+    "tests/MethodCache.CompatTests/Baselines/Contract1/source/Vendor/Vendor.csproj": "60a78830b57a9c0643b2c5d6a07e7b4f266a4d785ca6bb7282a6eccf03d0c603"
+  },
+  "files": {
+    "red.log": {
+      "original_sha256": "a500bc24f6351f156fcf8e38ea39c64b9081126d64d911e5ac91ebb82ec0fbe8",
+      "stored_sha256": "2d701e4ebf082d78359809e500da056297b15cc3cee30245b167edb69495c624"
+    },
+    "green.log": {
+      "original_sha256": "95b18174e752163bd5c10e19bd63bc3fc8f51b0bd857d5e5b076637d1afb32c7",
+      "stored_sha256": "5c5831719c37d428d9ceb7ea06a2e07a517aa997ec543c9465cf1a1e7c71f13c"
+    },
+    "restored-green.log": {
+      "original_sha256": "0db5e1bee8e553a611e09c8bfe48ce67fa11710b9ae22868a0f8ec5d0559e957",
+      "stored_sha256": "df1807ab47c4f6f963901f6e40d613115faa3e2a80d95d9e539a3d3742675a8e"
+    },
+    "api-analyzer-block.log": {
+      "original_sha256": "045d51eeae2cca74fba14656f40dbb588f69ca76c5f902c13c18fa9546a01ff4",
+      "stored_sha256": "ffa5a988c7842e5f9a58a961acc6904e782e617d34cb8cdab7596c5d0ab1c481"
+    },
+    "removed-constructor.log": {
+      "original_sha256": "5e49caa6d72d977742e2be74b50bd7efde21720e41a210bb365c0ad61a847894",
+      "stored_sha256": "ce76f06af7f854e6f4c0298da8d48ed8aebc396b84bc7b31f2fef2369e336270"
+    },
+    "source-build.log": {
+      "original_sha256": "457e7ac78342cf6eb89d6b4e65a55cfa9e00d154e0c9cc964e0b234af161bb90",
+      "stored_sha256": "c4590ef64ade3801a1ebec40e094d461df16a066b01c6cdf458cdace3a03291b"
+    },
+    "freeze.log": {
+      "original_sha256": "49ef14e719797d188bb83a3389366b3d4d4a55bdcbf7dc415d454bae7a587a30",
+      "stored_sha256": "788385a7245530d1cd31789542fe5f9f120988bd5813b478b4d7aaa6ee99b5af"
+    },
+    "freezer-tests.log": {
+      "original_sha256": "fe008aab760eb03ccac7578e2b84665b1b50b0d7f855b17a0c7a8d039435b658",
+      "stored_sha256": "fe008aab760eb03ccac7578e2b84665b1b50b0d7f855b17a0c7a8d039435b658"
+    },
+    "aot-publish.log": {
+      "original_sha256": "45325b805f28b7b42ee74d089e4421851a4728778da061b61e944aa82317a61f",
+      "stored_sha256": "b08753e0518a3ae2267c50f471e25f6a8642d8f2f9a8f1dd94c4e7654edd5f52"
+    },
+    "aot-run.log": {
+      "original_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df",
+      "stored_sha256": "7c5c5297e19df06da97cba7bc7c5c00c69d390bc4003df7294c931a014e292df"
+    }
+  },
+  "normalization": "Only absolute worktree and temporary receipt root paths replaced; original hashes retained",
+  "scope": "Local functional evidence only; exact final published-head CI and section-10 timing still required"
+}

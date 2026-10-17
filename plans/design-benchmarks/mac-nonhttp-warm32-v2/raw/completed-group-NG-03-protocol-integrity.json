@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-17T06:53:27.986343+00:00",
+  "scope": "Complete fixed group integrity only; no partial timing means or acceptance decision. Entire fixed cohort still required.",
+  "group": "NG-03",
+  "launches": 80,
+  "observation_samples": 861,
+  "external_builds": 0,
+  "inputs_sha256": "175a1a0a4ee5b69709fb0cb5ab0019f5f54fa45038f4992cb870acb8a7b55c83",
+  "prepared_sha256": "7d708add996614e6c34558cefd9e12a784dd3d48f25d4046ff4d63a3751500c9",
+  "verifier_sha256": "abaa567d7c37765693fbe7ec565a334e829e4357797c6df3a3558ea224924315",
+  "files": [
+    {
+      "path": "pr-NG-03/launches.jsonl",
+      "sha256": "dd409fd4cc1c30fcf1effc31c1695c313d8a4e7439a0897c804aad8e805829a6"
+    },
+    {
+      "path": "pr-NG-03/observations.json",
+      "sha256": "f2b280250f29aec8bab57a93474a117d9c4e8698071cb64381e5e9878cb1fc6c"
+    },
+    {
+      "path": "pr-NG-03/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ]
+}

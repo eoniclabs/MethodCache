@@ -1,0 +1,16 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-prefix-components-setup-guards 2026-10-15T15:46:53.935382+00:00
+Unhandled exception. System.NullReferenceException: Object reference not set to an instance of an object.
+   at MethodCache.Benchmarks.Microbenchmarks.PrefixHitPathBenchmarks.Cleanup() in /home/agent-admin/methodcache-design-bench-20261015/prefix-components-after-capacity/harness/pr5/PrefixHitPathBenchmarks.cs:line 100
+   at Program.<Main>$(String[] args) in /home/agent-admin/methodcache-design-bench-20261015/prefix-components-after-capacity/harness/pr5/Program.cs:line 22
+   at Program.<Main>(String[] args)
+Traceback (most recent call last):
+  File "/home/agent-admin/methodcache-design-bench-20261015/prefix-components-after-capacity/prepare.py", line 42, in <module>
+    for name in ['pr5','prefix']:run('dotnet',folder/'harness'/name/'bin/Release/net10.0/MethodCache.Benchmarks.dll','--verify-components',cwd=folder/'harness'/name)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/agent-admin/methodcache-design-bench-20261015/prefix-components-after-capacity/prepare.py", line 6, in run
+    def run(*args,cwd=None):subprocess.run([str(a) for a in args],cwd=cwd,check=True)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['dotnet', '/home/agent-admin/methodcache-design-bench-20261015/prefix-components-after-capacity/harness/pr5/bin/Release/net10.0/MethodCache.Benchmarks.dll', '--verify-components']' died with <Signals.SIGABRT: 6>.
+Releasing exclusive lease methodcache-design-20261015-01a13a93-prefix-components-setup-guards exit 1 2026-10-15T15:46:54.549543+00:00

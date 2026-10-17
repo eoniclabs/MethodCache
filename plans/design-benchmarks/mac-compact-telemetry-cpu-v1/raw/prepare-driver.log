@@ -1,0 +1,39 @@
+Acquired bounded existing coordinator reservation prepare 23519 2026-10-17T08:38:01.619220+00:00
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.53
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.75
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.47
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.82
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.56
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.46
+Prepared exact current production and identical frozen workload source on both sides;10cases200freshprocesses 2026-10-17T08:38:13.822504+00:00
+Released own coordinator reservation prepare 2026-10-17T08:38:13.822750+00:00

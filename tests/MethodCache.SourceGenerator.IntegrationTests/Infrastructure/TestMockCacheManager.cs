@@ -18,19 +18,50 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
     /// <summary>
     /// Mock cache manager that integrates with metrics provider for testing
     /// </summary>
-    public class TestMockCacheManager : ICacheManager
+    internal class TestMockCacheManager : ICacheManager
     {
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-        private readonly ICacheMetricsProvider _metricsProvider;
+        private readonly TestCacheProbe _metricsProvider;
         private readonly TimeProvider _time;
 
         /// <summary>
         /// Reads time from <paramref name="timeProvider"/>, so a test that registers a FakeTimeProvider controls expiry.
         /// </summary>
-        public TestMockCacheManager(ICacheMetricsProvider metricsProvider, TimeProvider? timeProvider = null)
+        public TestMockCacheManager(TestCacheProbe metricsProvider, TimeProvider? timeProvider = null)
         {
             _metricsProvider = metricsProvider;
             _time = timeProvider ?? TimeProvider.System;
+        }
+
+        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName) with { Duration = options?.Duration };
+            return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(new CacheContext(key), cancellationToken).AsTask(), policy, cancellationToken));
+        }
+
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new(_cache.TryGetValue(key, out var entry) && !IsExpired(entry)
+                ? CacheLookupResult<T>.Hit((T)entry.Value) : CacheLookupResult<T>.Miss);
+        }
+
+        public async ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, CancellationToken cancellationToken)
+        {
+            var targets = InMemoryCacheManager.ValidateTargets(keys);
+            cancellationToken.ThrowIfCancellationRequested();
+            await InvalidateByKeysAsync(targets);
+            return new InvalidationResult { Requested = targets.Length, Local = targets.Length };
+        }
+
+        public async ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken)
+        {
+            var targets = InMemoryCacheManager.ValidateTargets(tags);
+            cancellationToken.ThrowIfCancellationRequested();
+            await InvalidateByTagsAsync(targets);
+            return new InvalidationResult { Requested = targets.Length, Local = targets.Length };
         }
 
         // Like the real cache, an entry expires exactly at the end of its Duration
@@ -174,10 +205,7 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
         public Task InvalidateByTagsAsync(params string[] tags)
         {
             // Record invalidation if the metrics provider supports it
-            if (_metricsProvider is TestCacheMetricsProvider testProvider)
-            {
-                testProvider.RecordInvalidation(tags);
-            }
+            _metricsProvider.RecordInvalidation(tags);
 
             // For simplicity, clear entire cache on any invalidation
             _cache.Clear();

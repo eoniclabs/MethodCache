@@ -50,7 +50,7 @@ public class UnifiedCacheComparisonBenchmarks
         services.AddSingleton<IMethodCacheBenchmarkService>(sp => sp.GetRequiredService<MethodCacheBenchmarkService>());
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         });
 
         // PERFORMANCE OPTIMIZATION: Configure cache options for benchmarking
@@ -103,6 +103,7 @@ public class UnifiedCacheComparisonBenchmarks
         // MethodCache_SourceGen must populate cache by calling the cached method so the decorator path runs
         var sourceGenAdapter = (MethodCacheSourceGenAdapter)_sourceGenMethodCache;
         _ = sourceGenAdapter.GetAsyncDirect(TestKey).GetAwaiter().GetResult();
+        sourceGenAdapter.Set(TestKey, TestPayload, TimeSpan.FromMinutes(10));
         sourceGenAdapter.TryGet<SamplePayload>(TestKey, out _);
 
         _fusionCache.Set(TestKey, TestPayload, duration);

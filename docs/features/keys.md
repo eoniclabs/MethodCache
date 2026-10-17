@@ -28,9 +28,9 @@ public interface IUserService
   could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
   collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
   includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
-- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the default, JSON and MessagePack key generators.
+- **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the internal fallback generator.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
-  generator. The default, `FastHashKeyGenerator`, hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+  generator. The internal default generator hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
   [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
@@ -45,7 +45,7 @@ public interface IUserService
 - `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
   also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
-On .NET 9 and later the decorator writes simple keys into a stack buffer and looks them up without allocating.
+On .NET 10 the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
 ## Types whose state is private
 
@@ -83,51 +83,35 @@ the key generator, which writes their value, in an argument of their own or insi
 Any other type from .NET itself, ASP.NET Core or Microsoft.Extensions in a key (one from an assembly named
 `System.*`, `Microsoft.AspNetCore.*` or `Microsoft.Extensions.*`), such as `StringBuilder` (which can change after
 the call), `CultureInfo`, `Stream`, `Type` or a delegate, is build error
-[MCG018](../user-guide/DIAGNOSTICS.md#mcg018), also as a property of your own record. Pass a value that identifies
+[MC0019](../user-guide/DIAGNOSTICS.md#mc0019), also as a property of your own record. Pass a value that identifies
 it, such as `culture.Name`, or wrap it in a type that implements `ICacheKeyProvider`. Other libraries' models, such
 as an SDK's classes in a `Microsoft.*` namespace, are written by their public properties like your own types.
 
-## Readable keys while debugging
+## Key construction and value serialization
 
-`JsonKeyGenerator` writes the arguments it handles as JSON (for example `[42,"alice"]`) instead of a hash:
+Key construction belongs to the runtime. Complex arguments use the internal canonical encoder; custom key parts use
+`ICacheKeyProvider`. JSON and MessagePack settings select distributed **value** serialization and do not replace the
+key generator.
 
 <!-- snippet: keys-json-generator -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.Replace(ServiceDescriptor.Singleton<ICacheKeyGenerator, JsonKeyGenerator>());
+builder.Services.AddMethodCache(cache => cache.UseJson());
 ```
 <!-- endSnippet -->
 
-The JSON is followed by a short hash of the arguments' runtime types (`[42,"alice"]:9c41…`), so arguments that
-write the same JSON, such as `1` and `1L` or two classes with the same properties, still get different keys. A value
-inside an argument whose type differs from its declared type is written with its type, for example
-`[{"\uFFFFt":"System.Int64","v":1}]` for `new object[] { 1L }`.
+## Method scope
 
-Both generators are in `MethodCache.Extensibility`. Keys built by the decorator itself (simple values, records,
-`ICacheKeyProvider`) don't change with the generator.
+Generated keys always include the interface, method, version, closed generic types and keyed-service identity where applicable. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
 
-## Using an argument as the key
-
-`[CacheKey(UseAsRawKey = true)]` on a parameter makes that argument the whole key. The interface, the method name, the
-`Version` and the other arguments are not part of it:
-
-<!-- snippet: keys-raw -->
+<!-- snippet: keys-scoped -->
 ```cs
 public interface IDocumentStore
 {
-    // The argument is the whole key: GetAsync("doc:2026/report.pdf") is stored as "doc:2026/report.pdf"
-    [Cache] Task<byte[]> GetAsync([CacheKey(UseAsRawKey = true)] string key);
+    // The document path is an argument; the interface and method remain part of the key.
+    [Cache] Task<byte[]> GetAsync(string key);
 }
 ```
 <!-- endSnippet -->
-
-Strings are used as they are. Dates are written as in generated keys (`MethodCacheKeys.Part`), in the round-trip
-format (`2026-01-01T12:00:00.2500000Z`): fractions of a second and a `DateTimeOffset`'s offset are part of the key,
-and a local `DateTime` is written as UTC, so the key doesn't depend on the server's time zone and a local time and the
-UTC time of the same instant share an entry. Numbers and other formattable values are written in the invariant culture;
-any other type uses its own `ToString()`, so make sure that doesn't depend on the current culture. The key is not escaped and has no
-prefix, so two methods, or a `GetOrCreateAsync` call, that produce the same text share one entry. Use it only for keys
-your own code builds, never for text a caller controls; see [Security](../security.md).
 
 ## Building a key yourself
 
@@ -137,7 +121,7 @@ format:
 <!-- snippet: invalidation-by-key -->
 ```cs
 var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
-await cache.InvalidateByKeysAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
+await cache.InvalidateKeyAsync(key);   // "Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 

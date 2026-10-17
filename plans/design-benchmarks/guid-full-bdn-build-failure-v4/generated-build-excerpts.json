@@ -1,0 +1,48 @@
+[
+  {
+    "path": "/home/agent-admin/methodcache-design-bench-20261015/guid-final-v4/harness/final/bin/Release/net10.0/DesignValidation-Job-ACOERQ-1/DesignValidation-Job-ACOERQ-1.notcs",
+    "sha256": "27855e5d41a6daedeedf609df82b6b3347aca099f9ceaed6d2760833b65a2cad",
+    "matches": [
+      {
+        "line": 4847,
+        "context": [
+          "            globalSetupAction = () => BenchmarkDotNet.Helpers.AwaitHelper.GetResult(Setup());",
+          "            globalCleanupAction = Cleanup;",
+          "            iterationSetupAction = ResetBatch;",
+          "            iterationCleanupAction = () => { };",
+          "            overheadDelegate = __Overhead;"
+        ]
+      },
+      {
+        "line": 5021,
+        "context": [
+          "            globalSetupAction = () => BenchmarkDotNet.Helpers.AwaitHelper.GetResult(Setup());",
+          "            globalCleanupAction = Cleanup;",
+          "            iterationSetupAction = ResetBatch;",
+          "            iterationCleanupAction = () => { };",
+          "            overheadDelegate = __Overhead;"
+        ]
+      },
+      {
+        "line": 5195,
+        "context": [
+          "            globalSetupAction = () => BenchmarkDotNet.Helpers.AwaitHelper.GetResult(Setup());",
+          "            globalCleanupAction = Cleanup;",
+          "            iterationSetupAction = ResetBatch;",
+          "            iterationCleanupAction = () => { };",
+          "            overheadDelegate = __Overhead;"
+        ]
+      },
+      {
+        "line": 5369,
+        "context": [
+          "            globalSetupAction = () => BenchmarkDotNet.Helpers.AwaitHelper.GetResult(Setup());",
+          "            globalCleanupAction = Cleanup;",
+          "            iterationSetupAction = ResetBatch;",
+          "            iterationCleanupAction = () => { };",
+          "            overheadDelegate = __Overhead;"
+        ]
+      }
+    ]
+  }
+]

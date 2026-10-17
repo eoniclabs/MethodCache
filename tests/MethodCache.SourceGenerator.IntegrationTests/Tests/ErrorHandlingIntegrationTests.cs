@@ -85,19 +85,19 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IErrorService");
         Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.ErrorService");
-        
+
         Assert.NotNull(service);
-        
+
         implType?.GetMethod("ResetCallCounts")?.Invoke(null, null);
         metricsProvider.Reset();
 
@@ -107,7 +107,7 @@ namespace TestNamespace
         // Test successful call - should be cached
         var successTask1 = (Task)getDataMethod!.Invoke(service, new object[] { 1 })!;
         var result1 = await GetTaskResult<string>(successTask1);
-        
+
         var successTask2 = (Task)getDataMethod.Invoke(service, new object[] { 1 })!;
         var result2 = await GetTaskResult<string>(successTask2);
 
@@ -144,13 +144,13 @@ namespace TestNamespace
         // Now succeed - should cache this result
         var retrySuccessTask1 = (Task)retryMethod!.Invoke(service, new object[] { 2, false })!;
         var retryResult1 = await GetTaskResult<string>(retrySuccessTask1);
-        
+
         var retrySuccessTask2 = (Task)retryMethod.Invoke(service, new object[] { 2, false })!;
         var retryResult2 = await GetTaskResult<string>(retrySuccessTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 5);
         var finalMetrics = metricsProvider.Metrics;
-        
+
         Assert.Equal(2, finalMetrics.HitCount); // 1 original + 1 retry success
         Assert.Equal(5, finalMetrics.MissCount); // Adjusted based on actual cache behavior
         Assert.Equal(3, finalMetrics.ErrorCount); // 2 negative ID + 1 retry fail
@@ -212,19 +212,19 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.INullableService");
         Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.NullableService");
-        
+
         Assert.NotNull(service);
-        
+
         implType?.GetMethod("ResetCallCounts")?.Invoke(null, null);
         metricsProvider.Reset();
 
@@ -234,7 +234,7 @@ namespace TestNamespace
         // Test null string result - should be cached
         var nullStringTask1 = (Task)stringMethod!.Invoke(service, new object[] { 0 })!;
         var nullString1 = await GetTaskResult<string>(nullStringTask1);
-        
+
         var nullStringTask2 = (Task)stringMethod.Invoke(service, new object[] { 0 })!;
         var nullString2 = await GetTaskResult<string>(nullStringTask2);
 
@@ -245,7 +245,7 @@ namespace TestNamespace
         // Test non-null string result - should be cached
         var stringTask1 = (Task)stringMethod.Invoke(service, new object[] { 1 })!;
         var string1 = await GetTaskResult<string>(stringTask1);
-        
+
         var stringTask2 = (Task)stringMethod.Invoke(service, new object[] { 1 })!;
         var string2 = await GetTaskResult<string>(stringTask2);
 
@@ -256,7 +256,7 @@ namespace TestNamespace
         // Test null object result - should be cached
         var nullObjectTask1 = (Task)objectMethod!.Invoke(service, new object[] { "null" })!;
         var nullObject1 = await GetTaskResult<object>(nullObjectTask1);
-        
+
         var nullObjectTask2 = (Task)objectMethod.Invoke(service, new object[] { "null" })!;
         var nullObject2 = await GetTaskResult<object>(nullObjectTask2);
 
@@ -267,13 +267,13 @@ namespace TestNamespace
         // Test non-null object result - should be cached
         var objectTask1 = (Task)objectMethod.Invoke(service, new object[] { "test" })!;
         var object1 = await GetTaskResult<object>(objectTask1);
-        
+
         var objectTask2 = (Task)objectMethod.Invoke(service, new object[] { "test" })!;
         var object2 = await GetTaskResult<object>(objectTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 6);
         var finalMetrics = metricsProvider.Metrics;
-        
+
         Assert.Equal(2, finalMetrics.HitCount);
         Assert.Equal(6, finalMetrics.MissCount);
         Assert.NotNull(object1);
@@ -282,7 +282,7 @@ namespace TestNamespace
         // Verify call counts - each method called twice (once for null, once for non-null)
         var stringCount = (int)implType?.GetProperty("StringCallCount")?.GetValue(null)!;
         var objectCount = (int)implType?.GetProperty("ObjectCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(3, stringCount);
         Assert.Equal(3, objectCount);
 
@@ -412,19 +412,19 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.ILargeObjectService");
         Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.LargeObjectService");
-        
+
         Assert.NotNull(service);
-        
+
         implType?.GetMethod("ResetCallCounts")?.Invoke(null, null);
         metricsProvider.Reset();
 
@@ -433,37 +433,37 @@ namespace TestNamespace
 
         // Test large order caching
         var orderType = testAssembly.Assembly.GetType("TestNamespace.Order")!;
-        
+
         var orderTask1 = (Task)orderMethod!.Invoke(service, new object[] { 1 })!;
         var order1 = await GetTaskResult(orderTask1, orderType);
-        
+
         var orderTask2 = (Task)orderMethod.Invoke(service, new object[] { 1 })!;
         var order2 = await GetTaskResult(orderTask2, orderType);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 1, expectedMisses: 1);
-        
+
         // Use reflection to compare properties
         var idProperty = orderType.GetProperty("Id")!;
         var itemsProperty = orderType.GetProperty("Items")!;
-        
+
         Assert.Equal(idProperty.GetValue(order1), idProperty.GetValue(order2));
-        
+
         var order1Items = itemsProperty.GetValue(order1) as System.Collections.IList;
         var order2Items = itemsProperty.GetValue(order2) as System.Collections.IList;
-        
+
         Assert.Equal(order1Items!.Count, order2Items!.Count);
         Assert.Equal(100, order1Items.Count); // Verify large object size
 
         // Test large product list caching
         var productsTask1 = (Task)productsMethod!.Invoke(service, new object[] { 500 })!;
         var products1 = await GetTaskResult<System.Collections.IList>(productsTask1);
-        
+
         var productsTask2 = (Task)productsMethod.Invoke(service, new object[] { 500 })!;
         var products2 = await GetTaskResult<System.Collections.IList>(productsTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
         var finalMetrics = metricsProvider.Metrics;
-        
+
         Assert.Equal(2, finalMetrics.HitCount);
         Assert.Equal(2, finalMetrics.MissCount);
         Assert.Equal(products1.Count, products2.Count);
@@ -472,7 +472,7 @@ namespace TestNamespace
         // Verify call counts - each method called once (second calls were cached)
         var orderCount = (int)implType?.GetProperty("OrderCallCount")?.GetValue(null)!;
         var productsCount = (int)implType?.GetProperty("ProductsCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, orderCount);
         Assert.Equal(1, productsCount);
 
@@ -517,29 +517,29 @@ namespace TestNamespace
         throw new InvalidOperationException(
             $"Task type {task.GetType()} does not have a Result property or result is incompatible with expected type Task<{typeof(T).Name}>");
     }
-    
+
     private static async Task<object> GetTaskResult(Task task, Type expectedType)
     {
         ArgumentNullException.ThrowIfNull(task);
         ArgumentNullException.ThrowIfNull(expectedType);
-        
+
         await task;
         var property = task.GetType().GetProperty("Result");
         if (property == null) throw new InvalidOperationException("Task does not have a Result property");
-        
+
         var result = property.GetValue(task);
-        
+
         if (result == null)
         {
             throw new InvalidOperationException($"Task result was null, expected {expectedType.Name}");
         }
-        
+
         // Verify the result is of the expected type
         if (!expectedType.IsAssignableFrom(result.GetType()))
         {
             throw new InvalidOperationException($"Expected type {expectedType.Name}, but got {result.GetType().Name}");
         }
-        
+
         return result;
     }
 }

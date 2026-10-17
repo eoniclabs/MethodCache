@@ -1,0 +1,8 @@
+Test run for /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/tree/tests/MethodCache.SqlServer.IntegrationTests/bin/Release/net10.0/MethodCache.SqlServer.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/results/head-SqlServer-01/result.trx
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 1 s - MethodCache.SqlServer.IntegrationTests.dll (net10.0)
+
+Attachments:
+  /home/agent-admin/methodcache-design-bench-20261015/policy-deadline-v1/results/head-SqlServer-01/5621269a-c0d7-4230-8b33-2438e386dd7c/coverage.cobertura.xml

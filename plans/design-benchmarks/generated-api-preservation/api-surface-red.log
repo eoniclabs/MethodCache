@@ -1,0 +1,43 @@
+  Determining projects to restore...
+  Restored <worktree>/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 107 ms).
+  Restored <worktree>/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 107 ms).
+  Restored <worktree>/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 107 ms).
+  Restored <worktree>/src/MethodCache.Core/MethodCache.Core.csproj (in 107 ms).
+  1 of 5 projects are up-to-date for restore.
+  MethodCache.Analyzers -> <worktree>/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.CodeFixes -> <worktree>/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.SourceGenerator -> <worktree>/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.Core -> <worktree>/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.CompatTests -> <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll
+Test run for <worktree>/tests/MethodCache.CompatTests/bin/Release/net10.0/MethodCache.CompatTests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.1+bf6400fd51 (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.02]   Discovering: MethodCache.CompatTests
+[xUnit.net 00:00:00.03]   Discovered:  MethodCache.CompatTests
+[xUnit.net 00:00:00.04]   Starting:    MethodCache.CompatTests
+[xUnit.net 00:00:00.06]     MethodCache.CompatTests.VendorCompatibilityTests.FrozenGeneratedPublicApi_PreservesEveryDeclaredContractMember [FAIL]
+[xUnit.net 00:00:00.06]       Assert.Contains() Failure: Item not found in set
+[xUnit.net 00:00:00.06]       Set:       ["#nullable enable", "MethodCache.Any<T>", "MethodCache.CacheAttribute", "MethodCache.CacheAttribute.CacheAttribute() -> voi"···, "MethodCache.CacheAttribute.Distributed.get -> bool", ···]
+[xUnit.net 00:00:00.06]       Not found: "MethodCache.Generated.MethodCall.StartKey(System.S"···
+[xUnit.net 00:00:00.06]       Stack Trace:
+[xUnit.net 00:00:00.06]         <worktree>/tests/MethodCache.CompatTests/VendorCompatibilityTests.cs(23,0): at MethodCache.CompatTests.VendorCompatibilityTests.FrozenGeneratedPublicApi_PreservesEveryDeclaredContractMember()
+[xUnit.net 00:00:00.06]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.06]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.06]   Finished:    MethodCache.CompatTests
+  Failed MethodCache.CompatTests.VendorCompatibilityTests.FrozenGeneratedPublicApi_PreservesEveryDeclaredContractMember [5 ms]
+  Error Message:
+   Assert.Contains() Failure: Item not found in set
+Set:       ["#nullable enable", "MethodCache.Any<T>", "MethodCache.CacheAttribute", "MethodCache.CacheAttribute.CacheAttribute() -> voi"···, "MethodCache.CacheAttribute.Distributed.get -> bool", ···]
+Not found: "MethodCache.Generated.MethodCall.StartKey(System.S"···
+  Stack Trace:
+     at MethodCache.CompatTests.VendorCompatibilityTests.FrozenGeneratedPublicApi_PreservesEveryDeclaredContractMember() in <worktree>/tests/MethodCache.CompatTests/VendorCompatibilityTests.cs:line 23
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Test Run Failed.
+Total tests: 1
+     Failed: 1
+ Total time: 0,2832 Seconds

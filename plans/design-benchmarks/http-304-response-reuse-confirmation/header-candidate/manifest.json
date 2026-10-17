@@ -1,0 +1,54 @@
+{
+  "scope": "Header-only local allocation diagnostic; no section-10 timing acceptance",
+  "http_before_sha256": "a8ca288087486370a3ae1e66ee85c338655cd3dfcdfab9e617269e0bad4f3847",
+  "http_after_sha256": "6757552d6106c4d44a507f7b0959c7338ce9f7eaf8e163f403eb204135e7ef1e",
+  "header_merge_bytes_per_operation": {
+    "before": 1248,
+    "after": 880
+  },
+  "http_tests_passed": 322,
+  "new_contract_cases_passed_before_and_after": 2,
+  "new_contract_cases_are_behavior_preservation_not_failing_bug_reproductions": true,
+  "changed_executable_lines": [
+    {
+      "line": 206,
+      "hits": 48
+    },
+    {
+      "line": 207,
+      "hits": 48
+    },
+    {
+      "line": 259,
+      "hits": 766
+    },
+    {
+      "line": 260,
+      "hits": 766
+    },
+    {
+      "line": 269,
+      "hits": 1330
+    },
+    {
+      "line": 293,
+      "hits": 1444
+    },
+    {
+      "line": 294,
+      "hits": 15
+    },
+    {
+      "line": 298,
+      "hits": 15
+    },
+    {
+      "line": 299,
+      "hits": 52
+    }
+  ],
+  "changed_line_coverage": "9/9",
+  "in_process_http_integration_tests_passed": 16,
+  "combined_forward_http_tests_passed": 322,
+  "combined_forward_benchmark_contracts_passed": 99
+}

@@ -1,0 +1,56 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "baseline_patch_sha256": null,
+  "candidate_patches": [
+    "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+    "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+    "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb"
+  ],
+  "prepare_label": "design-http-final14-compact-v1-prepare",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "pairs": 10,
+  "warmups": 32,
+  "remaining_groups": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"
+  ],
+  "purpose": "Complete fixed14HTTPcases,tenalternatingpairs/280freshprocesses,32warm12actual150ms on current5257fb63 source-equivalent compact/publication candidate. Reuses verified original compiled workloads/helper and frozen6sourcepatch, no recompilation or scope selection after means. Same runtime/GC/affinity/quiet guards and8192growing-setpressurelimit. Canonical limits unchanged at setup; any design proposal must be explicitly approved separately; all original reports retained.",
+  "files_sha256": [
+    {
+      "path": "run.py",
+      "sha256": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "prepare.py",
+      "sha256": "684c7d86fd5339f94d7c750a4abb3a46954b4fb5cee1d791211bab84f4b6edc3"
+    }
+  ],
+  "runner_origin_sha256": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+  "published_source_checkpoint": "5257fb63fb72393c817d74292e989299ede374d2"
+}

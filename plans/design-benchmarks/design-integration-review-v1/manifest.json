@@ -1,0 +1,17 @@
+{
+  "scope": "Read-only verified ancestry and explicitly approved combined review arrangement; no merge/release/time acceptance inferred",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "af5b238ea9d690b7a88fe30ba949880332b8622cbf0ee7f417b0e2c0eb08b514"
+    },
+    {
+      "path": "ancestry.json",
+      "sha256": "ca19b1406ae2383bfee0a667cc7c0c6079662a20d1bf7c8a4d7abd61032fc3e0"
+    },
+    {
+      "path": "decision.json",
+      "sha256": "a3d7c892631b453118b1d379ccca59ddbd555c4618211733426fc8e52effb63b"
+    }
+  ]
+}

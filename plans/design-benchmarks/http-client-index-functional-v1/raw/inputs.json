@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-17T09:07:48.044335+00:00",
+  "base": "5257fb63fb72393c817d74292e989299ede374d2",
+  "wait_for_sequence_pid": 23806,
+  "scope": "Isolated trial: omit only the implicit local client tag from publication indexes, passing its precomputed position as a StoreLocal argument. HttpStorageInfo layout unchanged; full metadata/tags/generations and native behavior preserved. Client invalidation scans resident HTTP nodes and physically removes literal tag matches; custom/URL indexes retained. Existing13semantics tests unchanged; new2cases cover encoded clients, cross-client explicit matches, selectors, lazy-admin metadata and full byte reclamation. No per-node scan enumerator allocation (Array.IndexOf string equality is ordinal). Correctness only; no speed claim.",
+  "sources": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+      "sha256": "c5aa65d5575c1dda82ce5c66ae49d30ca1d7f3dc4f88565f218d4ba683372522"
+    }
+  ],
+  "controller_sha256": "d86a49936bcd2a60b63a17865d4dc53b6ca56ce1304ff13b47e8130199c89615"
+}

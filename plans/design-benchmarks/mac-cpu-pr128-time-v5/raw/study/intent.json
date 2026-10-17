@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-16T23:17:12.401207+00:00",
+  "inputs_sha256": "2076cde2708669caabaa7120c15c228e7f913ac2806a0637482166c47ca63f96",
+  "prepared_sha256": "fc011f01233dec4a7b426e6c4e72cc35da793ffdbaacccdf875bc5fa00a619a3",
+  "comparison": {
+    "pr": 128,
+    "base": "pr5",
+    "head": "prefix"
+  },
+  "cases": {
+    "main": [
+      "GeneratedContractBenchmarks.SyncHit()",
+      "GeneratedContractBenchmarks.TaskHit()",
+      "GeneratedContractBenchmarks.ValueTaskHit()"
+    ],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)"
+    ]
+  }
+}
