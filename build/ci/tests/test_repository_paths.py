@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import unittest
 
 
@@ -22,6 +23,24 @@ def windows_path_problem(path):
 
 
 class RepositoryPathTests(unittest.TestCase):
+    def test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings(self):
+        payload = b"retained first line\r\nretained second line\r\n"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "--quiet", directory], check=True, capture_output=True)
+            subprocess.run(["git", "-C", directory, "config", "core.autocrlf", "true"], check=True)
+            subprocess.run(["git", "-C", directory, "config", "core.safecrlf", "false"], check=True)
+            (root / ".gitattributes").write_bytes((ROOT / ".gitattributes").read_bytes())
+            for extension in ["log", "jsonl", "json", "md", "patch", "ps1"]:
+                with self.subTest(extension=extension):
+                    relative = f"plans/design-benchmarks/example/raw.{extension}"
+                    path = root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(payload)
+                    subprocess.run(["git", "-C", directory, "add", "-f", "--", relative], check=True, capture_output=True)
+                    stored = subprocess.check_output(["git", "-C", directory, "show", f":{relative}"])
+                    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+
     def test_tracked_paths_are_valid_on_windows(self):
         names = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
         problems = [(name, windows_path_problem(name)) for name in names if name and windows_path_problem(name)]

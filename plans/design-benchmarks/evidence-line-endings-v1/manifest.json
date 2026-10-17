@@ -1,0 +1,29 @@
+{
+  "scope": "RealGitnormalizationregression;5tests/6formatsred-green;all7521publishedfilesandmetadataGitobjectsverified",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "90347b89e71d032fb9cc425a66981214055ec72115259bb486209465bef244fe"
+    },
+    {
+      "path": "git-blob-verification.log",
+      "sha256": "d24893b66d01572b99e84e4bf5395ceb2b5cb1e31cb0a5529bc49600a9c7283c"
+    },
+    {
+      "path": "green.log",
+      "sha256": "0b3c1e81f9701ed3e10809825fbd8f498a35c1b581ca0e3cb2b7fb5b116955ed"
+    },
+    {
+      "path": "receipt.json",
+      "sha256": "c210a31317562f2852629ac71efb142b9b7c484944f42ef699667cdc40518524"
+    },
+    {
+      "path": "red.log",
+      "sha256": "e3d452ac111025d0d3caa171782b686803de0b9ac0d5cd2d14e5b354551f7feb"
+    },
+    {
+      "path": "verify-git-blobs.py",
+      "sha256": "b9c74f60157f9197399692839baaab2d04510090e464040a1c90c5c849595d76"
+    }
+  ]
+}

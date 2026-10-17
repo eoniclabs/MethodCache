@@ -1,0 +1,59 @@
+FFFFFF....
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='log')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='jsonl')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='md')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='patch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+======================================================================
+FAIL: test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings (test_repository_paths.RepositoryPathTests.test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings) (extension='ps1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/build/ci/tests/test_repository_paths.py", line 42, in test_hashed_evidence_keeps_exact_bytes_with_windows_git_settings
+    self.assertEqual(payload, stored, "Git must preserve the exact bytes indexed by evidence manifests")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'retained first line\r\nretained second line\r\n' != b'retained first line\nretained second line\n' : Git must preserve the exact bytes indexed by evidence manifests
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.146s
+
+FAILED (failures=6)

@@ -1331,7 +1331,7 @@
       "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
       "required_outcome": "Inga nya of\u00f6rklarade skips; relevanta regressions/fault/property/soak-jobb gr\u00f6na.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "1376f7bc4951461ec227e93a0c1c70657464ecd62a418d80e292fe32b14dc28d",
+      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1358,7 +1358,7 @@
       "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
       "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "1376f7bc4951461ec227e93a0c1c70657464ecd62a418d80e292fe32b14dc28d",
+      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1385,7 +1385,7 @@
       "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; anv\u00e4ndar-README/package-README matchar nya API.",
       "required_outcome": "Ingen drift eller d\u00f6da exempel; endast utgiven kontraktsyta fryses.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "1376f7bc4951461ec227e93a0c1c70657464ecd62a418d80e292fe32b14dc28d",
+      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1411,7 +1411,7 @@
       "scenario": "\u00a710 steg 1 per f\u00f6r\u00e4ndring; steg 1 och steg 2 f\u00f6r hela baslinjen mot f43854d.",
       "required_outcome": "Kostnadsprofilen gr\u00f6n eller godk\u00e4nd i `accepted.json`; ingen f\u00f6rs\u00e4mring i den parade tidsm\u00e4tningen.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "1376f7bc4951461ec227e93a0c1c70657464ecd62a418d80e292fe32b14dc28d",
+      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
       "state": "Functional assertions and explicit gate definitions reviewed. Complete original full71 and prefix28 time studies fail. Node-hash correction passes cost and isolated miss timing; separate Nimbus/Mac cumulative miss checks pass, GUID final acceptance and original precision failures remain open. New published-head CI pending.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "open",
@@ -1505,5 +1505,6 @@
   "windows_checkout_fix_evidence": {
     "path": "plans/design-benchmarks/windows-path-guard-v1/manifest.json",
     "sha256": "b6d0088bf9914362b5405433c70a2d2f9a5526828746806b0176504321ce0449"
-  }
+  },
+  "line_ending_fix_evidence": "plans/design-benchmarks/evidence-line-endings-v1/manifest.json"
 }
