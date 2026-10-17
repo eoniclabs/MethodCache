@@ -70,7 +70,7 @@ public ref struct KeyBuilder
     internal readonly int LookupHash()
     {
         if (_prefixLength == 0) return Binding.HashKey(AsSpan());
-        return Binding.PrefixHash.FinishUtf16(AsSpan()[_prefixLength..]);
+        return Binding.PrefixHash.Finish(AsSpan()[_prefixLength..]);
     }
 
     /// <summary>The key written so far. Valid until the builder is appended to again.</summary>

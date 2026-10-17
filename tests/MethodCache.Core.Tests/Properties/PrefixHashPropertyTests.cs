@@ -85,6 +85,56 @@ public class PrefixHashPropertyTests
     }
 
     [Fact]
+    public void SipHash13Ascii_MatchesPublishedVectors_AtEverySplit()
+    {
+        // The vector inputs are bytes 0, 1, 2, ..., all below 0x80, so as ASCII text code unit i is byte i
+        for (var length = 0; length < 64; length++)
+        {
+            var text = Enumerable.Range(0, length).Select(i => (char)i).ToArray();
+            var expected = unchecked((int)Reference.SipHash.SipHash13Vectors[length]);
+            for (var first = 0; first <= text.Length; first++)
+                for (var second = first; second <= text.Length; second++)
+                {
+                    var hash = new SipHashState(Reference.SipHash.VectorKey0, Reference.SipHash.VectorKey1);
+                    Assert.True(hash.TryAppendAscii(text.AsSpan(0, first)));
+                    Assert.True(hash.TryAppendAscii(text.AsSpan(first, second - first)));
+                    Assert.True(hash.TryFinishAscii(text.AsSpan(second), out var actual));
+                    Assert.Equal(expected, actual);
+                }
+        }
+    }
+
+    [Fact]
+    public void KeyPrefixHash_AtEverySplit_HashesAsciiKeysAsBytesAndOthersAsUtf16()
+    {
+        // 0x7f is the last ASCII code unit; 0x80, 0xff and 0x100 must all take the UTF-16 form
+        Gen.Select(Gen.ULong.Array[4], Gen.String[Gen.Char["a:\\\0\u007f\u0080\u00ff\u0100\ud800é"], 0, 120]).Sample((keys, text) =>
+        {
+            var isAscii = text.All(c => c < 0x80);
+            var expected = isAscii
+                ? unchecked((int)Reference.SipHash.Compute(1, 3, keys[0], keys[1], text.Select(c => (byte)c).ToArray()))
+                : unchecked((int)Reference.SipHash.Compute(1, 3, keys[2], keys[3], Utf16(text)));
+            for (var split = 0; split <= text.Length; split++)
+            {
+                var prefix = ProcessKeyHash.Prefix(text.AsSpan(0, split), new SipHashState(keys[0], keys[1]), new SipHashState(keys[2], keys[3]));
+                Assert.Equal(expected, prefix.Finish(text.AsSpan(split)));
+                Assert.Equal(expected, prefix.Finish(text.AsSpan(split)));
+                // Both parts are checked, also when the second fits in the first part's unfinished block
+                var appended = new SipHashState(keys[0], keys[1]);
+                Assert.Equal(isAscii, appended.TryAppendAscii(text.AsSpan(0, split)) & appended.TryAppendAscii(text.AsSpan(split)));
+            }
+            Assert.Equal(isAscii, new SipHashState(keys[0], keys[1]).TryFinishAscii(text, out _));
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+    }
+
+    private static byte[] Utf16(string text)
+    {
+        var bytes = new byte[text.Length * 2];
+        for (var i = 0; i < text.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(2 * i), text[i]);
+        return bytes;
+    }
+
+    [Fact]
     public void SplitUtf16_WithArbitraryKeysAndSurrogates_EqualsReference()
     {
         Gen.Select(Gen.ULong, Gen.ULong, Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 200]).Sample((key0, key1, text) =>

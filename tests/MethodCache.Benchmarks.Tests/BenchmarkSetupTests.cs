@@ -47,6 +47,8 @@ public class BenchmarkSetupTests
             MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.UsesPrefixHash);
         Assert.Equal(core.GetType("MethodCache.Core.Runtime.Keys.SipHashState") != null,
             MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.UsesSipHash);
+        Assert.Equal(core.GetType("MethodCache.Core.Runtime.Keys.KeyPrefixHash") != null,
+            MethodCache.Benchmarks.Microbenchmarks.KeyHashLookupBenchmarks.UsesAsciiHash);
         var hasInPlaceBuilder = typeof(MethodCache.Generated.KeyBuilder).GetConstructors().Any(constructor =>
         {
             var parameters = constructor.GetParameters();

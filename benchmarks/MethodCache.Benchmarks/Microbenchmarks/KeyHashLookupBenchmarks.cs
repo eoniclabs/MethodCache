@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using BenchmarkDotNet.Attributes;
 #if METHODCACHE_PREFIX_HASH
 using MethodCache.Core.Runtime.Keys;
-#if METHODCACHE_SIPHASH
+#if METHODCACHE_ASCII_HASH
+using PrefixHashState = MethodCache.Core.Runtime.Keys.KeyPrefixHash;
+#elif METHODCACHE_SIPHASH
 using PrefixHashState = MethodCache.Core.Runtime.Keys.SipHashState;
 #else
 using PrefixHashState = MethodCache.Core.Runtime.Keys.MarvinState;
@@ -34,6 +36,18 @@ public class KeyHashLookupBenchmarks
         get
         {
 #if METHODCACHE_PREFIX_HASH && METHODCACHE_SIPHASH
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    public static bool UsesAsciiHash
+    {
+        get
+        {
+#if METHODCACHE_PREFIX_HASH && METHODCACHE_ASCII_HASH
             return true;
 #else
             return false;
@@ -91,7 +105,9 @@ public class KeyHashLookupBenchmarks
     public int PrefixLookup()
     {
 #if METHODCACHE_PREFIX_HASH
-#if METHODCACHE_SIPHASH
+#if METHODCACHE_ASCII_HASH
+        var hash = _prefix.Finish(_suffix);
+#elif METHODCACHE_SIPHASH
         var hash = _prefix.FinishUtf16(_suffix);
 #else
         var state = _prefix;
