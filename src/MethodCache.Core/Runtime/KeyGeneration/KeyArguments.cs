@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -28,8 +27,6 @@ internal static class KeyArguments
         Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter(), new BigIntegerConverter(), new IPAddressConverter() },
         TypeInfoResolver = new RuntimeTypeResolver(),
     };
-
-    private static readonly ConcurrentDictionary<Type, string> TypeNames = new();
 
     /// <summary>
     /// Serializes <paramref name="arg"/> to JSON. Throws when the type can't be serialized, or when it or any value
@@ -118,47 +115,9 @@ internal static class KeyArguments
     // By runtime type alone: RuntimeTypeConverter only runs with JsonOptions
     private static readonly ConcurrentDictionary<Type, RuntimeWriter> RuntimeWriters = new();
 
-    /// <summary>
-    /// The namespace-qualified name of <paramref name="type"/>, with its generic arguments but without the assembly
-    /// versions <see cref="Type.FullName"/> puts in them, so the name stays the same across releases.
-    /// </summary>
-    public static string TypeName(Type type) => TypeNames.GetOrAdd(type, static t =>
-    {
-        var builder = new StringBuilder();
-        AppendTypeName(builder, t);
-        return builder.ToString();
-    });
-
-    private static void AppendTypeName(StringBuilder builder, Type type)
-    {
-        if (type.IsArray)
-        {
-            AppendTypeName(builder, type.GetElementType()!);
-            builder.Append('[').Append(',', type.GetArrayRank() - 1).Append(']');
-            return;
-        }
-
-        if (!type.IsGenericType)
-        {
-            builder.Append(type.FullName ?? type.Name);
-            return;
-        }
-
-        var definition = type.GetGenericTypeDefinition();
-        builder.Append(definition.FullName ?? definition.Name).Append('[');
-        var arguments = type.GetGenericArguments();
-        for (var i = 0; i < arguments.Length; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(',');
-            }
-
-            AppendTypeName(builder, arguments[i]);
-        }
-
-        builder.Append(']');
-    }
+    private static readonly ConcurrentDictionary<Type, string> TypeNames = new();
+    /// <summary>Version-independent type identity, including assemblies for nested runtime values and generic arguments.</summary>
+    public static string TypeName(Type type) => TypeNames.GetOrAdd(type, static item => StableTypeIdentity.For(item));
 
     /// <summary>
     /// The type a value is written as: its runtime type, except that the framework's own read-only subclass of

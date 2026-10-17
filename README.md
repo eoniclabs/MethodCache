@@ -399,7 +399,7 @@ A keyed `ICacheManager` registration remains independent of the default unkeyed 
 
 Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
 
-Misconfiguration fails when the generic host starts rather than on the first call: GetOrCreate-only settings on a `[Cache]` method, and in `appsettings.json` invalid values, unknown setting names, a single value for `Tags` or an invalid duration. Positive invariant unit durations such as `30s` are accepted. `AddMethodCacheFromConfiguration` reads its section then, so configuration sources added after it count from the first call.
+Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags` or an invalid duration in `appsettings.json`. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

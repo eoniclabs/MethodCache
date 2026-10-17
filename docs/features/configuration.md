@@ -7,7 +7,7 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 |-------|----------------|----------|-----------------------|
 | Attributes | `[Cache(...)]` on the interface method | 10 (lowest) | No |
 | Startup code | `AddMethodCache(config => ...)` | 40 | No |
-| Configuration | `AddMethodCacheFromConfiguration(configuration)` | 50 | Yes, when the configuration reloads |
+| Configuration | `AddMethodCache(b => b.FromConfiguration(configuration))` | 50 | Yes, when the configuration reloads |
 | Runtime overrides | `IRuntimeCacheConfigurator` | 100 (highest) | Yes |
 
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
@@ -109,7 +109,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](fail-safe.md).
 - Pass a section name as the second argument to read another section. Environment files such as
   `appsettings.Production.json` work as usual. The section is read when the host starts, so configuration sources
-  added after `AddMethodCacheFromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
+  added after `FromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
   settings, apply from the first call.
 - Changes apply while the application runs, as soon as the configuration reloads (`appsettings.json` reloads on save
   by default).

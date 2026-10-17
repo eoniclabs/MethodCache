@@ -36,10 +36,11 @@ only; `AddMethodCache` validates contract versions before executing descriptors 
 captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
 binding. A retired invocation may finish its origin call but cannot publish into the current generation.
 
-Precompiled vendor decorators using contract 1 can run against a newer Core without regeneration.
-The contract retains `MethodCall.StartKey` for existing inline callers; new generated code uses the
-`KeyBuilder` constructor. Compatibility checks retain the original .NET 8 materialized-key images,
-add separate frozen .NET 10 inline-key images, and preserve the complete frozen member list.
+The reviewed contract-1 surface is frozen before the first release. Generated inline keys use the bound
+`KeyBuilder` constructor and `AppendPart` with ref lookups, including records, collections and key providers.
+`StartKey`, `BindKey`, `KeyPrefix` and `TextKey` are internal. Compatibility checks execute the explicit
+.NET 10 `Contract1Final` vendor images; earlier unpublished development checkpoints remain historical.
+After release, precompiled contract-1 decorators must run on newer 1.x Core versions without regeneration.
 
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered

@@ -6,6 +6,7 @@ using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace MethodCache.HttpCaching.Tests.Storage;
 
@@ -18,6 +19,7 @@ public class HttpReviewRegressionTests
     public async Task InvalidStaticTags_FailHostStartup(string invalid)
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Services.AddMethodCache();
         builder.Services.AddHttpClient("invalid-tags").AddHttpCaching(options =>
         {
@@ -40,6 +42,7 @@ public class HttpReviewRegressionTests
     public async Task InvalidSizeOrDuration_FailsHostStartup(string invalid)
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Services.AddMethodCache();
         builder.Services.AddHttpClient("invalid-bounds").AddHttpCaching(options =>
         {
@@ -64,6 +67,7 @@ public class HttpReviewRegressionTests
     public async Task ValidZeroAndLargeBounds_StartAndStoreWithoutOverflow(bool large)
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.ClearProviders();
         builder.Services.AddMethodCache();
         builder.Services.AddHttpClient("valid-bounds").AddHttpCaching(options =>
         {

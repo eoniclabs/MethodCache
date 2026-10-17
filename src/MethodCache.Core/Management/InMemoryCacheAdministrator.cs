@@ -95,8 +95,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         var engine = _cache.Engine;
         var wasLive = engine.TryPeek(key, out var node) && IsLive(node, engine.Now);
         // Match GetEntry's precedence when an explicit method key resembles a hashed HTTP id.
-        if (!wasLive && HttpResponseStore.IsObservationId(key) && _http != null)
-            return await _http.RemoveObservationAsync(key, cancellationToken).ConfigureAwait(false);
+        if (!wasLive && HttpResponseStore.IsObservationId(key) && _http != null &&
+            await _http.RemoveObservationAsync(key, cancellationToken).ConfigureAwait(false)) return true;
 
         // With L2 an unobserved key can still live on another instance, so confirmed invalidation reports true.
         var result = await _cache.InvalidatePreparedKeysAsync([key], cancellationToken).ConfigureAwait(false);

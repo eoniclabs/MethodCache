@@ -71,3 +71,9 @@ intentional skips; benchmark-script tests: 60 passed. The first aggregate local 
 budget and that test now passes with only the exact string-size increment charged. Native Redis/SQL, final
 performance and full cross-platform CI remain final validation work, not claims established by this static review.
 No CI or push occurred before this review.
+
+Follow-up identity audit: identical runtime payload type names in different assemblies also collided in fallback keys, both as root arguments and nested object values. Two regression cases reproduced it. Fallback metadata now shares the same version-independent assembly/type identity as service/generic scope. Fresh timing waits for this correction; the prior source’s CI continues and its results remain separate.
+
+The same audit reproduced identical keyed-enum names across assemblies; enum service-key scope now includes its assembly and unnamed values use invariant numeric text. Windows CI exposed the new Host startup tests trying to write the platform Event Log without permission. Those tests now clear default logging providers, preserving the validation failure assertions without machine-level logging dependencies. Linux and macOS CI passed the preceding checkpoint; its Windows failure remains a recorded failure.
+
+Admin collision follow-up: an unobserved L2-only manual key can also look like an HTTP id. Its failing regression now falls through to ordinary confirmed method invalidation when no matching HTTP observation exists. The format check still prevents ordinary method keys from scanning HTTP metadata.

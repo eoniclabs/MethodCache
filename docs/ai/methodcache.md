@@ -94,7 +94,7 @@ builder.Services.AddMethodCache();                               // after your r
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
 - `MethodCache.Extensibility`: `NoOpCacheManager`. Serializer, transport and atomic-store interfaces are internal.
-- `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
+- `Microsoft.Extensions.DependencyInjection`: `AddMethodCache` (configuration through its builder’s `FromConfiguration`),
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
 SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
@@ -117,3 +117,5 @@ the default when keys are enabled. No keys/tags/URLs/user/tenant metric dimensio
 payloads in spans/logs. Preserve application ambient activity/baggage context. Histograms use seconds. Report local
 method/HTTP entries, HTTP bytes, observed L2 entries and TotalWeight in configured units, never object-memory estimates.
 Health checks honor failureStatus and independently report L2, backplane subscription and storage/publication queues.
+
+- Generated keys and string policy ids start with the service assembly simple name in brackets, without its version. Closed generic argument identities include their assemblies. Build keys with `MethodCacheKeys`; use `TypePart(typeof(T))` when spelling a closed generic method name. Get exact policy ids from administration or prefer typed configuration expressions.

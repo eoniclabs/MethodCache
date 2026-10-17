@@ -44,7 +44,7 @@ Use `MethodCacheKeys` to construct exact keys and the admin method list for conf
   `object[]` or an `object` property.
 - **Values inside hashed arguments keep their runtime type.** Where a value's type differs from the type it is declared
   as (an element of `object[]` or `List<object>`, an `object` property, a property typed as a base class or interface),
-  the key records the value's type and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
+  the key records the value's version-independent assembly/type identity and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
   different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
@@ -167,7 +167,7 @@ var overload = MethodCacheKeys.For(
 - **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
   and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `[MyApp]MyApp.IRates.Get@ecb:1` and
   `[MyApp]MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
-  `Prefix` or `Pattern`. Other keys carry their type (`Get@MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
+  `Prefix` or `Pattern`. Other keys carry their type (`Get@[MyApp]MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
   `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
   throws for a keyed registration of a cached interface with any other key. A `KeyedService.AnyKey` registration is
   left uncached. `MethodCacheKeys.Pattern(type, "Get")`

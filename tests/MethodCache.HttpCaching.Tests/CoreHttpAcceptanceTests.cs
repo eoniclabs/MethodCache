@@ -158,6 +158,20 @@ public class CoreHttpAcceptanceTests
     }
 
     [Fact]
+    public async Task HttpLookingMethodKey_WithoutLocalObservation_CanStillBeInvalidatedInL2()
+    {
+        var time = new FakeTimeProvider();
+        using var store = new TestHttpStore(time, MethodCache.TestSupport.HttpEpochTestCache.Create(time));
+        using var cache = new InMemoryCacheManager(timeProvider: time, distributed: store.Layer);
+        var admin = new MethodCache.Core.Management.InMemoryCacheAdministrator(cache, null, store.Core);
+        var key = "http:" + new string('A', 64);
+        await store.Layer.WriteAsync(key, 42, null, store.Layer.Now, TimeSpan.FromMinutes(1));
+        Assert.True((await store.Layer.TryGetAsync<int>(key)).Found);
+        Assert.True(await admin.RemoveEntryAsync(key));
+        Assert.False((await store.Layer.TryGetAsync<int>(key)).Found);
+    }
+
+    [Fact]
     public async Task HttpAndMethodBudgets_EvictIndependently()
     {
         var services = new ServiceCollection();

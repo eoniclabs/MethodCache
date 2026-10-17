@@ -99,7 +99,7 @@ builder.Services.AddMethodCache();                               // after your r
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
 - `MethodCache.Extensibility`: `NoOpCacheManager`. Serializer, transport and atomic-store interfaces are internal.
-- `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`, `AddMethodCacheFromConfiguration`,
+- `Microsoft.Extensions.DependencyInjection`: `AddMethodCache` (configuration through its builder’s `FromConfiguration`),
   `AddMethodCacheRedis` (package `MethodCache.Redis`), `AddMethodCacheSqlServer` (package `MethodCache.SqlServer`).
 
 SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
@@ -122,6 +122,8 @@ the default when keys are enabled. No keys/tags/URLs/user/tenant metric dimensio
 payloads in spans/logs. Preserve application ambient activity/baggage context. Histograms use seconds. Report local
 method/HTTP entries, HTTP bytes, observed L2 entries and TotalWeight in configured units, never object-memory estimates.
 Health checks honor failureStatus and independently report L2, backplane subscription and storage/publication queues.
+
+- Generated keys and string policy ids start with the service assembly simple name in brackets, without its version. Closed generic argument identities include their assemblies. Build keys with `MethodCacheKeys`; use `TypePart(typeof(T))` when spelling a closed generic method name. Get exact policy ids from administration or prefer typed configuration expressions.
 
 
 ---
@@ -311,10 +313,11 @@ only; `AddMethodCache` validates contract versions before executing descriptors 
 captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
 binding. A retired invocation may finish its origin call but cannot publish into the current generation.
 
-Precompiled vendor decorators using contract 1 can run against a newer Core without regeneration.
-The contract retains `MethodCall.StartKey` for existing inline callers; new generated code uses the
-`KeyBuilder` constructor. Compatibility checks retain the original .NET 8 materialized-key images,
-add separate frozen .NET 10 inline-key images, and preserve the complete frozen member list.
+The reviewed contract-1 surface is frozen before the first release. Generated inline keys use the bound
+`KeyBuilder` constructor and `AppendPart` with ref lookups, including records, collections and key providers.
+`StartKey`, `BindKey`, `KeyPrefix` and `TextKey` are internal. Compatibility checks execute the explicit
+.NET 10 `Contract1Final` vendor images; earlier unpublished development checkpoints remain historical.
+After release, precompiled contract-1 decorators must run on newer 1.x Core versions without regeneration.
 
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
@@ -397,7 +400,7 @@ Use `MethodCacheKeys` to construct exact keys and the admin method list for conf
   `object[]` or an `object` property.
 - **Values inside hashed arguments keep their runtime type.** Where a value's type differs from the type it is declared
   as (an element of `object[]` or `List<object>`, an `object` property, a property typed as a base class or interface),
-  the key records the value's type and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
+  the key records the value's version-independent assembly/type identity and all of its members: `new object[] { 1 }` and `new object[] { 1L }` get
   different keys, and so do two `Circle`s behind a `Shape` property that differ only in `Radius`.
 - A `CancellationToken` parameter is never part of the key.
 - Keys don't depend on the current culture: `-1`, `1.5` and dates are written the same under every culture.
@@ -510,7 +513,7 @@ var overload = MethodCacheKeys.For(
 - **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
   and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `[MyApp]MyApp.IRates.Get@ecb:1` and
   `[MyApp]MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
-  `Prefix` or `Pattern`. Other keys carry their type (`Get@MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
+  `Prefix` or `Pattern`. Other keys carry their type (`Get@[MyApp]MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
   `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
   throws for a keyed registration of a cached interface with any other key. A `KeyedService.AnyKey` registration is
   left uncached. `MethodCacheKeys.Pattern(type, "Get")`
@@ -843,7 +846,7 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 |-------|----------------|----------|-----------------------|
 | Attributes | `[Cache(...)]` on the interface method | 10 (lowest) | No |
 | Startup code | `AddMethodCache(config => ...)` | 40 | No |
-| Configuration | `AddMethodCacheFromConfiguration(configuration)` | 50 | Yes, when the configuration reloads |
+| Configuration | `AddMethodCache(b => b.FromConfiguration(configuration))` | 50 | Yes, when the configuration reloads |
 | Runtime overrides | `IRuntimeCacheConfigurator` | 100 (highest) | Yes |
 
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
@@ -941,7 +944,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md).
 - Pass a section name as the second argument to read another section. Environment files such as
   `appsettings.Production.json` work as usual. The section is read when the host starts, so configuration sources
-  added after `AddMethodCacheFromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
+  added after `FromConfiguration`, such as a later `AddJsonFile` or a `WebApplicationFactory`'s test
   settings, apply from the first call.
 - Changes apply while the application runs, as soon as the configuration reloads (`appsettings.json` reloads on save
   by default).
@@ -1979,6 +1982,7 @@ under the same OS user from local credential files.
 | Threat | What MethodCache does |
 |---|---|
 | A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MC0019. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. Collection subclasses include their own public state alongside their elements in every key generator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
+| Two service libraries declare identical namespace/type names | Generated service keys and policy ids include the assembly simple name, without its version; keyed-service enum types, closed generic arguments and fallback runtime types (including nested object values) also include assembly identity. Assembly-name delimiters are escaped. `AssemblyKeySecurityTests` and the cross-assembly SignatureCorpus regression verify separate values and overrides. Libraries with the same assembly identity are trusted as the same logical library; this is not isolation between AssemblyLoadContexts. |
 | An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
 | A dynamic tag argument impersonates another argument | Dynamic placeholders use canonical key parts: null has its own marker, strings escape colons and backslashes, enums use invariant numbers, and dates keep their full precision. Static template text stays literal. Tags remain an application-defined shared invalidation namespace; they are not an authorization boundary. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |

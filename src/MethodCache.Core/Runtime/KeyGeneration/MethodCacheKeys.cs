@@ -57,7 +57,7 @@ public static class MethodCacheKeys
     /// </summary>
     /// <param name="methodName">The method's name.</param>
     /// <param name="serviceKey">
-    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@MyApp.Region.Eu</c>), or a bool, char, integer or
+    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@[MyApp]MyApp.Region.Eu</c>), or a bool, char, integer or
     /// <see cref="Guid"/> (<c>Get@Int32(7)</c>).
     /// </param>
     /// <exception cref="ArgumentException">The key is of another type, whose string form may not be stable.</exception>
@@ -82,7 +82,8 @@ public static class MethodCacheKeys
         string text => text.AsSpan().IndexOfAny('.', '(', '"') < 0
             ? Part(text)
             : string.Concat("\"", Part(text).Replace("\"", "\\\""), "\""),
-        Enum value => string.Concat(value.GetType().FullName, ".", value.ToString()),
+        Enum value => string.Concat(Infrastructure.StableTypeIdentity.For(value.GetType()), ".",
+            Enum.GetName(value.GetType(), value) ?? Infrastructure.CanonicalTagPart.Format(value)),
         bool value => string.Concat("Boolean(", Part(value), ")"),
         char value => string.Concat("Char(", Part(value), ")"),
         Guid value => string.Concat("Guid(", Part(value), ")"),
