@@ -1,0 +1,11 @@
+{
+  "started_utc": "2026-10-17T12:10:37.308415+00:00",
+  "pid": 2296154,
+  "inputs_sha256": "781e26d6bd73f6f6719e583fc9d33bbb86d32095fd73eca3603e662f35e281c4",
+  "prepared_sha256": "24f5c9332c5391526cc67314d4db796c6b7b346e482cbf8158b62dfaa7adb2da",
+  "source_verification_sha256": "c5b0e1f87ce4d0b0f5fdefb827a3b507aace4e434c98a02014658292fdd5095e",
+  "binary_files_verified": 220,
+  "candidate_source_files_verified": 224,
+  "common_harness_sources_verified": 8,
+  "mode": "Oneexistingbinary2caseprecisionconfirmation;exclusiveleasewaitsforCI.No build/backends/restarts/waivers."
+}

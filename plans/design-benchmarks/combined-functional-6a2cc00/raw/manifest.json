@@ -1,0 +1,284 @@
+{
+  "sha": "6a2cc0020274e53f77778a8c906980423e19543d",
+  "ci_run": "20261017-140231-6a2cc0020274",
+  "collected_utc": "2026-10-17T12:12:33.481034+00:00",
+  "scope": "Exact published combined review and complete failed timing evidence; runtime/build/test sources equal c9. All14functionaljobspass; current complete14case timing fails3slow/2wide; no timing pass inferred. All raw CI log/exit bytes are stored unchanged; original and stored hashes are identical.",
+  "files": {
+    "linux/build.log": "6b22ecb8bb959fb6b7e510398cef5be7111c43105da71e4f2f36cd73b03bf74f",
+    "linux/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/demo.log": "80e66296ae9c7b6f63771dd955f479836e6ee9bcd4a9b6df3016d7e975e6369a",
+    "linux/demo.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/tests.log": "cb211030ba85030c8a405e69f6f79f00ff5e701d4d2391820340ba943d12a487",
+    "linux/tests.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/diffcoverage.log": "1cf301ff0109e0b52115daec9f6e1b15a655eafbc7c423acc3846239fa237798",
+    "linux/diffcoverage.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/properties.log": "54e08f5d92b99a920324be779f196ced12d5ffe16f534e8435c8ae12677d3550",
+    "linux/properties.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/soak.log": "44ad06e6c662a554b308f5fc3f0f362c06a9fd8a2c55fe2cc4633d53c9ebbe3c",
+    "linux/soak.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/cultures.log": "388bf7ea3c6647d06a0adc24bf1fb56630547a0db740c9ac34f993de7ec5c381",
+    "linux/cultures.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/aot.log": "dd69efc84e7d3dbc381c8247833b128cec798d3cff3414133276fda2f7ae0fad",
+    "linux/aot.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/packages.log": "eb82b1f209d7b212d13013430595db976a7483e5a2c6798c142b2cef3953435a",
+    "linux/packages.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/docs.log": "a79a88434d13cde985ecf4c9704d1d292b40bfa1c27452db96ff486bcee25bc2",
+    "linux/docs.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "macos/build.log": "9437d05d8b7545b5c1d421dbd6931012ad3c73cc07e76494fc2fd72bd0f26708",
+    "macos/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "macos/unit.log": "f8d10430f1a5fd2ff21f4fef4cf163bc73b1e70aeb9af3e3259b39173ec5912c",
+    "macos/unit.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "windows/build.log": "5f97cd29ac985c432a66d819ff6c4cb9006b5b6717c17da8d48b776a31d87232",
+    "windows/build.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+    "windows/unit.log": "1c7efc6f082afc4f0f6320c68286fcd3e68f5eb93e4b9240f51a8186f7253718",
+    "windows/unit.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+  },
+  "original_source_sha256": {
+    "linux/build.log": "6b22ecb8bb959fb6b7e510398cef5be7111c43105da71e4f2f36cd73b03bf74f",
+    "linux/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/demo.log": "80e66296ae9c7b6f63771dd955f479836e6ee9bcd4a9b6df3016d7e975e6369a",
+    "linux/demo.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/tests.log": "cb211030ba85030c8a405e69f6f79f00ff5e701d4d2391820340ba943d12a487",
+    "linux/tests.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/diffcoverage.log": "1cf301ff0109e0b52115daec9f6e1b15a655eafbc7c423acc3846239fa237798",
+    "linux/diffcoverage.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/properties.log": "54e08f5d92b99a920324be779f196ced12d5ffe16f534e8435c8ae12677d3550",
+    "linux/properties.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/soak.log": "44ad06e6c662a554b308f5fc3f0f362c06a9fd8a2c55fe2cc4633d53c9ebbe3c",
+    "linux/soak.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/cultures.log": "388bf7ea3c6647d06a0adc24bf1fb56630547a0db740c9ac34f993de7ec5c381",
+    "linux/cultures.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/aot.log": "dd69efc84e7d3dbc381c8247833b128cec798d3cff3414133276fda2f7ae0fad",
+    "linux/aot.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/packages.log": "eb82b1f209d7b212d13013430595db976a7483e5a2c6798c142b2cef3953435a",
+    "linux/packages.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "linux/docs.log": "a79a88434d13cde985ecf4c9704d1d292b40bfa1c27452db96ff486bcee25bc2",
+    "linux/docs.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "macos/build.log": "9437d05d8b7545b5c1d421dbd6931012ad3c73cc07e76494fc2fd72bd0f26708",
+    "macos/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "macos/unit.log": "f8d10430f1a5fd2ff21f4fef4cf163bc73b1e70aeb9af3e3259b39173ec5912c",
+    "macos/unit.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "windows/build.log": "5f97cd29ac985c432a66d819ff6c4cb9006b5b6717c17da8d48b776a31d87232",
+    "windows/build.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
+    "windows/unit.log": "1c7efc6f082afc4f0f6320c68286fcd3e68f5eb93e4b9240f51a8186f7253718",
+    "windows/unit.exit": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+  },
+  "github_statuses": {
+    "state": "success",
+    "statuses": [
+      {
+        "url": "https://api.github.com/repos/eoniclabs/MethodCache/statuses/6a2cc0020274e53f77778a8c906980423e19543d",
+        "avatar_url": "https://avatars.githubusercontent.com/u/80718540?v=4",
+        "id": 56592125749,
+        "node_id": "SC_kwDOPdIdo88AAAANLSdPNQ",
+        "state": "success",
+        "description": "aot \u2713, build \u2713, cultures \u2713, demo \u2713, diffcoverage \u2713, docs \u2713, packages \u2713, properties \u2713, soak \u2713, tests \u2713",
+        "target_url": null,
+        "context": "MethodCache CI (Linux)",
+        "created_at": "2026-10-17T12:12:28Z",
+        "updated_at": "2026-10-17T12:12:28Z"
+      },
+      {
+        "url": "https://api.github.com/repos/eoniclabs/MethodCache/statuses/6a2cc0020274e53f77778a8c906980423e19543d",
+        "avatar_url": "https://avatars.githubusercontent.com/u/80718540?v=4",
+        "id": 56592126327,
+        "node_id": "SC_kwDOPdIdo88AAAANLSdRdw",
+        "state": "success",
+        "description": "build \u2713, unit \u2713",
+        "target_url": null,
+        "context": "MethodCache CI (Windows)",
+        "created_at": "2026-10-17T12:12:29Z",
+        "updated_at": "2026-10-17T12:12:29Z"
+      },
+      {
+        "url": "https://api.github.com/repos/eoniclabs/MethodCache/statuses/6a2cc0020274e53f77778a8c906980423e19543d",
+        "avatar_url": "https://avatars.githubusercontent.com/u/80718540?v=4",
+        "id": 56592126919,
+        "node_id": "SC_kwDOPdIdo88AAAANLSdTxw",
+        "state": "success",
+        "description": "build \u2713, unit \u2713",
+        "target_url": null,
+        "context": "MethodCache CI (macOS)",
+        "created_at": "2026-10-17T12:12:30Z",
+        "updated_at": "2026-10-17T12:12:30Z"
+      },
+      {
+        "url": "https://api.github.com/repos/eoniclabs/MethodCache/statuses/6a2cc0020274e53f77778a8c906980423e19543d",
+        "avatar_url": "https://avatars.githubusercontent.com/u/80718540?v=4",
+        "id": 56592127630,
+        "node_id": "SC_kwDOPdIdo88AAAANLSdWjg",
+        "state": "success",
+        "description": "All platforms passed in 10 min",
+        "target_url": null,
+        "context": "MethodCache CI",
+        "created_at": "2026-10-17T12:12:32Z",
+        "updated_at": "2026-10-17T12:12:32Z"
+      }
+    ],
+    "sha": "6a2cc0020274e53f77778a8c906980423e19543d",
+    "total_count": 4,
+    "repository": {
+      "id": 1037180323,
+      "node_id": "R_kgDOPdIdow",
+      "name": "MethodCache",
+      "full_name": "eoniclabs/MethodCache",
+      "private": false,
+      "owner": {
+        "login": "eoniclabs",
+        "id": 80718925,
+        "node_id": "MDEyOk9yZ2FuaXphdGlvbjgwNzE4OTI1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/80718925?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/eoniclabs",
+        "html_url": "https://github.com/eoniclabs",
+        "followers_url": "https://api.github.com/users/eoniclabs/followers",
+        "following_url": "https://api.github.com/users/eoniclabs/following{/other_user}",
+        "gists_url": "https://api.github.com/users/eoniclabs/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/eoniclabs/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/eoniclabs/subscriptions",
+        "organizations_url": "https://api.github.com/users/eoniclabs/orgs",
+        "repos_url": "https://api.github.com/users/eoniclabs/repos",
+        "events_url": "https://api.github.com/users/eoniclabs/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/eoniclabs/received_events",
+        "type": "Organization",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/eoniclabs/MethodCache",
+      "description": null,
+      "fork": false,
+      "url": "https://api.github.com/repos/eoniclabs/MethodCache",
+      "forks_url": "https://api.github.com/repos/eoniclabs/MethodCache/forks",
+      "keys_url": "https://api.github.com/repos/eoniclabs/MethodCache/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/eoniclabs/MethodCache/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/eoniclabs/MethodCache/teams",
+      "hooks_url": "https://api.github.com/repos/eoniclabs/MethodCache/hooks",
+      "issue_events_url": "https://api.github.com/repos/eoniclabs/MethodCache/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/eoniclabs/MethodCache/events",
+      "assignees_url": "https://api.github.com/repos/eoniclabs/MethodCache/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/eoniclabs/MethodCache/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/eoniclabs/MethodCache/tags",
+      "blobs_url": "https://api.github.com/repos/eoniclabs/MethodCache/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/eoniclabs/MethodCache/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/eoniclabs/MethodCache/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/eoniclabs/MethodCache/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/eoniclabs/MethodCache/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/eoniclabs/MethodCache/languages",
+      "stargazers_url": "https://api.github.com/repos/eoniclabs/MethodCache/stargazers",
+      "contributors_url": "https://api.github.com/repos/eoniclabs/MethodCache/contributors",
+      "subscribers_url": "https://api.github.com/repos/eoniclabs/MethodCache/subscribers",
+      "subscription_url": "https://api.github.com/repos/eoniclabs/MethodCache/subscription",
+      "commits_url": "https://api.github.com/repos/eoniclabs/MethodCache/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/eoniclabs/MethodCache/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/eoniclabs/MethodCache/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/eoniclabs/MethodCache/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/eoniclabs/MethodCache/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/eoniclabs/MethodCache/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/eoniclabs/MethodCache/merges",
+      "archive_url": "https://api.github.com/repos/eoniclabs/MethodCache/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/eoniclabs/MethodCache/downloads",
+      "issues_url": "https://api.github.com/repos/eoniclabs/MethodCache/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/eoniclabs/MethodCache/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/eoniclabs/MethodCache/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/eoniclabs/MethodCache/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/eoniclabs/MethodCache/labels{/name}",
+      "releases_url": "https://api.github.com/repos/eoniclabs/MethodCache/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/eoniclabs/MethodCache/deployments"
+    },
+    "commit_url": "https://api.github.com/repos/eoniclabs/MethodCache/commits/6a2cc0020274e53f77778a8c906980423e19543d",
+    "url": "https://api.github.com/repos/eoniclabs/MethodCache/commits/6a2cc0020274e53f77778a8c906980423e19543d/status"
+  },
+  "linux_tests": {
+    "project_runs": 16,
+    "passed": 2639,
+    "failed": 0,
+    "skipped": 1,
+    "projects": {
+      "MethodCache.HttpCaching.IntegrationTests": {
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Redis.Tests": {
+        "passed": 52,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.OpenTelemetry.Tests": {
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.CompatTests": {
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Samples.Tests": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.HttpCaching.Tests": {
+        "passed": 345,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.AspNetCore.Tests": {
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Docs.Tests": {
+        "passed": 120,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Benchmarks.Tests": {
+        "passed": 126,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Analyzers.Tests": {
+        "passed": 71,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Redis.IntegrationTests": {
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.SourceGenerator.Tests": {
+        "passed": 66,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.SqlServer.Tests": {
+        "passed": 52,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.Core.Tests": {
+        "passed": 1055,
+        "failed": 0,
+        "skipped": 1
+      },
+      "MethodCache.SqlServer.IntegrationTests": {
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0
+      },
+      "MethodCache.SourceGenerator.IntegrationTests": {
+        "passed": 542,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "diffcoverage": {
+    "covered": 3615,
+    "total": 3839,
+    "percentage": 94.2
+  }
+}

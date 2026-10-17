@@ -41,3 +41,11 @@ Johan approved combined review in#134 againstmain on2026-10-17, preserving commi
 history and replacing separate historical-head cost acceptance for this series.
 The17old failures remain recorded. Final cumulative cost/timing and filtered CPU
 requirements are unchanged; no merge or time exception is authorized.
+
+Latest functional publication6a2cc002 passes all14jobs/fourstatuses:2639Linux/0failures,
+1intentionalsoakskip,diff94.2%. The complete Nimbus2case follow-up has40launches,
+2precise slowdowns16.9%/17.3%,0wide and0executionerrors. Together with the3precise
+Mac slowdowns,5regressions remain. Original Mac14data and wide intervals are retained;
+no studies are pooled. [Nimbus evidence](../http-precision2-nimbus-v1/),
+[latest CI](../combined-functional-6a2cc00/), and the [inactive five-case proposal](../proposed-http-time-bounds-v2.json).
+Canonical accepted.json is unchanged; no all76pass or final time acceptance is claimed.

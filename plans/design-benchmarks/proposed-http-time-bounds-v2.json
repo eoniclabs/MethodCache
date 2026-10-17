@@ -1,0 +1,32 @@
+{
+  "_status": "INACTIVE PROPOSAL. Requires explicit human design decision before adding these exact rules to accepted.json. No current timing pass is claimed.",
+  "_supersedes": "proposed-http-time-bounds-v1.json for this current runtime; no approval of v1 is inferred. The old six-case/+25% proposal is retained as history.",
+  "_base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "_candidate_runtime": "6a2cc0020274e53f77778a8c906980423e19543d",
+  "_scope": "Five exact cases only. Estimated paired head/base ratio must stay within each cap.95%Student-t precision width<=6% remains mandatory before a bound is considered. No correctness,memory,command,othercase or missing-data requirement changes.",
+  "_evidence": [
+    "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
+    "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json"
+  ],
+  "_machines": "MacAppleM5/.NET10.0.3 for the three precise +4.1/+5.1/+6.7% cases; Nimbus/.NET10.0.12/CPU0-15 for the two complete precision confirmations. Same settings within every comparison; no study pooling.",
+  "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)": {
+    "time": 1.06,
+    "reason": "PROPOSED bounded aggregate cost of the shared local HTTP store, full storage metadata and conservative resident-byte accounting. The complete quiet-Mac comparison measures +5.1% (95%1.045\u20131.058). This is a conscious feature/cost tradeoff, not proof that every extra nanosecond comes from one field. No ordinary-hit,method-cache or native-L2 limit changes."
+  },
+  "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)": {
+    "time": 1.06,
+    "reason": "PROPOSED bounded aggregate cost of enabled Core origin instrumentation and shared HTTP residency bookkeeping. Preserve request/load labels,duration/error records and activity parenting. Complete quiet-Mac measurement +4.1% (95%1.032\u20131.049). No no-listener revalidation or ordinary-hit limit changes."
+  },
+  "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)": {
+    "time": 1.08,
+    "reason": "PROPOSED bounded aggregate cost of enabled Core origin instrumentation and shared HTTP residency bookkeeping after invalidation. Preserve duration/error labels,activity parenting and generation guarantees. Complete quiet-Mac measurement +6.7% (95%1.040\u20131.095). Bound is on the paired estimate; the unchanged6%precision check still applies first."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)": {
+    "time": 1.2,
+    "reason": "PROPOSED bounded aggregate cost of local HTTP publication after invalidation: shared TinyLFU storage,conservative byte/metadata accounting,URL-slot/custom indexes and direct physical administration. The implicit client index is already removed. Complete Nimbus confirmation +16.9% (95%1.148\u20131.190); original Mac interval remains wide and is retained. Only this exact case; no general cold-miss waiver or precision waiver."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)": {
+    "time": 1.2,
+    "reason": "PROPOSED bounded aggregate cost of local HTTP publication after invalidation with Core listeners: shared store,conservative byte/metadata accounting,URL-slot/custom indexes and direct physical administration. Complete Nimbus confirmation +17.3% (95%1.156\u20131.191). Only this exact case; original wide Mac result retained. Correctness,allocations/commands and precision remain required."
+  }
+}

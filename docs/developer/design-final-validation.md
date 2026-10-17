@@ -2,6 +2,46 @@
 
 ## Current published checkpoint (2026-10-17)
 
+Published `6a2cc0020274e53f77778a8c906980423e19543d` is the combined review against
+main, with commit history preserved. All fourteen required jobs and four statuses
+pass: 2,639 Linux tests, zero failures, one intentional opt-in soak skip and changed-line
+coverage 3615/3839 (94.2%). This includes 99 randomized properties, the separately enabled
+soak, both cultures, Native AOT with 175 signature cases, all seven packed packages and
+add-on smoke tests, real Redis/SQL Server, the demo and generated docs. Runtime, build
+and test sources are identical to c9. No merge or release has been performed.
+[Exact combined-review CI](../../plans/design-benchmarks/combined-functional-6a2cc00/).
+
+The current cumulative cost profile passes all 67 cases with six unchanged accepted
+costs. The strict time gate still fails: five HTTP cases have precise regressions.
+Three come from the complete fourteen-case Mac confirmation: the local design-workload
+miss is 5.1% slower and the two listening 304 cases are 4.1% and 6.7% slower. Nine Mac
+cases pass; the remaining two cold-after-invalidation intervals are wider than 6%.
+[Complete original Mac report](../../plans/design-benchmarks/http-client-index-final14-v1/).
+
+The separate complete Nimbus confirmation measures those two imprecise cases again:
+listeners off ratio 1.169 (95% interval 1.148–1.190), listeners on 1.173 (1.156–1.191).
+Both intervals now meet the precision requirement, and both cases are slower. All 40
+fresh processes and ten alternating pairs complete without execution errors. All 220
+binaries, 224 actual candidate files, eight common harness sources, 200/224 Git blobs,
+loaded libraries, process order, runtime/GC, CPU affinity and own-container cleanup verify.
+The unchanged compiled runtime/helper is reused on both sides. Two historical harness
+source differences are macOS-only QoS guards and do not change Linux or the selected
+HTTP methods. Their original source and provenance are retained.
+[Complete Nimbus confirmation](../../plans/design-benchmarks/http-precision2-nimbus-v1/).
+
+No study is pooled or overwritten. The original full Mac report retains its failures
+and wide intervals; the Nimbus report supplies separate precise evidence for exactly
+the two repeated cases. Both original-rule and current-rule reviewers fail. The
+[five-case time-bound proposal](../../plans/design-benchmarks/proposed-http-time-bounds-v2.json)
+is inactive pending an explicit design decision and supersedes the earlier +25%
+proposal for this runtime. Its exact caps are 6% for the local design miss, 6%/8% for
+the listening 304 cases and 20% for the two cold-after-invalidation cases. Correctness,
+bytes/commands, all other cases and the 6% precision rule remain unchanged. Conditional
+replay covers the five precise estimates and preserves the six existing cost exceptions;
+it establishes no accepted time pass while canonical accepted.json is unchanged.
+
+### Earlier source checkpoints and the original full Mac report
+
 Exact published `c9ec0db33d1d5b27a68ff7a31d7437c603b360a5` includes the client-index
 correction and passes all fourteen required jobs and four statuses. Linux reports
 2,639 passing tests, zero failures, one intentional opt-in soak skip and diff coverage
@@ -32,7 +72,7 @@ client-invalidation correctness test. V01–V03 use the current c9 CI checkpoint
 V04 remains open for final timing. On2026-10-17 Johan approved combined review
 in#134 againstmain, preserving history and replacing separate historical-head cost
 acceptance for this series. The seventeen historical overages remain failures;
-the final combined gate is unchanged. No merge, PR retarget or release has been performed.
+the final combined gate is unchanged. PR#134 is now retargeted to main under the approved arrangement; no merge or release has been performed.
 
 ## Previous checkpoints and investigation (actual source points retained)
 

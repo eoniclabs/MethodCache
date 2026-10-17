@@ -1,0 +1,4 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7215.7 | 8473.8 | 1.169 | 1.148-1.190 | **slower** |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7199.9 | 8482.9 | 1.173 | 1.156-1.191 | **slower** |
