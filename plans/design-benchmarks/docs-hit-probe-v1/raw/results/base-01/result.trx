@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="ba9885ab-3348-4bd4-890a-7330f4c02c30" name="@60b0df880d53 2026-10-17 01:53:36" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-17T01:53:36.9993059+00:00" queuing="2026-10-17T01:53:36.9993059+00:00" start="2026-10-17T01:53:36.4785926+00:00" finish="2026-10-17T01:53:37.0024317+00:00" />
+  <TestSettings name="default" id="7a5636d4-81a4-416c-b20b-92be5aefb6ca">
+    <Deployment runDeploymentRoot="_60b0df880d53_2026-10-17_01_53_36" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="bcfca579-2059-4daa-ac2e-71e0752cbd91" testId="5a0fd4e2-1a3d-ca07-aa9a-4d68c967acdc" testName="MethodCache.Docs.Tests.TelemetryHitAllocationTests.PublicCacheHit_WithCoreListener_DoesNotAllocate" computerName="60b0df880d53" duration="00:00:00.0432826" startTime="2026-10-17T01:53:36.8729017+00:00" endTime="2026-10-17T01:53:36.9205727+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bcfca579-2059-4daa-ac2e-71e0752cbd91" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.Docs.Tests.TelemetryHitAllocationTests.PublicCacheHit_WithCoreListener_DoesNotAllocate" storage="/home/agent-admin/methodcache-design-bench-20261015/docs-hit-probe-v1/tree/tests/methodcache.docs.tests/bin/release/net10.0/methodcache.docs.tests.dll" id="5a0fd4e2-1a3d-ca07-aa9a-4d68c967acdc">
+      <Execution id="bcfca579-2059-4daa-ac2e-71e0752cbd91" />
+      <TestMethod codeBase="/home/agent-admin/methodcache-design-bench-20261015/docs-hit-probe-v1/tree/tests/MethodCache.Docs.Tests/bin/Release/net10.0/MethodCache.Docs.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Docs.Tests.TelemetryHitAllocationTests" name="PublicCacheHit_WithCoreListener_DoesNotAllocate" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="5a0fd4e2-1a3d-ca07-aa9a-4d68c967acdc" executionId="bcfca579-2059-4daa-ac2e-71e0752cbd91" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="1" executed="1" passed="1" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.12)
+[xUnit.net 00:00:00.06]   Discovering: MethodCache.Docs.Tests
+[xUnit.net 00:00:00.10]   Discovered:  MethodCache.Docs.Tests
+[xUnit.net 00:00:00.12]   Starting:    MethodCache.Docs.Tests
+[xUnit.net 00:00:00.19]   Finished:    MethodCache.Docs.Tests
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

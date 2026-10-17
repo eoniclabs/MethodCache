@@ -67,11 +67,16 @@ public static partial class PolicyBackendContract
         Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(3)));
 
         // Deadline assertions have no dependency on the preceding policy mutations or their callbacks.
-        // Keep both timed nodes on one fresh physical/backplane scope, with subscriptions ready in Create.
+        // Keep both timed nodes on one fresh physical scope. Subscription recovery may legitimately retire
+        // a running load, so detach and drain callbacks before testing only L2 publication/deadlines.
         var expiryScope = "expiry:" + Guid.NewGuid().ToString("N") + ":";
         Action<MethodCacheBuilder> isolateExpiry = builder => builder.Services.PostConfigure<DistributedCacheOptions>(o => o.KeyPrefix += expiryScope);
         await using var timedFirst = await create(new Origin(700), isolateExpiry);
         await using var timedSecond = await create(new Origin(800), isolateExpiry);
+        await timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
+        await timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
+        Assert.Equal(BackplaneState.Disconnected, timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
+        Assert.Equal(BackplaneState.Disconnected, timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
         var timedWriter = timedFirst.GetRequiredService<ICacheManager>();
         var timedReceiver = timedSecond.GetRequiredService<ICacheManager>();
         var slow = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);

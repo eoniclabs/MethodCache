@@ -1,0 +1,16 @@
+{
+  "base": "be88349fae9b2e0c55406ccde578a0d1a105b233",
+  "bundle": "docs-hit-probe-v1/source.bundle",
+  "bundle_sha256": "8bda394f51c4d095fa657ea2ba3adf7eb77007e3ca34e862ea4caf9dea0fc4d7",
+  "controller_sha256": "3dc37d03f40d96d94300f62ee35f098d57e4e96e55d933da36bf285f60ed5aaf",
+  "patch_sha256": "49d2d7bcbb0361e376a3977f2d116fd83b4da62eccdbc07d190c8d11d4959940",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "redis_image": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+  "sql_image": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+  "fixed_runs": {
+    "baseRedis": 10,
+    "headRedis": 10,
+    "headSqlServer": 3
+  },
+  "criterion": "All candidate native cases and full Core suite pass; preserve every original outcome; real providers and same source lifetime assertions. No production changes."
+}

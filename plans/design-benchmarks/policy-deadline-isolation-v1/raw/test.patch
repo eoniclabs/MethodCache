@@ -1,0 +1,143 @@
+diff --git a/tests/MethodCache.Core.Tests/FaultInjection/PolicySubscriptionBarrierTests.cs b/tests/MethodCache.Core.Tests/FaultInjection/PolicySubscriptionBarrierTests.cs
+index 09f0e166..e19774cb 100644
+--- a/tests/MethodCache.Core.Tests/FaultInjection/PolicySubscriptionBarrierTests.cs
++++ b/tests/MethodCache.Core.Tests/FaultInjection/PolicySubscriptionBarrierTests.cs
+@@ -6,6 +6,45 @@ namespace MethodCache.Core.Tests.FaultInjection;
+ 
+ public class PolicySubscriptionBarrierTests
+ {
++    [Fact]
++    public async Task Unsubscribe_PreventsDeliveryOfPreviouslyQueuedNativeCallback()
++    {
++        var inner = new HeldSubscription();
++        inner.Acknowledge.TrySetResult();
++        await using var barrier = new PolicySubscriptionBarrier(inner);
++        var delivered = 0;
++        await barrier.SubscribeAsync(_ => { delivered++; return Task.CompletedTask; });
++        Assert.Equal(1, delivered);
++        var queued = Assert.IsType<Func<BackplaneMessage, Task>>(inner.CapturedCallback);
++        await barrier.UnsubscribeAsync();
++        await queued(new BackplaneMessage { Type = BackplaneMessageType.ClearAll });
++        Assert.Equal(1, delivered);
++    }
++
++    [Fact]
++    public async Task Unsubscribe_WaitsForAnAlreadyStartedRecoveryCallback()
++    {
++        var inner = new HeldSubscription();
++        await using var barrier = new PolicySubscriptionBarrier(inner);
++        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
++        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
++        var subscribing = barrier.SubscribeAsync(async _ => { started.TrySetResult(); await release.Task; });
++        Task? unsubscribing = null;
++        try
++        {
++            inner.Acknowledge.TrySetResult();
++            await started.Task.WaitAsync(TimeSpan.FromSeconds(20));
++            unsubscribing = barrier.UnsubscribeAsync();
++            Assert.False(unsubscribing.IsCompleted);
++        }
++        finally
++        {
++            release.TrySetResult();
++            await subscribing;
++            if (unsubscribing != null) await unsubscribing;
++        }
++    }
++
+     [Fact]
+     public async Task Ready_WaitsForSubscriptionAcknowledgementAndRecoveryCallback()
+     {
+@@ -31,12 +70,14 @@ public class PolicySubscriptionBarrierTests
+ 
+     private sealed class HeldSubscription : IBackplane
+     {
++        internal Func<BackplaneMessage, Task>? CapturedCallback { get; private set; }
+         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         internal TaskCompletionSource Acknowledge { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+         public string InstanceId => "subscription-barrier-test";
+         public BackplaneState ConnectionState => BackplaneState.Connected;
+         public async Task SubscribeAsync(Func<BackplaneMessage, Task> callback, CancellationToken cancellationToken = default)
+         {
++            CapturedCallback = callback;
+             Started.TrySetResult(); await Acknowledge.Task;
+             await callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll });
+         }
+diff --git a/tests/TestSupport/PolicyBackendContract.cs b/tests/TestSupport/PolicyBackendContract.cs
+index 5f14a701..889071c9 100644
+--- a/tests/TestSupport/PolicyBackendContract.cs
++++ b/tests/TestSupport/PolicyBackendContract.cs
+@@ -67,11 +67,16 @@ public static partial class PolicyBackendContract
+         Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(3)));
+ 
+         // Deadline assertions have no dependency on the preceding policy mutations or their callbacks.
+-        // Keep both timed nodes on one fresh physical/backplane scope, with subscriptions ready in Create.
++        // Keep both timed nodes on one fresh physical scope. Subscription recovery may legitimately retire
++        // a running load, so detach and drain callbacks before testing only L2 publication/deadlines.
+         var expiryScope = "expiry:" + Guid.NewGuid().ToString("N") + ":";
+         Action<MethodCacheBuilder> isolateExpiry = builder => builder.Services.PostConfigure<DistributedCacheOptions>(o => o.KeyPrefix += expiryScope);
+         await using var timedFirst = await create(new Origin(700), isolateExpiry);
+         await using var timedSecond = await create(new Origin(800), isolateExpiry);
++        await timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
++        await timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
++        Assert.Equal(BackplaneState.Disconnected, timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
++        Assert.Equal(BackplaneState.Disconnected, timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
+         var timedWriter = timedFirst.GetRequiredService<ICacheManager>();
+         var timedReceiver = timedSecond.GetRequiredService<ICacheManager>();
+         var slow = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+diff --git a/tests/TestSupport/PolicySubscriptionBarrier.cs b/tests/TestSupport/PolicySubscriptionBarrier.cs
+index fb48cb8f..b9f284bd 100644
+--- a/tests/TestSupport/PolicySubscriptionBarrier.cs
++++ b/tests/TestSupport/PolicySubscriptionBarrier.cs
+@@ -8,6 +8,9 @@ namespace MethodCache.TestSupport;
+ internal sealed class PolicySubscriptionBarrier(IBackplane inner) : IBackplane, IAsyncDisposable
+ {
+     private int _disposed;
++    private readonly object _deliveryGate = new();
++    private Func<BackplaneMessage, Task>? _callback;
++    private Task _pendingDeliveries = Task.CompletedTask;
+     internal TaskCompletionSource Ready { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+     internal static void Decorate(IServiceCollection services)
+     {
+@@ -30,15 +33,38 @@ internal sealed class PolicySubscriptionBarrier(IBackplane inner) : IBackplane,
+     public Task PublishClearAsync(CancellationToken cancellationToken = default) => inner.PublishClearAsync(cancellationToken);
+     public async Task SubscribeAsync(Func<BackplaneMessage, Task> callback, CancellationToken cancellationToken = default)
+     {
+-        try { await inner.SubscribeAsync(callback, cancellationToken); Ready.TrySetResult(); }
++        lock (_deliveryGate) _callback = callback;
++        try { await inner.SubscribeAsync(DeliverAsync, cancellationToken); Ready.TrySetResult(); }
+         catch (Exception error) { Ready.TrySetException(error); throw; }
+     }
+-    public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => inner.UnsubscribeAsync(cancellationToken);
++    private Task DeliverAsync(BackplaneMessage message)
++    {
++        lock (_deliveryGate)
++        {
++            if (_callback == null) return Task.CompletedTask;
++            var delivery = _callback(message);
++            if (!delivery.IsCompletedSuccessfully)
++                _pendingDeliveries = _pendingDeliveries.IsCompleted ? delivery : Task.WhenAll(_pendingDeliveries, delivery);
++            return delivery;
++        }
++    }
++    public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
++    {
++        Task pending;
++        lock (_deliveryGate)
++        {
++            // A native callback may already be queued before its handler is detached.
++            _callback = null;
++            pending = _pendingDeliveries;
++        }
++        await inner.UnsubscribeAsync(cancellationToken);
++        await pending.WaitAsync(cancellationToken);
++    }
+     public async ValueTask DisposeAsync()
+     {
+         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
++        await UnsubscribeAsync();
+         if (inner is IAsyncDisposable asyncDisposable) await asyncDisposable.DisposeAsync();
+         else if (inner is IDisposable disposable) disposable.Dispose();
+-        else await inner.UnsubscribeAsync();
+     }
+ }

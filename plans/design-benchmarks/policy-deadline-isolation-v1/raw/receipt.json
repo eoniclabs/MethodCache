@@ -1,0 +1,208 @@
+{
+  "utc": "2026-10-17T02:07:57.569266+00:00",
+  "inputs_sha256": "e865d322d0cc6ab5163481f986b0a2d9543cb932d43a3683a5492dc72ee7d86b",
+  "runs": [
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 1,
+      "exit": 0,
+      "log": "base-Redis-01.log",
+      "log_sha256": "c646e530bd931360ba64631722f52e79af6840038ce8c19a1a99af4660191fe9"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 2,
+      "exit": 0,
+      "log": "base-Redis-02.log",
+      "log_sha256": "75501b9e07a3758a7daae1a2f0ba6fd7ed268281393e56f9945826d4e891b383"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 3,
+      "exit": 0,
+      "log": "base-Redis-03.log",
+      "log_sha256": "9e1663451b507bcb09c6536c9c714b21f7390b4deca3871a166d09548d168f87"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 4,
+      "exit": 0,
+      "log": "base-Redis-04.log",
+      "log_sha256": "77a3456eb72b641884f0e184580214a9f21882e27c9545be1b7e194d78a05383"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 5,
+      "exit": 0,
+      "log": "base-Redis-05.log",
+      "log_sha256": "27dbe5e8ecb66b96122609db035a5f6fc9e3c54d3ab1f105bf303f40a16bcba1"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 6,
+      "exit": 0,
+      "log": "base-Redis-06.log",
+      "log_sha256": "beaf8c3021776ad3be93dfe181463a2c91797e94cf25403d8277c7c0a6b6bd46"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 7,
+      "exit": 0,
+      "log": "base-Redis-07.log",
+      "log_sha256": "83d58cda970eeb5be95423e1d4fe4d6f3416f46138e6d41433c68a1e09a22f25"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 8,
+      "exit": 0,
+      "log": "base-Redis-08.log",
+      "log_sha256": "fbf822faf070d41bfb823a95f4ad3fd1f66cf5a685742d0fba8e4f2d8ee11e75"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 9,
+      "exit": 0,
+      "log": "base-Redis-09.log",
+      "log_sha256": "7ea970fa686c763ee6eac9c6081fc8da0f2847cc4ee702d0dda5ecc31f6340ca"
+    },
+    {
+      "side": "base",
+      "backend": "Redis",
+      "run": 10,
+      "exit": 0,
+      "log": "base-Redis-10.log",
+      "log_sha256": "32fd8cf249da2db999c22832aca3c7432ff0535ef02693f5590dd9fe7566a1cf"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 1,
+      "exit": 0,
+      "log": "head-Redis-01.log",
+      "log_sha256": "6839e38a51753683162dacc7428dda0bf9d423db01d69885cfb3bcd7f81a5744"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 2,
+      "exit": 0,
+      "log": "head-Redis-02.log",
+      "log_sha256": "7953d69d5799f0ac5cf83c91d8ddea941d7e1763bddc6638f405f7002300290b"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 3,
+      "exit": 0,
+      "log": "head-Redis-03.log",
+      "log_sha256": "88640f5a352ccfe346ed0e8fbd0f11c820d124a43c59fdc1ce3fbf4769d27ffc"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 4,
+      "exit": 0,
+      "log": "head-Redis-04.log",
+      "log_sha256": "52e35f576ce8daccf7443247ae7bd2cab71ab989cbf37e4f0953bc46f1bafea3"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 5,
+      "exit": 0,
+      "log": "head-Redis-05.log",
+      "log_sha256": "8f8af4416aefba691ea37f4778530460f70bf61ff413b6351a7a8f4a1d94017b"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 6,
+      "exit": 0,
+      "log": "head-Redis-06.log",
+      "log_sha256": "cd66d9a8f242e9ae941cc25fb94cb08a9f10e136822c786bf6f752489d8f4d79"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 7,
+      "exit": 0,
+      "log": "head-Redis-07.log",
+      "log_sha256": "31ff150c565c44986e60bf8fe3b72edb44e808bce41046f7115491d951bc4f4e"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 8,
+      "exit": 0,
+      "log": "head-Redis-08.log",
+      "log_sha256": "9255430c8b459de708db3aba8e762f058f3c31bbea584aa6feb54ad8b03c987e"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 9,
+      "exit": 0,
+      "log": "head-Redis-09.log",
+      "log_sha256": "87f5077278e82be95ef958ee200b236ffc2a0bfd21b86dcee4252c34d1985dcb"
+    },
+    {
+      "side": "head",
+      "backend": "Redis",
+      "run": 10,
+      "exit": 0,
+      "log": "head-Redis-10.log",
+      "log_sha256": "57885021c318336cb402f192a2f14f5d8ea59df914341a4e9cc052e53a7b942d"
+    },
+    {
+      "side": "head",
+      "backend": "SqlServer",
+      "run": 1,
+      "exit": 0,
+      "log": "head-SqlServer-01.log",
+      "log_sha256": "b8cdbf514c91fd0ec093835174aa3505f4ddcca5114411784cc3d0b6822e5924"
+    },
+    {
+      "side": "head",
+      "backend": "SqlServer",
+      "run": 2,
+      "exit": 0,
+      "log": "head-SqlServer-02.log",
+      "log_sha256": "f94b6a34bade06407060bd941d9e4c4e420c0f3f0ffcdd87914310cfb2562079"
+    },
+    {
+      "side": "head",
+      "backend": "SqlServer",
+      "run": 3,
+      "exit": 0,
+      "log": "head-SqlServer-03.log",
+      "log_sha256": "442b7f8d331275ccb7565cdf53a034a56cb0f1fd9da8cf440973050476ce7d8e"
+    }
+  ],
+  "binaries": {
+    "baseRedis": {
+      "core_sha256": "cca4669c1e2fd07467ba0685e3263e5daae094d0526e000051b2cdddd6602d4d",
+      "tests_sha256": "ed5419fcdff243ddc4e484f67c6fff82b756cf0e97388970c3d6918081514ed7"
+    },
+    "headRedis": {
+      "core_sha256": "cca4669c1e2fd07467ba0685e3263e5daae094d0526e000051b2cdddd6602d4d",
+      "tests_sha256": "641a2239783339d2c2fdba1a34519b45eb5c1408d2db43e32d59202524237621"
+    },
+    "headSqlServer": {
+      "core_sha256": "cca4669c1e2fd07467ba0685e3263e5daae094d0526e000051b2cdddd6602d4d",
+      "tests_sha256": "319197415c26b26c5832558fc4d8b0f10a1ddfa645f81804f9fe4d8a62dd4f56"
+    }
+  },
+  "core_tests_exit": 0,
+  "core_dll_identical": true,
+  "native_scope": "OwnexactlabelnewpinnedRedis/SQLcontainers;sharedservicesuntouched",
+  "scope": "Nativepolicycontractwithcoveragecollector;all23freshprocessresultsretained. No clock assertion, expiry value, timeout or runtime code is weakened."
+}

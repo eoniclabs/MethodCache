@@ -1,0 +1,161 @@
+{
+  "utc": "2026-10-17T01:54:16.329195+00:00",
+  "inputs_sha256": "1b3a23c86355590a536e98c8aca1d6f51661f6ee63efe162e51040c133ba8531",
+  "runs": [
+    {
+      "side": "base",
+      "run": 1,
+      "exit": 0,
+      "log": "base-01.log",
+      "log_sha256": "21e5b89ee4ba2f1bd4c1289e497ba40b0265fd2744fe801618f9b41ba2f415eb"
+    },
+    {
+      "side": "base",
+      "run": 2,
+      "exit": 0,
+      "log": "base-02.log",
+      "log_sha256": "40ba311a89d5c0d028fdd8e6c8800389d89ed1ac9cb8a19d0c059fffc06d6b23"
+    },
+    {
+      "side": "base",
+      "run": 3,
+      "exit": 0,
+      "log": "base-03.log",
+      "log_sha256": "f2583f807cc711d89367770f7558cdd24a84d064586a8ebba7ad5b150460eb2c"
+    },
+    {
+      "side": "base",
+      "run": 4,
+      "exit": 0,
+      "log": "base-04.log",
+      "log_sha256": "bc0a10f3a33d8c719db1333b074412eb63081cf8070504fc45a4b372bd2d239a"
+    },
+    {
+      "side": "base",
+      "run": 5,
+      "exit": 0,
+      "log": "base-05.log",
+      "log_sha256": "d5158e9bc3c8b232da0ba28498478932e595e82e976aacc119a62b3a512d01a9"
+    },
+    {
+      "side": "base",
+      "run": 6,
+      "exit": 0,
+      "log": "base-06.log",
+      "log_sha256": "79449d2fb8bb54663ba81f62801d43eac4d2445b544fad1ebef8111c0611f188"
+    },
+    {
+      "side": "base",
+      "run": 7,
+      "exit": 0,
+      "log": "base-07.log",
+      "log_sha256": "06dd2e1e38eac530b7455bad7ebaaa07910d61bc8b395b7c2be25271b5dea96d"
+    },
+    {
+      "side": "base",
+      "run": 8,
+      "exit": 0,
+      "log": "base-08.log",
+      "log_sha256": "14e3efe26204acee313d1d7dff13ce28b7211b8ee929afe199080192989d895e"
+    },
+    {
+      "side": "base",
+      "run": 9,
+      "exit": 0,
+      "log": "base-09.log",
+      "log_sha256": "fb342b61dcf4a4db72e374982df5502152349d1f3d8a75b47856b4d73e5c7202"
+    },
+    {
+      "side": "base",
+      "run": 10,
+      "exit": 0,
+      "log": "base-10.log",
+      "log_sha256": "23a797e0b6c683d3f0ab369c5a5e7a257fbd08fafed6235b0b4630a61b4d8a84"
+    },
+    {
+      "side": "head",
+      "run": 1,
+      "exit": 0,
+      "log": "head-01.log",
+      "log_sha256": "6516a7014c02c3de8b02b1ebb07a13abbe1cd085c01caed5531b0d5410b37985"
+    },
+    {
+      "side": "head",
+      "run": 2,
+      "exit": 0,
+      "log": "head-02.log",
+      "log_sha256": "4be73bf10045798b5a30899386fde7b6d7aeadf6f635420850c9ec0a708cea79"
+    },
+    {
+      "side": "head",
+      "run": 3,
+      "exit": 0,
+      "log": "head-03.log",
+      "log_sha256": "a6ed0048344486455bc597db204c4cd2c64c43bc52107f851809665c0c3dfb0e"
+    },
+    {
+      "side": "head",
+      "run": 4,
+      "exit": 0,
+      "log": "head-04.log",
+      "log_sha256": "82457f494811530b484be6fdcf7a5ea7594940e65f30c607e1c713fb107e923d"
+    },
+    {
+      "side": "head",
+      "run": 5,
+      "exit": 0,
+      "log": "head-05.log",
+      "log_sha256": "c55115236517772e17081e062369eccc1cbd09fc0aadb16526bbbd86e8c876c8"
+    },
+    {
+      "side": "head",
+      "run": 6,
+      "exit": 0,
+      "log": "head-06.log",
+      "log_sha256": "be2e2793999db23aac1d146fd4ece3f5f3002f43b4017bf03e1c321e4a4a353f"
+    },
+    {
+      "side": "head",
+      "run": 7,
+      "exit": 0,
+      "log": "head-07.log",
+      "log_sha256": "dd7a3fcbf89386abe31624ad6362fd2bed4cd2499ffdf7cb44f5fa09d681d435"
+    },
+    {
+      "side": "head",
+      "run": 8,
+      "exit": 0,
+      "log": "head-08.log",
+      "log_sha256": "c4a8a2c8683bdb3b2e1aa442ac9dafe4907e396bd2a177fe216b64f966e11ee2"
+    },
+    {
+      "side": "head",
+      "run": 9,
+      "exit": 0,
+      "log": "head-09.log",
+      "log_sha256": "45139c16b2c61d84eab59fbd0b1868fc45a1a00d24605e0e1a0195570b59ca94"
+    },
+    {
+      "side": "head",
+      "run": 10,
+      "exit": 0,
+      "log": "head-10.log",
+      "log_sha256": "65b7a3d78df82d93755dd74be93875bf3a546899f9325d30cbf4fd065241878e"
+    }
+  ],
+  "binaries": {
+    "base": {
+      "core_sha256": "90c2d63321902c4a572085a828b0ced96889f655745fb2778b2a34e6365cb694",
+      "docs_tests_sha256": "89f0257daba0d7ab7634f9ad8802bf7f92d0adb0d835c64a51bb57dca1b89e0e",
+      "test_source_sha256": "1dab1b2dbcb7043de03f3eff2d3e272d341aa5e9b06e63e0708b0c5868328eb0"
+    },
+    "head": {
+      "core_sha256": "90c2d63321902c4a572085a828b0ced96889f655745fb2778b2a34e6365cb694",
+      "docs_tests_sha256": "ac9e4eabe4ad1a0db64d532de1c038eeed10844800fc20906d42a72b4036c9a3",
+      "test_source_sha256": "18aaf92541c5b11425c964ea4143236dd72e17368da2549626364e6efcc9fb61"
+    }
+  },
+  "full_docs_exit": 0,
+  "source_scope": "Onlythetestprobeharnesschanges;identicalCoreDLLhashbothsides",
+  "scope": "Fresh-processunitregressiondiagnostic;notalatencygate. OriginalCI4480bytefailureisretainedseparately."
+}

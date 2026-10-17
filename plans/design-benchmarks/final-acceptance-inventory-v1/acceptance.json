@@ -292,7 +292,8 @@
       "reviewed_sources": [
         {
           "path": "tests/TestSupport/PolicyBackendContract.cs",
-          "sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
         }
       ]
     },
@@ -343,7 +344,8 @@
       "reviewed_sources": [
         {
           "path": "tests/TestSupport/PolicyBackendContract.cs",
-          "sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
         }
       ]
     },
@@ -360,7 +362,8 @@
       "reviewed_sources": [
         {
           "path": "tests/TestSupport/PolicyBackendContract.cs",
-          "sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
+          "sha256": "44bb4cf77c8209b28994639ea45a6a01f2088dc484de924180f781e515c61b02",
+          "previous_reviewed_sha256": "8e6243f3d8a24335a91242b492b3b15dd10e451e5ca5a67d0ed32efa6655ff9d"
         }
       ]
     },
@@ -1331,7 +1334,7 @@
       "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
       "required_outcome": "Inga nya of\u00f6rklarade skips; relevanta regressions/fault/property/soak-jobb gr\u00f6na.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
+      "validation_report_sha256": "980abbe609df2f0b110c4ee24ee731fdb8d117590d4610e5b2546889269890d3",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1350,7 +1353,11 @@
         }
       ],
       "additional_evidence": "plans/design-benchmarks/combined-functional-abd0eae/manifest.json",
-      "candidate_checkout_regression": "f752WindowscheckoutfailedonAUXdirectory;375byte-identicalfilesrenamedtoadditional;4newpathguardtestspass;newpublished-headCIpending"
+      "candidate_checkout_regression": "f752WindowscheckoutfailedonAUXdirectory;375byte-identicalfilesrenamedtoadditional;4newpathguardtestspass;newpublished-headCIpending",
+      "test_stabilization_evidence": [
+        "plans/design-benchmarks/docs-hit-probe-v1/manifest.json",
+        "plans/design-benchmarks/policy-deadline-isolation-v1/manifest.json"
+      ]
     },
     {
       "id": "V02",
@@ -1358,7 +1365,7 @@
       "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
       "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
+      "validation_report_sha256": "980abbe609df2f0b110c4ee24ee731fdb8d117590d4610e5b2546889269890d3",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1385,7 +1392,7 @@
       "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; anv\u00e4ndar-README/package-README matchar nya API.",
       "required_outcome": "Ingen drift eller d\u00f6da exempel; endast utgiven kontraktsyta fryses.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
+      "validation_report_sha256": "980abbe609df2f0b110c4ee24ee731fdb8d117590d4610e5b2546889269890d3",
       "state": "Required job definitions and concrete assertions reviewed; exact abd0eae CI passed. WIP scheduling/G05 changes still require final published-head CI.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "not an independent timing requirement",
@@ -1411,7 +1418,7 @@
       "scenario": "\u00a710 steg 1 per f\u00f6r\u00e4ndring; steg 1 och steg 2 f\u00f6r hela baslinjen mot f43854d.",
       "required_outcome": "Kostnadsprofilen gr\u00f6n eller godk\u00e4nd i `accepted.json`; ingen f\u00f6rs\u00e4mring i den parade tidsm\u00e4tningen.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "07e627606df32bd5c2217067333126ebd5fef1384211ce4c9f0fccd84f138397",
+      "validation_report_sha256": "980abbe609df2f0b110c4ee24ee731fdb8d117590d4610e5b2546889269890d3",
       "state": "Functional assertions and explicit gate definitions reviewed. Complete original full71 and prefix28 time studies fail. Node-hash correction passes cost and isolated miss timing; separate Nimbus/Mac cumulative miss checks pass, GUID final acceptance and original precision failures remain open. New published-head CI pending.",
       "latest_functional_checkpoint": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
       "timing_gate": "open",
@@ -1506,5 +1513,11 @@
     "path": "plans/design-benchmarks/windows-path-guard-v1/manifest.json",
     "sha256": "b6d0088bf9914362b5405433c70a2d2f9a5526828746806b0176504321ce0449"
   },
-  "line_ending_fix_evidence": "plans/design-benchmarks/evidence-line-endings-v1/manifest.json"
+  "line_ending_fix_evidence": "plans/design-benchmarks/evidence-line-endings-v1/manifest.json",
+  "latest_published_functional_checkpoint": "be88349fae9b2e0c55406ccde578a0d1a105b233",
+  "latest_published_functional_jobs": "14exit0,4SUCCESSstatuses;currenttest-onlycorrectionsstillrequirepublished-headCI",
+  "test_only_corrections": {
+    "docs_probe": "10freshcandidateprocesses2factseach/full120Docspass;singlefixedzero-bytewindowandone-allocationnegativecontrol",
+    "native_deadlines": "2deterministicbarrierredfacts,3greenfacts;10freshRedis/3SQLcandidatewithcollectorpass;full1047Corepass/1intentionalsoakskip;CoreDLLidentical"
+  }
 }
