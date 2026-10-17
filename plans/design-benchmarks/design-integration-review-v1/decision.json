@@ -1,0 +1,6 @@
+{
+  "date": "2026-10-17",
+  "source": "Direct human reply in this task",
+  "decision": "Granska hela serien samlat i #134 mot main och behåll commit-historiken (rekommenderas). Det ersätter kravet att varje historisk PR-version ska passera separat.",
+  "scope": "Combined review arrangement for this design series; retain all historical failed results; final cumulative costs/timing and filtered CPU gates unchanged. Retarget after running final timing cohort is complete. No merge/release/time waiver authorized."
+}

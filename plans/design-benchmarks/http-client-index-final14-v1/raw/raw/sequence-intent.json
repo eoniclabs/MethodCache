@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T10:05:42.988464+00:00",
+  "inputs_sha256": "19639d0545a8a285b808aead148c54d393d3ec375d6a6f9620d3951ed6ae3b51",
+  "queue_sha256": "a530188040ab58f01a188c1b4b8990d861b966f085e9ca58d97bb635c0167387",
+  "scope": "Complete fixed14HTTPcasecumulativecomparison: originalf438baselinevs5257fb63plusclient-index-onlypatch92764360. Tenalternatingpairs/280freshprocesses/32warmups12actual150ms;fivegrowing-setmissesretainpressurewith8192invocationsperiterationandnocachereset. Same immutable measured workload/runtime libraries and common helper sources rebuilt identically for both sides. .NET10.0.3/workstationInteractiveGC/quietMac;unchanged6%precisionandacceptedrules. No partial means, excludedcasesorpoolingwithpriorstudies. Currentoriginal5257HTTPfailuresanddirectpilotretainedseparately.",
+  "prepared_sha256": "b0818dc4b5998e4e59326c38d706b6f6632bd86cda07cb34390b089b27d24bc9",
+  "published_runtime_equivalence_sha256": "67e31a1d9f210fbbd00eef13d5903bb454630d14dd7252097efc2722e6504b86"
+}

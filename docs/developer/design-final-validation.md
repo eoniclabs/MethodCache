@@ -1,6 +1,40 @@
 # Final design verification
 
-## Current gate and checkpoint (2026-10-17)
+## Current published checkpoint (2026-10-17)
+
+Exact published `c9ec0db33d1d5b27a68ff7a31d7437c603b360a5` includes the client-index
+correction and passes all fourteen required jobs and four statuses. Linux reports
+2,639 passing tests, zero failures, one intentional opt-in soak skip and diff coverage
+3620/3839 (94.3%). The separately enabled soak and 99 randomized properties pass.
+Native AOT compiles 175 signature cases; required Redis/SQL, both cultures, demo,
+all seven packages/add-on smoke and generated docs pass. The 28 original log/exit
+files and collection metadata are preserved byte-for-byte.
+[Exact client-index correction CI](../../plans/design-benchmarks/combined-functional-c9ec0db/).
+
+The complete current cumulative cost profile passes all67cases with six unchanged
+accepted costs. The complete fourteen-case cumulative HTTP timing confirmation
+againstf43854d now **fails**: the local design-workload miss is5.1%slower and the two
+listening304cases are4.1%/6.7%slower. Two cold-after-invalidation intervals are wider
+than6%; neither is accepted despite its lower estimate. Nine cases pass (seven
+faster,two unchanged). All280fresh processes and seven groups complete without
+execution errors. All200baseline/224candidate Git source files,210binaries,loaded
+libraries,launch order,quiet admission,runtime/GC and raw hashes verify. Runtime/build
+inputs matchc9,with one documented uncompiled README difference. No measurements
+are omitted or pooled; original/current-rule reviewers both return1. The earlier
+proposed HTTP bounds remain inactive and do not cover every current failure or waive
+precision. The separate earlier current-source non-HTTP confirmation remains passing
+for its unchanged call paths. No claim that all final gates pass is made.
+[Complete current HTTP timing, both verdicts and raw evidence](../../plans/design-benchmarks/http-client-index-final14-v1/).
+
+All 76 explicit specification rows are present without duplicates. H01/H14 retain
+the earlier source hashes and record the two current HTTP source files plus the new
+client-invalidation correctness test. V01–V03 use the current c9 CI checkpoint;
+V04 remains open for final timing. On2026-10-17 Johan approved combined review
+in#134 againstmain, preserving history and replacing separate historical-head cost
+acceptance for this series. The seventeen historical overages remain failures;
+the final combined gate is unchanged. No merge, PR retarget or release has been performed.
+
+## Previous checkpoints and investigation (actual source points retained)
 
 The completed current-source non-HTTP confirmation passes all ten affected cases
 (200 fresh processes, ten pairs): four enabled-listener eviction/single-flight cases

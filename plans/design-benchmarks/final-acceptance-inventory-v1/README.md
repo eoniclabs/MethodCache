@@ -4,11 +4,12 @@
 scenarios, inspected assertions and exact source/report hashes. It is not a blanket
 acceptance claim.
 
-Exact published5257fb63fb72393c817d74292e989299ede374d2 passes all fourteen required
-jobs and all four statuses:2,637 Linux tests,zero failures,one intentional opt-in
-soak skip and94.3% changed-line coverage. This includes the complete HTTP publication
-and compact-telemetry corrections, native backends, randomized properties, enabled
-soak, cultures, AOT175, packages and docs.
+Exact publishedc9ec0db33d1d5b27a68ff7a31d7437c603b360a5 passes all fourteen required
+jobs and all four statuses:2,639 Linux tests,zero failures,one intentional opt-in
+soak skip and3620/3839=94.3% changed-line coverage. This includes the client-index
+correction, required native backends,99 randomized properties,enabled soak,
+cultures,AOT175,all seven packages/add-on smoke and generated docs.
+[Original current CI logs and exits](../combined-functional-c9ec0db/).
 
 The current cumulative cost profile passes all67cases per side with zero errors,
 zero failing costs and six unchanged accepted costs. The direct-base comparison for
@@ -26,11 +27,17 @@ current-source10case/200launch non-HTTP confirmation passes,all ten faster and p
 The client-index correction is adopted in the working combined tree after all22targeted,
 345HTTP and1055Core checks pass and the full67case cumulative cost profile passes with
 six unchanged accepted costs. Its complete direct2case pilot is faster by7.2%/3.4%.
-A full14case cumulative candidate timing confirmation and fresh published-head CI are
-still required. The existing13removal/replacementfacts remain unchanged; the new
+The full14case cumulative candidate timing confirmation is complete and fails:
+3slower/2wide/9pass,all280launches without executionerrors. Actual c9 CI passes
+all required jobs. [Complete current timing](../http-client-index-final14-v1/). The existing13removal/replacementfacts remain unchanged; the new
 tradeoff is a resident-entry scan on client-tag invalidation.
 
 The proposed HTTP time bounds are inactive pending a design decision. The canonical
 accepted.json still has only the two previously authorized exact no-listener sync/int
 time limits. The17historical per-change cost overages remain explicit and are not
 turned into passes by later combined corrections.
+
+Johan approved combined review in#134 againstmain on2026-10-17, preserving commit
+history and replacing separate historical-head cost acceptance for this series.
+The17old failures remain recorded. Final cumulative cost/timing and filtered CPU
+requirements are unchanged; no merge or time exception is authorized.
