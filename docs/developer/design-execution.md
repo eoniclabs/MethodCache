@@ -24,9 +24,16 @@ A passing ancestor does not establish the latest head's result.
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current c9ec0db3 includes the client-index correction. All fourteen jobs/four statuses pass:2,639 Linux tests,zero failures,one intentional opt-in soak skip,diff3620/3839=94.3%,99 randomized properties,enabled soak,AOT175,packages/docs and real backends. Cumulative67case costs pass with six unchanged accepted costs. The fixed fourteen-case cumulative candidate timing fails:3slower/2wide/9pass;all280launches complete without executionerrors. Proposed HTTP bounds remain inactive; combined review againstmain is approved, with old17overages retained as historical failures. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current6a2cc002 is reviewed againstmain with history preserved. All14jobs/fourstatusesPASS:2639Linux/0failures/1intentionalsoakskip,diff94.2%,99properties,soak,cultures,AOT175,packages/docs and realbackends. All67casecostsPASS with6unchangedacceptedcosts. Strict timegateFAIL:3preciseMacregressions and2preciseNimbus cold-after-invalidation regressions16.9%/17.3%;originalMac14wideintervalsretained. Fiveexacttimeboundsproposedinactive; no merge/release. |
 
 ## Remaining verification
+
+The latest6a2cc002 publication passes every required CI job. The complete targeted
+Nimbus confirmation is terminal:40launches,2slower,0wide,0executionerrors. It resolves
+the two previous precision gaps with actual regressions, preserving the original
+Mac report. Five precise HTTP regressions remain. The new five-casev2bounds are
+inactive pending a design decision; they change no precision/cost/correctness rule.
+No benchmark,CIjob or collection process remains active for these completed runs.
 
 Latest published c9ec0db3 correctness/build verification is complete on all three
 platforms; its raw evidence is in [combined-functional-c9ec0db](../../plans/design-benchmarks/combined-functional-c9ec0db/).
