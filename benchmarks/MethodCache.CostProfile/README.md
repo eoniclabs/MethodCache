@@ -73,3 +73,11 @@ The two exact sync/int time limits in `accepted.json` record Johan's SipHash cho
 and the [complete quiet-Mac confirmations](../../plans/design-benchmarks/mac-cpu-pr133-formal-v1/).
 They cap those controls at 8%; they do not waive other cases, byte/command costs
 or the precision requirement. Original reports before acceptance are retained.
+
+The five exact HTTP time limits record Johan's 2026-10-17 decision to retain shared
+HTTP storage, metadata, administration and telemetry. They cap the local workload
+miss at 6%, listening 304 cases at 6%/8%, and cold misses after invalidation at 20%.
+[The approved decision and replay](../../plans/design-benchmarks/http-time-acceptance-v1/)
+retain the original failed studies, apply the unchanged precision check first, and
+use separate complete Nimbus confirmations for two previously imprecise Mac cases.
+These time limits cannot accept bytes, commands, other cases or missing measurements.

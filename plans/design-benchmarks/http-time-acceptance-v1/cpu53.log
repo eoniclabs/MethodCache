@@ -1,0 +1,32 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=False) | 752.9 | 711.3 | 0.947 | 0.927-0.968 | faster |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=False) | 567.9 | 566.7 | 0.986 | 0.970-1.002 | same |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=True) | 568.4 | 569.6 | 1.000 | 0.981-1.019 | same |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=False) | 63.1 | 26.6 | 0.421 | 0.412-0.430 | faster |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=True) | 64.4 | 27.3 | 0.420 | 0.413-0.427 | faster |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False) | 68.4 | 29.7 | 0.449 | 0.428-0.472 | faster |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=False) | 8029.3 | 6978.0 | 0.866 | 0.850-0.882 | faster |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=True) | 8040.9 | 6717.5 | 0.851 | 0.824-0.878 | faster |
+| GeneratedContractBenchmarks.CollectionHit() | 178.9 | 131.4 | 0.737 | 0.711-0.764 | faster |
+| GeneratedContractBenchmarks.GenericHit() | 62.4 | 51.6 | 0.821 | 0.802-0.841 | faster |
+| GeneratedContractBenchmarks.RecordHit() | 78.4 | 77.6 | 0.988 | 0.970-1.006 | same |
+| GeneratedContractBenchmarks.StringHit() | 43.7 | 44.9 | 1.021 | 1.008-1.034 | same |
+| GeneratedContractBenchmarks.SyncMiss() | 494.0 | 410.2 | 0.830 | 0.823-0.836 | faster |
+| GeneratedContractBenchmarks.TaskHit() | 42.7 | 41.5 | 0.976 | 0.960-0.993 | same |
+| GeneratedContractBenchmarks.TaskMiss() | 480.5 | 446.9 | 0.943 | 0.916-0.972 | faster |
+| GeneratedContractBenchmarks.ValueTaskHit() | 46.9 | 45.4 | 0.978 | 0.964-0.993 | same |
+| GeneratedContractBenchmarks.ValueTaskMiss() | 498.8 | 448.3 | 0.911 | 0.884-0.939 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 44.4 | 35.5 | 0.795 | 0.782-0.809 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int) | 55.3 | 37.6 | 0.689 | 0.674-0.705 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 125.6 | 88.5 | 0.709 | 0.695-0.725 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int) | 135.4 | 90.1 | 0.662 | 0.650-0.676 | faster |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False) | 749.7 | 720.6 | 0.960 | 0.952-0.968 | faster |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=True) | 784.5 | 763.3 | 0.967 | 0.946-0.989 | faster |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False) | 750.0 | 717.4 | 0.962 | 0.949-0.975 | faster |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=True) | 780.0 | 758.4 | 0.983 | 0.965-1.002 | same |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=False) | 1280.7 | 1222.7 | 0.942 | 0.913-0.971 | faster |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True) | 1317.7 | 1291.8 | 0.981 | 0.973-0.989 | same |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=True) | 1321.0 | 1298.7 | 0.991 | 0.973-1.010 | same |
+
+10 pairs, 28 compared, 0 slower, 0 too noisy, 0 without a time

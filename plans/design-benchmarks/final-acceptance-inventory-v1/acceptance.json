@@ -1,17 +1,18 @@
 {
-  "scope": "All76explicitacceptancerows: inspectedsourceassertions/evidenceinventory,NOTablanketpass",
-  "head": "6a2cc0020274e53f77778a8c906980423e19543d",
-  "spec_sha256": "b6a13120956c04a18641a8cb327907368139480f5ef6e214e17fc13667000c40",
+  "scope": "All76explicit specification requirements mapped to inspected assertions and exact source/report evidence. Performance accepted after explicit human decision; approval-publication exact-head CI pending.",
+  "head": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "head_scope": "Preceding exact functional source checkpoint. New changes are only approved acceptance rules, evidence and documentation; production/build/test sources identical.",
+  "spec_sha256": "6b027d20c56d7daa53cb9f42fe4e6008b2571e5c7e8308cd398df215ebc44ffa",
   "rows": [
     {
       "id": "G01",
-      "spec_line": 675,
+      "spec_line": 685,
       "scenario": "Kör fryst vendor-DLL mot ny Core utan att regenerera; sync/Task/ValueTask, tags, invalidation och CacheInterface.",
       "required_outcome": "Rätt värden, samma nyckelidentitet, samma cachebeteende; manifest-hash oförändrad.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -22,13 +23,13 @@
     },
     {
       "id": "G02",
-      "spec_line": 676,
+      "spec_line": 686,
       "scenario": "Module initializer registrerar kontrakt 99 med känd bootstrap; Describe/factory har en räknare som kastar om den körs.",
       "required_outcome": "Assembly kan laddas; AddMethodCache ger named versionfel; räknaren är noll, ingen TypeInitializationException.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -39,13 +40,13 @@
     },
     {
       "id": "G03",
-      "spec_line": 677,
+      "spec_line": 687,
       "scenario": "Analysera semantiska symbols i generated sources för hela SignatureCorpus.",
       "required_outcome": "Alla runtimeanrop till MethodCache går genom Generated; användarsymboler/BCL tillåts.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -56,13 +57,13 @@
     },
     {
       "id": "G04",
-      "spec_line": 678,
+      "spec_line": 688,
       "scenario": "Två containrar, samma moduler, olika overrides/managers; dispose den ena.",
       "required_outcome": "Ingen policy/generation/metrik/scope- eller disposalpåverkan i den andra.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -73,13 +74,13 @@
     },
     {
       "id": "G05",
-      "spec_line": 679,
+      "spec_line": 689,
       "scenario": "Lägg cachebar DI-registrering efter AddMethodCache; jämför icke-cachebar sen registrering och upprepat AddMethodCache.",
       "required_outcome": "Bara den sena odekorerade cachebara registreringen ger tydligt fel; ingen dubblering.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Explicit ordinary-late control and cacheable-late rejection pass in the published functional checkpoint; all 542 source-generator integration tests pass.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -91,13 +92,13 @@
     },
     {
       "id": "G06",
-      "spec_line": 680,
+      "spec_line": 690,
       "scenario": "AutoRegister scoped med 0, 1 och 2 kandidater; explicit registrering med 2 kandidater.",
       "required_outcome": "0/2 ger named fel, 1 blir scoped; explicit registrering behåller sin implementation/lifetime.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -108,13 +109,13 @@
     },
     {
       "id": "G07",
-      "spec_line": 681,
+      "spec_line": 691,
       "scenario": "Samma fixture under JIT och Native AOT; inkluderar modul i refererat hjälpbibliotek och explicit modulval.",
       "required_outcome": "Samma kandidater och dekoratorer, ingen assemblynamnsbaserad gissning.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -126,13 +127,13 @@
     },
     {
       "id": "G08",
-      "spec_line": 682,
+      "spec_line": 692,
       "scenario": "Två keyed scoped registreringar av samma interface med olika resultat; generiska closed instanser och bakgrundsrefresh.",
       "required_outcome": "Isolerade nycklar/resultat; rätt inner/service key i ny scope; ingen användning efter dispose.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -143,13 +144,13 @@
     },
     {
       "id": "G09",
-      "spec_line": 683,
+      "spec_line": 693,
       "scenario": "Stoppa anrop efter Capture av v1; byt till v2; fortsätt key-build/probe/load.",
       "required_outcome": "Ingen v2-policy skrivs under v1-nyckeln; stale snapshot bypass/retry enligt §2.2.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -160,13 +161,13 @@
     },
     {
       "id": "G10",
-      "spec_line": 684,
+      "spec_line": 694,
       "scenario": "Packa/installera alla sex tillägg och Core; försök blandade versioner.",
       "required_outcome": "Exakt nuspec-intervall för varje tillägg; matchade versioner fungerar, mismatch nekas av strikt restore (NU1608 som error).",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -177,13 +178,13 @@
     },
     {
       "id": "G11",
-      "spec_line": 685,
+      "spec_line": 695,
       "scenario": "Reservnycklar, sealed/provider/record/samling och Unicode-surrogates med samma typade data.",
       "required_outcome": "Samma deterministiska identitet som helper; olika data/typer aliasar inte.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -194,13 +195,13 @@
     },
     {
       "id": "G12",
-      "spec_line": 686,
+      "spec_line": 696,
       "scenario": "Capture A; starta inline-/reservbyggare; byt policy till B före uppslag och försök även byggaren med en annan MethodCall/container.",
       "required_outcome": "A använder bara A:s prefix och stale-regel; felbindning avvisas före cacheåtkomst. Ingen extra policy-läsning döljer racen.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -211,13 +212,13 @@
     },
     {
       "id": "G13",
-      "spec_line": 687,
+      "spec_line": 697,
       "scenario": "Tom/liten/exakt full stackbuffer, långt prefix, långa escaped strängar, provider-parts och Unicode; styr heap-growth och miss följd av load.",
       "required_outcome": "Exakt samma text som helper vid alla storlekar; miss lämnar nyckeln användbar; bara skrivna tecken läses och async-arbete äger sin materialiserade nyckel.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -228,13 +229,13 @@
     },
     {
       "id": "G14",
-      "spec_line": 688,
+      "spec_line": 698,
       "scenario": "Kompilera hela SignatureCorpus för sync/Task/ValueTask samt generiska/provider/reservformer under stödda TFM och AOT; kör hit-benchmarks.",
       "required_outcome": "KeyBuilder-konstruktorn/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "open",
       "reviewed_sources": [
         {
@@ -270,13 +271,13 @@
     },
     {
       "id": "P01",
-      "spec_line": 696,
+      "spec_line": 706,
       "scenario": "Kör varje rad i §5.1: fyll, stoppa en load/refresh, ändra policy, släpp arbetet.",
       "required_outcome": "Nästa lokala uppslag använder ny generation; gammal laddning publicerar aldrig över den.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -287,13 +288,13 @@
     },
     {
       "id": "P02",
-      "spec_line": 697,
+      "spec_line": 707,
       "scenario": "A/B delar L2; TTL=1h. A får privat override 1s; B återfyller efter method-invalidation.",
       "required_outcome": "A läser inte B:s 1h-post; efter FakeTime +2s måste A ladda på nytt, B behåller sin policy.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -305,13 +306,13 @@
     },
     {
       "id": "P03",
-      "spec_line": 698,
+      "spec_line": 708,
       "scenario": "A/B har samma effektiva config men registrerar källor/tags i olika ordning.",
       "required_outcome": "Samma shared-identitet och verklig L2-reuse; audit-only ändring orsakar inte ny load.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -322,13 +323,13 @@
     },
     {
       "id": "P04",
-      "spec_line": 699,
+      "spec_line": 709,
       "scenario": "A reload till 1s; B kvar på 1h skriver efter A:s invalidation.",
       "required_outcome": "A väljer inte B:s gamla policyrymd; när B reloadar delar de ny shared-identitet.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -339,13 +340,13 @@
     },
     {
       "id": "P05",
-      "spec_line": 700,
+      "spec_line": 710,
       "scenario": "Override av/på, ändring, remove och restart med gammal privat L2-data kvar.",
       "required_outcome": "Ny privat identitet per ändring/restart; remove väljer shared efter bekräftad invalidation; inga gamla värden återkommer.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -357,13 +358,13 @@
     },
     {
       "id": "P06",
-      "spec_line": 701,
+      "spec_line": 711,
       "scenario": "L2-post publicerad vid t0, duration=10s; en ny nod läser vid t0+9s. Kör också med en lång factory före t0 och med CacheNullValues=false hos mottagaren.",
       "required_outcome": "Lokal post går ut senast t0+10s; factorytid skiljs från CreatedAt; null-hit avvisas när null-caching är av.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -375,13 +376,13 @@
     },
     {
       "id": "P07",
-      "spec_line": 702,
+      "spec_line": 712,
       "scenario": "Grupp-default Enabled=false i config, explicit metodtrue i attribut; även metodfalse med grupptrue.",
       "required_outcome": "Metodspecifik inställning vinner oavsett source-priority; falskt värde bypassar allt.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -392,13 +393,13 @@
     },
     {
       "id": "P08",
-      "spec_line": 703,
+      "spec_line": 713,
       "scenario": "Enabled=false; många samtidiga anrop, stale-post och refresh kvar; CacheInvalidate körs.",
       "required_outcome": "Implementation körs per anrop utan joins/cache/stale; refresh lagrar inget; invalidation fungerar.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -409,13 +410,13 @@
     },
     {
       "id": "P09",
-      "spec_line": 704,
+      "spec_line": 714,
       "scenario": "Egen async recording-manager och NoOp; även sync-genererad tjänst.",
       "required_outcome": "Async går till vald manager med rätt options; NoOp laddar varje gång; sync-custom bypassar utan task-blockering.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -426,13 +427,13 @@
     },
     {
       "id": "P10",
-      "spec_line": 705,
+      "spec_line": 715,
       "scenario": "Built-in sync med native provider; sedan async-only/unready lånad anslutning och pågående async refresh.",
       "required_outcome": "Native bounded operation eller fail-open L1/factory, aldrig väntan på async task; korrekta generationer.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -443,13 +444,13 @@
     },
     {
       "id": "P11",
-      "spec_line": 706,
+      "spec_line": 716,
       "scenario": "Invalidation för tre distinkta targets: två L2-success, ett storage-fel; en publication-failure.",
       "required_outcome": "Requested=3, Local=3, Distributed=2, Queued=1, Published=1, PublicationQueued=1; inga falska alla-kvittenser.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -460,13 +461,13 @@
     },
     {
       "id": "P12",
-      "spec_line": 707,
+      "spec_line": 717,
       "scenario": "Tom/dubblett/invalid batch; cancellation före mutation och efter lokal mutation före L2.",
       "required_outcome": "Validering först; exakta räknare; tidig cancel gör inget; sen cancel avslutar väntan men återhämtningen slutförs.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -477,13 +478,13 @@
     },
     {
       "id": "P13",
-      "spec_line": 708,
+      "spec_line": 718,
       "scenario": "Tappa method-frame till B eller håll L2 nere; låt A uppdatera.",
       "required_outcome": "A:s lokala policy gäller direkt; B kan behålla gammal L1 till expiry; queue/status och dokumentation matchar.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -494,13 +495,13 @@
     },
     {
       "id": "P14",
-      "spec_line": 709,
+      "spec_line": 719,
       "scenario": "Supply mutable options/tags och ändra originalsamlingen efter publicering; CacheWhen avvisar ett L2-värde.",
       "required_outcome": "Publicerad snapshot oförändrad; avvisat L2-värde används/lagras inte, factory körs.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -511,13 +512,13 @@
     },
     {
       "id": "P15",
-      "spec_line": 710,
+      "spec_line": 720,
       "scenario": "Bulk med L1/L2-hits, null/0/false, missar och samtidig writer.",
       "required_outcome": "Factory får bara missar; slutvärdet följer publication-vinnaren; max samtidiga L2-reads är bounded.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -541,13 +542,13 @@
     },
     {
       "id": "P16",
-      "spec_line": 711,
+      "spec_line": 721,
       "scenario": "Reflektera offentliga async-metoder i användar-API och Generated-loader/invalidation.",
       "required_outcome": "Token sist; bootstrap och synkrona helpers undantas; inga default(T)-som-miss-kontrakt.",
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -558,13 +559,13 @@
     },
     {
       "id": "K01",
-      "spec_line": 722,
+      "spec_line": 732,
       "scenario": "Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, 1.00:00:00, fraktion, whitespace/case.",
       "required_outcome": "Samma ticks över net10.0, sv-SE/tr-TR; alla giltiga former accepterade.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -575,13 +576,13 @@
     },
     {
       "id": "K02",
-      "spec_line": 723,
+      "spec_line": 733,
       "scenario": "30, 0s, -1h, 1m30s, 1,5h, exponent, overflow och positivt sub-tick-värde; analyzers av.",
       "required_outcome": "Generator/config ger named fel, aldrig tyst default; felaktig generatorinput producerar inget cachebeteende.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -592,13 +593,13 @@
     },
     {
       "id": "K03",
-      "spec_line": 724,
+      "spec_line": 734,
       "scenario": "Global FailSafe på; metodtext off och builder-zero; unset och retry/timeout=zero.",
       "required_outcome": "Off/zero stänger av för metoden; unset ärver; retry/timeout-zero nekas.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -609,13 +610,13 @@
     },
     {
       "id": "K04",
-      "spec_line": 725,
+      "spec_line": 735,
       "scenario": "Version utelämnad, explicit 0 och -1; Enabled/Distributed unset kontra false.",
       "required_outcome": "Frånvaro faller igenom; explicita giltiga värden respekteras; negativ Version nekas.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -626,13 +627,13 @@
     },
     {
       "id": "K05",
-      "spec_line": 726,
+      "spec_line": 736,
       "scenario": "Guid/DateTime/offset/enum/null och separators i Cache/CacheInvalidate-mallar.",
       "required_outcome": "Samma Part-text och träffsäker invalidation i alla kulturer.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -643,13 +644,13 @@
     },
     {
       "id": "K06",
-      "spec_line": 727,
+      "spec_line": 737,
       "scenario": "Användartaggar/keytext som imiterar interna method/ClearAll-namn, U+0000 och lone surrogates.",
       "required_outcome": "Bara rätt applikationstag påverkas; ingen intern generation/clear kan förfalskas.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -668,13 +669,13 @@
     },
     {
       "id": "K07",
-      "spec_line": 728,
+      "spec_line": 738,
       "scenario": "Properties för overload/generic arity, closed types, keyed suffix och manual version-namespace.",
       "required_outcome": "Ingen key-aliasing; G11-korpus fortsatt grön.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -697,13 +698,13 @@
     },
     {
       "id": "K08",
-      "spec_line": 729,
+      "spec_line": 739,
       "scenario": "Konsumera gamla raw-key-/attributformer och gamla diagnostik-id-konfigurationer.",
       "required_outcome": "Avsiktligt nytt API/diagnostik rapporteras; CHANGELOG har id-mappning och migration utan shims.",
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -714,13 +715,13 @@
     },
     {
       "id": "D01",
-      "spec_line": 735,
+      "spec_line": 745,
       "scenario": "Fyll key i N och N+1 samt två policyidentiteter; invalidiera från respektive version.",
       "required_outcome": "Alla äldre logiska varianter blir L2-missar även utan backplane, inte bara avsändarens format.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -731,13 +732,13 @@
     },
     {
       "id": "D02",
-      "spec_line": 736,
+      "spec_line": 746,
       "scenario": "Samma fixture för tag, method och ClearAll; Unicode-identiteter och nytt frivilligt wire-fält; Ensure/Advance markerad HTTP-metadata.",
       "required_outcome": "Båda versioner förstår invalidationen; okända optional fields påverkar inte identity; atomiska epochs kan inte återställas av omvänd leverans/retry.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -748,13 +749,13 @@
     },
     {
       "id": "D03",
-      "spec_line": 737,
+      "spec_line": 747,
       "scenario": "Oläsbar ram/okänd obligatorisk operation med fylld L1.",
       "required_outcome": "Lokal ClearAll, engångsvarning utan payload; ingen falsk leveransgaranti.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -765,13 +766,13 @@
     },
     {
       "id": "D04",
-      "spec_line": 738,
+      "spec_line": 748,
       "scenario": "Gammalt format har TTL=1h; key-remove, fram till +6min; metadata outlives fortfarande posten.",
       "required_outcome": "Gammal post återkommer inte när tidigare femminutersstamp skulle ha gått ut.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -782,13 +783,13 @@
     },
     {
       "id": "D05",
-      "spec_line": 739,
+      "spec_line": 749,
       "scenario": "Stoppa äldre write före fysisk transportcompletion; remove/newer write; släpp gammal transport.",
       "required_outcome": "Gammal post läses aldrig som giltig efter invalidation; recovery/bounds följer §8.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -799,13 +800,13 @@
     },
     {
       "id": "D06",
-      "spec_line": 740,
+      "spec_line": 750,
       "scenario": "Försök korta retention efter att långlivad post lagrats; äldre/nyare atomic stamp-writes i omvänd ordning.",
       "required_outcome": "Retention/max-stamp går aldrig bakåt; inkompatibel scope-retention nekas utan resurrection.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -816,13 +817,13 @@
     },
     {
       "id": "D07",
-      "spec_line": 741,
+      "spec_line": 751,
       "scenario": "Configure KeyPrefix efter UseRedis/UseSqlServer men före container/start.",
       "required_outcome": "Data, metadata, generationsnycklar och backplane använder samma prefix; annan app är isolerad.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -833,13 +834,13 @@
     },
     {
       "id": "D08",
-      "spec_line": 742,
+      "spec_line": 752,
       "scenario": "Optionsvalidering utan frisk L2; DI-anslutningsfabrik; okänt SQL-schema och levererat migreringsskript.",
       "required_outcome": "Fel i inställning/schema ger tydliga fel; giltig outage startar degraderat; inget tyst schema-byte.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -850,13 +851,13 @@
     },
     {
       "id": "D09",
-      "spec_line": 743,
+      "spec_line": 753,
       "scenario": "Private setter, Dog i List av Animal, korrekt polymorf context, RoundTrip på/av och Distributed=false.",
       "required_outcome": "Kontrollens begränsning dokumenterad/testad; context bevarar data; false gör inga L2-read/write.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -867,13 +868,13 @@
     },
     {
       "id": "D10",
-      "spec_line": 744,
+      "spec_line": 754,
       "scenario": "Queue retry/publication failure, shutdown och reconnect med tappade meddelanden.",
       "required_outcome": "Kö observerbar/bounded, rätt lokala clears, korrekt lost-at-shutdown-rapport och inga oobserverade exceptions.",
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -884,13 +885,13 @@
     },
     {
       "id": "T01",
-      "spec_line": 750,
+      "spec_line": 760,
       "scenario": "Två containrar med MetricCollector; fast hit, miss, L2-hit, flight-join, refresh, stale och exception.",
       "required_outcome": "Exakt en request-result per anrop; load-duration bara för faktisk origin/factory; containrar isolerade.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -901,13 +902,13 @@
     },
     {
       "id": "T02",
-      "spec_line": 751,
+      "spec_line": 761,
       "scenario": "Befintliga keys/tags/token/query innehåller canary-identiteter; defaults och explicit span-opt-in.",
       "required_outcome": "Inga canaries i metrik/standardspans/loggar; opt-in gäller bara avsedda span-fält.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -918,13 +919,13 @@
     },
     {
       "id": "T03",
-      "spec_line": 752,
+      "spec_line": 762,
       "scenario": "Registrera instrumentation före/efter Core och slå av lyssnare.",
       "required_outcome": "Samma instrument; inga dekoratordubletter; allocation- och tidsgrind klaras.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "open",
       "reviewed_sources": [
         {
@@ -945,13 +946,13 @@
     },
     {
       "id": "T04",
-      "spec_line": 753,
+      "spec_line": 763,
       "scenario": "Storage queue och publication queue, L2 healthy men backplane disconnected/connecting/unknown.",
       "required_outcome": "Kötyper/status separata; failureStatus respekteras; healthy L2 döljer inte backplanefel.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -962,13 +963,13 @@
     },
     {
       "id": "T05",
-      "spec_line": 754,
+      "spec_line": 764,
       "scenario": "Stats med method vikter, HTTP local bodies och bara observerade L2-svar.",
       "required_outcome": "Rätt enheter och scope; observerade poster ökar inte resident entries/HTTP-bytes.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -979,13 +980,13 @@
     },
     {
       "id": "F01",
-      "spec_line": 760,
+      "spec_line": 770,
       "scenario": "CsCheck över slumpade seed, prefix/argument och alla delningspunkter; tomma delar, UTF-16-surrogates, escaping, olika buffertstorlekar, Append efter lookup och reservnycklar.",
       "required_outcome": "Delad hash är exakt samma som helsträngshash för samma sluttext/seed; growth och Append lämnar aldrig gammal hash aktiv.",
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -996,13 +997,13 @@
     },
     {
       "id": "F02",
-      "spec_line": 761,
+      "spec_line": 771,
       "scenario": "Tvinga hashkollisioner via en intern testhook; skriv/hämta/ersätt/ta bort genom string-, span- och builder-vägar, inklusive konkurrerande publicering och eviction.",
       "required_outcome": "Bara identisk ordinal nyckel är en träff; alla vägar hittar samma post; borttagning och frekvensspårning fungerar trots kollisioner.",
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1013,13 +1014,13 @@
     },
     {
       "id": "F03",
-      "spec_line": 762,
+      "spec_line": 772,
       "scenario": "Två processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop.",
       "required_outcome": "Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består.",
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1034,13 +1035,13 @@
     },
     {
       "id": "F04",
-      "spec_line": 763,
+      "spec_line": 773,
       "scenario": "Granska algoritm/seed/hotmodell; kör algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med långa gemensamma prefix och kontrollerad arbetsmätning.",
       "required_outcome": "Dokumenterat skydd mot avsiktlig hashflooding; regressioner mäts utan sleeps eller sköra nanosekundasserts. Slumpmässig fördelning ensam räknas inte som godkännande.",
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1051,14 +1052,14 @@
     },
     {
       "id": "F05",
-      "spec_line": 764,
+      "spec_line": 774,
       "scenario": "Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net10.0 och AOT, med korta/långa prefix och lyssnare av/på.",
       "required_outcome": "Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten.",
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
-      "state": "Scoped prefix full-path acceptance established: 13 complete affected whole cases pass after node-hash reuse, plus 15 earlier precise unaffected resident-hit cases with actual provenance retained. No studies pooled. JIT/native/vendor correctness and costs pass; cumulative V04 remains open.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
-      "timing_gate": "PASS for scoped F05 prefix comparison; separate cumulative V04 remains open",
+      "state": "Scoped prefix full-path acceptance established: 13 complete affected whole cases pass after node-hash reuse, plus 15 earlier precise unaffected resident-hit cases with actual provenance retained. No studies pooled. JIT/native/vendor correctness and costs pass; cumulative V04 now has approved case-scoped acceptance; see final HTTP decision/replay.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "PASS scoped F05; cumulative V04 separately accepted with explicit five HTTP bounds",
       "reviewed_sources": [
         {
           "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
@@ -1084,7 +1085,7 @@
         }
       ],
       "additional_cost_evidence": "plans/design-benchmarks/final-prefix-cost-v1/manifest.json",
-      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Time requirements remain open.",
+      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Separate final time acceptance is recorded in V04.",
       "native_execution_gate": "PASS: explicit JIT/native execution and frozen vendor checks pass, including the published checkpoint AOT job.",
       "native_execution_evidence": "plans/design-benchmarks/final-prefix-aot-v1/manifest.json",
       "complete_prefix_time_evidence": "plans/design-benchmarks/final-prefix-time-v1/manifest.json",
@@ -1098,13 +1099,13 @@
     },
     {
       "id": "H01",
-      "spec_line": 770,
+      "spec_line": 780,
       "scenario": "Befintliga HTTP freshness/no-cache/private/shared/Vary/304/ownership-tester mot ny adapter.",
       "required_outcome": "Alla tidigare säkerhets- och protokollgarantier bevarade; metodduration/jitter/fail-safe ändrar inte svar.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1148,13 +1149,13 @@
     },
     {
       "id": "H02",
-      "spec_line": 771,
+      "spec_line": 781,
       "scenario": "A:s origin/body-publicering stoppad; B POST/PUT/PATCH/DELETE bekräftas; gammal A fortsätter.",
       "required_outcome": "Nytt uppslag på A/B väljer nya generationer; gammal response kan avslutas men återpubliceras inte.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1165,13 +1166,13 @@
     },
     {
       "id": "H03",
-      "spec_line": 772,
+      "spec_line": 782,
       "scenario": "Tappa alla backplane-meddelanden; A/B delar L2 och gör samma H02-fall.",
       "required_outcome": "Fortsatt korrekt via delade generationer; inga lokala värde/epoch-kopior används.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1182,13 +1183,13 @@
     },
     {
       "id": "H04",
-      "spec_line": 773,
+      "spec_line": 783,
       "scenario": "Origin lyckas; generation-write/get hänger/felar; cancel efter origin; slå sedan på L2.",
       "required_outcome": "Tydligt fel/cancel, origin körs en gång, återhämtning fortsätter; ingen normal framgång enbart Queued.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1199,13 +1200,13 @@
     },
     {
       "id": "H05",
-      "spec_line": 774,
+      "spec_line": 784,
       "scenario": "Evict generationmetadata, kör N/N+1, collisions i URL-slots; dispatcha Advance i omvänd ordning och upprepa en tidigare operation efter ny invalidation.",
       "required_outcome": "Atomisk revision går bara framåt; ingen återgång till gammalt namespace; collisions endast extra missar, inga caller/klientläckor.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1216,13 +1217,13 @@
     },
     {
       "id": "H06",
-      "spec_line": 775,
+      "spec_line": 785,
       "scenario": "Seed alla Vary/caller/formatvarianter; admin client-tag/custom-tag, Clear och per-observation remove under äldre publication. Skicka även tag/clear från en Core-nod utan HTTP-tillägg.",
       "required_outcome": "Alla berörda gamla varianter oåtkomliga utan enumeration; gemensam metadata pensioneras även av Core-only-noden; resultat markerar bekräftat/queued korrekt.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1233,13 +1234,13 @@
     },
     {
       "id": "H07",
-      "spec_line": 776,
+      "spec_line": 786,
       "scenario": "Unsafe svar med samma-origin Location/Content-Location samt främmande origin.",
       "required_outcome": "Rätt request- och mål-URL:er pensioneras; främmande origin invalidieras inte.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1250,13 +1251,13 @@
     },
     {
       "id": "H08",
-      "spec_line": 777,
+      "spec_line": 787,
       "scenario": "Cookies enabled genom konfiguration före/efter AddHttpCaching; KeepCookies false/true.",
       "required_outcome": "False stänger av/loggar en gång; true bevarar transport och ger full response-bypass, Only-if-cached=504.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1267,13 +1268,13 @@
     },
     {
       "id": "H09",
-      "spec_line": 778,
+      "spec_line": 788,
       "scenario": "Samtidiga cookies, Set-Cookie på 200/304, redirect och dold transport.",
       "required_outcome": "Ingen annans body/cookie återanvänds; inga jar-snapshot-races; okänd transport bypass om ej uttryckligen betrodd.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1284,13 +1285,13 @@
     },
     {
       "id": "H10",
-      "spec_line": 779,
+      "spec_line": 789,
       "scenario": "Bypass/KeepCookies-klient muterar en URL med redan delad response-generation.",
       "required_outcome": "Origin körs, generation pensioneras; bypass lämnar inte gamla variants åt andra callers.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1301,13 +1302,13 @@
     },
     {
       "id": "H11",
-      "spec_line": 780,
+      "spec_line": 790,
       "scenario": "Local HTTP och metodposter fyller sina budgetar; en HTTP-body större än hela MaxHttpBytes.",
       "required_outcome": "Separat eviction; stor body returneras/streamas men sparas inte; bounded kostnadsberäkning.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1318,13 +1319,13 @@
     },
     {
       "id": "H12",
-      "spec_line": 781,
+      "spec_line": 791,
       "scenario": "L2-mode observerar >1024 representations; restart, remote delete och stats/listing.",
       "required_outcome": "Register högst 1024, tomt efter restart; ObservedDistributed tydligt, aldrig global/resident garanti.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1335,13 +1336,13 @@
     },
     {
       "id": "H13",
-      "spec_line": 782,
+      "spec_line": 792,
       "scenario": "L2 saknas/egen app-IDistributedCache finns; AddHttpCaching utan Core och omvänd registreringsordning.",
       "required_outcome": "Ingen app-cache-reserv; saknad Core ger fel; legitim inbördes ordning fungerar.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1352,13 +1353,13 @@
     },
     {
       "id": "H14",
-      "spec_line": 783,
+      "spec_line": 793,
       "scenario": "Admin observation med credential/query-canaries och långt adversarialt klientnamn.",
       "required_outcome": "Bounded hashed identity; ingen body/credential/query läcker; tagg-escaping kan inte välja annan klient.",
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1394,13 +1395,13 @@
     },
     {
       "id": "V01",
-      "spec_line": 789,
+      "spec_line": 799,
       "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
       "required_outcome": "Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "b02d39fdf620542787012a97ef1178ba40aa708a745a9a811711424835f771b1",
-      "state": "Exact6a passesall14jobs/fourstatuses,2639Linux/0failures/1intentionalsoakskip,diff94.2%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Timing separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1418,7 +1419,7 @@
           "sha256": "572cb65d677339dd446b4112ae275907bc4e14dfc85dd0deb4409da9c887f7bd"
         }
       ],
-      "additional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json",
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json",
       "candidate_checkout_regression": "Historical AUX checkout failure is retained; portable path fix and Git-byte preservation pass on all platforms at 3e9df33.",
       "test_stabilization_evidence": [
         "plans/design-benchmarks/docs-hit-probe-v1/manifest.json",
@@ -1427,13 +1428,13 @@
     },
     {
       "id": "V02",
-      "spec_line": 790,
+      "spec_line": 800,
       "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
       "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "b02d39fdf620542787012a97ef1178ba40aa708a745a9a811711424835f771b1",
-      "state": "Exact6a passesall14jobs/fourstatuses,2639Linux/0failures/1intentionalsoakskip,diff94.2%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Timing separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1450,17 +1451,17 @@
           "sha256": "67276085a995d1a4a20bc51338df45286a9684cdae9454abe5f4ab713f93eee9"
         }
       ],
-      "additional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json"
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json"
     },
     {
       "id": "V03",
-      "spec_line": 791,
+      "spec_line": 801,
       "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API.",
       "required_outcome": "Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "b02d39fdf620542787012a97ef1178ba40aa708a745a9a811711424835f771b1",
-      "state": "Exact6a passesall14jobs/fourstatuses,2639Linux/0failures/1intentionalsoakskip,diff94.2%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Timing separate.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%,99properties,soak,cultures,AOT175,packages/docs and required nativebackends. Final rules/docs-only publication CI still required.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1476,18 +1477,18 @@
           "sha256": "471f766fa22c5b68d01cc3382190aab61da1d828a476c696b668f0c3214032d5"
         }
       ],
-      "additional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json"
+      "additional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json"
     },
     {
       "id": "V04",
-      "spec_line": 792,
+      "spec_line": 802,
       "scenario": "§10 steg 1 enligt integrationsbeslutet för designserien; full steg 1 och steg 2 mot f43854d samt berörda filtrerade CPU-mätningar.",
-      "required_outcome": "Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen försämring i den parade tidsmätningen.",
+      "required_outcome": "Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen ej uttryckligen godkänd försämring i den parade tidsmätningen.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "b02d39fdf620542787012a97ef1178ba40aa708a745a9a811711424835f771b1",
-      "state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-      "latest_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
-      "timing_gate": "open",
+      "validation_report_sha256": "7a071a0fa830772d838ba681af1705c1c63960c1c0444afc2ef48735b6512afc",
+      "state": "PASS approved case-scoped performance gate: all53existinglocalCPUcases+6affectedprefixmisses;59wholecases/5acceptedtimecosts/0unacceptedslow/0wide/0missing. All67costcasespasswith6unchangedacceptedcosts. Original full failed studies and source points retained.",
+      "latest_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+      "timing_gate": "PASS with five exact human-approved HTTP caps; unchanged6%precision",
       "reviewed_sources": [
         {
           "path": "benchmarks/MethodCache.CostProfile/Program.cs",
@@ -1503,8 +1504,8 @@
         },
         {
           "path": "benchmarks/MethodCache.CostProfile/accepted.json",
-          "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6",
-          "previous_reviewed_sha256": "476d5c922ad8138a2f74500845e227b3e8d510baa7eee863f9795dc12caca084"
+          "sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+          "previous_reviewed_sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
         }
       ],
       "per_change_cost_evidence": "plans/design-benchmarks/per-change-cost-v1/manifest.json",
@@ -1512,396 +1513,50 @@
       "siphash_cpu_gate": "QuietMac133 all5casespasswithtwoexactauthorized8percentintcontrols;original-ruleandnoisyreportsretained.",
       "siphash_cpu_evidence": "plans/design-benchmarks/mac-cpu-pr133-formal-v1/manifest.json",
       "cumulative_time_evidence": "plans/design-benchmarks/final-paired-time-v3/manifest.json",
-      "cumulative_time_state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
+      "cumulative_time_state": "PASS case-scoped approved59cases; no pooled means or original-cohort relabeling",
       "latest_cumulative_time_evidence": [
         "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
         "plans/design-benchmarks/mac-compact-telemetry-cpu-v1/manifest.json",
         "plans/design-benchmarks/http-client-index-final14-v1/manifest.json"
       ],
       "isolated_http_correction_evidence": "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json",
-      "current_cumulative_cost": "PASS:A3all67cases/side;0executionerrors/0failing/6unchangedaccepted;all222buildfilesverified;independentreview0.",
-      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json",
-      "current_working_cost_state": "PASScurrentc9source-equivalent67cases/0executionerrors/0failing/6unchangedaccepted;226binariesverified",
-      "current_working_time_state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-      "inactive_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json",
+      "current_cumulative_cost": "PASS current runtime all67cases,0failures,6unchangedacceptedcosts",
+      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
+      "current_working_cost_state": "PASS replaywithapprovedcanonicalrules:67cases/0failures/6unchangedacceptedcosts",
+      "current_working_time_state": "PASS approved59case coverage",
       "previous_timing_state": "All67case cumulativeA3 costs pass with unchanged six accepted costs. Final timing FAIL: four coldHTTP regressions, one listening304 regression and one wide listening304 interval; fixed9case nonHTTP confirmation passes.",
-      "current_working_cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
+      "current_working_cost_evidence": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json",
       "integration_decision_evidence": "plans/design-benchmarks/design-integration-review-v1/decision.json",
-      "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json"
+      "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json",
+      "approved_time_decision": "plans/design-benchmarks/http-time-acceptance-v1/decision.json",
+      "approved_time_replay": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json"
     }
   ],
-  "review_notes": "All 76 specification rows and source/report hashes verify. Exact 6a CI passes all fourteen jobs, and all 67 cumulative cost cases pass. The strict time gate fails five precise HTTP regressions (three Mac, two Nimbus). Original Mac wide intervals remain preserved; studies are not pooled. Five exact v2 bounds are inactive pending a human design decision. Combined review against main is approved; no merge, release or blanket acceptance is claimed.",
-  "current_runtime_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
-  "current_timing_state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-  "candidate_source_changes": [
-    {
-      "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
-      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
-    },
-    {
-      "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
-      "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
-    },
-    {
-      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff",
-      "previous_reviewed_sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
-    },
-    {
-      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
-      "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
-    },
-    {
-      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1",
-      "previous_reviewed_sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
-    },
-    {
-      "path": "tests/MethodCache.Core.Tests/Core/InMemoryCacheEngineTests.cs",
-      "sha256": "73176ca815f5cccb8f178b01466841a92b10d59b77fa7a3b1699fafd1828ae8a"
-    },
-    {
-      "path": "tests/MethodCache.Core.Tests/Properties/TagNodeSetPropertyTests.cs",
-      "sha256": "3ba7326a203a29da0ec7a4ada9a200fd819854d7d8dbbc94fa0786e7ebc752de"
-    },
-    {
-      "path": "tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs",
-      "sha256": "104951e055b548e410c6be688a055082a3f86e3da5933d2c78b9b040812889dd"
-    },
-    {
-      "path": "tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs",
-      "sha256": "8d469f04c5b50b3e706d4ff37a594678497849a5e7acd4ff32066a11c7a5e081"
-    },
-    {
-      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
-      "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
-    },
-    {
-      "path": "tests/MethodCache.HttpCaching.Tests/HttpOriginTelemetryCompletionTests.cs",
-      "sha256": "839e9dd34fc2e6d4bad2b15291b097faa83e8666d5bb7a927c9ee6398f86d243"
-    },
-    {
-      "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
-      "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
-    },
-    {
-      "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryOperationAllocationTests.cs",
-      "sha256": "e87bbefb228699aab0321b977d898642ea902315fe73280e5ff9e9e36b153acc"
-    }
-  ],
-  "additional_reviewed_sources": [
-    {
-      "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
-      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8",
-      "previous_reviewed_sha256": "ed768a892015bbfecdf9aa165b1dc9259c6510748b0707083831211a891f15f3",
-      "scope": "Currentpublished5257fb63;small-tagpromotion/model/concurrency checks and full exactCIpass."
-    },
-    {
-      "path": "src/MethodCache.Core/Runtime/Memory/Node.cs",
-      "sha256": "f4a7c54a786dabc0544d236ae02c75c2e5910ee115d4dd599e58091563d15c54"
-    },
-    {
-      "path": "src/MethodCache.Core/Runtime/Keys/SipHashState.cs",
-      "sha256": "e83fd7c09f29da417a48b4cec456fc95a59a0e84ab693de0ae36e716ad0c8d0a"
-    },
-    {
-      "path": "tests/MethodCache.AotSmokeTest/PrefixAotChecks.cs",
-      "sha256": "4ee98780386cae47f0ff04dfe10dbf5b4ef3c03abe4d055c20b7bbc28aff847a"
-    },
-    {
-      "path": "tests/MethodCache.Benchmarks.Tests/InProcessSchedulingTests.cs",
-      "sha256": "889a23ff3b535b35e79198e384b6917b64174990e0eade6b9777115ce12d29d2"
-    }
-  ],
-  "candidate_local_checks": {
-    "core": "1055passed/0failed/1intentionaloptinsoakskip;published5257fb63",
-    "benchmarks": "126passed,0failed,0skipped",
-    "format": "allchangedCSharpfilespass",
-    "native_prefix": "24shape/flagcaseswith48observedrequestsandoriginassertions;JIT/nativepassedseparateproof",
-    "final_published_head_CI": "PASS5257fb63 exact current compact/publication code,14jobs/fourSUCCESS.",
-    "http": "343passed/0failed/0skipped;published5257fb63"
+  "review_notes": "Johan approved alternative1 on2026-10-17. Five exact reasoned time caps active; all other correctness/cost/precision rules unchanged. Current59case CPU coverage and67casecostreplaypass. Exact7bfunctionalCIpasses; final approval publication requires actual new-head CI. No merge/release/PublicAPIpromotion/PR138integration.",
+  "latest_published_functional_checkpoint": "7b313db9ca80cab16f8d616f5d10d04b7084006f",
+  "latest_functional_evidence": "plans/design-benchmarks/combined-functional-7b313db/manifest.json",
+  "latest_published_functional_jobs": "PASS14jobs/fourSUCCESS;2639Linux/0failures/1intentionalsoakskip;3621/3839=94.3%;99properties,soak,cultures,AOT175,sevenpackages/add-ons/docs/nativebackends",
+  "approved_time_decision": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/decision.json",
+    "sha256": "cca440a94aafdfe31e38df8d4e878b8912df79d4da50206f8924483dfa7ac99c"
   },
-  "new_evidence": [
-    {
-      "path": "plans/design-benchmarks/eviction-hash-reuse-v1/manifest.json",
-      "sha256": "de33c96449fa2b7af4673eb6908802b337693801c471326cc6429d4fa8f4c4dd"
-    },
-    {
-      "path": "plans/design-benchmarks/eviction-cumulative-cost-v1/manifest.json",
-      "sha256": "4b453e8a30e89f4e892ff0de9068d37b2aec31e1b9e85600cf823d764ac55227"
-    },
-    {
-      "path": "plans/design-benchmarks/eviction-cumulative-time-v1/manifest.json",
-      "sha256": "c4b94a4ca8ca14aee33186c903d165bd743c12eef958e117d0af1bcec941999c"
-    },
-    {
-      "path": "plans/design-benchmarks/mac-eviction-cumulative-time-v1/manifest.json",
-      "sha256": "a050b21bce104956659ea1e79c6ff9285572d88df688ce93b50bcff8143056d6"
-    },
-    {
-      "path": "plans/design-benchmarks/hit-inlining-trial-v1/manifest.json",
-      "sha256": "d7f3bc2d06299ae6fb9a98f7aad45f2c7b5d79cfcee81ce228309390337f5f61"
-    }
-  ],
-  "windows_checkout_fix_evidence": {
-    "path": "plans/design-benchmarks/windows-path-guard-v1/manifest.json",
-    "sha256": "b6d0088bf9914362b5405433c70a2d2f9a5526828746806b0176504321ce0449"
+  "current_time_acceptance": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/coverage.json",
+    "sha256": "79884550de9114d7bd73b4b098804c492e1238ec0000fefc7ca4373264ff8d03",
+    "state": "PASS59wholecases/5accepted/0unacceptedslow/0wide/0missing;all53existinglocalCPUcases+6affectedprefixmisses",
+    "original_studies": "OriginalMac14stillfails2widewithapprovedrules;separatewholeNimbus2confirmationcoversonlythose2cases;no studiespooled."
   },
-  "line_ending_fix_evidence": "plans/design-benchmarks/evidence-line-endings-v1/manifest.json",
-  "latest_published_functional_checkpoint": "6a2cc0020274e53f77778a8c906980423e19543d",
-  "latest_published_functional_jobs": "PASS14jobs/fourSUCCESS;2639Linux/0failures/1intentionalsoakskip;diff3615/3839=94.2%;99properties,soak,cultures,AOT175,packages/docs",
-  "test_only_corrections": {
-    "docs_probe": "10freshcandidateprocesses2factseach/full120Docspass;singlefixedzero-bytewindowandone-allocationnegativecontrol",
-    "native_deadlines": "2deterministicbarrierredfacts,3greenfacts;10freshRedis/3SQLcandidatewithcollectorpass;full1047Corepass/1intentionalsoakskip;CoreDLLidentical"
+  "source_impact_review": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/source-impact.json",
+    "sha256": "e8b1186fce9dcd5c364a10eb2ac6cea266d9109f4d0794a1c13e1a1ee0154b49"
   },
-  "snapshot_inputs_trial": "plans/design-benchmarks/hit-snapshot-inputs-trial-v1/manifest.json;NOTadopted,finalGUIDgateandoriginalprecisionfailuresremainopen",
-  "latest_functional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json",
-  "guid_hash_control_evidence": [
-    {
-      "path": "plans/design-benchmarks/guid-hash-control-v1/manifest.json",
-      "sha256": "35a335e4e57be2b43f143ea9365d554123081ed838d8962fa73c06493f71406d"
-    },
-    {
-      "path": "plans/design-benchmarks/guid-hash-control-sync-v1/manifest.json",
-      "sha256": "b33a3813035baf3bd238b2f4c62e4acdc796481661b0ce9f2bd30335b15135fd"
-    }
-  ],
-  "interference_evidence": {
-    "path": "plans/design-benchmarks/local-final-interference-v1/manifest.json",
-    "sha256": "8d399a6d1d0faa628f999c4b69e5b707d50ddce7ca16efde32a3c4e057c4b05c"
+  "current_cumulative_cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
+  "canonical_accepted_sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+  "integration_decision_evidence": "plans/design-benchmarks/design-integration-review-v1/decision.json",
+  "historical_inventory": {
+    "path": "plans/design-benchmarks/http-time-acceptance-v1/inventory-before.json",
+    "sha256": "9142dac4b0ca254eb8d73c2f270857cfc5ad1776227fb34eac0776891c099bb7",
+    "scope": "Exact pre-approval inventory, including historical source hashes and failing/noisy verdicts. Retained without relabeling."
   },
-  "new_complete_confirmation_evidence": {
-    "mac_nonhttp": "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
-    "nimbus_http": "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json",
-    "mac_verdict": "PASS:8faster/1same,20pairs,360launches",
-    "http_verdict": "FAIL:5slower/1wide,10pairs,280launches",
-    "original_reports_retained": true,
-    "new_time_waivers": false
-  },
-  "latest_local_code_checkpoint": {
-    "head": "6a2cc0020274e53f77778a8c906980423e19543d",
-    "functional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json",
-    "cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
-    "production_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
-    "timing": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-    "historical_per_change_overages": 17,
-    "timing_evidence": "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
-    "per_change_workflow": "Explicit2026-10-17combinedreviewdecision replaceshistoricalstandaloneacceptanceforthisseries; all17historicalfailuresretained.",
-    "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json",
-    "inactive_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json"
-  },
-  "current_working_publication_candidate": {
-    "head": "6a2cc0020274e53f77778a8c906980423e19543d",
-    "functional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json",
-    "cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
-    "production_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
-    "timing": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-    "historical_per_change_overages": 17,
-    "timing_evidence": "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
-    "per_change_workflow": "Explicit2026-10-17combinedreviewdecision replaceshistoricalstandaloneacceptanceforthisseries; all17historicalfailuresretained.",
-    "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json",
-    "inactive_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json"
-  },
-  "historical_snapshot": {
-    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
-    "runtime_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
-    "candidate_source_changes": [
-      {
-        "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
-        "sha256": "ed768a892015bbfecdf9aa165b1dc9259c6510748b0707083831211a891f15f3"
-      }
-    ],
-    "review_notes": "All76explicitrows mapped to inspected assertions; final actual-head CI and HTTP timing remain incomplete. Latest published2a9checkpoint is green; localA3 has passing targeted tests and full cost profile. This is not76passes."
-  },
-  "head_scope": "Current published runtime/correctness checkpoint; historical timing source points remain explicit.",
-  "live_current_source_confirmations": {
-    "completed_published5257_cpu": "PASS10cases/200launches",
-    "completed_published5257_http": "FAIL14cases/280launches,5slower/1wide",
-    "client_index_final14": "FAIL complete14cases/280launches:3slower(DesignLocalMiss5.1%,listening3044.1%/6.7%);2coldafterinvalidationintervalswide;9pass(7faster/2same).0executionerrors.No new waivers.",
-    "canonical_rules_sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6",
-    "proposed_http_bounds_active": false,
-    "state": "All complete cohorts and their verification are terminal; no live measurement remains.",
-    "nimbus_precision2": {
-      "state": "FAIL2preciseslow/0wide/40launches/0executionerrors",
-      "evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json"
-    }
-  },
-  "current_pr134_direct_base_cost": {
-    "base": "419c786d949d361cd2acd418178e4b0a8e21a860",
-    "head_production_equivalent": "5257fb63fb72393c817d74292e989299ede374d2",
-    "state": "PASS67cases/0failures/0accepted;deterministiccompletecostrowreusewith7identicalcompiledharnesssourcesandpinnedSDK/backends;NOTpairedtime",
-    "evidence": "plans/design-benchmarks/current-pr134-cost-v1/",
-    "manifest_sha256": "1f266f9d7aa5c95567f65e9376263028e793f1d6ab35df4f284b33f199c01418"
-  },
-  "per_change_cost_release_constraint": {
-    "historical_overages": 17,
-    "affected_original_heads": [
-      124,
-      129,
-      130,
-      132,
-      133
-    ],
-    "state": "RESOLVED_BY_EXPLICIT_WORKFLOW_DECISION:2026-10-17Johanapprovedcombinedreviewin134againstmain,preservinghistoryandreplacinghistorical-headcostacceptanceforthisseries.All17historicaloveragesremainfailures.Currentfullcumulativecost/timingandfilteredCPUrequirementsunchanged.No merge/release/timewaiver.",
-    "decision_evidence": "plans/design-benchmarks/design-integration-review-v1/decision.json"
-  },
-  "latest_complete_current_cpu_confirmation": {
-    "state": "PASS10cases/200launches;allfasterandprecise;exact5257fb63",
-    "evidence": "plans/design-benchmarks/mac-compact-telemetry-cpu-v1/manifest.json"
-  },
-  "latest_complete_current_http_confirmation": {
-    "state": "FAIL complete14cases/280launches:3slower(DesignLocalMiss5.1%,listening3044.1%/6.7%);2coldafterinvalidationintervalswide;9pass(7faster/2same).0executionerrors.No new waivers.",
-    "evidence": "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
-    "precision_confirmation": {
-      "state": "FAIL2preciseslow/0wide",
-      "evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json"
-    },
-    "combined_requirement_state": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers."
-  },
-  "client_index_trial": {
-    "state": "ADOPTED6a;fullCIand67costPASS;strictHTTPtimeFAIL5preciseregressionsaftercompleteNimbusconfirmation;originalMacwideevidenceretained",
-    "patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
-    "pilot_evidence": "plans/design-benchmarks/http-client-index-pilot-v1/manifest.json",
-    "tradeoff": "Client-tag invalidation scans resident HTTP nodes; physical removal/accounting and URL/customindexes preserved. No extra field on per-entry metadata.",
-    "functional_evidence": "plans/design-benchmarks/http-client-index-functional-v1/manifest.json",
-    "cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
-    "final_time_evidence": "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
-    "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json"
-  },
-  "client_index_current_sources": [
-    {
-      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-      "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
-    },
-    {
-      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-      "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
-    },
-    {
-      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
-      "sha256": "cb841e1414a8d78298e0c4fa07de494aa2aadb372932142ad16054170e5dd284"
-    }
-  ],
-  "current_candidate_required_ci": "PASS exact6a2cc002;all14jobs/fourSUCCESS;new proof-only changes not yet published.",
-  "current_published_checkpoint": {
-    "head": "6a2cc0020274e53f77778a8c906980423e19543d",
-    "functional_evidence": "plans/design-benchmarks/combined-functional-6a2cc00/manifest.json",
-    "cost_evidence": "plans/design-benchmarks/http-client-index-cost-v2/manifest.json",
-    "production_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109",
-    "timing": "FAIL5preciseHTTPregressions:MacDesignLocalMiss5.1%,listening3044.1%/6.7%;Nimbus2cold-afterinvalidation16.9%/17.3%,0wide.OriginalMac14retained3slow/2wide/9pass;no pooling/newwaivers.",
-    "historical_per_change_overages": 17,
-    "timing_evidence": "plans/design-benchmarks/http-client-index-final14-v1/manifest.json",
-    "per_change_workflow": "Explicit2026-10-17combinedreviewdecision replaceshistoricalstandaloneacceptanceforthisseries; all17historicalfailuresretained.",
-    "precision_confirmation_evidence": "plans/design-benchmarks/http-precision2-nimbus-v1/manifest.json",
-    "inactive_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json"
-  },
-  "historical_publication_candidate_5257": {
-    "base": "62603697d14d00d295aca4d53320a6e90e42cab0",
-    "patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
-    "evidence": "plans/design-benchmarks/http-publication-functional-v1/manifest.json",
-    "actual_sources": [
-      {
-        "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
-        "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
-      },
-      {
-        "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
-        "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
-      },
-      {
-        "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-        "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
-      },
-      {
-        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
-        "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
-      },
-      {
-        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-        "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
-      },
-      {
-        "path": "tests/MethodCache.Core.Tests/Core/InMemoryCacheEngineTests.cs",
-        "sha256": "73176ca815f5cccb8f178b01466841a92b10d59b77fa7a3b1699fafd1828ae8a"
-      },
-      {
-        "path": "tests/MethodCache.Core.Tests/Properties/TagNodeSetPropertyTests.cs",
-        "sha256": "3ba7326a203a29da0ec7a4ada9a200fd819854d7d8dbbc94fa0786e7ebc752de"
-      },
-      {
-        "path": "tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs",
-        "sha256": "104951e055b548e410c6be688a055082a3f86e3da5933d2c78b9b040812889dd"
-      },
-      {
-        "path": "tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs",
-        "sha256": "8d469f04c5b50b3e706d4ff37a594678497849a5e7acd4ff32066a11c7a5e081"
-      },
-      {
-        "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
-        "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
-      },
-      {
-        "path": "tests/MethodCache.HttpCaching.Tests/HttpOriginTelemetryCompletionTests.cs",
-        "sha256": "839e9dd34fc2e6d4bad2b15291b097faa83e8666d5bb7a927c9ee6398f86d243"
-      },
-      {
-        "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
-        "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
-      },
-      {
-        "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryOperationAllocationTests.cs",
-        "sha256": "e87bbefb228699aab0321b977d898642ea902315fe73280e5ff9e9e36b153acc"
-      }
-    ],
-    "local_core_passed": 1055,
-    "local_http_passed": 343,
-    "intentional_core_soak_skip": 1,
-    "published_exact_candidate_ci": "PASS14jobs/fourSUCCESS,2637Linux/0failures/1intentionalsoakskip,diff94.3%",
-    "full_cost_profile": "PASS67cases/0executionerrors/0failing/6unchangedaccepted;all226buildfilesverify;independentlocalreview0",
-    "cumulative_timing": "OPEN: currentlistening304tenpairsratio1.049preciseslower; priorpublicationcoldratio1.226preciseslower; remainingvariantsunmeasuredonlatestcandidate.",
-    "time_rule_changes": false,
-    "compact_telemetry_evidence": "plans/design-benchmarks/http-compact-telemetry-functional-v1/manifest.json",
-    "cost_evidence": "plans/design-benchmarks/http-compact-telemetry-cost-v1/manifest.json",
-    "inactive_design_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v1.json",
-    "native_aot": "PASS osx-arm64 smoke explicitprefix/HTTP and175casecorpus compiled/executed; setupfailures/oldwarnings retained",
-    "native_aot_evidence": "plans/design-benchmarks/http-publication-aot-v1/manifest.json",
-    "published_head": "5257fb63fb72393c817d74292e989299ede374d2"
-  },
-  "historical_deferred_id_checkpoint": {
-    "head": "f49264198631167d22d8c19e8b396d147646a87d",
-    "published": true,
-    "required_published_ci": "PASS on6260369;14jobs/4SUCCESS;earlierA3 source bytes preserved in that published checkpoint.",
-    "actual_changes": [
-      {
-        "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-        "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
-      },
-      {
-        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-        "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
-      },
-      {
-        "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
-        "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
-      }
-    ],
-    "http_tests": 334,
-    "core_tests": 1047,
-    "intentional_soak_skips": 1,
-    "source_patch_sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
-    "isolated_timing": "All8cases/160launches/10pairs32warm12actual PASS, coldmiss5.6–7.0%faster; cumulative f438 acceptance remains open.",
-    "evidence": [
-      "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
-      "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json"
-    ],
-    "cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json",
-    "cumulative_cost": "PASS all67cases with same six exceptions; no new bound."
-  },
-  "historical_publication_patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
-  "current_runtime_patch_scope": "Client-indexincrementalpatchagainst5257fb63;currentc9productionruntimeverifiedbyfull224sourceinventory.",
-  "previous_complete_http_confirmation_5257": {
-    "state": "FAIL14cases/280launches;4coldslow20.6–23.8%,1listening304slow3.7%,1listening304wide;4faster/4same;no waivers",
-    "evidence": "plans/design-benchmarks/http-final14-compact-v1/manifest.json"
-  },
-  "inactive_http_time_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json"
+  "current_candidate_required_ci": "Pending actual approval-publication head; prior7bgreen. Runtime/build/test sources unchanged."
 }

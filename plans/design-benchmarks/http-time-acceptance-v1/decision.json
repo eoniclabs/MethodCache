@@ -1,0 +1,30 @@
+{
+  "decision": "approved",
+  "by": "Johan",
+  "date": "2026-10-17",
+  "user_instruction": "Kör alternativ 1!",
+  "context": "After the summary of five precise HTTP regressions and exact proposed caps; implement alternative 1, retain design, finish acceptance and make PR134 reviewable.",
+  "proposal": "plans/design-benchmarks/proposed-http-time-bounds-v2.json",
+  "proposal_sha256": "c52452f47f180a08ced3328ea628c6baee25164367761d98a62842c3f3e3d4da",
+  "previous_rules_sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6",
+  "accepted_rules_sha256": "6395d59970d3269c40bc5e9a3b5423f0bf2447e224075cc3b2b07abec0254e02",
+  "rules": {
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)": 1.06,
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)": 1.06,
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)": 1.08,
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)": 1.2,
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)": 1.2
+  },
+  "unchanged": [
+    "6% full 95% Student-t interval precision width",
+    "All correctness, memory and Redis/SQL command gates",
+    "All other cases and the two existing SipHash time caps",
+    "Original failed/wide reports and individual launches remain intact"
+  ],
+  "not_authorized": [
+    "Merge",
+    "Release or package publication",
+    "PublicAPI promotion",
+    "Integrating PR138"
+  ]
+}

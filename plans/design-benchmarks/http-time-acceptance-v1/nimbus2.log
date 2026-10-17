@@ -1,0 +1,6 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7215.7 | 8473.8 | 1.169 | 1.148-1.190 | accepted: Approved by Johan on 2026-10-17 (alternative 1): bounded aggregate cost of local HTTP publication after invalidation: shared TinyLFU storage,conservative byte/metadata accounting,URL-slot/custom indexes and direct physical administration. The implicit client index is already removed. Complete Nimbus confirmation +16.9% (95%1.148–1.190); original Mac interval remains wide and is retained. Only this exact case; no general cold-miss waiver or precision waiver. |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7199.9 | 8482.9 | 1.173 | 1.156-1.191 | accepted: Approved by Johan on 2026-10-17 (alternative 1): bounded aggregate cost of local HTTP publication after invalidation with Core listeners: shared store,conservative byte/metadata accounting,URL-slot/custom indexes and direct physical administration. Complete Nimbus confirmation +17.3% (95%1.156–1.191). Only this exact case; original wide Mac result retained. Correctness,allocations/commands and precision remain required. |
+
+10 pairs, 2 compared, 0 slower, 0 too noisy, 0 without a time

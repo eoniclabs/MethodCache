@@ -1,0 +1,489 @@
+diff --git a/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs b/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
+index 1a3cdef6..2327aa59 100644
+--- a/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
++++ b/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
+@@ -12,7 +12,8 @@ using Microsoft.Extensions.Options;
+ namespace MethodCache.Core.Runtime.Http;
+ 
+ internal sealed record HttpStorageInfo(string Id, string UrlTarget, string Client, int Format, long Cost,
+-    string[] Tags, DateTimeOffset CreatedAt, DateTimeOffset Deadline, bool Selector);
++    string[] Tags, DateTimeOffset CreatedAt, DateTimeOffset Deadline, bool Selector,
++    int LocalTargetLength = -1, int LocalSlot = -1);
+ 
+ // Protocol-neutral storage: the add-on owns its HTTP codec and freshness rules. Core owns residency,
+ // byte accounting, permanent generation metadata, bounded observations and invalidation recovery.
+@@ -43,12 +44,28 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+     internal long MaximumBytes { get; }
+     internal bool Distributed => _distributed != null;
+     internal int PendingRecoveries => _pending.Count(pair => pair.Value.Queued);
+-    private sealed class LocalEpoch(CacheEpoch value, bool initial)
++    private sealed class LocalEpoch(bool initial)
+     {
+-        internal CacheEpoch Value { get; } = value;
++        // The initial default namespace is empty, so most local cells never need a UUID.
++        // Materialize it once only when a nonempty vector actually refers to this cell.
++        private sealed class EpochValue
++        {
++            internal CacheEpoch Value { get; } = new(Guid.NewGuid(), 0);
++        }
++        private EpochValue? _value;
++        internal CacheEpoch Value
++        {
++            get
++            {
++                var current = Volatile.Read(ref _value);
++                if (current != null) return current.Value;
++                var created = new EpochValue();
++                return (Interlocked.CompareExchange(ref _value, created, null) ?? created).Value;
++            }
++        }
+         internal bool Initial { get; } = initial;
+         internal LocalVector? LastVector;
+-        internal static LocalEpoch Fresh(bool initial = false) => new(new CacheEpoch(Guid.NewGuid(), 0), initial);
++        internal static LocalEpoch Fresh(bool initial = false) => new(initial);
+     }
+     private sealed record LocalVector(LocalEpoch Clear, string[] Tags, LocalEpoch[] TagEpochs, bool AllowInitialNamespace, string Identity);
+     private sealed record PendingEpoch(long Ticket, bool Queued);
+@@ -129,18 +146,23 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+                 { unchanged = false; break; }
+             if (unchanged) return previous.Identity;
+         }
+-        var epochs = new CacheEpoch[tags.Length + 2];
+         var tagEpochs = new LocalEpoch[tags.Length];
+-        epochs[0] = clear.Value; epochs[1] = current.Value;
++        var initialNamespace = allowInitialNamespace && clear.Initial && current.Initial;
+         for (var i = 0; i < tags.Length; i++)
+         {
+             tagEpochs[i] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh(initial: true));
+-            epochs[i + 2] = tagEpochs[i].Value;
++            initialNamespace &= tagEpochs[i].Initial;
+         }
+         // A canonical default client already identifies its one implicit client tag in the URL key.
+         // Its initial local namespace can remain empty; no invalidation can return these cells to Initial.
+-        var identity = allowInitialNamespace && clear.Initial && current.Initial && tagEpochs.All(static epoch => epoch.Initial)
+-            ? string.Empty : VectorIdentity(EpochAddresses(slot, tags), epochs);
++        var identity = string.Empty;
++        if (!initialNamespace)
++        {
++            var epochs = new CacheEpoch[tags.Length + 2];
++            epochs[0] = clear.Value; epochs[1] = current.Value;
++            for (var i = 0; i < tags.Length; i++) epochs[i + 2] = tagEpochs[i].Value;
++            identity = VectorIdentity(EpochAddresses(slot, tags), epochs);
++        }
+         // One immutable cached vector per permanent slot, at most 4096. Alternating tag sets recompute
+         // the same deterministic identity; they never invent a new generation or affect cache selection.
+         Volatile.Write(ref current.LastVector, new LocalVector(clear, tags, tagEpochs, allowInitialNamespace, identity));
+@@ -201,7 +223,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+         }
+     }
+ 
+-    internal bool StoreLocal(string key, object payload, HttpStorageInfo info)
++    internal bool StoreLocal(string key, object payload, HttpStorageInfo info, int clientTagIndex = -1)
+     {
+         if (_local == null || info.Cost <= 0 || info.Cost > MaximumBytes || info.Deadline <= _time.GetUtcNow()) return false;
+         var now = _local.Now;
+@@ -209,7 +231,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+         _local.Add(new ValueNode<object>(key, payload)
+         {
+             Weight = info.Cost,
+-            Tags = IndexTags(info, local: true),
++            Tags = IndexTags(info, local: true, clientTagIndex: clientTagIndex),
+             Policy = info,
+             CreatedAt = now,
+             LogicalExpiresAt = deadline,
+@@ -347,6 +369,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+     {
+         if (_tagEpochs?.ContainsKey(tag) == true) _tagEpochs.AddOrUpdate(tag, static _ => LocalEpoch.Fresh(), static (_, _) => LocalEpoch.Fresh());
+         _local?.RemoveByTag(ApplicationTag(tag));
++        if (_local != null && tag.StartsWith("http:", StringComparison.Ordinal))
++        {
++            // The implicit client tag is common to every response from that client. Avoid
++            // indexing it on every publication; client invalidation visits resident nodes.
++            // Explicit application tags and URL slots retain their existing indexes.
++            foreach (var pair in _local.Map)
++                if (pair.Value.Policy is HttpStorageInfo info && Array.IndexOf(info.Tags, tag) >= 0)
++                    _local.Remove(pair.Key);
++        }
+         _observations.RemoveByTag(ApplicationTag(tag));
+     }
+ 
+@@ -371,7 +402,25 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+         if (_local != null)
+         {
+             foreach (var node in _local.Map.Values)
+-                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info) result.Add(info);
++            {
++                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info)
++                {
++                    if (info.Id.Length == 0 || (info.LocalTargetLength > 0 && info.UrlTarget.Length == 0))
++                    {
++                        var identified = info with
++                        {
++                            Id = info.Id.Length == 0 ? Identity(node.Key) : info.Id,
++                            // The adapter supplies a prefix length, so Core need not parse its key format.
++                            UrlTarget = info.LocalTargetLength >= 0 && info.UrlTarget.Length == 0
++                                ? node.Key[..info.LocalTargetLength] : info.UrlTarget
++                        };
++                        // Memoize only this immutable snapshot; a concurrent writer keeps its own metadata.
++                        _ = Interlocked.CompareExchange(ref node.Policy, identified, info);
++                        info = identified;
++                    }
++                    result.Add(info);
++                }
++            }
+         }
+         else
+             foreach (var node in _observations.Map.Values)
+@@ -468,7 +517,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+     }
+     private static string UrlTag(string target) => "\0http-url:" + target;
+     private static string ApplicationTag(string tag) => "\0http-tag:" + Convert.ToBase64String(LosslessUtf16.GetBytes(tag));
+-    private string[] IndexTags(HttpStorageInfo info, bool local)
++    private string[] IndexTags(HttpStorageInfo info, bool local, int clientTagIndex = -1)
+     {
+         // Adapter-owned tag snapshots are immutable. Weak keys avoid retaining retired client/options views.
+         var application = _applicationIndexes.GetValue(info.Tags, static tags =>
+@@ -477,9 +526,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
+             for (var i = 0; i < tags.Length; i++) encoded[i] = ApplicationTag(tags[i]);
+             return encoded;
+         });
+-        var indexed = new string[application.Length + 1];
+-        application.CopyTo(indexed, 0);
+-        indexed[^1] = local ? LocalSlotTag(Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
++        var skipClient = local && clientTagIndex >= 0 && clientTagIndex < application.Length;
++        var indexed = new string[application.Length + (skipClient ? 0 : 1)];
++        if (skipClient)
++        {
++            application.AsSpan(0, clientTagIndex).CopyTo(indexed);
++            application.AsSpan(clientTagIndex + 1).CopyTo(indexed.AsSpan(clientTagIndex));
++        }
++        else application.CopyTo(indexed, 0);
++        indexed[^1] = local ? LocalSlotTag(info.LocalSlot >= 0 ? info.LocalSlot : Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
+         return indexed;
+     }
+ 
+diff --git a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+index 4c115708..83f8e114 100644
+--- a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
++++ b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+@@ -60,7 +60,7 @@ internal sealed class MemoryCacheEngine
+     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
+     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
+     private readonly bool _hasPrehashedLookup;
+-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
++    private readonly ConcurrentDictionary<string, TagNodeSet> _tagIndex = new(StringComparer.Ordinal);
+     private readonly ReadBuffer _readBuffer = new();
+     private readonly ConcurrentQueue<WriteTask> _writeBuffer = new();
+     private readonly object _evictionLock = new();
+@@ -603,6 +603,7 @@ internal sealed class MemoryCacheEngine
+     private bool OnTimerExpired(Node node)
+     {
+         // Already detached from the wheel by the caller.
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -732,6 +733,7 @@ internal sealed class MemoryCacheEngine
+ 
+     private void EvictNode(Node node)
+     {
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -753,8 +755,8 @@ internal sealed class MemoryCacheEngine
+         {
+             while (true)
+             {
+-                var nodes = _tagIndex.GetOrAdd(tag, static _ => new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance));
+-                nodes.TryAdd(node, 0);
++                var nodes = _tagIndex.GetOrAdd(tag, static _ => new TagNodeSet());
++                nodes.Add(node);
+ 
+                 // UnindexTags may have dropped this set as empty just before the add; retry on the live set.
+                 if (_tagIndex.TryGetValue(tag, out var current) && ReferenceEquals(current, nodes))
+@@ -780,9 +782,9 @@ internal sealed class MemoryCacheEngine
+                 continue;
+             }
+ 
+-            nodes.TryRemove(node, out _);
++            nodes.Remove(node);
+ 
+-            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, ConcurrentDictionary<Node, byte>>(tag, nodes)) && !nodes.IsEmpty)
++            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, TagNodeSet>(tag, nodes)) && !nodes.IsEmpty)
+             {
+                 // A concurrent writer added to the set while it was being dropped; put its nodes back.
+                 var current = _tagIndex.GetOrAdd(tag, nodes);
+@@ -790,7 +792,7 @@ internal sealed class MemoryCacheEngine
+                 {
+                     foreach (var survivor in nodes.Keys)
+                     {
+-                        current.TryAdd(survivor, 0);
++                        current.Add(survivor);
+                     }
+                 }
+             }
+diff --git a/src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs b/src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs
+new file mode 100644
+index 00000000..f8d5b9c3
+--- /dev/null
++++ b/src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs
+@@ -0,0 +1,76 @@
++using System.Collections.Concurrent;
++
++namespace MethodCache.Core.Runtime.Memory;
++
++// Sparse tags (notably HTTP URL slots) usually contain only a few entries. Immutable small
++// snapshots avoid a bucket array and processor-sized lock array for each such tag. A busy
++// tag promotes atomically to the same scalable concurrent dictionary used by the engine.
++internal sealed class TagNodeSet
++{
++    private const int SmallLimit = 4;
++    private object _state = Array.Empty<Node>();
++
++    internal bool IsEmpty
++    {
++        get
++        {
++            var state = Volatile.Read(ref _state);
++            return state is Node[] nodes ? nodes.Length == 0 : ((ConcurrentDictionary<Node, byte>)state).IsEmpty;
++        }
++    }
++
++    internal ICollection<Node> Keys
++    {
++        get
++        {
++            var state = Volatile.Read(ref _state);
++            return state is Node[] nodes ? nodes : ((ConcurrentDictionary<Node, byte>)state).Keys;
++        }
++    }
++
++    internal bool Add(Node node)
++    {
++        while (true)
++        {
++            var state = Volatile.Read(ref _state);
++            if (state is ConcurrentDictionary<Node, byte> dictionary) return dictionary.TryAdd(node, 0);
++            var nodes = (Node[])state;
++            foreach (var existing in nodes)
++                if (ReferenceEquals(existing, node)) return false;
++
++            object updated;
++            if (nodes.Length < SmallLimit)
++            {
++                var copy = new Node[nodes.Length + 1];
++                nodes.CopyTo(copy, 0);
++                copy[^1] = node;
++                updated = copy;
++            }
++            else
++            {
++                var promoted = new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance);
++                foreach (var existing in nodes) promoted.TryAdd(existing, 0);
++                promoted.TryAdd(node, 0);
++                updated = promoted;
++            }
++            if (ReferenceEquals(Interlocked.CompareExchange(ref _state, updated, state), state)) return true;
++        }
++    }
++
++    internal bool Remove(Node node)
++    {
++        while (true)
++        {
++            var state = Volatile.Read(ref _state);
++            if (state is ConcurrentDictionary<Node, byte> dictionary) return dictionary.TryRemove(node, out _);
++            var nodes = (Node[])state;
++            var index = 0;
++            while (index < nodes.Length && !ReferenceEquals(nodes[index], node)) index++;
++            if (index == nodes.Length) return false;
++            var copy = nodes.Length == 1 ? Array.Empty<Node>() : new Node[nodes.Length - 1];
++            nodes.AsSpan(0, index).CopyTo(copy);
++            nodes.AsSpan(index + 1).CopyTo(copy.AsSpan(index));
++            if (ReferenceEquals(Interlocked.CompareExchange(ref _state, copy, state), state)) return true;
++        }
++    }
++}
+diff --git a/src/MethodCache.Core/Telemetry/CoreTelemetry.cs b/src/MethodCache.Core/Telemetry/CoreTelemetry.cs
+index ece397b4..3697ae3c 100644
+--- a/src/MethodCache.Core/Telemetry/CoreTelemetry.cs
++++ b/src/MethodCache.Core/Telemetry/CoreTelemetry.cs
+@@ -141,7 +141,7 @@ internal sealed class CoreTelemetry : IDisposable
+         activity?.SetTag("kind", kind).SetTag("name", name);
+         RecordIdentities(activity, key, tags);
+         return new TelemetryOperation(_loads.Enabled ? _loads : null, _time, activity,
+-            new TagList { { "kind", kind }, { "name", name } });
++            new("kind", kind), new("name", name));
+     }
+ 
+     internal TelemetryOperation? BeginDistributed(string operation)
+@@ -150,7 +150,7 @@ internal sealed class CoreTelemetry : IDisposable
+         var activity = Source.StartActivity("MethodCache.distributed", ActivityKind.Client);
+         activity?.SetTag("operation", operation);
+         return new TelemetryOperation(_distributed.Enabled ? _distributed : null, _time, activity,
+-            new TagList { { "operation", operation } });
++            new("operation", operation));
+     }
+ 
+     internal Activity? BeginInvalidation(string type, string[]? keys = null, string[]? tags = null)
+@@ -202,27 +202,46 @@ internal sealed class TelemetryOperation : IDisposable
+     private readonly TimeProvider _time;
+     private readonly long _started;
+     private readonly Activity? _activity;
+-    private TagList _tags;
++    private readonly KeyValuePair<string, object?> _first;
++    private readonly KeyValuePair<string, object?> _second;
++    private string? _errorType;
+     private int _disposed;
+-    internal TelemetryOperation(Histogram<double>? duration, TimeProvider time, Activity? activity, TagList tags)
++    internal TelemetryOperation(Histogram<double>? duration, TimeProvider time, Activity? activity,
++        KeyValuePair<string, object?> first, KeyValuePair<string, object?> second = default)
+     {
+         _duration = duration;
+         _time = time;
+         _started = time.GetTimestamp();
+         _activity = activity;
+-        _tags = tags;
++        _first = first;
++        _second = second;
+     }
+     internal void Fail(Exception error)
+     {
+         var type = error.GetType().FullName ?? error.GetType().Name;
+-        _tags.Add("error.type", type);
++        _errorType = type;
+         _activity?.SetTag("error.type", type).SetStatus(ActivityStatusCode.Error);
+     }
+     /// <inheritdoc />
+     public void Dispose()
+     {
+         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+-        _duration?.Record(_time.GetElapsedTime(_started).TotalSeconds, _tags);
++        if (_duration != null)
++        {
++            var seconds = _time.GetElapsedTime(_started).TotalSeconds;
++            // Operations carry one or two fixed tags. Record the optional error tag on the
++            // stack rather than retaining TagList's eight inline slots in every scope.
++            if (_second.Key == null)
++            {
++                if (_errorType == null) _duration.Record(seconds, _first);
++                else _duration.Record(seconds, _first, new("error.type", _errorType));
++            }
++            else
++            {
++                if (_errorType == null) _duration.Record(seconds, _first, _second);
++                else _duration.Record(seconds, _first, _second, new("error.type", _errorType));
++            }
++        }
+         _activity?.Dispose();
+     }
+ }
+diff --git a/src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs b/src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs
+index 8345777c..4be79fa3 100644
+--- a/src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs
++++ b/src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs
+@@ -813,14 +813,27 @@ internal sealed class HttpCacheHandler : DelegatingHandler
+     private Task<HttpResponseMessage> SendOriginAsync(HttpRequestMessage request, CancellationToken token)
+     {
+         var origin = _metrics?.BeginLoad("http", _keyName);
+-        return origin == null ? base.SendAsync(request, token) : SendObservedOriginAsync(origin, request, token);
++        if (origin == null) return base.SendAsync(request, token);
++        Task<HttpResponseMessage> pending;
++        try { pending = base.SendAsync(request, token); }
++        catch (Exception error)
++        {
++            origin.Fail(error);
++            origin.Dispose();
++            throw;
++        }
++        if (!pending.IsCompletedSuccessfully) return SendObservedOriginAsync(origin, pending);
++        // A synchronous transport already owns the completed task. Finish its telemetry without
++        // allocating an async wrapper; incomplete and faulted tasks keep the observed await path.
++        origin.Dispose();
++        return pending;
+     }
+ 
+-    private async Task<HttpResponseMessage> SendObservedOriginAsync(TelemetryOperation origin, HttpRequestMessage request, CancellationToken token)
++    private static async Task<HttpResponseMessage> SendObservedOriginAsync(TelemetryOperation origin, Task<HttpResponseMessage> pending)
+     {
+         using (origin)
+         {
+-            try { return await base.SendAsync(request, token).ConfigureAwait(false); }
++            try { return await pending.ConfigureAwait(false); }
+             catch (Exception error) { origin.Fail(error); throw; }
+         }
+     }
+diff --git a/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs b/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
+index e3cb4ac2..46558a18 100644
+--- a/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
++++ b/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
+@@ -39,6 +39,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+         private readonly TimeProvider _time;
+         private readonly string _client;
+         private readonly string[] _tags;
++        private readonly int _clientTagIndex;
+         private readonly HttpResponseStore.UrlSlotPrefix _slotPrefix;
+         private readonly bool _defaultTags;
+         private const string Unavailable = "|generation:unavailable:";
+@@ -50,7 +51,9 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+             _defaultTags = options.Tags.Count == 0;
+             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
+                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
+-            _tags = options.Tags.Append("http:" + MethodCacheKeys.Part(client)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
++            var clientTag = "http:" + MethodCacheKeys.Part(client);
++            _tags = options.Tags.Append(clientTag).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
++            _clientTagIndex = Array.IndexOf(_tags, clientTag);
+         }
+         /// <inheritdoc />
+         public long BodyBudget(string key, HttpCacheEntry metadata)
+@@ -112,7 +115,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+             if (lifetime <= TimeSpan.Zero || key.Contains(Unavailable, StringComparison.Ordinal)) return false;
+             var deadline = _time.GetUtcNow() + lifetime;
+             var info = Info(key, entry, deadline);
+-            if (!_core.Distributed) return _core.StoreLocal(key, entry, info);
++            if (!_core.Distributed) return _core.StoreLocal(key, entry, info, _clientTagIndex);
+             var data = HttpCacheEntrySerializer.Serialize(entry, deadline);
+             if (!await _core.WriteBytesAsync(key, data, deadline, token).ConfigureAwait(false)) return false;
+             _core.ObserveRepresentation(info);
+@@ -128,13 +131,22 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
+                 previous.Format == _core.Format && (ReferenceEquals(previous.Tags, _tags) || previous.Tags.SequenceEqual(_tags, StringComparer.Ordinal)))
+                 return previous with
+                 {
+-                    Cost = EntryCost(key, entry, previous.UrlTarget.Length),
++                    Cost = EntryCost(key, entry, previous.LocalTargetLength >= 0 ? previous.LocalTargetLength : previous.UrlTarget.Length),
+                     CreatedAt = entry.StoredAt,
+                     Deadline = deadline,
+                     Selector = entry.VariantGeneration != null
+                 };
+-            var target = Target(key);
+-            return new(HttpResponseStore.Identity(key), target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
++            if (!_core.Distributed)
++            {
++                var target = TargetSpan(key);
++                // Local administration derives both texts from the immutable node key when inspected.
++                // Keep charging their conservative cost before they are materialized.
++                return new(string.Empty, string.Empty, _client, _core.Format, EntryCost(key, entry, target.Length),
++                    _tags, entry.StoredAt, deadline, entry.VariantGeneration != null, target.Length, HttpResponseStore.Slot(target));
++            }
++            var distributedTarget = Target(key);
++            return new(HttpResponseStore.Identity(key), distributedTarget, _client, _core.Format,
++                EntryCost(key, entry, distributedTarget.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+         }
+         private static string Target(string key)
+         {
+diff --git a/src/MethodCache.HttpCaching/README.md b/src/MethodCache.HttpCaching/README.md
+index 68515ba8..95296aa4 100644
+--- a/src/MethodCache.HttpCaching/README.md
++++ b/src/MethodCache.HttpCaching/README.md
+@@ -131,6 +131,10 @@ NotFound. `Clear` retires the shared generation without enumerating L2 values. S
+ and `http:` plus `MethodCacheKeys.Part(clientName)` support tag invalidation. Client names support at most 1024 UTF-16
+ code units; configure at most 125 nonblank custom tags of at most 1024 code units each.
+ 
++Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
++URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
++therefore grows with the resident entry count while publication avoids the implicit client index.
++
+ The former public storage interface/entry/options are removed. HTTP entries use a private codec and are unaffected
+ by method serializer, TTL, jitter or fail-safe settings. `MaxHttpBytes` includes body, stored headers and conservative
+ metadata costs; oversized responses remain streamed. The default budget is 100 MiB, separate from method entries.

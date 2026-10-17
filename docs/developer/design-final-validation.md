@@ -1,5 +1,43 @@
 # Final design verification
 
+## Approved final performance checkpoint (2026-10-17)
+
+Johan approved alternative 1: retain the design and activate exactly five HTTP time
+caps, with reasons, in canonical accepted.json. The local workload miss is bounded
+at +6%, listening 304 without/with prior invalidation at +6%/+8%, and cold misses
+after invalidation with listeners off/on at +20% each. Correctness, bytes/commands,
+all other cases and the 6% precision rule are unchanged. This decision supersedes
+the inactive proposal; the proposal and original failed reports remain historical.
+[Decision, before/after rules, reports and reproducible replay](../../plans/design-benchmarks/http-time-acceptance-v1/).
+
+Case-scoped cumulative CPU acceptance now covers all 53 existing local CPU cases
+and six additional affected prefix misses: 59 complete cases, five accepted time
+costs, zero unaccepted slowdowns, zero insufficient intervals and zero missing cases.
+Every selected case retains all its original pairs and actual iterations; no means
+or individual pairs are pooled across studies. Twelve current Mac HTTP cases and
+exactly two complete Nimbus precision confirmations cover all fourteen changed HTTP
+cases. The original full Mac14 report still fails its two wide intervals, including
+when replayed with the new rules; it is not relabelled as passing. Earlier precise
+unaffected cases retain their actual source points, with the seven-file source-impact
+review and current-source enabled-origin confirmations recorded explicitly. Existing
+L2 command gates and separately classified new work retain their original scope.
+
+The current 67-case cumulative cost profile is replayed with canonical approved rules:
+zero execution errors, zero failing costs, six unchanged accepted costs. The five new
+time-only rules waive no byte or command cost. Scoped F05 prefix and filtered SipHash
+CPU acceptance remain supported by their separate complete studies and existing
+exact sync/int caps. No new runtime code or performance claim is introduced here.
+
+Exact preceding publication `7b313db9ca80cab16f8d616f5d10d04b7084006f` passes all14jobs
+and four statuses: 2639 Linux tests, zero failures, one intentional opt-in soak skip,
+3621/3839 changed lines (94.3%), 99 randomized properties, enabled soak, both cultures,
+required Redis/SQL, demo, AOT175, all seven packages/add-on smoke and generated docs.
+[Original exact-head logs and hashes](../../plans/design-benchmarks/combined-functional-7b313db/).
+The approval/rule/documentation publication still requires exact-head CI. No merge,
+release, PublicAPI promotion or PR138 integration has been performed.
+
+## Historical pre-approval checkpoint
+
 ## Current published checkpoint (2026-10-17)
 
 Published `6a2cc0020274e53f77778a8c906980423e19543d` is the combined review against
