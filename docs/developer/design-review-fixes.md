@@ -19,7 +19,7 @@ before that review, per Johan's instruction. Raw test/benchmark receipts stay ou
 | 10 | Avoid irrelevant client-tag scans | Implemented; only registered/captured client tags scan resident entries. |
 | 11 | Bounded admin-id dispatch and unavailable status | Implemented; observation-id validation precedes dispatch; unconfirmed delete returns 503. |
 | 12 | Reuse bounded observation metadata/metrics | Implemented; observed metadata reused; maintained counters replace whole-store metric scans. |
-| 13 | Narrow Generated contract, AppendPart for all shapes, refreeze fixtures | Implemented; new pre-release Contract1Final source prepared; explicit freeze and verification pending. |
+| 13 | Narrow Generated contract, AppendPart for all shapes, refreeze fixtures | Implemented; new pre-release Contract1Final source prepared; explicit Contract1Final freeze from 3e82c06e; seven binary/API facts and native osx-arm64 smoke pass. |
 | 14 | Reject unsupported synchronous custom-manager invalidation at startup | Implemented; custom-manager sync binding regression failed before correction and now passes. |
 | 15 | One generic/version key grammar | Implemented; generic/version and keyed-generic grammar regressions pass. |
 | 16 | Container-scoped module validation/binding | Implemented; selected-module isolation fixture added; validation state belongs to each container. |
@@ -48,3 +48,26 @@ of hashed long-client tags, and generic type arguments placed after keyed-regist
 Each defect is covered explicitly; the complete PR review and final receipts are still pending.
 
 Self-review also reproduced an admin-id collision: GET reported a manual method entry while DELETE removed an HTTP observation with the same text. DELETE now follows GET’s method-first precedence; a regression checks both removals and that the untouched HTTP entry still hits.
+
+## Independent review before CI
+
+Reviewed the complete PR against main `8402ad2f70f4a6569ed081ba928ddfd4ebcb52f7`, including the
+cumulative runtime changes, generated facade/emitters, provider/schema/wire operations, HTTP protocol/storage/admin,
+policy publication and retirement, telemetry/privacy, package boundaries and the cost/timing/CI gates.
+The reviewed source checkpoint is `3e82c06e4804b51dfa1e13e8a56798da5727a449`; subsequent fixture-only changes
+replace the unpublished historical images in AOT and account explicitly for longer assembly-scoped miss keys.
+
+Checked invocation binding and prefix/full-hash agreement; generic/keyed/version spelling; exact-key NUL framing;
+policy identities and retirement gates; scope revalidation and replacement repairs; epoch/metadata deadlines;
+owned recovery and disposal; Redis handler ownership; HTTP caller/variant isolation, stale directives and budgets;
+admin confirmation/dispatch; telemetry ownership and safe labels; exact package dependencies and explicit ABI freezing.
+The additional admin collision above failed before correction and now passes. The review found no remaining
+source blocker. A generic version-specific Pattern requires the closed method name/type arguments; the unversioned
+plain name matches all specializations. This is now explicit in the public helper documentation.
+
+Local receipts (stored outside Git): Core 1,087 passed plus one opt-in soak skip, generator integration 544 passed,
+HTTP 369 passed, docs 120 passed, compatibility 7 passed and Native AOT smoke passed. CI-script tests: 55 with two
+intentional skips; benchmark-script tests: 60 passed. The first aggregate local run exposed the longer-key miss
+budget and that test now passes with only the exact string-size increment charged. Native Redis/SQL, final
+performance and full cross-platform CI remain final validation work, not claims established by this static review.
+No CI or push occurred before this review.

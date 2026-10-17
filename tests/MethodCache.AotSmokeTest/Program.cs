@@ -84,52 +84,32 @@ if (CatalogService.Calls != 4)
     failures.Add($"ICatalogService implementation called {CatalogService.Calls} times, expected 4");
 }
 
-// Previously compiled vendor code links against the current facade under Native AOT too.
-var frozenServices = new ServiceCollection();
-var frozenInner = new FrozenVendor.Contract1.Service();
-frozenServices.AddSingleton<FrozenVendor.Contract1.IService>(frozenInner);
-frozenServices.AddSingleton<FrozenVendor.ThirdParty.IClient, FrozenVendor.ThirdParty.Client>();
-frozenServices.AddScoped<FrozenVendor.Contract1.IRepository<string>, FrozenVendor.Contract1.StringRepository>();
-frozenServices.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1.Marker>());
-await using (var frozenProvider = frozenServices.BuildServiceProvider())
-{
-    var frozen = frozenProvider.GetRequiredService<FrozenVendor.Contract1.IService>();
-    if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
-        failures.Add("Frozen vendor return shapes did not preserve caching.");
-    if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
-        failures.Add("Frozen vendor ValueTask did not preserve caching.");
-    await frozen.UpdateAsync(42);
-    if (frozen.Read(42) != 4) failures.Add("Frozen vendor tag invalidation failed.");
-    var client = frozenProvider.GetRequiredService<FrozenVendor.ThirdParty.IClient>();
-    if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
-        failures.Add("Frozen third-party CacheInterface did not preserve caching.");
-    await using var scope = frozenProvider.CreateAsyncScope();
-    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1.IRepository<string>>();
-    if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
-        failures.Add("Frozen closed generic interface did not preserve caching.");
-}
-
-// The historical net8 image uses materialized keys. This independently frozen
-// net10 image also links the inline KeyBuilder constructor/ref lookup ABI.
+// The explicitly frozen pre-release .NET 10 vendor links the reviewed KeyBuilder/AppendPart/ref lookup ABI.
 var frozenNet10Services = new ServiceCollection();
-frozenNet10Services.AddSingleton<FrozenVendor.Contract1Net10.IService, FrozenVendor.Contract1Net10.Service>();
-frozenNet10Services.AddSingleton<FrozenVendor.ThirdPartyNet10.IClient, FrozenVendor.ThirdPartyNet10.Client>();
-frozenNet10Services.AddScoped<FrozenVendor.Contract1Net10.IRepository<string>, FrozenVendor.Contract1Net10.StringRepository>();
-frozenNet10Services.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1Net10.Marker>());
+frozenNet10Services.AddSingleton<FrozenVendor.Contract1Final.IService, FrozenVendor.Contract1Final.Service>();
+frozenNet10Services.AddSingleton<FrozenVendor.ThirdPartyFinal.IClient, FrozenVendor.ThirdPartyFinal.Client>();
+frozenNet10Services.AddScoped<FrozenVendor.Contract1Final.IRepository<string>, FrozenVendor.Contract1Final.StringRepository>();
+frozenNet10Services.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1Final.Marker>());
 await using (var frozenNet10Provider = frozenNet10Services.BuildServiceProvider())
 {
-    var frozen = frozenNet10Provider.GetRequiredService<FrozenVendor.Contract1Net10.IService>();
+    var frozen = frozenNet10Provider.GetRequiredService<FrozenVendor.Contract1Final.IService>();
     if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
         failures.Add("Frozen net10 inline return shapes did not preserve caching.");
     if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
         failures.Add("Frozen net10 inline ValueTask did not preserve caching.");
     await frozen.UpdateAsync(42);
     if (frozen.Read(42) != 4) failures.Add("Frozen net10 tag invalidation failed.");
-    var client = frozenNet10Provider.GetRequiredService<FrozenVendor.ThirdPartyNet10.IClient>();
+    if (frozen.Collection([1, 2]) != 5 || frozen.Collection([1, 2]) != 5)
+        failures.Add("Frozen collection AppendPart did not preserve caching.");
+    if (frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6 || frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6)
+        failures.Add("Frozen record AppendPart did not preserve caching.");
+    if (frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7 || frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7)
+        failures.Add("Frozen provider AppendPart did not preserve caching.");
+    var client = frozenNet10Provider.GetRequiredService<FrozenVendor.ThirdPartyFinal.IClient>();
     if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
         failures.Add("Frozen net10 third-party CacheInterface did not preserve caching.");
     await using var scope = frozenNet10Provider.CreateAsyncScope();
-    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1Net10.IRepository<string>>();
+    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1Final.IRepository<string>>();
     if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
         failures.Add("Frozen net10 closed generic interface did not preserve caching.");
 }
