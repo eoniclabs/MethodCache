@@ -263,6 +263,16 @@ its evidence. It distinguishes the green published functional checkpoint from
 candidate-only checks and the still-open timing/final-commit gates; the inventory
 is not a claim that all acceptance rows pass.
 
+Published candidate `f752037547652c3c87b5899efb17733580b72103` reveals a Windows
+checkout failure before compilation: the supplementary evidence directory is
+named `aux`, a reserved Windows device name. It is renamed to `additional` with
+all 375 file-content hashes unchanged. The manifest records that mapping, and
+the portable restorer verifies all 3,168 original archive file hashes. A new
+tracked-path guard fails before the rename and all four checks pass afterward;
+the existing build job discovers it automatically. The new published commit
+still requires all three platforms; running jobs and providers remain untouched.
+[Actual Windows errors and red/green proof](../../plans/design-benchmarks/windows-path-guard-v1/).
+
 ## Historical checkpoints and investigations
 
 ## Historical 908a94e three-platform functional checkpoint
