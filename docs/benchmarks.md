@@ -1,3 +1,5 @@
+[← MethodCache documentation](README.md)
+
 # Benchmarks
 
 The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):

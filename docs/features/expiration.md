@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Expiration
 
 Each cached method decides how long its entries live. The settings below can be set on `[Cache]`, in startup code, in
@@ -80,5 +82,6 @@ Entries created at the same moment, for example right after a deploy, also expir
 
 ## Removing entries early
 
-Expiration is for data that may be a little old. When you know data changed, remove it right away with
-[invalidation](invalidation.md).
+> [!TIP]
+> Expiration is for data that may be a little old. When you know data changed, remove it right away with
+> [invalidation](invalidation.md).

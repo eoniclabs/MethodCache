@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Invalidation
 
 Expiration removes entries eventually; invalidation removes them the moment you know the data changed.

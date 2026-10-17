@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Manual caching
 
 When an attribute doesn't fit, such as a call in the middle of a method or a client without an interface, use the same
