@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-17T01:39:26.717725+00:00",
+  "failing_published_head": "f752037547652c3c87b5899efb17733580b72103",
+  "windows_console_scope": "Read-only snapshot of actual clone errors; aggregate CI still in progress",
+  "test_source": "build/ci/tests/test_repository_paths.py",
+  "test_source_sha256": "0abd9b5d59883a7e694da42255a2ef8c92194dd3a341e1be28c491b26133ca8e",
+  "red": "4tests,1failure;trackedAUXpaths",
+  "green": "4tests,0failuresafterrename",
+  "moved_files": 375,
+  "moved_file_content_hashes": "allunchanged",
+  "restored_original_archive_file_hashes_verified": 3168,
+  "runtime_source_changes": "noneforthischeckoutfix",
+  "discovery": "Existingbuildjobunittestdiscoveryincludesnewtestfile"
+}

@@ -46,1505 +46,1505 @@
       "sha256": "9de12da3a1dd777ceb41665d35ce9e288cd6e8100807e901ff2c415d04b0267d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
       "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
       "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
       "sha256": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
       "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/AllocationSites.cs",
       "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
       "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
       "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/Program.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/Program.cs",
       "sha256": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/Timing.cs",
+      "path": "additional/methodcache-corrected-int-evidence/base/benchmarks/MethodCache.IntProfile/Timing.cs",
       "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/base-setup-guard.log",
+      "path": "additional/methodcache-corrected-int-evidence/base-setup-guard.log",
       "sha256": "5f346d0bc35717a94e4ec79d5dd5dd936c81735be6efa4f0551cb488682ac30a"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/completed-evidence-index.json",
+      "path": "additional/methodcache-corrected-int-evidence/completed-evidence-index.json",
       "sha256": "3d39502e4ce3807df14686b3b96aa9a5b553135cffe5cb74762976a696b05f0f"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/exit",
+      "path": "additional/methodcache-corrected-int-evidence/exit",
       "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/group-00.log",
+      "path": "additional/methodcache-corrected-int-evidence/group-00.log",
       "sha256": "bce2d255184e2f775e17b1b939535c658840b32a30f67c390ae2fe1b54654cc0"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/head-setup-guard.log",
+      "path": "additional/methodcache-corrected-int-evidence/head-setup-guard.log",
       "sha256": "a37788567b7b2d92c195d55a5f1eeffc04fd1a5a544fe739b3b0b05c1213e4ff"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/inputs.json",
+      "path": "additional/methodcache-corrected-int-evidence/inputs.json",
       "sha256": "6a6b4f0b06e9e983c6316df568ed46347efb4a3ed86d9945da8f71deb555209b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/launch-intent.json",
+      "path": "additional/methodcache-corrected-int-evidence/launch-intent.json",
       "sha256": "c05fb4af0f7eca7fabede0c3f1d245d4034f0471d6d8996ece3a688599aeee55"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/prepare-driver.log",
+      "path": "additional/methodcache-corrected-int-evidence/prepare-driver.log",
       "sha256": "6ed576dd09819fc65ae69a6570faa6db4caabf5014a71e20f6b1a2f73628a7d8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/prepare.log",
+      "path": "additional/methodcache-corrected-int-evidence/prepare.log",
       "sha256": "f520f8013d464c01c477d1b400fc6e3afb2e9be798d648f1f34ae9ae1deca436"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/prepare.pid",
+      "path": "additional/methodcache-corrected-int-evidence/prepare.pid",
       "sha256": "15b6d4e249c4944deebaaea3edfa3f015738dee8cf04b4b00c0b10278035d84e"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/prepared.json",
+      "path": "additional/methodcache-corrected-int-evidence/prepared.json",
       "sha256": "5e84a9aec961ee2fff53c906c0fc105c546c95484826d894bd213ab83f29c229",
       "original_sha256": "bda4a7390403010aca7b1506c2d94b1be5509d7dc45ff9307b34655e0a22f133"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/process_activity.py",
+      "path": "additional/methodcache-corrected-int-evidence/process_activity.py",
       "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/red/guard.log",
+      "path": "additional/methodcache-corrected-int-evidence/red/guard.log",
       "sha256": "3d2503f3797dee7978e8ed9822375772af6a9f402af101ea1162febe62879149"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/red/original-workload.cs",
+      "path": "additional/methodcache-corrected-int-evidence/red/original-workload.cs",
       "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-0.jsonl",
       "sha256": "9b20a713b3021241e25b222fca4355a807d6b29b23521c1ffe0c553e23e403db"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-0.log",
       "sha256": "9b20a713b3021241e25b222fca4355a807d6b29b23521c1ffe0c553e23e403db"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-1.jsonl",
       "sha256": "351660939c1ce482b44646349f56b5b90005dd9225e88b0ef190ea627bb9a387"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-1.log",
       "sha256": "351660939c1ce482b44646349f56b5b90005dd9225e88b0ef190ea627bb9a387"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-2.jsonl",
       "sha256": "699590f4bf4fdd6d81795944fa0d69f75b4c956613d6d1ce6c9b95814928b4b4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-2.log",
       "sha256": "699590f4bf4fdd6d81795944fa0d69f75b4c956613d6d1ce6c9b95814928b4b4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-3.jsonl",
       "sha256": "0b7f5d6b7317203d20522b1fa1774232633ce7291e3f61a84d44e9e7aa7cc689"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-1-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-1-3.log",
       "sha256": "0b7f5d6b7317203d20522b1fa1774232633ce7291e3f61a84d44e9e7aa7cc689"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-0.jsonl",
       "sha256": "f09cd023a75dadb3be3ae3b11002daa509f921f61996727ffaf1785042840ead"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-0.log",
       "sha256": "f09cd023a75dadb3be3ae3b11002daa509f921f61996727ffaf1785042840ead"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-1.jsonl",
       "sha256": "39c49e51075e13231a0a4d8715d364e34643160a95e5f75bf6d58c7102e8d0bf"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-1.log",
       "sha256": "39c49e51075e13231a0a4d8715d364e34643160a95e5f75bf6d58c7102e8d0bf"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-2.jsonl",
       "sha256": "d219762cb68fa2ee5d4c144e3346e77a45fd6efe60b3a25525143ce3b62cd8f0"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-2.log",
       "sha256": "d219762cb68fa2ee5d4c144e3346e77a45fd6efe60b3a25525143ce3b62cd8f0"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-3.jsonl",
       "sha256": "1512fcee8abec873e84e38044514afab693d010a48d8e0b784d3650fb3a752d5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-10-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-10-3.log",
       "sha256": "1512fcee8abec873e84e38044514afab693d010a48d8e0b784d3650fb3a752d5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-0.jsonl",
       "sha256": "a8901f19b22d164aca7c36ddfc14f933c31b0238c94a3521de97f4648f0e79b4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-0.log",
       "sha256": "a8901f19b22d164aca7c36ddfc14f933c31b0238c94a3521de97f4648f0e79b4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-1.jsonl",
       "sha256": "654a9e7fcc669ef7b7b041b98d9a40e8649ba955c49c46d7ab2b07d8b603f428"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-1.log",
       "sha256": "654a9e7fcc669ef7b7b041b98d9a40e8649ba955c49c46d7ab2b07d8b603f428"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-2.jsonl",
       "sha256": "8f6eb8f52dfa36b231d0e66fcd34a2d9d9097c1ea53d7e8459eb89c75370d092"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-2.log",
       "sha256": "8f6eb8f52dfa36b231d0e66fcd34a2d9d9097c1ea53d7e8459eb89c75370d092"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-3.jsonl",
       "sha256": "8ddf571b52f93ffe2227e6fce771d4ae13ffb288cb78f5347a333b0c1382e804"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-2-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-2-3.log",
       "sha256": "8ddf571b52f93ffe2227e6fce771d4ae13ffb288cb78f5347a333b0c1382e804"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-0.jsonl",
       "sha256": "b73ebf1418b7b65b05c59538c3070f56e0ec69e62562f46596e631d5779a3461"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-0.log",
       "sha256": "b73ebf1418b7b65b05c59538c3070f56e0ec69e62562f46596e631d5779a3461"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-1.jsonl",
       "sha256": "4534726308a7639ffcb4750416778c47a4132b5a84799a959dea433b2b86dbff"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-1.log",
       "sha256": "4534726308a7639ffcb4750416778c47a4132b5a84799a959dea433b2b86dbff"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-2.jsonl",
       "sha256": "7569d96d019cacb93c3d58a70c36f216ac3ef0a69cdb4d27fdfc06f877b7df3a"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-2.log",
       "sha256": "7569d96d019cacb93c3d58a70c36f216ac3ef0a69cdb4d27fdfc06f877b7df3a"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-3.jsonl",
       "sha256": "05c409bbc2f69a286c2febcaa746ac2cb56a54cb6b50a8080e90d452f457a0dc"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-3-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-3-3.log",
       "sha256": "05c409bbc2f69a286c2febcaa746ac2cb56a54cb6b50a8080e90d452f457a0dc"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-0.jsonl",
       "sha256": "62f7f1dd024a67da43ae3d8797b8e7c7cc49a17c4eeff9ea1fd0ddc8efa1b097"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-0.log",
       "sha256": "62f7f1dd024a67da43ae3d8797b8e7c7cc49a17c4eeff9ea1fd0ddc8efa1b097"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-1.jsonl",
       "sha256": "b75e63efb406eb581b2ca5198c40db0231eb0ca1edacbe4fcbc0816e6e79991d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-1.log",
       "sha256": "b75e63efb406eb581b2ca5198c40db0231eb0ca1edacbe4fcbc0816e6e79991d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-2.jsonl",
       "sha256": "901d33955cf20a41d850f8320ec7f148f1b6eea26af266d870d5c0321ba4a0a9"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-2.log",
       "sha256": "901d33955cf20a41d850f8320ec7f148f1b6eea26af266d870d5c0321ba4a0a9"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-3.jsonl",
       "sha256": "6699480ba47bd93352a0aa8bb08592f9dda74b1f34eabba412b4a8311870c93b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-4-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-4-3.log",
       "sha256": "6699480ba47bd93352a0aa8bb08592f9dda74b1f34eabba412b4a8311870c93b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-0.jsonl",
       "sha256": "62206b690eefeecbeed5d2ba90005e0f938b463166bc9c7b1726d3034dd5dc02"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-0.log",
       "sha256": "62206b690eefeecbeed5d2ba90005e0f938b463166bc9c7b1726d3034dd5dc02"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-1.jsonl",
       "sha256": "70b99c81826551eb8b93d644438f89ca6dc680c0cd75bd61f8bd8a29fac7a35d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-1.log",
       "sha256": "70b99c81826551eb8b93d644438f89ca6dc680c0cd75bd61f8bd8a29fac7a35d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-2.jsonl",
       "sha256": "1ae8d0c3cc23bf4846fb78953508a6151240052317f777efc79e635c0beb4baf"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-2.log",
       "sha256": "1ae8d0c3cc23bf4846fb78953508a6151240052317f777efc79e635c0beb4baf"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-3.jsonl",
       "sha256": "f3dc3184676fc154f5fdc209a34869b3758d22913991a63bd46a54d72ffccbc5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-5-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-5-3.log",
       "sha256": "f3dc3184676fc154f5fdc209a34869b3758d22913991a63bd46a54d72ffccbc5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-0.jsonl",
       "sha256": "fe6458545350ba78a28d70570a907018407ae71963cbd1e78f8afb068b44fecd"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-0.log",
       "sha256": "fe6458545350ba78a28d70570a907018407ae71963cbd1e78f8afb068b44fecd"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-1.jsonl",
       "sha256": "c7cbf1f55e4a151320fb8cb17ff3f9da9876bdeacf641c0b4dca4189f357b4ab"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-1.log",
       "sha256": "c7cbf1f55e4a151320fb8cb17ff3f9da9876bdeacf641c0b4dca4189f357b4ab"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-2.jsonl",
       "sha256": "d48fc758ea3091de4c63f8eada61f6930c83caa64dd5fba9adcf0d38cc53ddae"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-2.log",
       "sha256": "d48fc758ea3091de4c63f8eada61f6930c83caa64dd5fba9adcf0d38cc53ddae"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-3.jsonl",
       "sha256": "bf80fd6106e4203f5ca170a40c5a2536cb3837403a30d0e9caa400d3277704a6"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-6-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-6-3.log",
       "sha256": "bf80fd6106e4203f5ca170a40c5a2536cb3837403a30d0e9caa400d3277704a6"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-0.jsonl",
       "sha256": "d3350dd19ecdc254aaee892358f2c36f85ec3e5d281cf4852f5a11d78d8fd29d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-0.log",
       "sha256": "d3350dd19ecdc254aaee892358f2c36f85ec3e5d281cf4852f5a11d78d8fd29d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-1.jsonl",
       "sha256": "bdb6ce3b0059a03047a863e1e12ae89ffd7579e837e1fd523064e006ba5f7f74"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-1.log",
       "sha256": "bdb6ce3b0059a03047a863e1e12ae89ffd7579e837e1fd523064e006ba5f7f74"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-2.jsonl",
       "sha256": "c5898304cb01913019a9eeeb105375d29462225215be9b5dd80113ec65daf225"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-2.log",
       "sha256": "c5898304cb01913019a9eeeb105375d29462225215be9b5dd80113ec65daf225"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-3.jsonl",
       "sha256": "31bbead80094f0af80e7b2d99a6290967636c2ca66e4a7ff272cae1a67d7c5bc"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-7-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-7-3.log",
       "sha256": "31bbead80094f0af80e7b2d99a6290967636c2ca66e4a7ff272cae1a67d7c5bc"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-0.jsonl",
       "sha256": "d69630b61a86e0e32376532a812287e30f07d136ef0aefd76fb68d1d6b9de0b2"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-0.log",
       "sha256": "d69630b61a86e0e32376532a812287e30f07d136ef0aefd76fb68d1d6b9de0b2"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-1.jsonl",
       "sha256": "8902a466f53587086adb2dad46a52a5e98f78e886a5c4e2ec6b7ca90aa454de7"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-1.log",
       "sha256": "8902a466f53587086adb2dad46a52a5e98f78e886a5c4e2ec6b7ca90aa454de7"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-2.jsonl",
       "sha256": "dafdcdd5684f01afc08d66d11ef21bc27b0a30f9bf407a3d6b938eeb9cdb9664"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-2.log",
       "sha256": "dafdcdd5684f01afc08d66d11ef21bc27b0a30f9bf407a3d6b938eeb9cdb9664"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-3.jsonl",
       "sha256": "5ec35fa5aed5a007c91ebc549765ee3699644aa32479ca21ad80755133ce2c94"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-8-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-8-3.log",
       "sha256": "5ec35fa5aed5a007c91ebc549765ee3699644aa32479ca21ad80755133ce2c94"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-0.jsonl",
       "sha256": "bb26e41c61883e65f6971bc9f2281ca35820cb581ca45726fbac82987cbdfe4e"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-0.log",
       "sha256": "bb26e41c61883e65f6971bc9f2281ca35820cb581ca45726fbac82987cbdfe4e"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-1.jsonl",
       "sha256": "bec4bce55829b8860cf190945686683b14ecf9459f6925f49ae1b3ad2b814e82"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-1.log",
       "sha256": "bec4bce55829b8860cf190945686683b14ecf9459f6925f49ae1b3ad2b814e82"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-2.jsonl",
       "sha256": "854a4f28e0d7dde55adf11d43821a2db232ed72637b41542d72363f8167da00c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-2.log",
       "sha256": "854a4f28e0d7dde55adf11d43821a2db232ed72637b41542d72363f8167da00c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-3.jsonl",
       "sha256": "6e01a14aad859e4f887b4611036f2b6be5f200fe0288f788eacc52b77a3963e2"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/base-9-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/base-9-3.log",
       "sha256": "6e01a14aad859e4f887b4611036f2b6be5f200fe0288f788eacc52b77a3963e2"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/exit",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/exit",
       "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-0.jsonl",
       "sha256": "1ca8444d77cfa467b4e08e91c498c0679469ac9ad89b291de1177849ce3ec33f"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-0.log",
       "sha256": "1ca8444d77cfa467b4e08e91c498c0679469ac9ad89b291de1177849ce3ec33f"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-1.jsonl",
       "sha256": "b08abb73191554defc0bcc720ec0bfe0d1be0e0833968dc1d645211ca046199e"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-1.log",
       "sha256": "b08abb73191554defc0bcc720ec0bfe0d1be0e0833968dc1d645211ca046199e"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-2.jsonl",
       "sha256": "a4a0644914242254115cc65f1a358cae0c1f8b8244ffa8b66c6f4482e8142697"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-2.log",
       "sha256": "a4a0644914242254115cc65f1a358cae0c1f8b8244ffa8b66c6f4482e8142697"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-3.jsonl",
       "sha256": "f681ca19fa91cd6457867877d4ac6ef2342ec9368ec436a5b7679b1619be7bd4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-1-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-1-3.log",
       "sha256": "f681ca19fa91cd6457867877d4ac6ef2342ec9368ec436a5b7679b1619be7bd4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-0.jsonl",
       "sha256": "be1cb52b5f69be506a26a8a924bfccc4d43fe8d0d84d665519e74cc2f1f65e0a"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-0.log",
       "sha256": "be1cb52b5f69be506a26a8a924bfccc4d43fe8d0d84d665519e74cc2f1f65e0a"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-1.jsonl",
       "sha256": "34edc3805c16ebb165cd9a2a449a8cd19e7de562aa1494a7c4c51dc5b82970e5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-1.log",
       "sha256": "34edc3805c16ebb165cd9a2a449a8cd19e7de562aa1494a7c4c51dc5b82970e5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-2.jsonl",
       "sha256": "2db6bd08abe1d8c6f06d7e426134b548d3687b7c8a4c1fe26f8fc738aec247aa"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-2.log",
       "sha256": "2db6bd08abe1d8c6f06d7e426134b548d3687b7c8a4c1fe26f8fc738aec247aa"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-3.jsonl",
       "sha256": "0004893f4c55a7875f5fb3f751eb06071b86f63269a1d0cb65ce0e68c981f5d8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-10-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-10-3.log",
       "sha256": "0004893f4c55a7875f5fb3f751eb06071b86f63269a1d0cb65ce0e68c981f5d8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-0.jsonl",
       "sha256": "c8390c0d94d4f850134b0459484a7bb3eec11dfe3fd30fa7fc60f0156804eac8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-0.log",
       "sha256": "c8390c0d94d4f850134b0459484a7bb3eec11dfe3fd30fa7fc60f0156804eac8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-1.jsonl",
       "sha256": "538d281b6b80e98f712d1bb22d98919124e74f70d888535118af2d0bcd64fc9c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-1.log",
       "sha256": "538d281b6b80e98f712d1bb22d98919124e74f70d888535118af2d0bcd64fc9c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-2.jsonl",
       "sha256": "0a20919872ae569c24ae1889f5555150e2d3e9ba144072663e3381e3c7ffadc1"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-2.log",
       "sha256": "0a20919872ae569c24ae1889f5555150e2d3e9ba144072663e3381e3c7ffadc1"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-3.jsonl",
       "sha256": "de4d066b88f3a35a0e4fa7ad4246915f7ddaa30291538b557bfb061d412934c5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-2-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-2-3.log",
       "sha256": "de4d066b88f3a35a0e4fa7ad4246915f7ddaa30291538b557bfb061d412934c5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-0.jsonl",
       "sha256": "1ba17a7b7fa432a8bb315cbddfbd3ff1644a8f4eed951db8d753ce1ba4dede39"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-0.log",
       "sha256": "1ba17a7b7fa432a8bb315cbddfbd3ff1644a8f4eed951db8d753ce1ba4dede39"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-1.jsonl",
       "sha256": "1fd688e284f054ae7e3805dd9d69f4a1e82e062561c8abfa3a18b76dac7a7da8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-1.log",
       "sha256": "1fd688e284f054ae7e3805dd9d69f4a1e82e062561c8abfa3a18b76dac7a7da8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-2.jsonl",
       "sha256": "38e66d3534aa337ed29d2b10af019b5bdfa30f983072ebe8279475b7d50d6248"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-2.log",
       "sha256": "38e66d3534aa337ed29d2b10af019b5bdfa30f983072ebe8279475b7d50d6248"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-3.jsonl",
       "sha256": "dfc343e9916be42ff1fad4a37d15e948bc427c53db3602b4280504c10053428b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-3-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-3-3.log",
       "sha256": "dfc343e9916be42ff1fad4a37d15e948bc427c53db3602b4280504c10053428b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-0.jsonl",
       "sha256": "05d8d56b34d14fe531bb0e48754bf4f3adfb83824bf68435f2642bb8e8a377e5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-0.log",
       "sha256": "05d8d56b34d14fe531bb0e48754bf4f3adfb83824bf68435f2642bb8e8a377e5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-1.jsonl",
       "sha256": "32c4e0116a32a68cde250f293065165ae776c5caefd6748c5da8573570f09759"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-1.log",
       "sha256": "32c4e0116a32a68cde250f293065165ae776c5caefd6748c5da8573570f09759"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-2.jsonl",
       "sha256": "7d43d6f2f7f3c5a0a70fa426fcfc2d28b39713cf874dc9c7c92af500011c1fc8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-2.log",
       "sha256": "7d43d6f2f7f3c5a0a70fa426fcfc2d28b39713cf874dc9c7c92af500011c1fc8"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-3.jsonl",
       "sha256": "b3fd9248112017135d14050c1afb14a3ffa5e6c90d4f6084f25bfedb7910167c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-4-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-4-3.log",
       "sha256": "b3fd9248112017135d14050c1afb14a3ffa5e6c90d4f6084f25bfedb7910167c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-0.jsonl",
       "sha256": "93a4832efa163193a5798c9d46dc7544eef6a06f18cc76b9faa7e2e7b8530a72"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-0.log",
       "sha256": "93a4832efa163193a5798c9d46dc7544eef6a06f18cc76b9faa7e2e7b8530a72"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-1.jsonl",
       "sha256": "5558ec3b0d0df8b893275cc2d07e2cd3037124b6ee36a83cfd99feed7670c426"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-1.log",
       "sha256": "5558ec3b0d0df8b893275cc2d07e2cd3037124b6ee36a83cfd99feed7670c426"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-2.jsonl",
       "sha256": "c39e403641f4a357046a55f65d108c4171f8a24cbf5e0f32c2fc91162203fa48"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-2.log",
       "sha256": "c39e403641f4a357046a55f65d108c4171f8a24cbf5e0f32c2fc91162203fa48"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-3.jsonl",
       "sha256": "b9dae039b10f586f43b06aed3a1a0f22c3cf242d43baad5f8f04eb19da8ba882"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-5-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-5-3.log",
       "sha256": "b9dae039b10f586f43b06aed3a1a0f22c3cf242d43baad5f8f04eb19da8ba882"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-0.jsonl",
       "sha256": "042e7c643ca114b86253aca36b06a4c2f84361c06d9c39468acb4ddd17e43e61"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-0.log",
       "sha256": "042e7c643ca114b86253aca36b06a4c2f84361c06d9c39468acb4ddd17e43e61"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-1.jsonl",
       "sha256": "f4e3da41f5d5c519ef70e857090de28d2a46de2d745f1c430390c73f53e34014"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-1.log",
       "sha256": "f4e3da41f5d5c519ef70e857090de28d2a46de2d745f1c430390c73f53e34014"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-2.jsonl",
       "sha256": "39246d019e643618aa084a89f77147f9ccfb61183fbcbdac13c35650eaa8e03b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-2.log",
       "sha256": "39246d019e643618aa084a89f77147f9ccfb61183fbcbdac13c35650eaa8e03b"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-3.jsonl",
       "sha256": "eb4080fcedcec4f75a80bf8b64027545d7dd347445f99a2fc4928169098e58ba"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-6-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-6-3.log",
       "sha256": "eb4080fcedcec4f75a80bf8b64027545d7dd347445f99a2fc4928169098e58ba"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-0.jsonl",
       "sha256": "97a313065ab75b195d014218037831087feb929eab548573f902874ea57db109"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-0.log",
       "sha256": "97a313065ab75b195d014218037831087feb929eab548573f902874ea57db109"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-1.jsonl",
       "sha256": "f38eab1abbf886acd4e6e38bda99fc4591e13795b0f83e6ba23b856a06f07140"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-1.log",
       "sha256": "f38eab1abbf886acd4e6e38bda99fc4591e13795b0f83e6ba23b856a06f07140"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-2.jsonl",
       "sha256": "dbab7a9f9bce4bae3c53aa09a8f96958b3cfac60a28301f5936abb18447235ce"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-2.log",
       "sha256": "dbab7a9f9bce4bae3c53aa09a8f96958b3cfac60a28301f5936abb18447235ce"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-3.jsonl",
       "sha256": "31fdca2124925b0d7b8d56d27d8247d54c228e9c937327e9e1712af6a1ea2054"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-7-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-7-3.log",
       "sha256": "31fdca2124925b0d7b8d56d27d8247d54c228e9c937327e9e1712af6a1ea2054"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-0.jsonl",
       "sha256": "0d2c2a02af5ba24226b60b793b49491073f18a142817c62064be62014476ffe6"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-0.log",
       "sha256": "0d2c2a02af5ba24226b60b793b49491073f18a142817c62064be62014476ffe6"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-1.jsonl",
       "sha256": "01dcb3323f5fb5f2e46c329d8af4d875d969a48cdfaf825bf58b7ffdfaeb8154"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-1.log",
       "sha256": "01dcb3323f5fb5f2e46c329d8af4d875d969a48cdfaf825bf58b7ffdfaeb8154"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-2.jsonl",
       "sha256": "981e9165bc76dc34260f1c3ec1d5c27c8184b38fc9a9d9bbf475939dcad671dd"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-2.log",
       "sha256": "981e9165bc76dc34260f1c3ec1d5c27c8184b38fc9a9d9bbf475939dcad671dd"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-3.jsonl",
       "sha256": "c8a0b870955f8772f6c0e91ab52545894505657254832ca6b29a28f2ed8f826d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-8-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-8-3.log",
       "sha256": "c8a0b870955f8772f6c0e91ab52545894505657254832ca6b29a28f2ed8f826d"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-0.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-0.jsonl",
       "sha256": "955f94ee3c01883fd1b1a01df27229e91339a09a64908803d50bf6922c27200c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-0.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-0.log",
       "sha256": "955f94ee3c01883fd1b1a01df27229e91339a09a64908803d50bf6922c27200c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-1.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-1.jsonl",
       "sha256": "33d1106cd8ec53cf3f07d76c33a6f19f8daceac0c1d590fd05b57bcd87b174c1"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-1.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-1.log",
       "sha256": "33d1106cd8ec53cf3f07d76c33a6f19f8daceac0c1d590fd05b57bcd87b174c1"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-2.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-2.jsonl",
       "sha256": "2221c6da4277fe2aa2971d68d9319d3eb0f0a7a63150f9f4937c0cec042348a4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-2.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-2.log",
       "sha256": "2221c6da4277fe2aa2971d68d9319d3eb0f0a7a63150f9f4937c0cec042348a4"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-3.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-3.jsonl",
       "sha256": "dfdaaac586b2764cc29f51625bd13c3cd1c7c024d65385bd6d133c593ea68a5f"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/head-9-3.log",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/head-9-3.log",
       "sha256": "dfdaaac586b2764cc29f51625bd13c3cd1c7c024d65385bd6d133c593ea68a5f"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/launches.jsonl",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/launches.jsonl",
       "sha256": "039d266dcbaa6b274580cd2f09503bf69d3a0e2239675b9272d1e8e1bf7ca9e9"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/results/group-00/observations.json",
+      "path": "additional/methodcache-corrected-int-evidence/results/group-00/observations.json",
       "sha256": "af1d0b113f1424c7e659013f4183e1617738794c1b8dd1af67169aeb932928c5"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/review-protocol.json",
+      "path": "additional/methodcache-corrected-int-evidence/review-protocol.json",
       "sha256": "0b9ac47b5b036d7028c054ad285ab744cd8b222860efd880b9cc0737372b3728"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/run.py",
+      "path": "additional/methodcache-corrected-int-evidence/run.py",
       "sha256": "2b119bd5879529566a25e5baab46691effecbeefc71df8c9d9112af627156a11"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/timing-driver.log",
+      "path": "additional/methodcache-corrected-int-evidence/timing-driver.log",
       "sha256": "3399fc79379fb13dba86dad0d6eb4e95436a7854b0865e259a676bc71705a776"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/timing-start.json",
+      "path": "additional/methodcache-corrected-int-evidence/timing-start.json",
       "sha256": "32bb5909631fcc23af0caf84d8e6aca6e55ca425038b5b1147e7343c96d1c250"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/timing.pid",
+      "path": "additional/methodcache-corrected-int-evidence/timing.pid",
       "sha256": "a292abffba38e85f52fb1b5b079984e3ee9eaffae505218377e050b56d313030"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
       "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
       "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
       "sha256": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
       "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/AllocationSites.cs",
       "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
       "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
       "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/Program.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/Program.cs",
       "sha256": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777"
     },
     {
-      "path": "aux/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/Timing.cs",
+      "path": "additional/methodcache-corrected-int-evidence/tree/benchmarks/MethodCache.IntProfile/Timing.cs",
       "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/completed-evidence-index.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/completed-evidence-index.json",
       "sha256": "0861618d383df232142b74778e551888472d715f7b2f4ac1fdb949c366d33948"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/exit",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/exit",
       "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/group-00.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/group-00.log",
       "sha256": "3967c1d4f7fde5deb14f4bb7defddeba32ecd37dce7d594e3a23e1975a683b75"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/inputs.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/inputs.json",
       "sha256": "0254c65ca7cd8baca5a9fac6268ee1134ef7b6d6170cccfd5387d40356109ad5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/launch-intent.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/launch-intent.json",
       "sha256": "6a2e2bc2ff5f53bf9d7e4d508d711129cc0820aa72d46391c0935b12a4624c9a"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/prepared.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/prepared.json",
       "sha256": "babe49eb1fdfced0bcc5955faf6338d3da2d71a3874fa811940dcd5250b75ca6",
       "original_sha256": "64d0d3aa01d0f4c45da27975cab6b1f085bf2b3423287b0df7b436c2eef2081c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/process_activity.py",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/process_activity.py",
       "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-0.jsonl",
       "sha256": "c80f8368a258a63ab2b46c78ef388fa63e73f808ca6a876dc6453241d721b330"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-0.log",
       "sha256": "c80f8368a258a63ab2b46c78ef388fa63e73f808ca6a876dc6453241d721b330"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-1.jsonl",
       "sha256": "ea8942d0117d4ea1b2951895f8d5a7f82d38888947ccac557c58bf423a8d87f0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-1.log",
       "sha256": "ea8942d0117d4ea1b2951895f8d5a7f82d38888947ccac557c58bf423a8d87f0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-2.jsonl",
       "sha256": "4681f8009e80b4d3b659eb9e5932f85e45e8bd58a0d620ddea5cec4a389c2b9c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-2.log",
       "sha256": "4681f8009e80b4d3b659eb9e5932f85e45e8bd58a0d620ddea5cec4a389c2b9c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-3.jsonl",
       "sha256": "fdebaebc9f7abd20f8c95978b9ce00b3d89c03a5e296e75e8a86366decdd57a1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-1-3.log",
       "sha256": "fdebaebc9f7abd20f8c95978b9ce00b3d89c03a5e296e75e8a86366decdd57a1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-0.jsonl",
       "sha256": "91d7782df989c37140c23c8c90baa20e954ca642efec5795695e405efbe8a8dc"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-0.log",
       "sha256": "91d7782df989c37140c23c8c90baa20e954ca642efec5795695e405efbe8a8dc"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-1.jsonl",
       "sha256": "f5712ad1bb34cd29943683d4d5e467fd142b40d6d050582f1257643747f882de"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-1.log",
       "sha256": "f5712ad1bb34cd29943683d4d5e467fd142b40d6d050582f1257643747f882de"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-2.jsonl",
       "sha256": "851c5f55bfb0a1d590e38da4525368d3d1831a78ec9d8820f4775c5374ccfe10"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-2.log",
       "sha256": "851c5f55bfb0a1d590e38da4525368d3d1831a78ec9d8820f4775c5374ccfe10"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-3.jsonl",
       "sha256": "b5f575df15a47e061b47d95432f7024c5ea4d71f6e091334bd1c0de2eb65443b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-10-3.log",
       "sha256": "b5f575df15a47e061b47d95432f7024c5ea4d71f6e091334bd1c0de2eb65443b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-0.jsonl",
       "sha256": "303a50c54b906a710ebeddd5dc056c87b1326a726e8a5aaa15a4809605f0195a"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-0.log",
       "sha256": "303a50c54b906a710ebeddd5dc056c87b1326a726e8a5aaa15a4809605f0195a"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-1.jsonl",
       "sha256": "9eb0e7c84aa2da2e379733c84cebd52ae158e5dc22341c8b9315b2edde02c9fd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-1.log",
       "sha256": "9eb0e7c84aa2da2e379733c84cebd52ae158e5dc22341c8b9315b2edde02c9fd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-2.jsonl",
       "sha256": "4f0c1cff6ad410501bff61fef73ee42a923421da5f794278bae42b299518162c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-2.log",
       "sha256": "4f0c1cff6ad410501bff61fef73ee42a923421da5f794278bae42b299518162c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-3.jsonl",
       "sha256": "20b7cb3c1ffaf206b90ae89809f96debc2e97d7e5ba209cf308342edc5808a38"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-2-3.log",
       "sha256": "20b7cb3c1ffaf206b90ae89809f96debc2e97d7e5ba209cf308342edc5808a38"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-0.jsonl",
       "sha256": "a34202a3d3cce91f021699a13d49496ca8c451e40c5f74812cb4948cd759f56c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-0.log",
       "sha256": "a34202a3d3cce91f021699a13d49496ca8c451e40c5f74812cb4948cd759f56c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-1.jsonl",
       "sha256": "8196262af5e6e4b240bca500fbf44a93df25f6e09226e9b9ee902274f92bec4b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-1.log",
       "sha256": "8196262af5e6e4b240bca500fbf44a93df25f6e09226e9b9ee902274f92bec4b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-2.jsonl",
       "sha256": "cf6eb39c3186379412be7471d7a772c551a8841bd1b7c4a8ab32264685208a85"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-2.log",
       "sha256": "cf6eb39c3186379412be7471d7a772c551a8841bd1b7c4a8ab32264685208a85"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-3.jsonl",
       "sha256": "8c8c27a5ef66d6219cb8cfd2c9e7ac7cd98677e364307869dcf96663c985ce8d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-3-3.log",
       "sha256": "8c8c27a5ef66d6219cb8cfd2c9e7ac7cd98677e364307869dcf96663c985ce8d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-0.jsonl",
       "sha256": "7ef27258f803da372630866d2bb298242cbbc4d7190a4cf665efc6b58168e861"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-0.log",
       "sha256": "7ef27258f803da372630866d2bb298242cbbc4d7190a4cf665efc6b58168e861"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-1.jsonl",
       "sha256": "dfe616456e50ad7b691b719d070dc52abb2a81df293b470e711084d88df31d29"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-1.log",
       "sha256": "dfe616456e50ad7b691b719d070dc52abb2a81df293b470e711084d88df31d29"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-2.jsonl",
       "sha256": "7451c27ed5d4e3b83fd950d7c979a96ec21312cf376126cff1a99ed508cc909e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-2.log",
       "sha256": "7451c27ed5d4e3b83fd950d7c979a96ec21312cf376126cff1a99ed508cc909e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-3.jsonl",
       "sha256": "16700022373617390a3588d2ce2070c5aa61bc65f7d03d476f94f7af2fcf70fe"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-4-3.log",
       "sha256": "16700022373617390a3588d2ce2070c5aa61bc65f7d03d476f94f7af2fcf70fe"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-0.jsonl",
       "sha256": "b163499422ee2c0bdde63d323a33ba6f70bcafe4702b533bb65d768d771f7b4e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-0.log",
       "sha256": "b163499422ee2c0bdde63d323a33ba6f70bcafe4702b533bb65d768d771f7b4e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-1.jsonl",
       "sha256": "4ae10959761e26480780982acfa6a8a5b0cda6f0c2d95e757762f496f0812115"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-1.log",
       "sha256": "4ae10959761e26480780982acfa6a8a5b0cda6f0c2d95e757762f496f0812115"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-2.jsonl",
       "sha256": "2dbb094b8ab4607d342f98240efcf8c79600d05e0046ee335f80f6220874fc2c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-2.log",
       "sha256": "2dbb094b8ab4607d342f98240efcf8c79600d05e0046ee335f80f6220874fc2c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-3.jsonl",
       "sha256": "862e86b00e04749c941fd0fc37dc33c6ca486783e3d83864834eb732e78cf32c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-5-3.log",
       "sha256": "862e86b00e04749c941fd0fc37dc33c6ca486783e3d83864834eb732e78cf32c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-0.jsonl",
       "sha256": "8bf9ea017ada924b6719bd22b50782eea10d2e00fe53b41495d044acbd61f8ed"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-0.log",
       "sha256": "8bf9ea017ada924b6719bd22b50782eea10d2e00fe53b41495d044acbd61f8ed"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-1.jsonl",
       "sha256": "270381ea7d8febfa5e70bbd9d57db459f7123827f356b07cfe873d75e40a70af"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-1.log",
       "sha256": "270381ea7d8febfa5e70bbd9d57db459f7123827f356b07cfe873d75e40a70af"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-2.jsonl",
       "sha256": "53cee2f0d7730835759840176afbc214f6788defd66a07113c4d09de9cd9196b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-2.log",
       "sha256": "53cee2f0d7730835759840176afbc214f6788defd66a07113c4d09de9cd9196b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-3.jsonl",
       "sha256": "505e734c5662108ac6c843f2a5447881bbf144fc5d12926a359ee940d3006a21"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-6-3.log",
       "sha256": "505e734c5662108ac6c843f2a5447881bbf144fc5d12926a359ee940d3006a21"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-0.jsonl",
       "sha256": "82298f1e1019fe53a548bb6507a128ef4c0e425ef9162a39b92ab63dd8835330"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-0.log",
       "sha256": "82298f1e1019fe53a548bb6507a128ef4c0e425ef9162a39b92ab63dd8835330"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-1.jsonl",
       "sha256": "38426db2d6c63ef5b581d133ded796a01af9ff88d27921bb9458a702a14a4b47"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-1.log",
       "sha256": "38426db2d6c63ef5b581d133ded796a01af9ff88d27921bb9458a702a14a4b47"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-2.jsonl",
       "sha256": "db29f82d2cc7d261e76d09989d75ae6b158025788ac83ccbeaaed65598461bd1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-2.log",
       "sha256": "db29f82d2cc7d261e76d09989d75ae6b158025788ac83ccbeaaed65598461bd1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-3.jsonl",
       "sha256": "d5123ffa81232f56ee1b500c9860a5a67c4635022ee6ac7657aa8ca8aafc9236"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-7-3.log",
       "sha256": "d5123ffa81232f56ee1b500c9860a5a67c4635022ee6ac7657aa8ca8aafc9236"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-0.jsonl",
       "sha256": "81cb104471c4b13b5e24a71c71ab13ccdfc4269463b62e5764a1156d36203da9"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-0.log",
       "sha256": "81cb104471c4b13b5e24a71c71ab13ccdfc4269463b62e5764a1156d36203da9"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-1.jsonl",
       "sha256": "2ffdac5eab50dec0950faa8e9b66a34a4f893301656254cbbcdd217d14e85017"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-1.log",
       "sha256": "2ffdac5eab50dec0950faa8e9b66a34a4f893301656254cbbcdd217d14e85017"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-2.jsonl",
       "sha256": "3bd56664df4726dae9b6dfcbf6a7361c50adc5b76e654861b5ee2e2020c91210"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-2.log",
       "sha256": "3bd56664df4726dae9b6dfcbf6a7361c50adc5b76e654861b5ee2e2020c91210"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-3.jsonl",
       "sha256": "a8eb9c1cbfe78774ed5395d6e157e4029f0ab6a6d0c7fff74841644a78f99012"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-8-3.log",
       "sha256": "a8eb9c1cbfe78774ed5395d6e157e4029f0ab6a6d0c7fff74841644a78f99012"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-0.jsonl",
       "sha256": "3ca38eeb6eb302f6db152a3325c4890b61c2e749ca184e0b033673a281fcd289"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-0.log",
       "sha256": "3ca38eeb6eb302f6db152a3325c4890b61c2e749ca184e0b033673a281fcd289"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-1.jsonl",
       "sha256": "2bcbecd484940584d3c3849fd793fff43733ed7e8134c8580ef185b6aab35900"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-1.log",
       "sha256": "2bcbecd484940584d3c3849fd793fff43733ed7e8134c8580ef185b6aab35900"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-2.jsonl",
       "sha256": "677c51c0360e62248aabd1d4b636a4a2ff190e9eeb58e95fb80d5d606206160d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-2.log",
       "sha256": "677c51c0360e62248aabd1d4b636a4a2ff190e9eeb58e95fb80d5d606206160d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-3.jsonl",
       "sha256": "5d8849fc322996b3b1552b09254bb0487d79b56031f249d53612f804f116d1f4"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/base-9-3.log",
       "sha256": "5d8849fc322996b3b1552b09254bb0487d79b56031f249d53612f804f116d1f4"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/exit",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/exit",
       "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-0.jsonl",
       "sha256": "9e6628b7a5b28abb91aa6e5347f4c2570da3a9597a4adacfea934e173f0d13c7"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-0.log",
       "sha256": "9e6628b7a5b28abb91aa6e5347f4c2570da3a9597a4adacfea934e173f0d13c7"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-1.jsonl",
       "sha256": "b9341e8358401636cdd519d17cde6d09627beca41d9a69e1020c72399acdd3d3"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-1.log",
       "sha256": "b9341e8358401636cdd519d17cde6d09627beca41d9a69e1020c72399acdd3d3"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-2.jsonl",
       "sha256": "abe67fa9c9d21c11e733bccebb448efb87bce86980148c649dd0beb3786d08e2"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-2.log",
       "sha256": "abe67fa9c9d21c11e733bccebb448efb87bce86980148c649dd0beb3786d08e2"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-3.jsonl",
       "sha256": "af0031b7cf921d4ff6b3e454a35c029d4c8564066b032104d15d74b3132ef64d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-1-3.log",
       "sha256": "af0031b7cf921d4ff6b3e454a35c029d4c8564066b032104d15d74b3132ef64d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-0.jsonl",
       "sha256": "0f7fcf1719447dbf85670e6152f32d3b0aeafb9556a991dfa1f6fc5f2c3238f1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-0.log",
       "sha256": "0f7fcf1719447dbf85670e6152f32d3b0aeafb9556a991dfa1f6fc5f2c3238f1"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-1.jsonl",
       "sha256": "3b65a271fddae4d1d6f71868e65eb3fda012ea309ebd6082b5329c161b733331"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-1.log",
       "sha256": "3b65a271fddae4d1d6f71868e65eb3fda012ea309ebd6082b5329c161b733331"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-2.jsonl",
       "sha256": "a87907085c068d6adf87a50f857b98a0a71d4cf8b941510f4acbdc9edc811777"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-2.log",
       "sha256": "a87907085c068d6adf87a50f857b98a0a71d4cf8b941510f4acbdc9edc811777"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-3.jsonl",
       "sha256": "e3a46760dab12603859dcaa6da104fd0e2afa9e02fc0497a51204846650a305c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-10-3.log",
       "sha256": "e3a46760dab12603859dcaa6da104fd0e2afa9e02fc0497a51204846650a305c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-0.jsonl",
       "sha256": "ef59ce41ec0088017ed8c829dd5c176156e8c1684a5b0ade53e01cd644aede30"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-0.log",
       "sha256": "ef59ce41ec0088017ed8c829dd5c176156e8c1684a5b0ade53e01cd644aede30"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-1.jsonl",
       "sha256": "29cf7a8eeda2d89dfa1ca606f73ff4fb852c044623130385780f2c079cd3b2f0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-1.log",
       "sha256": "29cf7a8eeda2d89dfa1ca606f73ff4fb852c044623130385780f2c079cd3b2f0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-2.jsonl",
       "sha256": "9be35fb57a14df59a6c53af9b90111bd6abe9276585c0959d10d6aea49a0932d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-2.log",
       "sha256": "9be35fb57a14df59a6c53af9b90111bd6abe9276585c0959d10d6aea49a0932d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-3.jsonl",
       "sha256": "9587e804412d165e1679a12a04621ae08b674d0f1832ac56bcdb115d96436025"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-2-3.log",
       "sha256": "9587e804412d165e1679a12a04621ae08b674d0f1832ac56bcdb115d96436025"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-0.jsonl",
       "sha256": "ede9c126191b02f156bbe17a722b264391058ea27e23d897b72a1c8a031e59b0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-0.log",
       "sha256": "ede9c126191b02f156bbe17a722b264391058ea27e23d897b72a1c8a031e59b0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-1.jsonl",
       "sha256": "e74d44ea029e1a379790df33e191905d5f4506280c01c659c1e45adac7169007"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-1.log",
       "sha256": "e74d44ea029e1a379790df33e191905d5f4506280c01c659c1e45adac7169007"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-2.jsonl",
       "sha256": "e8e8a466b3a487a215a9b13486a584e33d5ad9ca1da0e12e01c4f7f0febb8c2d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-2.log",
       "sha256": "e8e8a466b3a487a215a9b13486a584e33d5ad9ca1da0e12e01c4f7f0febb8c2d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-3.jsonl",
       "sha256": "caf9860b42153d46a234dadabb86af83cb2890a46d91a4621371c77be6694749"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-3-3.log",
       "sha256": "caf9860b42153d46a234dadabb86af83cb2890a46d91a4621371c77be6694749"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-0.jsonl",
       "sha256": "dfb7557847bb215dd51082b8bc4c39ac4c7f18c9d7843a36f46e5903c02e00a6"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-0.log",
       "sha256": "dfb7557847bb215dd51082b8bc4c39ac4c7f18c9d7843a36f46e5903c02e00a6"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-1.jsonl",
       "sha256": "f81b28d946d859b7cb5f9e34a61244906cf4693a73d1b4b146d9eff3c8df91f5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-1.log",
       "sha256": "f81b28d946d859b7cb5f9e34a61244906cf4693a73d1b4b146d9eff3c8df91f5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-2.jsonl",
       "sha256": "847b66c7d8583f975d26ed229a957bb1ccd9c4bcf690717f7b475ef1a5ac0843"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-2.log",
       "sha256": "847b66c7d8583f975d26ed229a957bb1ccd9c4bcf690717f7b475ef1a5ac0843"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-3.jsonl",
       "sha256": "ff8706655a7dc2a34397acdd0b61ce822418d3f688d09d3f274905db0edc28e5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-4-3.log",
       "sha256": "ff8706655a7dc2a34397acdd0b61ce822418d3f688d09d3f274905db0edc28e5"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-0.jsonl",
       "sha256": "e3c595c324da7d305bfd62e2d4015b08f8c5064612a5cf49d22df65650e608ff"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-0.log",
       "sha256": "e3c595c324da7d305bfd62e2d4015b08f8c5064612a5cf49d22df65650e608ff"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-1.jsonl",
       "sha256": "c2ac8b804bf066bb42b044127a61e52549765e94db104d0c6f5b46002e0eb374"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-1.log",
       "sha256": "c2ac8b804bf066bb42b044127a61e52549765e94db104d0c6f5b46002e0eb374"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-2.jsonl",
       "sha256": "b58eb7121441f56a4ae739c9463d6f8b12db53d2d24a247c47c5da318cd66729"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-2.log",
       "sha256": "b58eb7121441f56a4ae739c9463d6f8b12db53d2d24a247c47c5da318cd66729"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-3.jsonl",
       "sha256": "57bd7733bf9270e5c84c8ad5aa46f0c691742db971b3c02e0cea64cbf6ea7cdd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-5-3.log",
       "sha256": "57bd7733bf9270e5c84c8ad5aa46f0c691742db971b3c02e0cea64cbf6ea7cdd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-0.jsonl",
       "sha256": "b0c5c4177d89ec525f3591c689dfed462636f97bcd035f4a561a5cf028abd4db"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-0.log",
       "sha256": "b0c5c4177d89ec525f3591c689dfed462636f97bcd035f4a561a5cf028abd4db"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-1.jsonl",
       "sha256": "4a1e4e2ef2e48255d108b6f9e2aeead20be90cfadf3ca3a2fc6d0145fc064381"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-1.log",
       "sha256": "4a1e4e2ef2e48255d108b6f9e2aeead20be90cfadf3ca3a2fc6d0145fc064381"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-2.jsonl",
       "sha256": "89fdd53b6dcd888d9d3d62f64cde4eef7277ea9b414b735051ab1a60bc6664f3"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-2.log",
       "sha256": "89fdd53b6dcd888d9d3d62f64cde4eef7277ea9b414b735051ab1a60bc6664f3"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-3.jsonl",
       "sha256": "0b93d7db79ca5fe830d6a865522cc345debc2f242ffb575965a588a9587e13dd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-6-3.log",
       "sha256": "0b93d7db79ca5fe830d6a865522cc345debc2f242ffb575965a588a9587e13dd"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-0.jsonl",
       "sha256": "550cb2ea4ea691b0496728984d55ec8d172b0e8ac66341be6fb0d3a974853d57"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-0.log",
       "sha256": "550cb2ea4ea691b0496728984d55ec8d172b0e8ac66341be6fb0d3a974853d57"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-1.jsonl",
       "sha256": "0c0f726e6d623b0794c38ef35541ac8c8fc1c1e2e02e20f864b901f972e5895b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-1.log",
       "sha256": "0c0f726e6d623b0794c38ef35541ac8c8fc1c1e2e02e20f864b901f972e5895b"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-2.jsonl",
       "sha256": "a81a67394b350351bef44aedce18ba8c1c7caf87b1eef076afdce420c9cc4610"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-2.log",
       "sha256": "a81a67394b350351bef44aedce18ba8c1c7caf87b1eef076afdce420c9cc4610"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-3.jsonl",
       "sha256": "752632252268abb725583e7e0a1dcf41cd6c28b5fb49d9ee34dcc07e4c88fb3e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-7-3.log",
       "sha256": "752632252268abb725583e7e0a1dcf41cd6c28b5fb49d9ee34dcc07e4c88fb3e"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-0.jsonl",
       "sha256": "e1d33ff80254c87050c3090b1c5a505844761c47616455cfb8631748dcee5315"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-0.log",
       "sha256": "e1d33ff80254c87050c3090b1c5a505844761c47616455cfb8631748dcee5315"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-1.jsonl",
       "sha256": "3a5541ab44e18e9d52675c96c370cb5e917235f9debec6df1d3b6f28dc788337"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-1.log",
       "sha256": "3a5541ab44e18e9d52675c96c370cb5e917235f9debec6df1d3b6f28dc788337"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-2.jsonl",
       "sha256": "b28c586b6ac713712fd04a384e779da46296068aeca9e3e40abababa2a0dd05c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-2.log",
       "sha256": "b28c586b6ac713712fd04a384e779da46296068aeca9e3e40abababa2a0dd05c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-3.jsonl",
       "sha256": "bbdd6af489b1ce0eb7ce97f7738bbc0da5365019b2c898cea5fe5eff2b88ca42"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-8-3.log",
       "sha256": "bbdd6af489b1ce0eb7ce97f7738bbc0da5365019b2c898cea5fe5eff2b88ca42"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-0.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-0.jsonl",
       "sha256": "13539f10fd798267800a08b88ffefe01d96b25f92669ac8a088f57636842608c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-0.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-0.log",
       "sha256": "13539f10fd798267800a08b88ffefe01d96b25f92669ac8a088f57636842608c"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-1.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-1.jsonl",
       "sha256": "1f8df15aba93ee9a9dbe4722b857fedf201f33252bd7ec982a4b2408bb725649"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-1.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-1.log",
       "sha256": "1f8df15aba93ee9a9dbe4722b857fedf201f33252bd7ec982a4b2408bb725649"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-2.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-2.jsonl",
       "sha256": "8553754a1daca1790c4bb9a2fbbb8db016db47cd9a3999996e81c5de793a8194"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-2.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-2.log",
       "sha256": "8553754a1daca1790c4bb9a2fbbb8db016db47cd9a3999996e81c5de793a8194"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-3.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-3.jsonl",
       "sha256": "e476a3f2f8d0e2ab549bab5a1c97319b381c22e646ae301945ce58d7558ac9c0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-3.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/head-9-3.log",
       "sha256": "e476a3f2f8d0e2ab549bab5a1c97319b381c22e646ae301945ce58d7558ac9c0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/launches.jsonl",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/launches.jsonl",
       "sha256": "b2c28648dadbd8237fa7bb320931c3ae7734a9f7d10fc7dac46795ce1b8bbbf9"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/results/group-00/observations.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/results/group-00/observations.json",
       "sha256": "0403148d1125722613a8ec9f0004aeff8a4a3a8bdd0f1ad70f8d0546197a189f"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/review-protocol.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/review-protocol.json",
       "sha256": "edf520c611a90da91df3225602b58b1c26ab9789f844f77d0f06385fecc88253"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/run.py",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/run.py",
       "sha256": "5d8619e09a7b2c7ab8ffbf1b3914588f674bf9203164e34f1ba853c661f9e80d"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/timing-driver.log",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/timing-driver.log",
       "sha256": "8fac2e97938a740dac033b0e40c65421f686593db3a3b275b166a1f11e69d8c0"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/timing-start.json",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/timing-start.json",
       "sha256": "13f7ff0f3585ad60082b1fc94ec5ad525d7e4831af41d57db11447b9a40e5785"
     },
     {
-      "path": "aux/methodcache-group01-reconfirmation-evidence/timing.pid",
+      "path": "additional/methodcache-group01-reconfirmation-evidence/timing.pid",
       "sha256": "e1e22c8465fde6686cc2aabbd85c8e390566a7156c965f672ceef8ba0191942f"
     },
     {
@@ -13251,16 +13251,23 @@
     },
     {
       "path": "restore-original-metadata.py",
-      "sha256": "d44a94ae32fa3a9d26f090fb783bb273de7b00b17509d57648b5e9cc526575c0"
+      "sha256": "4a087d70bf9f5ae69258e1b1374bf21cadfe975730de301e49e90e68c92c90a6",
+      "previous_sha256": "d44a94ae32fa3a9d26f090fb783bb273de7b00b17509d57648b5e9cc526575c0"
     }
   ],
   "normalization": {
     "only": [
-      "aux/methodcache-corrected-int-evidence/prepared.json",
-      "aux/methodcache-group01-reconfirmation-evidence/prepared.json",
+      "additional/methodcache-corrected-int-evidence/prepared.json",
+      "additional/methodcache-group01-reconfirmation-evidence/prepared.json",
       "native/prepared.json",
       "raw/prepared.json"
     ],
     "reason": "Reversible path/hash records avoid false secret matches on DLL field labels; no hash/measurement/source is removed or changed."
+  },
+  "path_mapping": {
+    "original_container": "aux/",
+    "stored_container": "additional/",
+    "reason": "Windows reserves AUX even as a directory component. All375movedfilesarebyte-identical;originalmetadata/provenanceisretained.",
+    "files_unchanged": 375
   }
 }

@@ -4,7 +4,7 @@ import hashlib,json,shutil,sys
 source=Path(__file__).resolve().parent
 target=Path(sys.argv[1]);assert not target.exists()
 total=0
-for name in ['raw','native','aux']:
+for name in ['raw','native','additional']:
  shutil.copytree(source/name,target/name)
 for p in target.rglob('prepared.json'):
  d=json.loads(p.read_text())

@@ -25,3 +25,10 @@ Only the four prepared binary-catalogue dictionaries use reversible path/hash
 records. All original/stored checksums are retained. Run restore-original-metadata.py
 with a new output directory to reconstruct byte-exact original metadata and verify
 all four archive indexes before reuse. No executables or source bundles are included.
+
+The original supplementary container named `aux/` is stored as `additional/`:
+Windows reserves AUX as a path component, so the earlier name prevented checkout.
+All 375 moved files are byte-identical. Original provenance labels inside retained
+JSON remain intact and the manifest records the path mapping. The restorer uses
+`additional/` on every platform and still verifies all four original archive
+indexes; each archive's contents and metadata remain byte-exact.
