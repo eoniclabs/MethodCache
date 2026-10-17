@@ -24,9 +24,23 @@ A passing ancestor does not establish the latest head's result.
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current6a2cc002 is reviewed againstmain with history preserved. All14jobs/fourstatusesPASS:2639Linux/0failures/1intentionalsoakskip,diff94.2%,99properties,soak,cultures,AOT175,packages/docs and realbackends. All67casecostsPASS with6unchangedacceptedcosts. Strict timegateFAIL:3preciseMacregressions and2preciseNimbus cold-after-invalidation regressions16.9%/17.3%;originalMac14wideintervalsretained. Fiveexacttimeboundsproposedinactive; no merge/release. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Combined review against main with history preserved. Exact7b passes all14jobs/fourstatuses:2639Linux/0failures/1intentionalsoakskip,diff94.3%. Johan approved five exact HTTP caps; canonical replay passes all53existinglocalCPUcases plus6affectedprefixmisses and all67costcases (6unchangedacceptedcosts). Original failures/wide reports retained. Approval publication needs final exact-head CI; no merge/release. |
 
 ## Remaining verification
+
+Johan approved alternative 1 on2026-10-17. The five exact HTTP caps are now active;
+all other timing/cost/correctness/precision rules remain unchanged. Reproducible replay
+covers59wholeCPUcases,includingall53existinglocalcases,andall67costcases. No new
+measurement or cross-study pooling is used. Original Mac14wide intervals stay failed;
+complete precise Nimbus2cases provide separate whole-case confirmation.
+[Approved final performance acceptance](../../plans/design-benchmarks/http-time-acceptance-v1/).
+
+The preceding exact7b publication passes all14jobs/fourstatuses. The only remaining
+execution step is publishing the approved rules/evidence/docs and verifying actual
+final-head CI and the76row acceptance audit. Merge,release and PublicAPI promotion
+remain separate. PR138 stays a separate follow-up, outside this completed design runtime.
+
+## Historical verification before approval
 
 The latest6a2cc002 publication passes every required CI job. The complete targeted
 Nimbus confirmation is terminal:40launches,2slower,0wide,0executionerrors. It resolves

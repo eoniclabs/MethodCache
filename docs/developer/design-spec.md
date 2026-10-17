@@ -638,6 +638,16 @@ En avsiktlig försämring (som SipHash-prefixets kostnad för int-träffar) godk
 Mät på en lugn maskin med samma runtime- och GC-inställningar för båda sidor och redovisa full SHA,
 SDK/runtime, CPU, GC och antal par.
 
+**HTTP-beslut (Johan 2026-10-17, alternativ 1):** behåll den gemensamma lagringen,
+metadata, administrationen och telemetrin och godkänn exakt fem avgränsade tidskostnader:
+lokal HTTP-workload-miss högst +6 %, de två 304-fallen med lyssnare högst +6 % respektive
++8 %, samt de två kalla missfallen efter invalidering högst +20 %. Exakta fallnamn,
+motiveringar och tak finns i `accepted.json`; [beslut och reproducerbar granskning](../../plans/design-benchmarks/http-time-acceptance-v1/)
+bevarar före/efter-regler och samtliga ursprungsrapporter. Två osäkra Mac-fall har
+separata kompletta precisa Nimbus-bekräftelser; inga par eller medelvärden slås ihop
+mellan studier. Precisionskravet på 6 %, korrekthet, bytes/kommandon och övriga fall
+ändras inte. Detta godkänner ingen merge, release eller separat ASCII-hashoptimering.
+
 Steg 2 körs en gång i PR 7 för hela baslinjen mot f43854d, så att ackumulerade små försämringar syns.
 Det körs också, med filter på de berörda träffscenarierna, för en PR som ändrar CPU-arbete utan att ändra
 bytes eller kommandon (nyckelbygge, hashning, genererad kod): kostnadsprofilen ser inte en ren
@@ -789,7 +799,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 | V01 | Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required. | Inga nya oförklarade skips; relevanta regressions/fault/property/soak-jobb gröna. |
 | V02 | Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er. | Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer. |
 | V03 | mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; användar-README/package-README matchar nya API. | Ingen drift eller döda exempel; endast utgiven kontraktsyta fryses. |
-| V04 | §10 steg 1 enligt integrationsbeslutet för designserien; full steg 1 och steg 2 mot f43854d samt berörda filtrerade CPU-mätningar. | Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen försämring i den parade tidsmätningen. |
+| V04 | §10 steg 1 enligt integrationsbeslutet för designserien; full steg 1 och steg 2 mot f43854d samt berörda filtrerade CPU-mätningar. | Kostnadsprofilen grön eller godkänd i `accepted.json`; ingen ej uttryckligen godkänd försämring i den parade tidsmätningen. |
 
 ## 12. PR-ordning och klart-kriterier
 
