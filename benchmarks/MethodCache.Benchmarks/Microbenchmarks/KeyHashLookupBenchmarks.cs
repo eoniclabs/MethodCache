@@ -3,7 +3,7 @@ using BenchmarkDotNet.Attributes;
 #if METHODCACHE_PREFIX_HASH
 using MethodCache.Core.Runtime.Keys;
 #if METHODCACHE_SIPHASH
-using PrefixHashState = MethodCache.Core.Runtime.Keys.SipHashState;
+using PrefixHashState = MethodCache.Core.Runtime.Keys.KeyPrefixHash;
 #else
 using PrefixHashState = MethodCache.Core.Runtime.Keys.MarvinState;
 #endif
@@ -92,7 +92,7 @@ public class KeyHashLookupBenchmarks
     {
 #if METHODCACHE_PREFIX_HASH
 #if METHODCACHE_SIPHASH
-        var hash = _prefix.FinishUtf16(_suffix);
+        var hash = _prefix.Finish(_suffix);
 #else
         var state = _prefix;
         state.AppendUtf16(_suffix);

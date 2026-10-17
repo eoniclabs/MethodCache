@@ -108,12 +108,12 @@ internal sealed class CallSnapshot(DecoratorServices services, CacheRuntimePolic
         }
     }
     // A field, not a property: a lookup finishes the hash from it in place instead of copying the state first
-    internal readonly SipHashState PrefixHash = ProcessKeyHash.Prefix(prefix);
+    internal readonly KeyPrefixHash PrefixHash = ProcessKeyHash.Prefix(prefix);
 
     internal int HashKey(ReadOnlySpan<char> text)
     {
         if (!text.StartsWith(Prefix.AsSpan(), StringComparison.Ordinal)) return ProcessKeyHash.Compute(text);
-        return PrefixHash.FinishUtf16(text[Prefix.Length..]);
+        return PrefixHash.Finish(text[Prefix.Length..]);
     }
 
     internal PolicyGeneration Generation { get; } = policy.Generation!;
