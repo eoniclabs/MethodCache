@@ -134,7 +134,8 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
                     Selector = entry.VariantGeneration != null
                 };
             var target = Target(key);
-            return new(HttpResponseStore.Identity(key), target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+            // Local administration derives the opaque ID from the immutable node key when first inspected.
+            return new(_core.Distributed ? HttpResponseStore.Identity(key) : string.Empty, target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
         }
         private static string Target(string key)
         {

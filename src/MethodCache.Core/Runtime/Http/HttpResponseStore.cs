@@ -371,7 +371,19 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         if (_local != null)
         {
             foreach (var node in _local.Map.Values)
-                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info) result.Add(info);
+            {
+                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info)
+                {
+                    if (info.Id.Length == 0)
+                    {
+                        var identified = info with { Id = Identity(node.Key) };
+                        // Memoize only this immutable snapshot; a concurrent writer keeps its own metadata.
+                        _ = Interlocked.CompareExchange(ref node.Policy, identified, info);
+                        info = identified;
+                    }
+                    result.Add(info);
+                }
+            }
         }
         else
             foreach (var node in _observations.Map.Values)
