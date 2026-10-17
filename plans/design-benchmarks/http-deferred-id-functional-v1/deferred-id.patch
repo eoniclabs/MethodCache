@@ -1,0 +1,35 @@
+--- a/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
++++ b/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs
+@@ -134,7 +134,8 @@
+                     Selector = entry.VariantGeneration != null
+                 };
+             var target = Target(key);
+-            return new(HttpResponseStore.Identity(key), target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
++            // Local administration derives the opaque ID from the immutable node key when first inspected.
++            return new(_core.Distributed ? HttpResponseStore.Identity(key) : string.Empty, target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+         }
+         private static string Target(string key)
+         {
+--- a/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
++++ b/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs
+@@ -371,7 +371,19 @@
+         if (_local != null)
+         {
+             foreach (var node in _local.Map.Values)
+-                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info) result.Add(info);
++            {
++                if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info)
++                {
++                    if (info.Id.Length == 0)
++                    {
++                        var identified = info with { Id = Identity(node.Key) };
++                        // Memoize only this immutable snapshot; a concurrent writer keeps its own metadata.
++                        _ = Interlocked.CompareExchange(ref node.Policy, identified, info);
++                        info = identified;
++                    }
++                    result.Add(info);
++                }
++            }
+         }
+         else
+             foreach (var node in _observations.Map.Values)

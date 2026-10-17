@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  MethodCache.Analyzers -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.Core -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.HttpCaching.Tests -> /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll
+Test run for /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/tree/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /home/agent-admin/methodcache-design-bench-20261015/http-deferred-id-experiment-v1/preparation/candidate-admin/_6ec5eaca0a48_2026-10-17_05_03_52_net10.0.trx
+
+Passed!  - Failed:     0, Passed:     8, Skipped:     0, Total:     8, Duration: 61 ms - MethodCache.HttpCaching.Tests.dll (net10.0)

@@ -1,0 +1,41 @@
+{
+  "utc": "2026-10-17T06:14:39.019399+00:00",
+  "scope": "Complete first fixed group integrity only; no timing means/acceptance decision; full9case comparison remains live.",
+  "group": "NG-00",
+  "launches": 80,
+  "readiness_samples": 60,
+  "measurement_samples": 1004,
+  "external_builds": 0,
+  "actual_measured_point": "A2; exact A3 differences limited to two predeclared HTTP files outside these nine call paths.",
+  "current_local_head": "f49264198631167d22d8c19e8b396d147646a87d",
+  "files": [
+    {
+      "path": "inputs.json",
+      "sha256": "175a1a0a4ee5b69709fb0cb5ab0019f5f54fa45038f4992cb870acb8a7b55c83"
+    },
+    {
+      "path": "prepared.json",
+      "sha256": "7d708add996614e6c34558cefd9e12a784dd3d48f25d4046ff4d63a3751500c9"
+    },
+    {
+      "path": "pr-NG-00/intent.json",
+      "sha256": "89f1a6f4a62fb4146a21dc01cb53a0fe3a9a410a49052bcc138eb6c21dd1adda"
+    },
+    {
+      "path": "pr-NG-00/observations.json",
+      "sha256": "29d9421d859d00f8f3cfa30e41db62ef546fd169d384f40c995156ce2f89432f"
+    },
+    {
+      "path": "pr-NG-00/quiet-confirmed.json",
+      "sha256": "64d7429839f9c136bdadd2afd0a46e7562a1fb13ca114abbf7b2e09a1d6afe58"
+    },
+    {
+      "path": "pr-NG-00/launches.jsonl",
+      "sha256": "6182d269b41183d11aac50c07baef9b901989d4a18588c768813df26174a92b5"
+    },
+    {
+      "path": "source-equivalence-intent.json",
+      "sha256": "41915da74cdbacd2023f670cc3d426cd7354fd77fc8d0da894ff8b07e2114085"
+    }
+  ]
+}

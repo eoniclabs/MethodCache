@@ -1,0 +1,19 @@
+{
+  "purpose": "Instrumented cold-HTTP storage-phase attribution only; sameoriginalcompiledlibrariesand8192boundedworkload;all4listener/invalidationcombos,no features removed,NOTpaired-timeacceptance. Threewarmtenactualbatchesperprocess. No backend started.",
+  "label": "design-cold-http-stage-v1",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "files_sha256": [
+    {
+      "path": "project/Profile.csproj",
+      "sha256": "db3d01fa28bfde7884cf5694d9cce5b687bdc0fc37727d468ff0c95ab9e4e5ec"
+    },
+    {
+      "path": "project/Program.cs",
+      "sha256": "e9a378327fa5360c98b210e4b531abf53f5fe4457f83422baf5ff2d5ffa31f91"
+    },
+    {
+      "path": "run.py",
+      "sha256": "9bb169af964c7aca258c5c91cfdab319be68746ce9f2ffb3477918af28e06f71"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-17T05:49:36.057837+00:00",
+  "worker": 12968,
+  "reason": "No sixty-second quiet readiness after more than fourteen minutes, zero formal launches. Release own coordinator reservation for functional validation; preserve every readiness observation. Existing cohort not accepted or restarted. A later complete confirmation must retain its own source/protocol and original failure.",
+  "formal_launches": 0
+}

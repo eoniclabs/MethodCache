@@ -1,0 +1,39 @@
+{
+  "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "baseline_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "candidate_patch_sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+  "prepare_label": "design-http-id-time32-v1-prepare",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "pairs": 10,
+  "remaining_groups": [
+    0,
+    1
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Isolated8casecandidatecomparisonafterobjectivewarmup-driftfinding;A2vsA2+deferredlocaladminID,32warmups12actual150ms10alternatingpairs;alloriginalfailed/noisyreportsretained,precision6%andacceptedrulesunchanged. Measuredlibrary/benchmarkbinariesbyte-identicaltocandidatepreparation;onlywrapperjobwarmupdiffers.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "d1f2d87f46bc5536821f5f65e144e8aa985c4b2edc4f3bd83709dcc46ec4c69b"
+    },
+    {
+      "path": "project/Program.cs",
+      "sha256": "7bbceae89f86d45645cfd3c44c7bd41aba6abce189403ee3af0a418ebe5a0457"
+    },
+    {
+      "path": "project/Profile.csproj",
+      "sha256": "76fb06b75bf60ea9bd106f4f1bf0d7c1240d9a6f55cb63b49b27af48a9599efd"
+    }
+  ],
+  "warmups": 32
+}

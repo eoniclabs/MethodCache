@@ -1,0 +1,179 @@
+{
+  "scope": "Post-node-hash correction F05 follow-up: all12GUIDmissshapes affected by node removal plus the one previously imprecise GUID listener hit. Other15precisehitcasesretainpriorcompleteF05evidence;fourintcontrolsalsoruninfixed53CPUcohort. No pooling, no partial means.",
+  "points": {
+    "baseline": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "final": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "cases": {
+    "main": [],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Guid)"
+    ]
+  },
+  "comparisons": [
+    {
+      "pr": "F05R-00",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [],
+        "int": [
+          "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)"
+        ]
+      }
+    },
+    {
+      "pr": "F05R-01",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [],
+        "int": [
+          "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)"
+        ]
+      }
+    },
+    {
+      "pr": "F05R-02",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [],
+        "int": [
+          "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)",
+          "GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid)"
+        ]
+      }
+    },
+    {
+      "pr": "F05R-03",
+      "base": "baseline",
+      "head": "final",
+      "cases": {
+        "main": [],
+        "int": [
+          "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Guid)"
+        ]
+      }
+    }
+  ],
+  "source_sha256": [
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Program.cs",
+      "sha256": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777"
+    },
+    {
+      "path": "benchmarks/MethodCache.IntProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    }
+  ],
+  "controller_sha256": "ce66efa159609adc51aa19fe646e944df9c1dd3d135e9cbbb4ad8c4a4892514b",
+  "activity_sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+  "host_quiet_limit_other_process_cpu_percent": 200,
+  "lease_limit_seconds": 1470,
+  "preflight_only_predecessor": {
+    "folder": "/private/tmp/methodcache-local-cpu-v1",
+    "actual_timing_launches": 0,
+    "failed_at_other_process_cpu_percent": 124.5,
+    "quiet_limit_unchanged": 100,
+    "change": "Wait for60consecutivequietseconds before measuring instead of aborting on the first busy preflight sample; record all readiness observations."
+  },
+  "preserved_earlier_attempts": [],
+  "scheduling_fix": "Only GlobalSetup/native scheduling helpers change in common sources, equally for both sides. Native QoS eligibility checked before setter; explicit POSIX scheduling retained. Six new normal/Highest scheduling regressions and all126 benchmarktests pass. No measured method, runtime source, case count, warmup/iteration setting, quiet threshold or acceptance changes.",
+  "host_load_accounting": {
+    "logical_cpus": 10,
+    "machine_capacity_percent_limit": 20,
+    "ps_units": "100percent per logicalCPU; aggregate limit200percent on this10coreMac",
+    "earlier_strict_guard": "V3usedonecore100percent and aborted the first process at111.3percent (11.13percent machine capacity). No completed validated measurement launches; all aborted outputs retained. This correction precedes any completed Mac comparison; no ns values were reviewed."
+  },
+  "measurement_activity_policy": "Same as current Mac V5:continuous60secondreadiness;retainallCPUobservations;rejectactivecompetingbuild/test;unchanged6percentpairedprecision. No cross-machine or interrupted-attempt pooling.",
+  "head_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "frozen_reviewers": [
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "paired.py",
+      "sha256": "cff03cac67bb33aa19829cf02a190f0e5b44624e59fc8b29c1c48a77e7ddd2c5"
+    },
+    {
+      "path": "accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    }
+  ],
+  "published_source_equivalent_head": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+  "wait_for_complete_cohort": "/tmp/methodcache-final-local-cpu-continuation-v4",
+  "original_f05_inputs_sha256": "93bd00cd762783f67aaa3a5556dfe60e464ea340ff92152b5a856770dabaf774",
+  "preserved_waiting_only_attempt": "/tmp/methodcache-final-prefix-followup-v2",
+  "continuation_inputs_sha256": "c4571fa2afe96fe0fccea4e5fc8d255d42a5baf89f69934e9e694a0e1203a4d1",
+  "preserved_waiting_only_attempts": [
+    "/tmp/methodcache-final-prefix-followup-v2",
+    "/tmp/methodcache-final-prefix-followup-v3"
+  ],
+  "current_source_equivalent_published_head": "2a9b47dc3d8a7373dd4a5e01a4e8007b7c307632"
+}

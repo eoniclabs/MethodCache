@@ -1,0 +1,128 @@
+{
+  "files": [
+    {
+      "path": "HttpDeferredIdentityTests.cs",
+      "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
+    },
+    {
+      "path": "inputs-template.json",
+      "sha256": "30de0f6226bca1e2dce5540e9fcf030717fbfe9e2ec1a16fcefcc427934a9fa0"
+    },
+    {
+      "path": "prepare-dispatcher.log",
+      "sha256": "3b12ab17d1bdc1596111aff8ffbbb4758d5529e0cb6a13295f66887a3ad6cbb7"
+    },
+    {
+      "path": "prepare-worker.log",
+      "sha256": "2c28f0ca8ca5e0e5fad3dc45e08ca9777c603b643b915018182a826a1c8c4dac"
+    },
+    {
+      "path": "prepared.json",
+      "sha256": "28b7ac0600847bc684fc25a8622c20319b6073695c7970a2ec246e86b313e9d6"
+    },
+    {
+      "path": "deferred-id.patch",
+      "sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "5e49494ef2c9d5d61e13f67cd33d66c2497e534923a45388f70c30194c53b77c"
+    },
+    {
+      "path": "prepare.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "prepare-started.json",
+      "sha256": "f98f14506d20eb1859124c4c8cf37916bdd0bd559c13b00c03d2aaa6c28d228e"
+    },
+    {
+      "path": "run.py",
+      "sha256": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "prepare-dispatcher.pid",
+      "sha256": "aa8ebd7cf4469426080234912fa55553c5a992987c3a741200bc31622c38424c"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "41915da74cdbacd2023f670cc3d426cd7354fd77fc8d0da894ff8b07e2114085"
+    },
+    {
+      "path": "worker-prepare.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "prepare.py",
+      "sha256": "63461ed46383749f09ad49c2409df4b09dce41157b6785e694770716811ae631"
+    },
+    {
+      "path": "preparation/baseline-admin-semantics.log",
+      "sha256": "c821008d907e1343e858fd840e2e1fc7ae9629e6868b66b2384ca08b5ea262fb"
+    },
+    {
+      "path": "preparation/baseline-admin-semantics.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/candidate-build.log",
+      "sha256": "a010b63bfff57b0ec3cec56c557559938aca9921e4b6170c51b321e0d124070e"
+    },
+    {
+      "path": "preparation/candidate-http-all.log",
+      "sha256": "7fdc2a94e852a60d8c4950eb9cfddad311d856d91d4c516960a4980319a1b172"
+    },
+    {
+      "path": "preparation/candidate-admin-semantics.log",
+      "sha256": "f7c1fac91df46543ac3108a7982b11172ccb0ed8f6a4dc66997ec3d43d981329"
+    },
+    {
+      "path": "preparation/candidate-http-all.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/candidate-build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/candidate-core-all.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/baseline-build.log",
+      "sha256": "16de03fe1c4e55aaaa167450e937e4e24422e59462bd9cb4a9f6259325d40f1f"
+    },
+    {
+      "path": "preparation/baseline-build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/candidate-core-all.log",
+      "sha256": "8e119c4e36c3058de57bf4e279b0b0e8b2556ceafa50fd635faa1e785d33f50e"
+    },
+    {
+      "path": "preparation/candidate-admin-semantics.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "preparation/baseline-admin/_019799c52fb2_2026-10-17_05_03_39_net10.0.trx",
+      "sha256": "afcb07bc28bba325b5644585397a48534b9596f4af56e8425600e6472a41934a"
+    },
+    {
+      "path": "preparation/candidate-http/_00b595820068_2026-10-17_05_03_54_net10.0.trx",
+      "sha256": "993c740ac622e6454fc9e42187ec6480f241d283b02644064c32291db2cddf9d"
+    },
+    {
+      "path": "preparation/candidate-core/_4777aadbde2b_2026-10-17_05_04_05_net10.0.trx",
+      "sha256": "f7346960f3a786cf8ab32bf67a1001f772b65f45d0b40c053d3f4e4d9c5da3e7"
+    },
+    {
+      "path": "preparation/candidate-admin/_6ec5eaca0a48_2026-10-17_05_03_52_net10.0.trx",
+      "sha256": "8459305c8ce855acb14a2a1e0a20357efdc7d7cdccf8ad692c674ca89fb1077c"
+    }
+  ]
+}

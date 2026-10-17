@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T07:03:03.082687+00:00",
+  "scope": "Postprocessing-only correction: collector mistakenly targeted prior8case isolated study while validating f438sourcepath, so sourceguard correctly failed. Allactual14case sources/binaries independentlyrecheckedunchanged. Only collector folder literal corrected; no measurement/input/guard/acceptance change or rerun. First failed collector retained privately.",
+  "old_verifier_sha256": "e2c5dfde5fbd0c6fae0fb84f28ccc9bd1a2b06f6c10907e94fe552c9394873fa",
+  "corrected_verifier_sha256": "c80b74bb12b5534de5d6caf30d1b4f957a6c3fc91137f7088b565b58a4c3be4d",
+  "from": "methodcache-design-bench-20261015/http-deferred-id-time32-v1",
+  "to": "methodcache-design-bench-20261015/http-cumulative-time32-v1"
+}

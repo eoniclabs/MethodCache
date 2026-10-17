@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-17T06:23:36.544497+00:00",
+  "scope": "Completed group integrity only; no timing verdict or partial means. Full14case cohort remains live. Quiet60 enforced by unchanged frozen runner; individual preflight samples were not retained.",
+  "group": 1,
+  "launches": 40,
+  "observation_samples": 1174,
+  "external_builds": 0,
+  "affinity_scope": "Every observed .NET thread stays within CPUs0-15; every launch has actual thread-affinity coverage.",
+  "inputs_sha256": "f660165dca58da1155f4c4ad6ecaf34459d81632c816bf1e9dbacc9642404933",
+  "prepared_sha256": "10c114b27da1a08145fa493bbde9138d1a4f13196a9192cd7cd9b922023bcd54",
+  "files": [
+    {
+      "path": "results/group-01/launches.jsonl",
+      "sha256": "2f99b15fb3bd28a17c9feab4ac9e3e8e65166df82b74b7279f330413cd088cfc"
+    },
+    {
+      "path": "results/group-01/observations.json",
+      "sha256": "31e150d31ad6477c806a29d6567438c2d233c1fff35f733bfb69f93a0402b1d6"
+    },
+    {
+      "path": "results/group-01/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ]
+}

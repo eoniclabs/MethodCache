@@ -2,6 +2,35 @@
 
 ## Current gate and checkpoint (2026-10-17)
 
+Latest completed confirmations (32 warmups, twelve actual iterations) narrow the remaining
+cumulative timing failures to HTTP. The fixed nine-case quiet-Mac study verifies all 360
+launches and passes: eight cases faster, generated GUID sync hit unchanged (ratio 0.985,
+95% interval 0.963–1.007). Actual measured A2 libraries are preserved; the later A3 patch
+changes only the two HTTP implementation files outside these nine call paths. The prior
+Nimbus GUID slowdown remains historical platform-specific evidence, not erased or pooled.
+[Complete nine-case report, provenance and raw measurements](../../plans/design-benchmarks/mac-nonhttp-warm32-v2/).
+
+The fixed fourteen-case Nimbus HTTP confirmation verifies all 280 launches against f43854d
+and **fails** on A2+A3. Four bounded cold-publication cases are 36.5–39.5% slower; listening
+304 revalidation after invalidation is 6.5% slower (interval 1.047–1.083), and the other
+listening 304 case has an overly wide interval (1.014–1.082). All five growing-set miss
+cases are unchanged; the selected variant hit is faster. Original and accepted-rule
+reviewers both fail. No HTTP time exception is added. All frozen workload source bodies,
+raw measurements and verifier repair receipt are retained. The repaired collector had
+selected the earlier eight-case folder; independent checks of the actual fourteen-case
+sources/binaries pass, with no changed or rerun measurements.
+[Complete fourteen-case failed report and evidence](../../plans/design-benchmarks/http-cumulative-time32-v1/).
+
+The latest local code checkpoint is `f49264198631167d22d8c19e8b396d147646a87d`
+(deferred local HTTP administrative IDs). Its complete 67-case cumulative cost profile
+passes with the same six accepted costs, and local HTTP334/Core1047 tests pass (one
+intentional opt-in Core soak skip). At collection time PR #134 was published at `2a9b47d`, with all four
+statuses successful; that CI does not validate the newer HTTP patch.
+Remaining work is to resolve the HTTP timing failures, publish the current evidence/code,
+and run the full required CI on the actual final head. The historical observations below
+retain their original source points and verdicts.
+
+
 Johan replaced the historical multi-PR BenchmarkDotNet matrix with the two-step
 [§10 cost-profile and paired-time gate](design-spec.md#10-prestandagrind).
 The cancelled matrix's completed reports remain evidence for their original revisions;
@@ -114,6 +143,85 @@ reproduces the result with byte-identical accepted rules. This confirms cost
 acceptance for the node-hash reuse correction, separately from the open GUID
 time regression and the original insufficient-precision results.
 [Complete candidate cost profile and independent review](../../plans/design-benchmarks/eviction-cumulative-cost-v1/).
+
+The complete quiet-Mac cumulative study now verifies **53 cases, ten alternating
+pairs and 1,060 fresh-process launches**. The accepted-rule report still fails:
+23 cases are faster, nine unchanged, two precisely slower and nineteen too noisy.
+The precise regressions are the two listening cold-HTTP publication cases,
+21.9% and 24.4% slower. The corresponding non-listening estimates are also higher,
+but their intervals are too wide. Task/ValueTask misses improve and the four
+sync/int controls improve. GUID sync remains just outside the precision limit.
+All original failed and interrupted groups are preserved; no individual launches
+are removed or pooled across machines.
+[Complete 53-case report and raw evidence](../../plans/design-benchmarks/mac-final-cpu53-v4/).
+
+The complete F05 follow-up separately verifies all **thirteen predeclared cases
+and 260 launches**: the twelve affected generated GUID misses and the formerly
+noisy listening short-prefix sync hit. All thirteen are faster and precise;
+both frozen and current-rule reviews pass. This is a thirteen-case follow-up,
+not a relabelling of the prior complete failed 28-case study. The other fifteen
+previously precise resident-hit cases do not execute the eviction/expiry-only
+node-hash correction; actual binary provenance remains explicit.
+[Complete F05 follow-up](../../plans/design-benchmarks/mac-prefix-followup-v4/).
+
+Retained per-iteration traces reveal phase drift in the short warmup job. A fixed
+eight-process diagnostic compares four and 32 warmups with identical compiled
+workloads and shipping libraries. The cold workload settles after longer warmup;
+Nimbus revalidation was already steady in this probe, unlike the earlier Mac
+traces. This diagnostic is unpaired and supplies no acceptance decision or exact
+JIT attribution. The original failed reports remain failed. A complete fixed
+whole-case confirmation, selected before its means, uses 32 warmups and the same
+strict six-percent precision and accepted rules.
+[Warmup diagnostic](../../plans/design-benchmarks/warmup-stability-probe-v1/).
+
+A separate instrumented HTTP storage diagnostic identifies publication as a useful
+investigation target. Its wrapper changes absolute timings, so its bucket totals
+are not substituted for formal performance results and do not establish causal
+percentages. Commit `f4926419` defers opaque local admin-ID calculation until
+inspection and memoizes against the exact immutable metadata snapshot. IDs,
+removal behavior and conservative byte-budget accounting remain unchanged.
+Its complete isolated eight-case comparison verifies 160 launches: all four cold
+miss cases improve 5.6–7.0%, all four revalidation cases are unchanged, and every
+interval meets precision. This is A2 versus A2 plus the correction, not cumulative
+acceptance against f43854d. Eight semantic admin cases pass before and after;
+the existing formal cold-publication gate is the prior failing regression.
+Current-root tests pass 334 HTTP and 1,047 Core cases with one intentional
+opt-in soak skip. No new slowdown waiver has been added.
+[Instrumented diagnostic](../../plans/design-benchmarks/http-cold-stage-profile-v1/),
+[complete isolated timing](../../plans/design-benchmarks/http-deferred-id-time32-v1/) and
+[exact patch and functional receipts](../../plans/design-benchmarks/http-deferred-id-functional-v1/).
+
+The correction's complete cumulative cost profile against f43854d also passes:
+**all 67 cases on both sides, zero execution errors, zero failing costs and the
+same six accepted costs**. All 222 build-file hashes verify before and after
+measurement; independent archive and local review reproduce the terminal result.
+Redis HTTP hits retain ten read-only commands and SQL HTTP hits two commands.
+Temporary exact-label providers are gone and shared providers remain untouched.
+This establishes current step 1 independently of timing and new-head CI.
+[Complete cost profile, receipts and independent review](../../plans/design-benchmarks/http-deferred-id-cost-v1/).
+
+The fixed post-warmup confirmation retains all 23 selected whole cases: nine
+non-HTTP cases and fourteen HTTP cases. Both revisions use 32 warmups and twelve
+actual iterations. The existing growing-set HTTP miss workloads retain their
+request and cache-growth behavior, with an equal fixed 8,192 invocations per
+iteration to bound pilot/warmup growth; they are not reset or renamed as pure
+cold publication. Bounded cold-publication cases remain separate. The original
+failed 53-case and older short-warmup reports remain intact. Neither a partial
+case set nor an isolated optimization clears cumulative V04.
+
+Frozen source bodies are retained per platform. Nimbus uses thirteen exact harness
+files verified identical in its baseline and changed trees; the four CostProfile
+files also match the exact head Git objects. Mac adds setup-only POSIX/QoS guards
+and separate generated-prefix listener verification. These platform harnesses are
+not claimed byte-identical, and no results are pooled across them. Each paired
+comparison uses its own matching sources and recorded binaries on both sides.
+
+The first Mac readiness attempt reserves no timing result: after 881 readiness
+samples without sixty consecutive quiet seconds it is stopped before the first
+launch, releasing only its own reservation. The separate whole-case confirmation
+reuses the verified compiled libraries and waits for readiness before reserving
+capacity, then repeats the existing guarded readiness under the bounded lease.
+[Complete zero-launch readiness evidence](../../plans/design-benchmarks/mac-zero-readiness-v1/).
 
 A separate complete helper-inlining trial retains sixty launches across the three
 generated return shapes. Every interval is too wide, so the attribute change is

@@ -1,0 +1,107 @@
+{
+  "scope": "Complete cumulative f438 vs A2+deferred-local-admin-ID cost profile: all67cases/side,0executionerrors,0failing,6unchangedacceptedcosts. Independent local review reproduces remote exit0;all222binaryfiles and original archived hashes independently verified. Redis HTTP10commands allreads;SQL HTTP2commands. No new limits, other providers untouched; own labeled temporary backends removed. Separate from still-open cumulative timing and published-head CI.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "raw/accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "raw/compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "raw/completed-integrity.json",
+      "sha256": "4ff664015386c2bfe131a846b7ecaf0274b392e4ec7523c962196d27cc807495"
+    },
+    {
+      "path": "raw/dispatcher.log",
+      "sha256": "3beed7625386e15ef6a887f63eb8cce35a0fb71b66c8ae4f6f9c7b86e393368d"
+    },
+    {
+      "path": "raw/dispatcher.pid",
+      "sha256": "6079a6557e8971003453be4e88c0a89235f3345044b569faf23bb12c34416b39"
+    },
+    {
+      "path": "raw/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/inputs.json",
+      "sha256": "b1b2d7bdbb67cc890c565e5aeead61ad258149eebd95eba1cde9fc64c84863e1",
+      "original_sha256": "23d4ccf667c52119cbcb4376e62bfcbc0ae206d8ec5b6bbb7fc62eb4cb8e91c2",
+      "catalogue_paths": [
+        [
+          "sources",
+          "base",
+          "binaries"
+        ],
+        [
+          "sources",
+          "head",
+          "binaries"
+        ]
+      ]
+    },
+    {
+      "path": "raw/receipt.json",
+      "sha256": "82bc5a21ae7080912ced846b3cdfd66bea2839ffb2ef702baf66b230b74d46df"
+    },
+    {
+      "path": "raw/results/base.jsonl",
+      "sha256": "eec645e994476b15f8a2efc2fc619db3c5be1c562d3b6653227f080e9f38ab56"
+    },
+    {
+      "path": "raw/results/base.log",
+      "sha256": "eec645e994476b15f8a2efc2fc619db3c5be1c562d3b6653227f080e9f38ab56"
+    },
+    {
+      "path": "raw/results/head.jsonl",
+      "sha256": "e55fdb536c47c574a69801769d89a84720c1f6586cbfd957aa2d6632bd165b11"
+    },
+    {
+      "path": "raw/results/head.log",
+      "sha256": "e55fdb536c47c574a69801769d89a84720c1f6586cbfd957aa2d6632bd165b11"
+    },
+    {
+      "path": "raw/results/report.md",
+      "sha256": "be525a8af3a6ed906268e9d09ba7904ac0be990385206d7a089a315cceb27499"
+    },
+    {
+      "path": "raw/results/review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/results/review.log",
+      "sha256": "df98d16aabdcef1d51a14827c5bb11c8c135ad45b78bc7f9734d9a7a91a003c7"
+    },
+    {
+      "path": "raw/run.py",
+      "sha256": "419f2730dd96caf09ba3761d42396c0742e370a72ef14cdc234281188a6df08b"
+    },
+    {
+      "path": "raw/started.json",
+      "sha256": "2431c39578a191dadce06bdfed405f4ed3509376f64f2ffad13be2224c934515"
+    },
+    {
+      "path": "raw/worker.log",
+      "sha256": "11fae05fdb85d33e3f746a1c8c8b3d978e545d4fef04741718bd3c74ef72abfa"
+    },
+    {
+      "path": "report.md",
+      "sha256": "be525a8af3a6ed906268e9d09ba7904ac0be990385206d7a089a315cceb27499"
+    },
+    {
+      "path": "review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "review.log",
+      "sha256": "df98d16aabdcef1d51a14827c5bb11c8c135ad45b78bc7f9734d9a7a91a003c7"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

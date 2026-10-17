@@ -1,0 +1,50 @@
+{
+  "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "baseline_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "candidate_patch_sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+  "prepare_label": "design-http-id-deferral-v1-prepare",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "pairs": 10,
+  "remaining_groups": [
+    0,
+    1
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Candidate only: deferlocalopaqueHTTPIDuntiladminreadandmemoizesnapshot;originalhashbytes/nativeIDandfeaturespreserved. Full53baselinegatefailedtwoColdMiss cases before optimization. Eight exact affected scenarios, no accepted-rule changes.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "63461ed46383749f09ad49c2409df4b09dce41157b6785e694770716811ae631"
+    },
+    {
+      "path": "deferred-id.patch",
+      "sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00"
+    },
+    {
+      "path": "HttpDeferredIdentityTests.cs",
+      "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "41915da74cdbacd2023f670cc3d426cd7354fd77fc8d0da894ff8b07e2114085"
+    },
+    {
+      "path": "run.py",
+      "sha256": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    }
+  ]
+}

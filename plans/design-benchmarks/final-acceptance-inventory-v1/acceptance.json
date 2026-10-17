@@ -233,7 +233,7 @@
       "required_outcome": "KeyBuilder-konstruktorn/ref KeyBuilder och reservbyggaren kompilerar utan ref-escape; inga extra hit-allokeringar mot respektive TFM/nyckelforms baslinje.",
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
-      "state": "Functional assertions pass on the published 3e9df33 checkpoint. Cost acceptance is established separately. Cumulative timing and affected F05 confirmation remain open; earlier failed/noisy reports are retained.",
+      "state": "Functional assertions and scoped F05 prefix acceptance pass. Nine-case non-HTTP timing confirmation passes. Cumulative gate remains open for HTTP cold publication and listening304; all prior failed/noisy reports retained.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "open",
       "reviewed_sources": [
@@ -260,7 +260,12 @@
         }
       ],
       "additional_cost_evidence": "plans/design-benchmarks/final-prefix-cost-v1/manifest.json",
-      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Time requirements remain open."
+      "cost_profile": "All48generated-prefixcasesbothsides;24hitcostsunchanged;zeroerrors/failures/acceptedexceptions. Main67casecostprofilealso passes. Time requirements remain open.",
+      "latest_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json"
+      ],
+      "affected_f05_confirmation": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json"
     },
     {
       "id": "P01",
@@ -917,7 +922,7 @@
       "required_outcome": "Samma instrument; inga dekoratordubletter; allocation- och tidsgrind klaras.",
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
-      "state": "Functional assertions pass on the published 3e9df33 checkpoint. Cost acceptance is established separately. Cumulative timing and affected F05 confirmation remain open; earlier failed/noisy reports are retained.",
+      "state": "Functional assertions and scoped F05 prefix acceptance pass. Nine-case non-HTTP timing confirmation passes. Cumulative gate remains open for HTTP cold publication and listening304; all prior failed/noisy reports retained.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "open",
       "reviewed_sources": [
@@ -929,7 +934,12 @@
           "path": "tests/MethodCache.Core.Tests/Telemetry/CoreTelemetryTests.cs",
           "sha256": "2baeaabb9a4a1daa7a439bd3f9227a3f7a2bc35f2f945050cd227bf84f16a333"
         }
-      ]
+      ],
+      "latest_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json"
+      ],
+      "affected_f05_confirmation": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json"
     },
     {
       "id": "T04",
@@ -971,7 +981,7 @@
       "scenario": "CsCheck \u00f6ver slumpade seed, prefix/argument och alla delningspunkter; tomma delar, UTF-16-surrogates, escaping, olika buffertstorlekar, Append efter lookup och reservnycklar.",
       "required_outcome": "Delad hash \u00e4r exakt samma som helstr\u00e4ngshash f\u00f6r samma sluttext/seed; growth och Append l\u00e4mnar aldrig gammal hash aktiv.",
       "validation_report": "docs/developer/design-prefix-validation.md",
-      "validation_report_sha256": "a6b747c8e63ce18e5de9e81365c8301e9e5f2207054d5cfb5f0f66de6bed4271",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -988,7 +998,7 @@
       "scenario": "Tvinga hashkollisioner via en intern testhook; skriv/h\u00e4mta/ers\u00e4tt/ta bort genom string-, span- och builder-v\u00e4gar, inklusive konkurrerande publicering och eviction.",
       "required_outcome": "Bara identisk ordinal nyckel \u00e4r en tr\u00e4ff; alla v\u00e4gar hittar samma post; borttagning och frekvenssp\u00e5rning fungerar trots kollisioner.",
       "validation_report": "docs/developer/design-prefix-validation.md",
-      "validation_report_sha256": "a6b747c8e63ce18e5de9e81365c8301e9e5f2207054d5cfb5f0f66de6bed4271",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1005,7 +1015,7 @@
       "scenario": "Tv\u00e5 processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt \u00e4ven policy under ett f\u00e5ngat anrop.",
       "required_outcome": "Nyckeltext och L2-identitet of\u00f6r\u00e4ndrade; samma data delas och invalidieras; inget processhashv\u00e4rde lagras/s\u00e4nds och snapshot-isoleringen best\u00e5r.",
       "validation_report": "docs/developer/design-prefix-validation.md",
-      "validation_report_sha256": "a6b747c8e63ce18e5de9e81365c8301e9e5f2207054d5cfb5f0f66de6bed4271",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1026,7 +1036,7 @@
       "scenario": "Granska algoritm/seed/hotmodell; k\u00f6r algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med l\u00e5nga gemensamma prefix och kontrollerad arbetsm\u00e4tning.",
       "required_outcome": "Dokumenterat skydd mot avsiktlig hashflooding; regressioner m\u00e4ts utan sleeps eller sk\u00f6ra nanosekundasserts. Slumpm\u00e4ssig f\u00f6rdelning ensam r\u00e4knas inte som godk\u00e4nnande.",
       "validation_report": "docs/developer/design-prefix-validation.md",
-      "validation_report_sha256": "a6b747c8e63ce18e5de9e81365c8301e9e5f2207054d5cfb5f0f66de6bed4271",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1043,10 +1053,10 @@
       "scenario": "K\u00f6r fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-v\u00e4gen p\u00e5 net10.0 och AOT, med korta/l\u00e5nga prefix och lyssnare av/p\u00e5.",
       "required_outcome": "Samma kontrakt och cachebeteende; manifest of\u00f6r\u00e4ndrat; full-path-resultat och allokeringar klarar \u00a710, ingen funktion tas bort f\u00f6r vinsten.",
       "validation_report": "docs/developer/design-prefix-validation.md",
-      "validation_report_sha256": "a6b747c8e63ce18e5de9e81365c8301e9e5f2207054d5cfb5f0f66de6bed4271",
-      "state": "Functional assertions pass on the published 3e9df33 checkpoint. Cost acceptance is established separately. Cumulative timing and affected F05 confirmation remain open; earlier failed/noisy reports are retained.",
+      "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
+      "state": "Scoped prefix full-path acceptance established: 13 complete affected whole cases pass after node-hash reuse, plus 15 earlier precise unaffected resident-hit cases with actual provenance retained. No studies pooled. JIT/native/vendor correctness and costs pass; cumulative V04 remains open.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
-      "timing_gate": "open",
+      "timing_gate": "PASS for scoped F05 prefix comparison; separate cumulative V04 remains open",
       "reviewed_sources": [
         {
           "path": "tests/MethodCache.CompatTests/VendorCompatibilityTests.cs",
@@ -1080,7 +1090,9 @@
       "candidate_time_evidence": [
         "plans/design-benchmarks/eviction-cumulative-time-v1/manifest.json",
         "plans/design-benchmarks/mac-eviction-cumulative-time-v1/manifest.json"
-      ]
+      ],
+      "affected_followup_evidence": "plans/design-benchmarks/mac-prefix-followup-v4/manifest.json",
+      "unaffected_hit_scope": "Only EvictNode/OnTimerExpired node-hash memo calls changed; resident-hit paths and fields/layout unchanged. Four int controls also pass complete later53case study."
     },
     {
       "id": "H01",
@@ -1104,8 +1116,21 @@
         {
           "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
           "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        },
+        {
+          "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+          "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+        },
+        {
+          "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+          "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+          "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
         }
-      ]
+      ],
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json"
     },
     {
       "id": "H02",
@@ -1325,8 +1350,21 @@
         {
           "path": "tests/MethodCache.HttpCaching.Tests/CoreHttpAcceptanceTests.cs",
           "sha256": "fda92e120c53e59f2c91d695241f9753643b23e4c301f63464b2cbedfec2386c"
+        },
+        {
+          "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+          "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+        },
+        {
+          "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+          "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+        },
+        {
+          "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+          "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
         }
-      ]
+      ],
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json"
     },
     {
       "id": "V01",
@@ -1334,7 +1372,7 @@
       "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
       "required_outcome": "Inga nya of\u00f6rklarade skips; relevanta regressions/fault/property/soak-jobb gr\u00f6na.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "8d68cff0384fd7ff082a9daa474c5de5be8d071536803be18a0a994e50a74cba",
+      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1345,7 +1383,9 @@
         },
         {
           "path": "build/ci/windows.ps1",
-          "sha256": "7351f2031cdf8f9baf0e02d849610b2d50cccf6e80b7618f532da05d93d2176f"
+          "sha256": "d5ceeed1dbb2b9f5dd241d484a09084a9a78612bdad3da8b4fa9aff5c19d327f",
+          "previous_worktree_crlf_sha256": "7351f2031cdf8f9baf0e02d849610b2d50cccf6e80b7618f532da05d93d2176f",
+          "byte_verification": "Exact Git LF bytes; prior hash covered identical worktree text checked out as CRLF by eol=crlf. No source change."
         },
         {
           "path": "tests/Directory.Build.props",
@@ -1365,7 +1405,7 @@
       "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
       "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "8d68cff0384fd7ff082a9daa474c5de5be8d071536803be18a0a994e50a74cba",
+      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1392,7 +1432,7 @@
       "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; anv\u00e4ndar-README/package-README matchar nya API.",
       "required_outcome": "Ingen drift eller d\u00f6da exempel; endast utgiven kontraktsyta fryses.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "8d68cff0384fd7ff082a9daa474c5de5be8d071536803be18a0a994e50a74cba",
+      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "not an independent timing requirement",
@@ -1418,8 +1458,8 @@
       "scenario": "\u00a710 steg 1 per f\u00f6r\u00e4ndring; steg 1 och steg 2 f\u00f6r hela baslinjen mot f43854d.",
       "required_outcome": "Kostnadsprofilen gr\u00f6n eller godk\u00e4nd i `accepted.json`; ingen f\u00f6rs\u00e4mring i den parade tidsm\u00e4tningen.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "8d68cff0384fd7ff082a9daa474c5de5be8d071536803be18a0a994e50a74cba",
-      "state": "Functional assertions pass on the published 3e9df33 checkpoint. Cost acceptance is established separately. Cumulative timing and affected F05 confirmation remain open; earlier failed/noisy reports are retained.",
+      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
+      "state": "All67case cumulativeA3 costs pass with unchanged six accepted costs. Final timing FAIL: four coldHTTP regressions, one listening304 regression and one wide listening304 interval; fixed9case nonHTTP confirmation passes.",
       "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
       "timing_gate": "open",
       "reviewed_sources": [
@@ -1446,12 +1486,19 @@
       "siphash_cpu_gate": "QuietMac133 all5casespasswithtwoexactauthorized8percentintcontrols;original-ruleandnoisyreportsretained.",
       "siphash_cpu_evidence": "plans/design-benchmarks/mac-cpu-pr133-formal-v1/manifest.json",
       "cumulative_time_evidence": "plans/design-benchmarks/final-paired-time-v3/manifest.json",
-      "cumulative_time_state": "OPEN: original71-case report retained; corrected misses confirmed in independent complete studies; current source-equivalent53-case quiet-Mac cohort and thirteen affected F05 cases queued. GUID hash-control is diagnostic only, with no new waiver."
+      "cumulative_time_state": "OPEN cumulativeV04: fixed9caseMac32warm confirmation PASS(8faster/1same/360launches); fixed14caseNimbusHTTP32warm confirmation FAIL(4coldslower/1listening304slower/1wide/280launches). No new waiver; all prior failed reports retained. F05 scoped prefix acceptance passes.",
+      "latest_cumulative_time_evidence": [
+        "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+        "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json"
+      ],
+      "isolated_http_correction_evidence": "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json",
+      "current_cumulative_cost": "PASS:A3all67cases/side;0executionerrors/0failing/6unchangedaccepted;all222buildfilesverified;independentreview0.",
+      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json"
     }
   ],
-  "review_notes": "All76explicitrows mapped to inspected assertions. Exact published 3e9df33 functional checkpoint is green, including G05/native-prefix/test-support changes. G14/F05/T03/V04 timing remains open; this is not76passes. Historical failed timing/per-change profiles are retained.",
+  "review_notes": "All76explicitrows mapped to inspected assertions; final actual-head CI and HTTP timing remain incomplete. Latest published2a9checkpoint is green; localA3 has passing targeted tests and full cost profile. This is not76passes.",
   "current_runtime_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
-  "current_timing_state": "OPEN:cost67passes/sixunchangedaccepted;correctedmissesconfirmed;GUIDhashlookupdiagnosticnotwaiver;quiet53cohortfourcompletegroupsretained,buttwoCPU04attemptsinterference-rejected;remainingfixedcasesand13F05followupnotcompleted.",
+  "current_timing_state": "OPEN cumulativeV04: fixed9caseMac32warm confirmation PASS(8faster/1same/360launches); fixed14caseNimbusHTTP32warm confirmation FAIL(4coldslower/1listening304slower/1wide/280launches). No new waiver; all prior failed reports retained. F05 scoped prefix acceptance passes.",
   "candidate_source_changes": [
     {
       "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
@@ -1538,5 +1585,43 @@
   "interference_evidence": {
     "path": "plans/design-benchmarks/local-final-interference-v1/manifest.json",
     "sha256": "8d399a6d1d0faa628f999c4b69e5b707d50ddce7ca16efde32a3c4e057c4b05c"
+  },
+  "new_complete_confirmation_evidence": {
+    "mac_nonhttp": "plans/design-benchmarks/mac-nonhttp-warm32-v2/manifest.json",
+    "nimbus_http": "plans/design-benchmarks/http-cumulative-time32-v1/manifest.json",
+    "mac_verdict": "PASS:8faster/1same,20pairs,360launches",
+    "http_verdict": "FAIL:5slower/1wide,10pairs,280launches",
+    "original_reports_retained": true,
+    "new_time_waivers": false
+  },
+  "latest_local_code_checkpoint": {
+    "head": "f49264198631167d22d8c19e8b396d147646a87d",
+    "published": false,
+    "required_published_ci": "pending; existing published2a9CI does not establish A3 validation",
+    "actual_changes": [
+      {
+        "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+        "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+        "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+      },
+      {
+        "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+        "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
+      }
+    ],
+    "http_tests": 334,
+    "core_tests": 1047,
+    "intentional_soak_skips": 1,
+    "source_patch_sha256": "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+    "isolated_timing": "All8cases/160launches/10pairs32warm12actual PASS, coldmiss5.6\u20137.0%faster; cumulative f438 acceptance remains open.",
+    "evidence": [
+      "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
+      "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json"
+    ],
+    "cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json",
+    "cumulative_cost": "PASS all67cases with same six exceptions; no new bound."
   }
 }

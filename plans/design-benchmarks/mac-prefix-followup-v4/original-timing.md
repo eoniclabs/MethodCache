@@ -1,0 +1,15 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 57.0 | 45.9 | 0.792 | 0.770-0.815 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 557.9 | 428.0 | 0.770 | 0.760-0.780 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 682.1 | 485.9 | 0.714 | 0.710-0.718 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 994.5 | 583.9 | 0.588 | 0.586-0.590 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1110.8 | 647.6 | 0.584 | 0.577-0.590 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 569.3 | 465.8 | 0.837 | 0.815-0.859 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 694.1 | 507.9 | 0.737 | 0.723-0.751 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1006.4 | 661.7 | 0.660 | 0.649-0.671 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1125.0 | 696.6 | 0.622 | 0.613-0.631 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 583.1 | 479.8 | 0.841 | 0.819-0.864 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 715.6 | 556.8 | 0.757 | 0.736-0.779 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1016.5 | 667.4 | 0.659 | 0.647-0.672 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1144.7 | 708.0 | 0.626 | 0.613-0.639 | faster |

@@ -1,0 +1,8 @@
+{
+  "scope": "Post-node-hash correction F05 follow-up: all12GUIDmissshapes affected by node removal plus the one previously imprecise GUID listener hit. Other15precisehitcasesretainpriorcompleteF05evidence;fourintcontrolsalsoruninfixed53CPUcohort. No pooling, no partial means.",
+  "inputs_sha256": "6ae9adeb73caf776cb0fdfbc687f828cfbf3b00c2b622f2d832a51a6f9b49766",
+  "prepared_sha256": "94a137fa3027a43c39c5be6e77b40c614c6d9d7ce0eeaa3a6ca583e9b774a196",
+  "queue_sha256": "8c8c3a6b65861538afee14a722959fd9bcc3a6aa262792b661a7b8deeb8c7e53",
+  "predecessor_sequence_intent_sha256": "03adcfd8fa2fa62c3cb35955d318133939dfb0cea35be785da0d0f60d9d7b67d",
+  "zero_previous_followup_measurements": true
+}

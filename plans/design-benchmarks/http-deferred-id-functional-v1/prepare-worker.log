@@ -1,0 +1,5 @@
+Acquired exclusive lease design-http-id-deferral-v1-prepare 2026-10-17T05:03:31.491293+00:00
+Preparing worktree (detached HEAD abd0eae)
+HEAD is now at abd0eae Export normalized and complete paired timing measurements
+Candidate semantics andfullHTTP/Core tests pass; independentlyverifybeforetiming 2026-10-17T05:04:19.402871+00:00
+Releasing exclusive lease design-http-id-deferral-v1-prepare exit 0 2026-10-17T05:04:19.447499+00:00

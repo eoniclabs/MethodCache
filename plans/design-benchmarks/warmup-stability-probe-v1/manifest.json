@@ -1,0 +1,147 @@
+{
+  "scope": "Diagnostic only: fixed eight unpaired processes comparing 4/32 warmups; shows cold-workload phase drift, not an acceptance or causal attribution. Original failed reports retained.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "raw/completed-text-evidence-index.json",
+      "sha256": "9a64c795b407ee530e885e6b9ef09f1d9f3069d3dd45db8b37559f519ba382e4"
+    },
+    {
+      "path": "raw/dispatcher.log",
+      "sha256": "b34ebefa5ed3c5db88988eeaa29eedeef053e04f0f79fa173f7d24366ddb05a3"
+    },
+    {
+      "path": "raw/dispatcher.pid",
+      "sha256": "3026b7ea07984c9bb9392db139fa28e707be3119cce707af532dec4ab81734fd"
+    },
+    {
+      "path": "raw/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/inputs.json",
+      "sha256": "70ec660b695999fe1d65794cbead1bc2abcf1481014975d26144208169a3e8d4",
+      "original_sha256": "496d142d4adacbb80d448a343d786475a1d7a75550ac1f5f42d4256699ae0d94",
+      "catalogue_paths": [
+        [
+          "files_sha256"
+        ]
+      ]
+    },
+    {
+      "path": "raw/observations.json",
+      "sha256": "7da43f80bbccfd0dac6ecd09d5dfa5c2278ead2ef63ce61b42a5b81bad1c8a60"
+    },
+    {
+      "path": "raw/prepared.json",
+      "sha256": "b7c47e888502cd8609d0d58a1ebad7b91380c73a125d45afc8f27d6aed6f7b32",
+      "original_sha256": "e2c6bb11404d6e1de8f697989e8ab47c29fa2d79d11488c59a685bff3db620f8",
+      "catalogue_paths": [
+        [
+          "shipping_binaries",
+          "base"
+        ],
+        [
+          "shipping_binaries",
+          "head"
+        ],
+        [
+          "diagnostic_builds",
+          "base"
+        ],
+        [
+          "diagnostic_builds",
+          "head"
+        ]
+      ]
+    },
+    {
+      "path": "raw/process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "raw/project/Profile.csproj",
+      "sha256": "76fb06b75bf60ea9bd106f4f1bf0d7c1240d9a6f55cb63b49b27af48a9599efd"
+    },
+    {
+      "path": "raw/project/Program.cs",
+      "sha256": "aa6516bded5ae81c98cf72ac44ccba492d5473135ca1e603834590a5f516a6fe"
+    },
+    {
+      "path": "raw/results/00-base-warm4.json",
+      "sha256": "aeb6e6116ac4c9063f5fffb518a27c71d72bd82d63223a4859ece940e66d8244"
+    },
+    {
+      "path": "raw/results/01-head-warm4.json",
+      "sha256": "d9779783a9b25bb8c0946341c5331c211ccbf90bc99fe25e239a72b8473ea44d"
+    },
+    {
+      "path": "raw/results/02-head-warm32.json",
+      "sha256": "b17cc276679225fde8b20f80ad77498842df256fc6da67e6f71f3d9ede7c064a"
+    },
+    {
+      "path": "raw/results/03-base-warm32.json",
+      "sha256": "846f967296b2723dc92fe720d982024c0007877555091dbce1818385172fd6b2"
+    },
+    {
+      "path": "raw/results/04-base-warm32.json",
+      "sha256": "c2a7a8f2e5555698b50c183f8a5c6649835ed9bea01ccf9b26a16ce14514248b"
+    },
+    {
+      "path": "raw/results/05-head-warm32.json",
+      "sha256": "e52da26034f24e4857d93764a9b537bdb0cf2cf34a5018cd41fb053826ff4fdc"
+    },
+    {
+      "path": "raw/results/06-head-warm4.json",
+      "sha256": "7bf92fea041c728abf3458f41a95c9548cceef2698ea0ee7d06823bbb4a4622f"
+    },
+    {
+      "path": "raw/results/07-base-warm4.json",
+      "sha256": "1eb3a1f109fef04b9fe3f56b57f0560bbe8a0b76af60cb1c7557f0409293f9a5"
+    },
+    {
+      "path": "raw/results/base-build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/results/base-build.log",
+      "sha256": "558234957847878708432dc6277ac6dfc8e0ca3d432eb72f17f4052db914ee14"
+    },
+    {
+      "path": "raw/results/head-build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/results/head-build.log",
+      "sha256": "8111c4d8bab82b18c9851e0e2a745c7564892478005d6c82fb3b31478dba6d36"
+    },
+    {
+      "path": "raw/run.py",
+      "sha256": "cc81d9898f44e4d7f36023cde7b3cdb91c34032015455dc4f3717069fc0d0aa7"
+    },
+    {
+      "path": "raw/started.json",
+      "sha256": "8d3997b7f62173715eaf4965e6279df05fab4d42567e4cf55b2a4bea9bab1d19"
+    },
+    {
+      "path": "raw/validation.json",
+      "sha256": "1de3873819d49bc1cb8c6e8b0587dc507f83d2d17d2b28417d65eb352b5f6c5c"
+    },
+    {
+      "path": "raw/worker.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/worker.log",
+      "sha256": "dd39df2ae045f565e22b15b1d41ce7133818e5eff8ab15aa70ccb550aabc8669"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "00364aa5fec71a1a3d3db414cf95e16b3c1865d04e1f1601e3033937fd154ba7"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

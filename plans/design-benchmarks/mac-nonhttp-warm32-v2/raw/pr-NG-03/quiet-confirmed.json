@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-17T06:44:07.453978+00:00",
+  "consecutive_quiet_samples": 60,
+  "sample_period_seconds": 1,
+  "other_process_cpu_limit": 200,
+  "reservation_deadline_seconds": 1470
+}

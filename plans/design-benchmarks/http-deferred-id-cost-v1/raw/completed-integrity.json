@@ -1,0 +1,74 @@
+{
+  "utc": "2026-10-17T06:04:47.285345+00:00",
+  "scope": "All67f438vsA2+A3costcases;0executionerrors/remoteacceptedreview0/sameacceptedrules,all222binaryfilesandcontroller/preparationhashesindependentlyreverified,ownexactlabelcontainersgone;nootherserviceschanged.",
+  "files": [
+    {
+      "path": "accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "dispatcher.log",
+      "sha256": "3beed7625386e15ef6a887f63eb8cce35a0fb71b66c8ae4f6f9c7b86e393368d"
+    },
+    {
+      "path": "dispatcher.pid",
+      "sha256": "6079a6557e8971003453be4e88c0a89235f3345044b569faf23bb12c34416b39"
+    },
+    {
+      "path": "exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "23d4ccf667c52119cbcb4376e62bfcbc0ae206d8ec5b6bbb7fc62eb4cb8e91c2"
+    },
+    {
+      "path": "receipt.json",
+      "sha256": "82bc5a21ae7080912ced846b3cdfd66bea2839ffb2ef702baf66b230b74d46df"
+    },
+    {
+      "path": "results/base.jsonl",
+      "sha256": "eec645e994476b15f8a2efc2fc619db3c5be1c562d3b6653227f080e9f38ab56"
+    },
+    {
+      "path": "results/base.log",
+      "sha256": "eec645e994476b15f8a2efc2fc619db3c5be1c562d3b6653227f080e9f38ab56"
+    },
+    {
+      "path": "results/head.jsonl",
+      "sha256": "e55fdb536c47c574a69801769d89a84720c1f6586cbfd957aa2d6632bd165b11"
+    },
+    {
+      "path": "results/head.log",
+      "sha256": "e55fdb536c47c574a69801769d89a84720c1f6586cbfd957aa2d6632bd165b11"
+    },
+    {
+      "path": "results/report.md",
+      "sha256": "be525a8af3a6ed906268e9d09ba7904ac0be990385206d7a089a315cceb27499"
+    },
+    {
+      "path": "results/review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/review.log",
+      "sha256": "df98d16aabdcef1d51a14827c5bb11c8c135ad45b78bc7f9734d9a7a91a003c7"
+    },
+    {
+      "path": "run.py",
+      "sha256": "419f2730dd96caf09ba3761d42396c0742e370a72ef14cdc234281188a6df08b"
+    },
+    {
+      "path": "started.json",
+      "sha256": "2431c39578a191dadce06bdfed405f4ed3509376f64f2ffad13be2224c934515"
+    },
+    {
+      "path": "worker.log",
+      "sha256": "11fae05fdb85d33e3f746a1c8c8b3d978e545d4fef04741718bd3c74ef72abfa"
+    }
+  ]
+}
