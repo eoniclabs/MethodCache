@@ -1,0 +1,14 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=False) | 683.7 | 592.4 | 0.855 | 0.826-0.884 | faster |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=True) | 689.1 | 592.9 | 0.857 | 0.839-0.877 | faster |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False) | 9418.9 | 7461.6 | 0.792 | 0.768-0.816 | faster |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True) | 9132.6 | 6994.4 | 0.771 | 0.743-0.800 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 680.0 | 471.6 | 0.697 | 0.685-0.710 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1114.1 | 629.0 | 0.565 | 0.562-0.567 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 695.9 | 495.2 | 0.723 | 0.708-0.738 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1125.3 | 692.9 | 0.617 | 0.610-0.625 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 717.3 | 528.8 | 0.724 | 0.704-0.745 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1141.9 | 695.8 | 0.615 | 0.606-0.623 | faster |
+
+10 pairs, 10 compared, 0 slower, 0 too noisy, 0 without a time

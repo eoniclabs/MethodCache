@@ -1,0 +1,56 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "baseline_patch_sha256": null,
+  "candidate_patches": [
+    "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+    "4b37580dba70630299142001b38b1972344d1281cf0c27354b83f0f308995a00",
+    "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb"
+  ],
+  "prepare_label": "design-http-client-index-candidate-v1-prepare",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "pairs": 10,
+  "warmups": 32,
+  "remaining_groups": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)",
+    "HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"
+  ],
+  "purpose": "Prepared Linux candidate: exact224productionparent5257fb63plus2fileclient-indexpatch92764360;samefrozen8harnesssourcesandunchangedcompiledhelper;forfull67casecostprofilebeforeadoption. No new accepted limits or timing verdict from preparation.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "7e6a1ab18d39c2c886e5fd1649eac59b48a6ad4d32925626f8e2e4dec2061d3c"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "7dfcbfc6ab930d6b26da06775ced4eef8a3e12407ea4ffb3cc9d6c0db826e2f2"
+    },
+    {
+      "path": "production.patch",
+      "sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109"
+    }
+  ],
+  "runner_origin_sha256": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+  "published_source_checkpoint": "5257fb63fb72393c817d74292e989299ede374d2"
+}

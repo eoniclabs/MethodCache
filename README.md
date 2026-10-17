@@ -265,6 +265,7 @@ as a count; recovery does not survive process exit. `KeepCookies=true` preserves
 on the client's handler; send any cookie the API needs as an explicit `Cookie` header. Redirects the transport
 follows are not stored under the URL you asked for, retries (Polly, standard resilience) get full responses, and a
 `GET` with a body goes to the origin.
+Local client-tag invalidation reclaims matching bodies with a scan of resident HTTP entries; its work grows with the entry count.
 See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring

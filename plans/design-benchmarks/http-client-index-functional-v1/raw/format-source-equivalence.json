@@ -1,0 +1,24 @@
+{
+  "scope": "Only initializer whitespace changed after passing targeted22/fullHTTP345/Core1055. Both production files are byte-identical to tested sources; original test source retained; final CI will compile formatted test.",
+  "sources": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "tested_sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff",
+      "formatted_sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff",
+      "only_whitespace_changed": false
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "tested_sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1",
+      "formatted_sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1",
+      "only_whitespace_changed": false
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpClientInvalidationTests.cs",
+      "tested_sha256": "c5aa65d5575c1dda82ce5c66ae49d30ca1d7f3dc4f88565f218d4ba683372522",
+      "formatted_sha256": "cb841e1414a8d78298e0c4fa07de494aa2aadb372932142ad16054170e5dd284",
+      "only_whitespace_changed": true
+    }
+  ],
+  "production_patch_sha256": "92764360476331349eb6d56cc231727c16ac1721182c99c911e796d26f0fe109"
+}

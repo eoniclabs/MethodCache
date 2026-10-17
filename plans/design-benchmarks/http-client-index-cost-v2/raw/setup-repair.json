@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T10:04:11.688559+00:00",
+  "failed_inputs_sha256": "ab2473281b2a2e5eb43c6a09b6efe217d779af9906cafd5f2c7c467c6d58ef74",
+  "failed_worker_log_sha256": "a903dea6282a741716a2006a127a4efff5419add1946b07c693be3aabf927e2f",
+  "failed_base_log_sha256": "39d1de99df7d0bc3913bcc2dbe32e305f8cb0263128e0b6755fa008e1465a392",
+  "zero_operations": true,
+  "scope": "Full67casecumulativecostagainstf438withclient-index92764360. Useoriginalstandalonef438costbuildandnewstandalonehead,same7compiledharnesssourcefilesandpinnedSDK/backendimages. Failedv1launchedzerooperationsandisretained;no partialdata reused;no source/binary rebuilt. Canonical limits unchanged."
+}

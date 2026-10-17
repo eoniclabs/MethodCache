@@ -1,0 +1,56 @@
+{
+  "prepared_sha256": "e5b77ef895a80c7380b5a08fdc1e79d02738124b9859418c4a8d27b64bdf453c",
+  "origin_helper_prepared_sha256": "10c114b27da1a08145fa493bbde9138d1a4f13196a9192cd7cd9b922023bcd54",
+  "files": [
+    {
+      "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c",
+      "kind": "identical workload on both runtime sides"
+    },
+    {
+      "path": "helper/Program.cs",
+      "sha256": "0272ea2b8174e656f2740d71328a5b7ed7066a0b58bfa252bd71a9e07788b5c0",
+      "kind": "original helper source; unchanged compiled helper reused and verified against original preparation"
+    },
+    {
+      "path": "helper/Profile.csproj",
+      "sha256": "76fb06b75bf60ea9bd106f4f1bf0d7c1240d9a6f55cb63b49b27af48a9599efd",
+      "kind": "original helper source; unchanged compiled helper reused and verified against original preparation"
+    }
+  ]
+}

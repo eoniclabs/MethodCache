@@ -1,0 +1,121 @@
+{
+  "utc": "2026-10-17T08:41:52.287566+00:00",
+  "scope": "Deterministic cost-only comparison of current PR134 against its actual direct PR base, reusing complete unchanged raw cost rows from independently verified studies. These are not concurrent paired measurements; all ns fields are diagnostics and no timing result is inferred. All7compiled main harness sources identical, same pinned SDK/runtime/backend images,67cases each, unchanged accepted rules. Extra GeneratedPrefixHitPath source is not compiled by the main cost project. Original historical edge reports are unchanged.",
+  "base": "419c786d949d361cd2acd418178e4b0a8e21a860",
+  "head_source_equivalent": "5257fb63fb72393c817d74292e989299ede374d2",
+  "base_measurement_utc": "2026-10-16T23:54:12.517587+00:00",
+  "head_measurement_utc": "2026-10-17T08:08:06.798011+00:00",
+  "source_hashes": [
+    {
+      "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+    },
+    {
+      "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+    }
+  ],
+  "images": {
+    "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+    "redis_image": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+    "sql_image": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090"
+  },
+  "upstream_inputs": [
+    {
+      "path": "base_receipt",
+      "sha256": "5630850a44b4a9d17b578f8a2ede198e285ca736a9a37d4e5bf72af76d0caab8"
+    },
+    {
+      "path": "head_inputs",
+      "sha256": "5ddd4a40be5e202df376dc2ce6c5f6289c4638e2ca079825827499c3fe8b47c4"
+    },
+    {
+      "path": "head_prepared",
+      "sha256": "565800cf3f83c8e6dfb4551389de89a22a26b8f66b131d18574f071b8ec62cba"
+    },
+    {
+      "path": "head_completed_integrity",
+      "sha256": "2f0ad655ec9ef1756c1101c6320b0cbf05bdf55bf66d46ee879fbb659fac3717"
+    }
+  ],
+  "cases_per_side": 67,
+  "review_exit": 0,
+  "files": [
+    {
+      "path": "accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "base-measurement-receipt.json",
+      "sha256": "5630850a44b4a9d17b578f8a2ede198e285ca736a9a37d4e5bf72af76d0caab8"
+    },
+    {
+      "path": "base-sdk-info.txt",
+      "sha256": "53a4a83f988e3f9051ae76aaa4d39cef4e5ae5b297f91ecf771dc71bd0999c28"
+    },
+    {
+      "path": "base.jsonl",
+      "sha256": "9b5fcc6badd19063b23a4396fc32a31c4ab17ecb03388b78ae02e31fecf444ff"
+    },
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "head-completed-integrity.json",
+      "sha256": "2f0ad655ec9ef1756c1101c6320b0cbf05bdf55bf66d46ee879fbb659fac3717"
+    },
+    {
+      "path": "head-measurement-receipt.json",
+      "sha256": "51aa8bf131f81a76f7a96f23778213bf4b2751d6a3b86ceb89695fe6e2397fab"
+    },
+    {
+      "path": "head-prepared.json",
+      "sha256": "565800cf3f83c8e6dfb4551389de89a22a26b8f66b131d18574f071b8ec62cba"
+    },
+    {
+      "path": "head-profile-inputs.json",
+      "sha256": "5ddd4a40be5e202df376dc2ce6c5f6289c4638e2ca079825827499c3fe8b47c4"
+    },
+    {
+      "path": "head.jsonl",
+      "sha256": "5104153a9113c98aaf19ba3e0fb809cbe0b90bf9923f576485b8b173dfcf5dce"
+    },
+    {
+      "path": "report.md",
+      "sha256": "b5c42c7292c0bd853051de9346620e6a7c1c7eccf9ca36e72d304994c09b10f1"
+    },
+    {
+      "path": "review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "review.log",
+      "sha256": "5fecac930ec178991406dbee55d2709b2bad1fee29c5e4031e19ccdc3a1c4fec"
+    },
+    {
+      "path": "study-notes.md",
+      "sha256": "8d63b40c0a28e95e2cd4d854a020c5afa793409e597a9270f7170e61f133cde9"
+    }
+  ]
+}

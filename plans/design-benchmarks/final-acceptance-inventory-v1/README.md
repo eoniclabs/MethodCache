@@ -1,19 +1,36 @@
-# Acceptance inventory: timing gate remains open
+# Acceptance inventory: cumulative timing remains open
 
-[acceptance.json](acceptance.json) covers all 76 explicit specification rows with
-required scenarios, inspected source assertions and exact file hashes. This
-inventory distinguishes functional verification from outstanding timing gates.
+[acceptance.json](acceptance.json) maps all76 explicit specification rows to required
+scenarios, inspected assertions and exact source/report hashes. It is not a blanket
+acceptance claim.
 
-Published checkpoint `3e9df33eb9da29c7740b2cd4434345a4486a62ce` passes all fourteen
-jobs and four statuses, with 2,612 Linux tests and 94.0% diff coverage. It includes
-the node-hash correction, explicit native-prefix execution, ordinary late-DI
-control, portable proof paths and the deterministic test-support corrections.
-The evidence-only documentation batch will need its own published-head CI.
+Exact published5257fb63fb72393c817d74292e989299ede374d2 passes all fourteen required
+jobs and all four statuses:2,637 Linux tests,zero failures,one intentional opt-in
+soak skip and94.3% changed-line coverage. This includes the complete HTTP publication
+and compact-telemetry corrections, native backends, randomized properties, enabled
+soak, cultures, AOT175, packages and docs.
 
-The complete original timing reports remain failed/noisy. The corrected runtime
-passes all 67 cost cases with the same six accepted costs. Independent cumulative
-comparisons confirm the miss correction; Nimbus GUID sync remains slower. A
-diagnostic isolates hash/lookup as the relevant mechanism and does not change
-production or grant acceptance. A fixed 53-case quiet-Mac cohort and thirteen
-affected F05 cases remain pending. Only the two previously authorized exact
-no-listener sync/int time limits are currently accepted.
+The current cumulative cost profile passes all67cases per side with zero errors,
+zero failing costs and six unchanged accepted costs. The direct-base comparison for
+current PR134 also passes all67cases, with zero failures and zero accepted exceptions. Scoped F05 prefix acceptance
+and the completed non-HTTP confirmations retain their actual source points.
+The compact operation-scope change affects enabled origin/transport operations;
+previous timing receipts must not be relabelled as measurements of that new code.
+A filtered ten-case Mac confirmation measures those affected enabled-origin paths
+against the baseline using the current published production sources.
+
+Exact5257fb63 HTTP timing remains failed: the complete14case/280launch comparison
+has four cold slowdowns,one listening304slowdown and one wide interval. The separate
+current-source10case/200launch non-HTTP confirmation passes,all ten faster and precise.
+
+The client-index correction is adopted in the working combined tree after all22targeted,
+345HTTP and1055Core checks pass and the full67case cumulative cost profile passes with
+six unchanged accepted costs. Its complete direct2case pilot is faster by7.2%/3.4%.
+A full14case cumulative candidate timing confirmation and fresh published-head CI are
+still required. The existing13removal/replacementfacts remain unchanged; the new
+tradeoff is a resident-entry scan on client-tag invalidation.
+
+The proposed HTTP time bounds are inactive pending a design decision. The canonical
+accepted.json still has only the two previously authorized exact no-listener sync/int
+time limits. The17historical per-change cost overages remain explicit and are not
+turned into passes by later combined corrections.

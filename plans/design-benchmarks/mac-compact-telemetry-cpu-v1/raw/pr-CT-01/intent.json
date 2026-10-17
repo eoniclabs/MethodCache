@@ -1,0 +1,24 @@
+{
+  "utc": "2026-10-17T08:50:53.554540+00:00",
+  "inputs_sha256": "64a3f0156f9d48bf99f5173053354c8a5cf924f21f9d7b46fcde330fd1926484",
+  "prepared_sha256": "df6d295fc4d46d3615564aba9c6769eee51f59bbc4a1a4968df58e2a85c3ae4d",
+  "comparison": {
+    "pr": "CT-01",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+        "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)"
+      ],
+      "int": []
+    }
+  },
+  "cases": {
+    "main": [
+      "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)",
+      "DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)"
+    ],
+    "int": []
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-17T09:07:06.482481+00:00",
+  "exact_observer_pid": 39205,
+  "no_test_launch": true,
+  "reason": "Static review replaces the proposed extra metadata field with an argument used only during local publication; avoids adding8BtoL2observations. Only own waiting observer stopped; live measurement processes23806and1992974 untouched. This is not a cancelled/restarted measurement."
+}

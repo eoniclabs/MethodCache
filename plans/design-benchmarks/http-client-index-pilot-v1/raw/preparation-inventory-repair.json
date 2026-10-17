@@ -1,0 +1,29 @@
+{
+  "utc": "2026-10-17T09:35:25.649435+00:00",
+  "scope": "Original build completed; inventory invocation failed with exit131 because the copied CostProfile library lacks a standalone runtimeconfig. Zero timing launches. Inventory now executes with the measured WarmupProbe runtimeconfig/deps. Both67caseinventoriesmatch; all210compiledfilesverifiedunchangedbeforeandafter. No input/source/binary changed or rebuilt; original preparation failure retained.",
+  "completion_script_sha256": "622f41b69af8303dcee68d57a5816a3731366cc83d3871d660bac5939ec1497b",
+  "original_failure_log_sha256": "680f46adbfca1f551463b612f03aa961af2b4e9c1e28243ca072a9a8160a9e24",
+  "commands": [
+    [
+      "dotnet",
+      "exec",
+      "--runtimeconfig",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.WarmupProbe.runtimeconfig.json",
+      "--depsfile",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.WarmupProbe.deps.json",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/baseline/main/MethodCache.CostProfile.dll",
+      "--list"
+    ],
+    [
+      "dotnet",
+      "exec",
+      "--runtimeconfig",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/final/main/MethodCache.WarmupProbe.runtimeconfig.json",
+      "--depsfile",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/final/main/MethodCache.WarmupProbe.deps.json",
+      "/tmp/methodcache-http-client-index-pilot-v1/bin/final/main/MethodCache.CostProfile.dll",
+      "--list"
+    ]
+  ],
+  "inputs_sha256": "7ca8f7b547679c56513abf46140d64bce66a46fded493454a24a45fd7585d8f1"
+}

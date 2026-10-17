@@ -1,0 +1,8 @@
+{
+  "utc": "2026-10-17T09:33:26.908692+00:00",
+  "inputs_sha256": "7ca8f7b547679c56513abf46140d64bce66a46fded493454a24a45fd7585d8f1",
+  "queue_sha256": "0118c627e8ce88717ebd379d5d2668ca2e4c2055ca0fd6f4eaa72ad310bf0224",
+  "scope": "Diagnostic feasibility pilot: published5257fb63 vs same production plus client-index-only patch92764360. Two fixed full HTTP cases,10alternatingpairs/40freshprocesses/32warmups12actual150ms. Same frozen workload/helper and .NET10.0.3 workstationInteractiveGC; unchanged6%precision and existing time rules. Compare directly with current code, not f438, so no cumulative acceptance inferred. Existing13semantic tests unchanged, new2isolation/accounting tests and fullHTTP345/Core1055 pass before this trial. Client invalidation becomes O(allresidentHTTPentries); preserve physical removal, all metadata/tags and generations. No full-matrix or new time waiver.",
+  "prepared_sha256": "66ada35003464c938a1988bd4a228c4e8a20f8d23afe936fb7dc3b9ec2f66fbc",
+  "preparation_repair_sha256": "93fa407109fcc799b4d3b9be120fa0e1a3d53e42b991f0f19bb30f451d5ceadc"
+}

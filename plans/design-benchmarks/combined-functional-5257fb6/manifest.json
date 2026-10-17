@@ -1,0 +1,135 @@
+{
+  "scope": "Exact published5257fb63fb72393c817d74292e989299ede374d2: all14jobs/fourSUCCESS;2637Linuxtests/0failures/1intentionaloptinsoakskip;diff3611/3829=94.3%. Raw CI logs/exits retained unchanged with original/stored hashes. Includes realRedis/SQL, properties/soak/cultures, AOT175, packages/docs. Cumulative timing and proposed time limits remain separate.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "raw/linux/aot.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/aot.log",
+      "sha256": "5dd96cf17f8a0ca0d7397fc64412ec3e6dc64ca30b7a3f25574828c8e299a9ae"
+    },
+    {
+      "path": "raw/linux/build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/build.log",
+      "sha256": "1048882fb465662fdbab1261e5da37df29292c7dada9eb0058dcb9946ce20583"
+    },
+    {
+      "path": "raw/linux/cultures.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/cultures.log",
+      "sha256": "986029ddf9ddd12cf1d6a4f95a76e80633367dc06fa961a4b651bdbb29bd59d4"
+    },
+    {
+      "path": "raw/linux/demo.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/demo.log",
+      "sha256": "19dcccd6055d96fb3187dad9ea41aa237839fafd165b1989b75464dbafc729ad"
+    },
+    {
+      "path": "raw/linux/diffcoverage.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/diffcoverage.log",
+      "sha256": "ff6defc52647807e4446c40592f7bb50982340e33e3d4d8269a26a738b5e2bfe"
+    },
+    {
+      "path": "raw/linux/docs.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/docs.log",
+      "sha256": "2cd08b41bec0278b592e45cf16b7401bac637ad4785564070937c7f8a356c77f"
+    },
+    {
+      "path": "raw/linux/packages.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/packages.log",
+      "sha256": "a0246a28ceb2b5f4fa94fcb245b20ab4b5413fac34bceb1c12cf193ed6d2e79c"
+    },
+    {
+      "path": "raw/linux/properties.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/properties.log",
+      "sha256": "c8baaea4242980075f52c91ecd58fecfa6eef2ba4ae2dd7db1600844902003b9"
+    },
+    {
+      "path": "raw/linux/soak.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/soak.log",
+      "sha256": "8cdcaa5fc4cd5f0f52b1edb83a342f1c1b9fbae2da9db98b1df3755f1aeaedaa"
+    },
+    {
+      "path": "raw/linux/tests.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/linux/tests.log",
+      "sha256": "eb190edddc213729263af23f61d1ca695ef08e32895ba75568cd33ad15e591fa"
+    },
+    {
+      "path": "raw/macos/build.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/macos/build.log",
+      "sha256": "232653f485106d0fb210515aa9c8f782ca77db2c57c49503331f9afdf1e5780d"
+    },
+    {
+      "path": "raw/macos/unit.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/macos/unit.log",
+      "sha256": "edc95a24ca368e4dd25b5007fc39105bb0fc7ac0225104b20557e862217fc5ad"
+    },
+    {
+      "path": "raw/manifest.json",
+      "sha256": "05c50c413b09a3fb9b54998f9855158e0233e2e3122ef7beda3dd45344bed791",
+      "original_sha256": "24f9ba9f3773a633cff9eab6c285c02ed9d6256e30ab3b5abb0db1c42d9a2eca",
+      "catalogue_paths": [
+        [
+          "files"
+        ],
+        [
+          "original_source_sha256"
+        ]
+      ]
+    },
+    {
+      "path": "raw/windows/build.exit",
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "raw/windows/build.log",
+      "sha256": "74cbeacb89354407325ba46b1c68056d9b3dab0527717a33275292494e67e3dd"
+    },
+    {
+      "path": "raw/windows/unit.exit",
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "path": "raw/windows/unit.log",
+      "sha256": "970fa25bcf4fa0b7e3a44df35cb3a123be1cbe61b52e2a08e31942806b6e0235"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

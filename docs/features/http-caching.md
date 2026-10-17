@@ -100,6 +100,10 @@ its URL generation and all variants. `Clear` retires the shared global generatio
 `http:` followed by `MethodCacheKeys.Part(clientName)`; configured static `HttpCacheOptions.Tags` participate too.
 The HTTP administration and byte statistics also work with a NoOp method manager.
 
+Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and their byte budget.
+Its work grows with the resident entry count; URL invalidation and other configured application tags use their indexes.
+This keeps the implicit client tag out of the publication index while preserving administration and generation checks.
+
 ## Transport and cookies
 
 `AddHttpCaching()` turns off automatic cookies on the client's `SocketsHttpHandler` or `HttpClientHandler`, after all

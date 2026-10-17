@@ -1,0 +1,4 @@
+A fatal error was encountered. The library 'libhostpolicy.so' required to execute the application was not found in '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-candidate-v1/bin/base/main/'.
+Failed to run as a self-contained app.
+  - The application was run as a self-contained app because '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-candidate-v1/bin/base/main/MethodCache.CostProfile.runtimeconfig.json' was not found.
+  - If this should be a framework-dependent app, add the '/home/agent-admin/methodcache-design-bench-20261015/http-client-index-candidate-v1/bin/base/main/MethodCache.CostProfile.runtimeconfig.json' file and specify the appropriate framework.

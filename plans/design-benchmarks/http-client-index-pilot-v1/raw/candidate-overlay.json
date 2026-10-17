@@ -1,0 +1,10 @@
+[
+  {
+    "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+    "sha256": "a7533630a81050413674fd021e30ee8eed5c8d127250e2f6dffa0f2bf6084eff"
+  },
+  {
+    "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+    "sha256": "1b438959cf50ad3ea68a25545c0f2deb24fda2ed23bd8c0378c9842a0bacd2a1"
+  }
+]

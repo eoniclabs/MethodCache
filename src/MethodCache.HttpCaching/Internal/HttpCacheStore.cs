@@ -39,6 +39,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
         private readonly TimeProvider _time;
         private readonly string _client;
         private readonly string[] _tags;
+        private readonly int _clientTagIndex;
         private readonly HttpResponseStore.UrlSlotPrefix _slotPrefix;
         private readonly bool _defaultTags;
         private const string Unavailable = "|generation:unavailable:";
@@ -50,7 +51,9 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
             _defaultTags = options.Tags.Count == 0;
             if (options.Tags.Count > 125 || options.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > 1024))
                 throw new ArgumentException("HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.", nameof(options));
-            _tags = options.Tags.Append("http:" + MethodCacheKeys.Part(client)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            var clientTag = "http:" + MethodCacheKeys.Part(client);
+            _tags = options.Tags.Append(clientTag).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            _clientTagIndex = Array.IndexOf(_tags, clientTag);
         }
         /// <inheritdoc />
         public long BodyBudget(string key, HttpCacheEntry metadata)
@@ -112,7 +115,7 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
             if (lifetime <= TimeSpan.Zero || key.Contains(Unavailable, StringComparison.Ordinal)) return false;
             var deadline = _time.GetUtcNow() + lifetime;
             var info = Info(key, entry, deadline);
-            if (!_core.Distributed) return _core.StoreLocal(key, entry, info);
+            if (!_core.Distributed) return _core.StoreLocal(key, entry, info, _clientTagIndex);
             var data = HttpCacheEntrySerializer.Serialize(entry, deadline);
             if (!await _core.WriteBytesAsync(key, data, deadline, token).ConfigureAwait(false)) return false;
             _core.ObserveRepresentation(info);

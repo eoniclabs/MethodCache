@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-17T08:57:34.909586+00:00",
+  "kind": "nonhttp",
+  "exact_pid": 23806,
+  "expected_controller_path": "/tmp/methodcache-compact-nonhttp-v1/queue.py",
+  "controller_sha256": "d0f6c76c340d6af910f6840a7689b09ff18b8ca699ead102d999137148e8c26a",
+  "reviewer_sha256": "0ac0385e649300b9d21434ff2784bfcbd2317a5075226d8f3608985176a77df2",
+  "scope": "Terminal-only collection; no partial timing analysis or automatic restart of a failed/stopped measurement."
+}

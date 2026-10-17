@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-17T09:27:08.292057+00:00",
+  "original_verifier_sha256": "0ac0385e649300b9d21434ff2784bfcbd2317a5075226d8f3608985176a77df2",
+  "repaired_verifier_sha256": "063a3567b75b125428db8f1fe88bfe25177ca858a562ecb2d29e44ddb627ad84",
+  "original_failure_log_sha256": "68bf5908456ce302753b40db740647f9be32ed9ba2ea5485d81316b9bd583eb1",
+  "scope": "Collector path repair only: macOS loads files via canonical /private/tmp while controller paths use /tmp. All1400loadedlibraryreferences independently resolve inside their exact expected side/family directory and match original recorded hashes. Resolve both roots before containment/catalogue lookup; keep every source/library/output/order/runtime/precision check. No source, input, binary, launch or measurement changed, removed, pooled or rerun."
+}

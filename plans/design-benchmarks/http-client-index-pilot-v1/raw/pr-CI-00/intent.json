@@ -1,0 +1,22 @@
+{
+  "utc": "2026-10-17T09:36:36.959007+00:00",
+  "inputs_sha256": "7ca8f7b547679c56513abf46140d64bce66a46fded493454a24a45fd7585d8f1",
+  "prepared_sha256": "66ada35003464c938a1988bd4a228c4e8a20f8d23afe936fb7dc3b9ec2f66fbc",
+  "comparison": {
+    "pr": "CI-00",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [
+        "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+      ],
+      "int": []
+    }
+  },
+  "cases": {
+    "main": [
+      "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+    ],
+    "int": []
+  }
+}

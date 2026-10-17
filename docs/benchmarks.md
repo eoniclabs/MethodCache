@@ -2,7 +2,7 @@
 
 The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
 a cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, written the way each library
-documents it, with every library on its default settings (MethodCache with statistics on) and workstation GC. Most
+documents it, with every library on its default settings (including MethodCache's built-in counters) and workstation GC. Most
 applications key their data by `Guid`, which is a longer key for every library to build, hash and compare.
 
 ```bash
@@ -19,7 +19,8 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
 | FusionCache `GetOrSetAsync` | 354 ns | 344 B | 3.8x | 389 ns | 416 B | 3.4x |
 
 Table values are medians across three benchmark runs of both id types. Single runs of the same benchmark differed by up to 14 %.
-Design-series acceptance uses separate baseline/PR comparisons and 95% intervals over independent run means;
+Design-series acceptance uses separate baseline/PR comparisons and 95% intervals over paired head/base ratios
+from independent process launches;
 see the [current design verification](developer/design-final-validation.md).
 
 ```text
@@ -34,8 +35,8 @@ This is a shared cloud VM, so treat the numbers as about ±10 %, and run the ben
 relying on them. A MethodCache hit writes the cache key (method name and arguments) into a stack buffer, looks it up
 without making a string, and returns the completed `Task` it stored, so it allocates nothing. On the supported .NET 10
 runtime this applies when every argument is a simple value (numbers, strings, enums, `Guid`, dates and their nullable
-forms). Record or DTO arguments use a string key, allocated on every hit. The table above was measured on the build
-that includes the design series.
+forms). Record or DTO arguments use a string key, allocated on every hit. The table records the 2026-10-15 build of the design series; the linked current
+design verification tracks later revisions and their separate acceptance results.
 
 The class also has miss benchmarks (a new key on every call). They grow every cache without bound during the run, so
 they measure the GC more than the libraries and are not quoted here.
