@@ -1,9 +1,8 @@
 # PR134 review corrections
 
 Review: https://github.com/eoniclabs/MethodCache/pull/134#pullrequestreview-5558329141
-The previous completion claim is superseded by this review. Corrections remain local until
-all comments and the independent review of the complete PR are finished. No new CI may start
-before that review, per Johan's instruction. Raw test/benchmark receipts stay outside Git.
+The previous completion claim is superseded by this review. Johan required all comment corrections and an independent review of the complete PR before another CI run.
+That review is recorded below and preceded the first new push/CI; subsequent validation findings are recorded separately. Raw test/benchmark receipts stay outside Git.
 
 | Finding | Required correction | State |
 |---|---|---|
@@ -45,7 +44,7 @@ guard, preserving the original exception and complete cleanup assertions.
 Additional regression cases found during self-review: stale retention acknowledgements after a failure,
 expired replacements retaining old L2 values, stale mismatch health after recovery, short-name aliases
 of hashed long-client tags, and generic type arguments placed after keyed-registration identity.
-Each defect is covered explicitly; the complete PR review and final receipts are still pending.
+Each defect is covered explicitly. The complete PR review is recorded below; final receipts are still pending.
 
 Self-review also reproduced an admin-id collision: GET reported a manual method entry while DELETE removed an HTTP observation with the same text. DELETE now follows GET’s method-first precedence; a regression checks both removals and that the untouched HTTP entry still hits.
 
@@ -81,3 +80,9 @@ Admin collision follow-up: an unobserved L2-only manual key can also look like a
 Native reconnect fixture correction: a real run delivered the barrier callback before the value callback (zero observed deliveries at the assertion). Pub/sub dispatch is concurrent, so the fixture now awaits both explicit signals before asserting one delivery. The deterministic unit test still reproduces and rejects duplicate delegate registration. No sleeps or retries were added.
 
 The native shared HTTP contract still expected an unknown HTTP-shaped id to return false with L2. That contradicts the public method-key contract and the new L2-only collision regression: an unobserved key can exist on another node. The shared assertion now requires confirmed distributed invalidation; real HTTP observations retain their separate removal path. Both providers exposed this stale expectation in the 2534cf15 CI run, which is preserved as failed.
+
+The final artifact audit also found two older raw JSON series outside `plans/design-benchmarks`. Both are preserved with hashes under the external archive’s `review/legacy-measurements`, removed from the PR history, and covered by the repository guard. The expanded guard failed while those files were still tracked.
+
+Functional recheck: `f69719b4` passes all 14 CI jobs/four statuses, with 2,734 Linux tests, no failures, one normal-run opt-in skip, 99 separately randomized properties and 93.5% changed-line coverage. The 67-case current cost cohort also passes with the same six exceptions. Fresh paired timing and exact post-cleanup publication CI remain pending; original failed runs remain failed.
+
+Timing self-review: the original short job measured large JIT phase changes during Actual iterations. The original failed series is preserved. Two regressions failed before adding phase rejection; all 129 benchmark tests and 60 script tests now pass. Adaptive warmup and complete warmup/actual receipts strengthen the harness without changing regression/precision limits. Fresh Task/GUID timing still fails the unaccepted-cost gate (1.098, 95% 1.075–1.121); Sync/GUID and generic intervals remain too wide. A separate five-pair diagnostic with 100–140 warmups shows the latest comment corrections improving Sync/Task by 3.4%/5.3% against the pre-review source. It does not approve their cost against the original baseline.

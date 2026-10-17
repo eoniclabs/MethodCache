@@ -69,3 +69,7 @@ __pycache__/
 
 # Raw design/benchmark evidence belongs in external artifacts, never in Git
 /plans/design-benchmarks/
+
+# Historical raw design measurements are kept in the external evidence archive.
+/docs/developer/design-pr1-benchmarks.json
+/docs/developer/design-pr2-benchmarks.json

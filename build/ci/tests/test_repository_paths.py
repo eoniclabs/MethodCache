@@ -24,10 +24,11 @@ def windows_path_problem(path):
 class RepositoryPathTests(unittest.TestCase):
     def test_raw_measurement_output_is_ignored_and_untracked(self):
         tracked = subprocess.check_output(
-            ["git", "ls-files", "--", "plans/design-benchmarks"], cwd=ROOT, text=True
+            ["git", "ls-files", "--", "plans/design-benchmarks", "docs/developer/design-pr1-benchmarks.json", "docs/developer/design-pr2-benchmarks.json"], cwd=ROOT, text=True
         ).splitlines()
         self.assertEqual([], tracked, "Raw measurement evidence belongs in external artifacts, not Git")
-        for path in ["plans/design-benchmarks/run/raw.jsonl", "artifacts/cost-profile/head.jsonl"]:
+        for path in ["plans/design-benchmarks/run/raw.jsonl", "artifacts/cost-profile/head.jsonl",
+                     "docs/developer/design-pr1-benchmarks.json", "docs/developer/design-pr2-benchmarks.json"]:
             with self.subTest(path=path):
                 result = subprocess.run(
                     ["git", "check-ignore", "--no-index", "--quiet", "--", path], cwd=ROOT

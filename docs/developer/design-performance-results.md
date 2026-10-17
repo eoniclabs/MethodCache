@@ -1,8 +1,16 @@
 # Design performance results and external evidence
 
-These measurements describe the pre-review checkpoint. Runtime and generated-contract corrections
-are underway; they require a fresh cost/time cohort against f43854d. The existing accepted limits
-remain unchanged and do not by themselves approve the new source.
+The pre-review studies below remain historical. Fresh review-correction source `2534cf15` (native/cost
+checkpoint `0949cb8a`) passes all 67 cost cases against f43854d, with zero failing cases and the same six
+accepted costs. Redis and SQL native checks pass 11 and ten scenarios respectively. Receipts and provenance
+are in the external archive’s `review/nimbus-0949/`; original source hashes remain resolvable from its bundles.
+The fresh timing gate is open: Task/GUID hits measure 47.1 → 51.9 ns (1.098, 95% interval 1.075–1.121).
+Sync/GUID and generic-hit studies are too noisy and remain failed. The first four-warmup study included
+large compilation phase transitions; it is preserved unchanged. The harness now uses adaptive warmup, retains
+warmup/actual data and rejects large actual phase changes. Diagnostic 100–140-warmup comparisons against
+the pre-review source show the comment corrections improving Sync/Task hits by 3.4%/5.3% (five complete pairs);
+those diagnostics are attribution evidence, not final acceptance against f43854d. No new time cost is waived.
+The accepted numerical limits and 6% interval-width requirement are unchanged.
 
 
 The design series is reviewed together in PR #134 against main. On 2026-10-17 Johan

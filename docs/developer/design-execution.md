@@ -23,12 +23,11 @@ SHA references remain available in the separate source-point Git bundle.
 | .NET 10 | #130 | Libraries/tests require .NET 10; frozen vendor fixtures unchanged. |
 | Workloads | #135 | GUID workloads and explicit int controls. |
 | L2 correction | #137 | Merged into combined branch with its merge commit retained. |
-| PR 7 | #131, #134 | All 76 acceptance requirements verified; approved time costs recorded. |
+| PR 7 | #131, #134 | Review corrections implemented; fresh final cost/time and CI verification in progress. |
 
 The final pre-cleanup checkpoint `a08c279acf5f2a00859bfd08e64797ac7c8e1170` passes
 all 14 CI jobs/four statuses. Its 2,639 Linux tests have zero failures and one
-intentional opt-in soak skip; changed-line coverage is 94.2%. Exact cleanup-head CI
-remains the publication gate. [Final verification](design-final-validation.md).
+intentional opt-in soak skip; changed-line coverage is 94.2%. That historical CI predates the review corrections. Current verification is tracked separately. [Final verification](design-final-validation.md).
 
 Johan approved five exact HTTP time caps on 2026-10-17. Canonical performance review
 covers 59 complete CPU cases (five accepted costs, no unaccepted slowdowns or wide

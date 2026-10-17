@@ -16,7 +16,7 @@ The specification is [design-spec.md](design-spec.md), PR 1 acceptance G01–G14
 | G09/G12 | GeneratedContractTests gates origin execution, retires captured generations, rejects foreign bindings and protects publication for both changed and unchanged key versions. |
 | G10 | Actual packed nuspecs require exact matching versions; check_package_restore.py installs both reference orders and rejects a higher direct Core version with strict NU1608 for all six add-ons. |
 | G11/G13 | SignatureCorpus, canonical key properties, Unicode/fallback vendor cases, buffer growth and exact dirty-buffer tests. |
-| G14 | SignatureCorpus across supported TFMs and compiler versions; all 172 supported corpus cases compile with Native AOT, plus executed frozen vendor/smoke shapes and GeneratedContractBenchmarks. |
+| G14 | SignatureCorpus across supported TFMs and compiler versions; all 175 supported corpus cases compile with Native AOT, plus executed frozen vendor/smoke shapes and GeneratedContractBenchmarks. |
 
 ## Contract and scope
 
@@ -65,7 +65,7 @@ Core/generator provenance independently of later runtime commits.
 
 ## Performance evidence
 
-[Recorded samples and run means](design-pr1-benchmarks.json) compare the merged PR 122 base with this implementation
+Historical samples and run means (external archive `review/legacy-measurements/design-pr1-benchmarks.json`) compare the merged PR 122 base with this implementation
 on one Apple M5, macOS 27.0.1, .NET 10.0.3, SDK 10.0.103, Concurrent Workstation GC. Each revision was measured in
 three separate processes, alternating base/change/change/base/base/change. Both revisions used identical workload
 source and the same macOS thread QoS setting. Full runs used five warmups and ten measurements; focused confirmation
