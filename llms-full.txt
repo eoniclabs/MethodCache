@@ -1355,6 +1355,10 @@ its URL generation and all variants. `Clear` retires the shared global generatio
 `http:` followed by `MethodCacheKeys.Part(clientName)`; configured static `HttpCacheOptions.Tags` participate too.
 The HTTP administration and byte statistics also work with a NoOp method manager.
 
+Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and their byte budget.
+Its work grows with the resident entry count; URL invalidation and other configured application tags use their indexes.
+This keeps the implicit client tag out of the publication index while preserving administration and generation checks.
+
 ## Transport and cookies
 
 `AddHttpCaching()` turns off automatic cookies on the client's `SocketsHttpHandler` or `HttpClientHandler`, after all
@@ -3016,6 +3020,10 @@ NotFound. `Clear` retires the shared generation without enumerating L2 values. S
 and `http:` plus `MethodCacheKeys.Part(clientName)` support tag invalidation. Client names support at most 1024 UTF-16
 code units; configure at most 125 nonblank custom tags of at most 1024 code units each.
 
+Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
+URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
+therefore grows with the resident entry count while publication avoids the implicit client index.
+
 The former public storage interface/entry/options are removed. HTTP entries use a private codec and are unaffected
 by method serializer, TTL, jitter or fail-safe settings. `MaxHttpBytes` includes body, stored headers and conservative
 metadata costs; oversized responses remain streamed. The default budget is 100 MiB, separate from method entries.
@@ -3109,6 +3117,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Avoid the implicit client-tag index on local HTTP publication. Client-tag invalidation scans resident HTTP
+  entries and physically reclaims matching bodies; URL and other application-tag indexes remain.
 
 - Keep sparse tag indexes small and materialize local HTTP epoch/URL metadata only when needed.
   Administration, generation identities and conservative byte-budget accounting are preserved.

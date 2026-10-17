@@ -24,56 +24,66 @@ A passing ancestor does not establish the latest head's result.
 | In-place constructor | claude/faster-cache-hits-xft398 / #132 | Head 2b3cb93 includes #131 fixtures and passes all three platforms, including all 14 jobs and 2,519 Linux facts. Ready for review. Full performance acceptance remains required. |
 | Prefix hash, final | claude/faster-cache-hits-xft398-siphash / #133 | Current 4f6cd73 passes all four commit statuses. The exact 83b92c6 functional receipt retains all 14 jobs, 2,520 Linux facts, 91 randomized properties, AOT172 and packages. Author-reported medians remain preliminary; independent-run means/95% intervals and the complete section-10 gate remain required. |
 | GUID workloads | claude/faster-cache-hits-xft398-guid-bench / #135 | Exact unchanged head 419c786 now passes all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator: 2,522 Linux facts, one intentional soak skip, AOT172, required backends/packages and 94.0% changed-line coverage. The historical macOS checkout failure remains archived. PR136 is integrated and installed atomically from 388050f, and was separately merged by Johan. |
-| PR 7, combined | codex/design-combined-gates-v1 / #134 | Exact head 908a94e passes all fourteen jobs/four statuses: 2,562 Linux facts, one intentional soak skip, required backends, properties/soak/cultures, AOT175, packages/docs and 94.0% changed-line coverage. All 53 benchmark-validation Python guards pass on Nimbus. V5 preparation passes twenty actual generated-program builds, fourteen native setups and sixty compiled-family validations; V5 timing starts at 09:10:18 UTC and completes twelve families before an idle-boundary transition to the source-scoped V6 schedule at 11:21:08 UTC. Full timing/review and the following evidence batch's own CI remain required. |
+| PR 7, combined | codex/design-combined-gates-v1 / #134 | Current 5257fb63 publishes the HTTP/telemetry cost corrections. Local Core1055/HTTP343 and osx-arm64 native smoke/prefix/HTTP/175-signature-corpus checks pass; complete current cumulative67case cost profile passes with six unchanged accepted costs. Exact current-head CI passes all fourteen jobs/four statuses:2,637 Linux tests,zero failures,one intentional opt-in soak skip and94.3%changed-line coverage. Timing remains failed/open; proposed HTTP time bounds are inactive pending a design decision. |
 
-## Remaining performance work
+## Remaining verification
 
-The corrected common primary GUID workload is frozen at 453be95; genuine generated prefix C#
-remains frozen at bbff4a6. V5 changes only the cold-HTTP iteration boundary outside the measured
-call, and the component factory's project filename. Its fourteen runtime revisions remain unchanged. The fourteen runtime points cover the actual
-PR merge-base edges, including the constructor's older standalone base and isolated SipHash head.
-Primary workloads have 27 local-contract, 20 local-pressure and 16 native cases. Six component points
-have 18 lookup, 36 facade/reference and 48 actual generated-interface cases; Int and Guid remain
-separately labelled. Matching source/program hashes and setup guards pass locally. Nimbus preparation
-and digest-pinned Redis/SQL image validation now pass on Nimbus, together with all sixty
-compiled-family preflights and an independent rehash of 2,358 harness DLLs.
+The historical180launch multi-PR BenchmarkDotNet matrix is **cancelled** by Johan's
+2026-10-16 decision. It must not be restarted. Section10 now requires a complete
+cost profile per behavior change and a cumulative paired-time gate, with filtered
+comparisons for changes that otherwise only cost CPU. The completed historical
+reports remain evidence for their actual source points; failures are not relabelled.
 
-The fixed full matrix is 180 bounded launches: fourteen primary points × three families × three rounds,
-plus six component points × three families × three rounds. Each comparison uses identical workload
-bytes and key types. Existing int diagnostics remain separate; changing a key type cannot be presented
-as a before/after optimization result. The full timing dispatcher starts on 2026-10-16 at
-08:30:54 UTC after input review, then stops at 08:32:09 before any benchmark executes:
-BDN rejects the asynchronous cold-HTTP iteration setup. A regression test fails before its
-correction; generated-program compilation is now a separate preflight gate. A fresh cohort,
-the corrected schedule and statistical review remain required.
-[Rejected V4 preparation and dispatch evidence](../../plans/design-benchmarks/guid-full-preparation-v4/).
+The current5257fb63 source-equivalent runtime passes the full67case cumulative cost
+profile on both revisions: zero execution errors, zero failing costs, six unchanged
+accepted costs. Byte/Redis/SQL bounds remain in the canonical accepted.json.
+The current PR134 direct-base cost comparison against419c786 also passes all67cases
+with zero failures and zero accepted exceptions; this is deterministic reuse of
+matching complete cost rows, not a timing comparison.
+Exact published5257fb63 now passes all fourteen jobs/four statuses, including real
+backends, randomized properties, enabled soak, cultures, AOT175, packages and docs.
 
-V5 then compiles all twenty actual BDN-generated programs (67 primary cases including four
-untimed diagnostics; 102 component cases), passes all fourteen fresh native setups, and validates
-all sixty compiled families. Independent review rehashes 2,358 harness and seventeen runner DLLs
-before the explicit 09:10:18 UTC dispatch on 2026-10-16. The first twelve family launches finish successfully. The original controller stops only at
-a verified idle boundary at 11:20:31 UTC; no worker or unrelated job is interrupted.
-The source-scoped replacement schedule starts at 11:21:08 UTC: 153 selected family
-launches / 3,690 cases, with eight whole launches reused and four preserved diagnostics.
-It retains all eleven original comparisons and all mandatory cumulative scenarios,
-with the same warmup, iterations, affinity, backend and statistical requirements.
-The cumulative baseline/final comparison runs first. No timing means were inspected
-to choose exclusions. [Selected families and transition proof](../../plans/design-benchmarks/focused-schedule-v6/).
-[Completed V5 preparation, native image receipts and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
+Completed cumulative timing remains under the unchanged strict rules. Non-HTTP
+confirmations and scoped F05 generated-prefix acceptance have their own source and
+scope receipts. Current diagnostic HTTP measurements still fail: the publication
+cold case ratio is1.226 and the compact-scope listening304case ratio is1.049.
+All original launch records, precision failures and source/build receipts are retained.
+The proposed exact HTTP limits are **inactive** and establish no accepted result.
 
-Complete all adjacent behavior-change comparisons and the cumulative f43854d comparison, plus prefix
-components and the local/native L2 workloads specified in section 10. Use three independent alternating
-launches, reviewed 95% intervals over run means and unchanged hit-allocation budgets. Wide intervals
-remain insufficient evidence. The completed HTTP response-reuse confirmation fails one comparable
-case by 9.36% with disjoint intervals. The completed six-launch header-copy comparison has four
-insufficient intervals despite lower allocations. A separate fixed nine-pair startup-affinity
-comparison also completes all eighteen launches with four insufficient intervals; no samples
-are pooled and no timing pass is inferred. The completed
-older nine-launch int baseline still has two broad intervals and supplies no optimization pass.
+The exact5257fb63 whole fourteen-case HTTP confirmation is complete and fails:
+four cold cases are20.6–23.8%slower,one listening304case is3.7%slower and one listening304
+interval is too wide. Four cases are faster and four unchanged. All280launches and
+both complete production Git inventories verify; no proposed limit is applied.
+The current-source filtered ten-case non-HTTP confirmation passes all200launches,
+with all ten affected enabled-origin cases faster and precise. Earlier results keep
+their own source points; the macOS tmp-path collector repair changes no measurements.
 
-The authoritative receipts and remaining failures are in [design-final-validation.md](design-final-validation.md).
-The standalone runtime, constructor candidate and combined SipHash runtime have separate proof scopes.
-A component/setup pass does not establish full-path timing or complete functional CI.
+The client-index correction from the isolated trial is now adopted in the working
+combined tree, with exactly two changed production files and unchanged metadata layout.
+It preserves physical removal, full tags/generations and URL/custom indexes; client-tag
+invalidation scans resident HTTP entries. Targeted22/fullHTTP345/Core1055pass (one
+intentional opt-in skip), and cumulative67case costs pass with six unchanged accepted
+costs. The complete two-case direct pilot against5257fb63 is precise and faster:
+coldmiss7.2%,listening3043.4%. This is not a cumulative time gate. Fresh fourteen-case
+candidate timing againstf438 and actual new published-head CI remain required.
+
+The complete per-change cost archive retains seventeen overages on five historical
+heads (#124,#129,#130,#132,#133). Those particular standalone heads do not pass their
+cost gates. Later corrections in #137/#134 do not alter the historical verdicts;
+review/merge planning must retain the combined corrections before treating the design
+series as a releasable implementation. No merge or package publication is part of this
+implementation task's standing authorization.
+
+The authoritative evidence and outstanding gates are in
+[design-final-validation.md](design-final-validation.md). The76row inventory separates
+functional assertions, scoped prefix evidence and the still-open cumulative timing
+and exact-final-head requirements.
+
+Historical matrix references, retained for provenance only:
+[V4 rejected preparation](../../plans/design-benchmarks/guid-full-preparation-v4/),
+[V5 preparation and native receipts](../../plans/design-benchmarks/guid-full-preparation-v5/),
+[V6 source-scoped transition](../../plans/design-benchmarks/focused-schedule-v6/),
+[complete per-change cost verdicts](../../plans/design-benchmarks/per-change-cost-v1/).
 
 Each implementation uses an isolated worktree and is stacked on its preceding dependency. CI runs
 automatically after publication. Timing batches use the approved exclusive capacity lease; do not

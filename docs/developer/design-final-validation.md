@@ -2,6 +2,53 @@
 
 ## Current gate and checkpoint (2026-10-17)
 
+The completed current-source non-HTTP confirmation passes all ten affected cases
+(200 fresh processes, ten pairs): four enabled-listener eviction/single-flight cases
+and six short/long GUID misses are faster and satisfy the unchanged precision limit.
+All 224 production files, 420 binary files and 1,400 loaded-library references verify.
+The original collector rejected macOS `/tmp` versus `/private/tmp` aliases; resolving
+both roots fixes only containment/catalogue lookup. The original error and repair
+receipt remain, with no changed or repeated measurements.
+[Complete current enabled-origin CPU confirmation](../../plans/design-benchmarks/mac-compact-telemetry-cpu-v1/).
+
+The complete current-source fourteen-case HTTP confirmation **fails**: four cold
+publication cases are 20.6–23.8% slower, one listening304 case is 3.7% slower and the
+other listening304 interval is too wide. Four cases are faster and four unchanged.
+All 280 launches and both actual Git production inventories (200 baseline/224 head
+files) verify independently. No proposed time bound is applied; even a time exception
+would not waive the remaining precision failure.
+[Complete exact-source HTTP report](../../plans/design-benchmarks/http-final14-compact-v1/).
+
+The adopted working client-index correction preserves physical removal, full metadata,
+generations, URL-slot/custom-tag indexes and the HttpStorageInfo layout. It omits the
+implicit client index during publication and scans resident HTTP nodes on client-tag
+invalidation, so that operation becomes linear in resident entries (tag count is
+bounded). All thirteen existing removal/replacement facts stay unchanged; targeted22,
+fullHTTP345 and Core1055 pass with one intentional opt-in soak skip. In a complete
+direct comparison against5257fb63, the selected cold miss is7.2%faster and selected
+listening304 is3.4%faster, both precise. This is a two-case relative pilot, not f438
+cumulative acceptance. Its complete cumulative cost profile now passes all67cases per side with zero
+errors/failing costs and six unchanged accepted costs; all226binaryfiles and224tested
+production files verify independently. The first cost startup used helper-only output
+without a standalone runtimeconfig and executed zero operations; the retained repair
+uses the original standalone baseline with seven identical compiled harness sources.
+The correction is copied byte-for-byte into the combined worktree. Full fourteen-case
+candidate timing and fresh published-head CI remain outstanding. The canonical time
+rules remain unchanged.
+[Direct trial pilot and retained zero-launch setup error](../../plans/design-benchmarks/http-client-index-pilot-v1/),
+[complete cumulative costs](../../plans/design-benchmarks/http-client-index-cost-v2/),
+[correctness, tested sources and formatting](../../plans/design-benchmarks/http-client-index-functional-v1/).
+
+
+Published functional checkpoint `5257fb63fb72393c817d74292e989299ede374d2` passes
+all fourteen required jobs and all four platform/aggregate statuses. Linux reports
+2,637 passing tests, zero failures and one intentional opt-in soak skip; diff coverage
+is 3611/3829 (94.3%). This covers the complete compact-telemetry/publication code,
+including native backends, randomized properties, enabled soak, both cultures,
+AOT175, installed packages and docs. Timing acceptance remains separate.
+[Exact raw job logs, exits and status receipts](../../plans/design-benchmarks/combined-functional-5257fb6/).
+
+
 Exact published checkpoint `62603697d14d00d295aca4d53320a6e90e42cab0` now passes
 all fourteen jobs and all four statuses. Linux runs 2,620 tests with zero failures and
 one intentional opt-in soak skip; diff coverage is 3534/3758 (94.0%). This validates
@@ -26,6 +73,17 @@ files and exact controller/preparation/accepted-rule hashes verify independently
 and after; local review reproduces exit0. Own exact-label providers are removed.
 [Complete current cost profile](../../plans/design-benchmarks/http-compact-telemetry-cost-v1/).
 
+The two source-equivalent5257fb63 confirmations are complete with the separate
+verdicts recorded above: non-HTTP passes, HTTP remains failed. The later client-index
+trial has its own source point and still needs full candidate acceptance.
+
+A deterministic re-review of current PR134 against its direct base419c786 also
+passes all67cases with zero failing costs and zero accepted exceptions. It reuses
+complete unchanged raw cost rows from the earlier direct-base profile and the
+current head profile: all seven compiled harness sources and pinned SDK/backend
+images match. Diagnostic ns fields are not paired timing evidence.
+[Current direct-base cost comparison and provenance](../../plans/design-benchmarks/current-pr134-cost-v1/).
+
 Timing remains **OPEN/failed**. Complete diagnostic pilots retain every launch without
 new limits or exclusions: sparse-only20launches leave the selected coldmiss23.9%slower;
 adding lazyepochs20launches leaves it21.1%slower and listening304 too noisy. The later
@@ -49,7 +107,7 @@ prefix/HTTP checks and compiles/executes the175case signature corpus. Existing
 unchanged-source trim/dynamic-code warnings are retained. The initial Linux-only job
 command and noncanonical/tmp output-path failures are setup errors retained separately.
 [Native execution logs and binary digests](../../plans/design-benchmarks/http-publication-aot-v1/).
-Exact current-candidate CI and full HTTP timing acceptance remain outstanding.
+Exact5257fb63CI is now green as recorded above; full HTTP timing acceptance remains outstanding.
 
 
 Latest completed confirmations (32 warmups, twelve actual iterations) narrow the remaining

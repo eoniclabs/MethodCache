@@ -131,6 +131,10 @@ NotFound. `Clear` retires the shared generation without enumerating L2 values. S
 and `http:` plus `MethodCacheKeys.Part(clientName)` support tag invalidation. Client names support at most 1024 UTF-16
 code units; configure at most 125 nonblank custom tags of at most 1024 code units each.
 
+Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
+URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
+therefore grows with the resident entry count while publication avoids the implicit client index.
+
 The former public storage interface/entry/options are removed. HTTP entries use a private codec and are unaffected
 by method serializer, TTL, jitter or fail-safe settings. `MaxHttpBytes` includes body, stored headers and conservative
 metadata costs; oversized responses remain streamed. The default budget is 100 MiB, separate from method entries.

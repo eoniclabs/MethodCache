@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Avoid the implicit client-tag index on local HTTP publication. Client-tag invalidation scans resident HTTP
+  entries and physically reclaims matching bodies; URL and other application-tag indexes remain.
+
 - Keep sparse tag indexes small and materialize local HTTP epoch/URL metadata only when needed.
   Administration, generation identities and conservative byte-budget accounting are preserved.
 
