@@ -171,6 +171,8 @@ internal static class ProcessKeyHash
         return hash;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    // Out of line: the memo and the prefix hash answer most calls, and an inlined copy made its callers spill the
+    // hash state to the stack
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal static int Compute(ReadOnlySpan<char> text) => Initial.FinishUtf16(text);
 }
