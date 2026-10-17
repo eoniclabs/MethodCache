@@ -147,7 +147,14 @@ internal struct SipHashState
         }
         while (count >= 8)
         {
-            Compress(ref v0, ref v1, ref v2, ref v3, NarrowAscii(ref next, ref high));
+            var units = NarrowAscii(ref next, ref high);
+            // Stops at the first block that is not ASCII, so a key that falls back to UTF-16 is not hashed twice
+            if (!IsAscii(high))
+            {
+                hash = 0;
+                return false;
+            }
+            Compress(ref v0, ref v1, ref v2, ref v3, units);
             next = ref Unsafe.Add(ref next, 8);
             count -= 8;
         }
@@ -330,10 +337,9 @@ internal static class ProcessKeyHash
         return new KeyPrefixHash(ascii, utf16, isAscii);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static int Compute(ReadOnlySpan<char> text)
-        => AsciiInitial.TryFinishAscii(text, out var hash) ? hash : ComputeUtf16(text);
-
+    // Out of line: the memo and the prefix hash answer most calls, and an inlined copy of both encodings made its
+    // callers spill the hash state to the stack
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static int ComputeUtf16(ReadOnlySpan<char> text) => Utf16Initial.FinishUtf16(text);
+    internal static int Compute(ReadOnlySpan<char> text)
+        => AsciiInitial.TryFinishAscii(text, out var hash) ? hash : Utf16Initial.FinishUtf16(text);
 }

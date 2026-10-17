@@ -110,6 +110,9 @@ internal sealed class CallSnapshot(DecoratorServices services, CacheRuntimePolic
     // A field, not a property: a lookup finishes the hash from it in place instead of copying the state first
     internal readonly KeyPrefixHash PrefixHash = ProcessKeyHash.Prefix(prefix);
 
+    // Out of line: inlined into a generated decorator, the hash used up its inlining budget, which left the hash
+    // state on the stack and later calls out of line. A key builder's lookup finishes PrefixHash inline instead.
+    [MethodImpl(MethodImplOptions.NoInlining)]
     internal int HashKey(ReadOnlySpan<char> text)
     {
         if (!text.StartsWith(Prefix.AsSpan(), StringComparison.Ordinal)) return ProcessKeyHash.Compute(text);
