@@ -6,6 +6,36 @@ namespace MethodCache.HttpCaching.Tests.Storage;
 
 public class HttpDeferredIdentityTests
 {
+    [Fact]
+    public async Task LongLocalKeys_DoNotDuplicateTargetsBeforeAdministration()
+    {
+        var time = new FakeTimeProvider();
+        using var owner = new TestHttpStore(time);
+        var storage = owner.ForClient("deferred-target", new HttpCacheOptions());
+        var entry = new HttpCacheEntry { RequestUri = "https://example.test/a", Method = "GET", StoredAt = time.GetUtcNow(), Content = [1] };
+        string[] keys = Enumerable.Range(0, 64).Select(i => "client:" + new string('x', 16384) + i + ":m:GET").ToArray();
+        for (var i = 0; i < 32; i++)
+            Assert.True(await storage.TrySetAsync("warm:" + i + ":m:GET", entry, TimeSpan.FromMinutes(1), default));
+        var perKey = MeasurePublications(storage, entry, keys);
+        Assert.True(perKey < 4096, $"Local publication allocates {perKey:F1} B per key; target text already belongs to the stored key.");
+        var listed = owner.Core.DescribeEntries(null, null, 100);
+        var expected = keys.Select(HttpResponseStore.Identity).ToHashSet(StringComparer.Ordinal);
+        Assert.Equal(keys.Length, listed.Count(info => expected.Contains(info.Key)));
+        Assert.True(await owner.Core.RemoveObservationAsync(HttpResponseStore.Identity(keys[0]), default));
+        Assert.Null(await storage.GetAsync(keys[0]));
+    }
+
+    private static double MeasurePublications(IHttpCacheStorage storage, HttpCacheEntry entry, string[] keys)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        foreach (var key in keys)
+        {
+            var stored = storage.TrySetAsync(key, entry, TimeSpan.FromMinutes(1), default);
+            if (!stored.IsCompletedSuccessfully || !stored.Result) throw new InvalidOperationException("Local publication must complete synchronously.");
+        }
+        return (GC.GetAllocatedBytesForCurrentThread() - before) / (double)keys.Length;
+    }
+
     public static IEnumerable<object[]> Cases()
     {
         foreach (var row in HttpStorageIdentityTests.Keys())

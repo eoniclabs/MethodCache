@@ -12,7 +12,8 @@ using Microsoft.Extensions.Options;
 namespace MethodCache.Core.Runtime.Http;
 
 internal sealed record HttpStorageInfo(string Id, string UrlTarget, string Client, int Format, long Cost,
-    string[] Tags, DateTimeOffset CreatedAt, DateTimeOffset Deadline, bool Selector);
+    string[] Tags, DateTimeOffset CreatedAt, DateTimeOffset Deadline, bool Selector,
+    int LocalTargetLength = -1, int LocalSlot = -1);
 
 // Protocol-neutral storage: the add-on owns its HTTP codec and freshness rules. Core owns residency,
 // byte accounting, permanent generation metadata, bounded observations and invalidation recovery.
@@ -43,12 +44,28 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal long MaximumBytes { get; }
     internal bool Distributed => _distributed != null;
     internal int PendingRecoveries => _pending.Count(pair => pair.Value.Queued);
-    private sealed class LocalEpoch(CacheEpoch value, bool initial)
+    private sealed class LocalEpoch(bool initial)
     {
-        internal CacheEpoch Value { get; } = value;
+        // The initial default namespace is empty, so most local cells never need a UUID.
+        // Materialize it once only when a nonempty vector actually refers to this cell.
+        private sealed class EpochValue
+        {
+            internal CacheEpoch Value { get; } = new(Guid.NewGuid(), 0);
+        }
+        private EpochValue? _value;
+        internal CacheEpoch Value
+        {
+            get
+            {
+                var current = Volatile.Read(ref _value);
+                if (current != null) return current.Value;
+                var created = new EpochValue();
+                return (Interlocked.CompareExchange(ref _value, created, null) ?? created).Value;
+            }
+        }
         internal bool Initial { get; } = initial;
         internal LocalVector? LastVector;
-        internal static LocalEpoch Fresh(bool initial = false) => new(new CacheEpoch(Guid.NewGuid(), 0), initial);
+        internal static LocalEpoch Fresh(bool initial = false) => new(initial);
     }
     private sealed record LocalVector(LocalEpoch Clear, string[] Tags, LocalEpoch[] TagEpochs, bool AllowInitialNamespace, string Identity);
     private sealed record PendingEpoch(long Ticket, bool Queued);
@@ -129,18 +146,23 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
                 { unchanged = false; break; }
             if (unchanged) return previous.Identity;
         }
-        var epochs = new CacheEpoch[tags.Length + 2];
         var tagEpochs = new LocalEpoch[tags.Length];
-        epochs[0] = clear.Value; epochs[1] = current.Value;
+        var initialNamespace = allowInitialNamespace && clear.Initial && current.Initial;
         for (var i = 0; i < tags.Length; i++)
         {
             tagEpochs[i] = _tagEpochs!.GetOrAdd(tags[i], static _ => LocalEpoch.Fresh(initial: true));
-            epochs[i + 2] = tagEpochs[i].Value;
+            initialNamespace &= tagEpochs[i].Initial;
         }
         // A canonical default client already identifies its one implicit client tag in the URL key.
         // Its initial local namespace can remain empty; no invalidation can return these cells to Initial.
-        var identity = allowInitialNamespace && clear.Initial && current.Initial && tagEpochs.All(static epoch => epoch.Initial)
-            ? string.Empty : VectorIdentity(EpochAddresses(slot, tags), epochs);
+        var identity = string.Empty;
+        if (!initialNamespace)
+        {
+            var epochs = new CacheEpoch[tags.Length + 2];
+            epochs[0] = clear.Value; epochs[1] = current.Value;
+            for (var i = 0; i < tags.Length; i++) epochs[i + 2] = tagEpochs[i].Value;
+            identity = VectorIdentity(EpochAddresses(slot, tags), epochs);
+        }
         // One immutable cached vector per permanent slot, at most 4096. Alternating tag sets recompute
         // the same deterministic identity; they never invent a new generation or affect cache selection.
         Volatile.Write(ref current.LastVector, new LocalVector(clear, tags, tagEpochs, allowInitialNamespace, identity));
@@ -374,9 +396,15 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
             {
                 if (!node.IsPhysicallyExpired(_local.Now) && node.Policy is HttpStorageInfo { Selector: false } info)
                 {
-                    if (info.Id.Length == 0)
+                    if (info.Id.Length == 0 || (info.LocalTargetLength > 0 && info.UrlTarget.Length == 0))
                     {
-                        var identified = info with { Id = Identity(node.Key) };
+                        var identified = info with
+                        {
+                            Id = info.Id.Length == 0 ? Identity(node.Key) : info.Id,
+                            // The adapter supplies a prefix length, so Core need not parse its key format.
+                            UrlTarget = info.LocalTargetLength >= 0 && info.UrlTarget.Length == 0
+                                ? node.Key[..info.LocalTargetLength] : info.UrlTarget
+                        };
                         // Memoize only this immutable snapshot; a concurrent writer keeps its own metadata.
                         _ = Interlocked.CompareExchange(ref node.Policy, identified, info);
                         info = identified;
@@ -491,7 +519,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         });
         var indexed = new string[application.Length + 1];
         application.CopyTo(indexed, 0);
-        indexed[^1] = local ? LocalSlotTag(Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
+        indexed[^1] = local ? LocalSlotTag(info.LocalSlot >= 0 ? info.LocalSlot : Slot(info.UrlTarget)) : UrlTag(info.UrlTarget);
         return indexed;
     }
 

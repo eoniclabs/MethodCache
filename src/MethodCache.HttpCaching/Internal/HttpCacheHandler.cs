@@ -813,14 +813,27 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     private Task<HttpResponseMessage> SendOriginAsync(HttpRequestMessage request, CancellationToken token)
     {
         var origin = _metrics?.BeginLoad("http", _keyName);
-        return origin == null ? base.SendAsync(request, token) : SendObservedOriginAsync(origin, request, token);
+        if (origin == null) return base.SendAsync(request, token);
+        Task<HttpResponseMessage> pending;
+        try { pending = base.SendAsync(request, token); }
+        catch (Exception error)
+        {
+            origin.Fail(error);
+            origin.Dispose();
+            throw;
+        }
+        if (!pending.IsCompletedSuccessfully) return SendObservedOriginAsync(origin, pending);
+        // A synchronous transport already owns the completed task. Finish its telemetry without
+        // allocating an async wrapper; incomplete and faulted tasks keep the observed await path.
+        origin.Dispose();
+        return pending;
     }
 
-    private async Task<HttpResponseMessage> SendObservedOriginAsync(TelemetryOperation origin, HttpRequestMessage request, CancellationToken token)
+    private static async Task<HttpResponseMessage> SendObservedOriginAsync(TelemetryOperation origin, Task<HttpResponseMessage> pending)
     {
         using (origin)
         {
-            try { return await base.SendAsync(request, token).ConfigureAwait(false); }
+            try { return await pending.ConfigureAwait(false); }
             catch (Exception error) { origin.Fail(error); throw; }
         }
     }

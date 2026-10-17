@@ -2,6 +2,56 @@
 
 ## Current gate and checkpoint (2026-10-17)
 
+Exact published checkpoint `62603697d14d00d295aca4d53320a6e90e42cab0` now passes
+all fourteen jobs and all four statuses. Linux runs 2,620 tests with zero failures and
+one intentional opt-in soak skip; diff coverage is 3534/3758 (94.0%). This validates
+the deferred-ID correction, separately from the newer publication experiments.
+[Unchanged raw CI logs, exits and status receipts](../../plans/design-benchmarks/combined-functional-6260369/).
+
+The current working candidate reduces sparse tag-index storage, delays unused initial
+local epoch/vector materialization and local URL-target copies, reuses successful origin
+tasks, and stores only the one/two tags needed by each enabled telemetry scope.
+Generation identities, slot routing, conservative byte budgets, duration/error labels
+and activity parenting are preserved. Full local suites pass 1,055 Core tests (one
+intentional opt-in soak skip) and 343 HTTP tests. Allocation probes fail before the
+corrections; the telemetry scope probe falls from 200 B to below its unchanged128 B
+bound. The arbitrary-UTF16 metadata property pins exact identity/removal and empty-prefix
+memo behavior. Existing transport tests cover one-tag success/error records.
+[Publication correctness and original red tests](../../plans/design-benchmarks/http-publication-functional-v1/),
+[compact-scope correctness and allocation probe](../../plans/design-benchmarks/http-compact-telemetry-functional-v1/).
+
+The current candidate's complete cumulative cost profile **passes** all67cases per side:
+zero execution errors, zero failing costs, six unchanged accepted costs. All226build
+files and exact controller/preparation/accepted-rule hashes verify independently before
+and after; local review reproduces exit0. Own exact-label providers are removed.
+[Complete current cost profile](../../plans/design-benchmarks/http-compact-telemetry-cost-v1/).
+
+Timing remains **OPEN/failed**. Complete diagnostic pilots retain every launch without
+new limits or exclusions: sparse-only20launches leave the selected coldmiss23.9%slower;
+adding lazyepochs20launches leaves it21.1%slower and listening304 too noisy. The later
+publication/target/completed-task40launch ten-pair pilot has coldratio1.226
+(1.206–1.246), approximately1.6us extra, and listening304ratio1.035(1.017–1.053).
+The current compact-scope20launch ten-pair confirmation has listening304ratio1.049
+(1.030–1.069), approximately0.25us extra. These are separate complete cohorts and are
+not pooled or presented as a full fourteen-case HTTP acceptance.
+[Sparse pilot](../../plans/design-benchmarks/http-sparse-tags-pilot-v1/),
+[lazy-epoch pilot](../../plans/design-benchmarks/http-lazy-epochs-pilot-v1/),
+[publication pilot](../../plans/design-benchmarks/http-publication-completion-pilot-v1/),
+[current listening304 confirmation](../../plans/design-benchmarks/http-compact-telemetry-pilot-v1/).
+
+[Proposed exact HTTP time bounds](../../plans/design-benchmarks/proposed-http-time-bounds-v1.json)
+are an **inactive design proposal**, not accepted rules. They would cap only four cold
+cases at+25% and two listening304cases at+8%, preserving precision/correctness/allocation
+and command gates. The remaining variants still require final-candidate measurements;
+no result is inferred from another setting. The canonical accepted.json is unchanged.
+Current-candidate Native AOT onosx-arm64 also passes the smoke executable's explicit
+prefix/HTTP checks and compiles/executes the175case signature corpus. Existing
+unchanged-source trim/dynamic-code warnings are retained. The initial Linux-only job
+command and noncanonical/tmp output-path failures are setup errors retained separately.
+[Native execution logs and binary digests](../../plans/design-benchmarks/http-publication-aot-v1/).
+Exact current-candidate CI and full HTTP timing acceptance remain outstanding.
+
+
 Latest completed confirmations (32 warmups, twelve actual iterations) narrow the remaining
 cumulative timing failures to HTTP. The fixed nine-case quiet-Mac study verifies all 360
 launches and passes: eight cases faster, generated GUID sync hit unchanged (ratio 0.985,

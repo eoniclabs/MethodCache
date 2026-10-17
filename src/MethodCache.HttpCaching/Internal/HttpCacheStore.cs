@@ -128,14 +128,22 @@ internal sealed class HttpCacheStore(HttpResponseStore core, TimeProvider? timeP
                 previous.Format == _core.Format && (ReferenceEquals(previous.Tags, _tags) || previous.Tags.SequenceEqual(_tags, StringComparer.Ordinal)))
                 return previous with
                 {
-                    Cost = EntryCost(key, entry, previous.UrlTarget.Length),
+                    Cost = EntryCost(key, entry, previous.LocalTargetLength >= 0 ? previous.LocalTargetLength : previous.UrlTarget.Length),
                     CreatedAt = entry.StoredAt,
                     Deadline = deadline,
                     Selector = entry.VariantGeneration != null
                 };
-            var target = Target(key);
-            // Local administration derives the opaque ID from the immutable node key when first inspected.
-            return new(_core.Distributed ? HttpResponseStore.Identity(key) : string.Empty, target, _client, _core.Format, EntryCost(key, entry, target.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
+            if (!_core.Distributed)
+            {
+                var target = TargetSpan(key);
+                // Local administration derives both texts from the immutable node key when inspected.
+                // Keep charging their conservative cost before they are materialized.
+                return new(string.Empty, string.Empty, _client, _core.Format, EntryCost(key, entry, target.Length),
+                    _tags, entry.StoredAt, deadline, entry.VariantGeneration != null, target.Length, HttpResponseStore.Slot(target));
+            }
+            var distributedTarget = Target(key);
+            return new(HttpResponseStore.Identity(key), distributedTarget, _client, _core.Format,
+                EntryCost(key, entry, distributedTarget.Length), _tags, entry.StoredAt, deadline, entry.VariantGeneration != null);
         }
         private static string Target(string key)
         {

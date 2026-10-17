@@ -691,6 +691,35 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public void SparseTags_DoNotAllocateADictionaryPerEntry()
+    {
+        const int count = 1024;
+        static long Measure(bool tagged)
+        {
+            var engine = new MemoryCacheEngine(10_000, EngineEvictionMode.Fifo, static () => 0, count);
+            var nodes = Enumerable.Range(0, count).Select(i => new ValueNode<int>(i.ToString(), i)
+            {
+                PhysicalExpiresAt = long.MaxValue,
+                LogicalExpiresAt = long.MaxValue,
+                AbsoluteExpiresAt = long.MaxValue,
+                Tags = tagged ? ["tag:" + i] : null
+            }).ToArray();
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            foreach (var node in nodes) engine.Add(node);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            engine.Count.Should().Be(count);
+            engine.Clear();
+            return allocated;
+        }
+        // Warm both paths before comparing their extra indexing cost. Node/key construction is excluded.
+        _ = Measure(false); _ = Measure(true);
+        var withoutTags = Measure(false);
+        var withTags = Measure(true);
+        ((withTags - withoutTags) / (double)count).Should().BeLessThan(512,
+            "one-entry tags need a small index rather than a full concurrent dictionary per entry");
+    }
+
+    [Fact]
     public async Task HugeMaxItems_DoesNotAllocateUpFront()
     {
         var before = GC.GetAllocatedBytesForCurrentThread();

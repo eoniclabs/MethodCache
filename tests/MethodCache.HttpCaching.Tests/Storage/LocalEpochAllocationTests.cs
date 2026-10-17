@@ -8,6 +8,54 @@ namespace MethodCache.HttpCaching.Tests.Storage;
 public class LocalEpochAllocationTests
 {
     [Fact]
+    public void InitialLocalNamespaces_DoNotMaterializeUnusedEpochVectors()
+    {
+        var perSlot = MeasureInitialNamespaces();
+        Assert.True(perSlot < 192, $"Initial slot metadata costs {perSlot:F1} B; unused epoch vectors must stay lazy.");
+    }
+
+    private static double MeasureInitialNamespaces()
+    {
+        using var storage = new TestHttpStore();
+        string[] tags = ["http:test"];
+        // Warm first-use runtime paths separately, then capture every remaining fresh bounded slot.
+        for (var slot = 0; slot < 64; slot++)
+            _ = storage.Core.CaptureSlotAsync(slot, tags, default, allowInitialNamespace: true).Result;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var slot = 64; slot < HttpResponseStore.GenerationSlots; slot++)
+        {
+            var captured = storage.Core.CaptureSlotAsync(slot, tags, default, allowInitialNamespace: true);
+            if (!captured.IsCompletedSuccessfully || captured.Result != string.Empty)
+                throw new InvalidOperationException("Initial default namespaces must stay empty and synchronous.");
+        }
+        return (GC.GetAllocatedBytesForCurrentThread() - before) / (double)(HttpResponseStore.GenerationSlots - 64);
+    }
+
+    [Fact]
+    public async Task ConcurrentFirstCaptures_KeepOneIdentity_AndObserveLaterInvalidation()
+    {
+        using var storage = new TestHttpStore();
+        string[] tags = ["client", "catalog"];
+        static Task<string?>[] Readers(HttpResponseStore store, string[] tags, Task start)
+            => Enumerable.Range(0, 32).Select(_ => Task.Run(async () =>
+            {
+                await start;
+                return await store.CaptureAsync("url", tags, default);
+            })).ToArray();
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var readers = Readers(storage.Core, tags, start.Task);
+        start.SetResult();
+        var identities = await Task.WhenAll(readers);
+        var first = Assert.Single(identities.Distinct());
+        Assert.False(string.IsNullOrEmpty(first));
+        storage.Core.InvalidateLocalTag("catalog");
+        var later = await Task.WhenAll(Readers(storage.Core, tags, Task.CompletedTask));
+        Assert.NotEqual(first, Assert.Single(later.Distinct()));
+        using var independent = new TestHttpStore();
+        Assert.NotEqual(first, await independent.Core.CaptureAsync("url", tags, default));
+    }
+
+    [Fact]
     public async Task UnchangedLocalEpochVector_DoesNotAllocatePerLookup()
     {
         var allocated = await MeasureCapturesOnOwnedThread();

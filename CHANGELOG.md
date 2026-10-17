@@ -6,6 +6,11 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Keep sparse tag indexes small and materialize local HTTP epoch/URL metadata only when needed.
+  Administration, generation identities and conservative byte-budget accounting are preserved.
+
+- Reuse already successful HTTP origin tasks while recording the same load duration, errors and activity parent.
+
 - Reuse an entry's existing process-keyed hash when evicting or expiring it, avoiding redundant hashing
   during cache pressure without changing key identity or eviction behavior.
 
