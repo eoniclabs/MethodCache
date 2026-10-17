@@ -1,5 +1,5 @@
 {
-  "_comment": "Cases whose extra cost is a deliberate design choice. A key matches every case whose name contains it. Each entry needs a reason and upper bounds (bytes, redis, redisWrites, sql) the new value must stay within. Measured against f43854d on 2026-10-16.",
+  "_comment": "Cases whose extra cost is a deliberate design choice. A key matches every case whose name contains it. Each entry needs a reason and upper bounds (bytes, redis, redisWrites, sql, time) the new value must stay within. Cost limits are measured against f43854d on 2026-10-16. The two exact sync/int time limits document Johan's SipHash decision and the complete quiet-Mac PR133 confirmations; they do not accept other cases or widen the precision limit.",
   "DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False)": {
     "reason": "Design spec 9.2: every HTTP L2 lookup reads the shared generation vector (global clear, URL slot, tags) before the representation, so invalidation by another node applies at once. Each component is a read-only Lua script on one key (cluster-safe), so 3 EVALSHA, each HMGET + TTL, pipelined in one round trip, then the entry HMGET. Nothing is written. The bytes are those scripts and the bounded transport (timeout and breaker) around both reads.",
     "redis": 10,
@@ -16,5 +16,13 @@
   "KeepCookies=True)": {
     "reason": "Design spec 9.3: with KeepCookies the handler stays in the pipeline and bypasses the cache. f43854d had no KeepCookies, so its baseline runs without the handler. The bypass reads the request's Cache-Control for only-if-cached (48 B of request headers) and returns a completed Task (72 B).",
     "bytes": 1940
+  },
+  "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)": {
+    "reason": "Johan accepted the approximately 8% sync/int cost of choosing process-keyed SipHash-1-3 over Marvin. The complete quiet Apple M5 PR133 reconfirmation (2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f to 4f6cd7382a73c6964958c96b4e2c19537e111257, ten alternating pairs) measures +4.3%, 95% ratio interval 1.026-1.061. Accept at most 8% in this exact control. This does not waive GUID performance, allocation or I/O costs, or the 6% precision requirement.",
+    "time": 1.08
+  },
+  "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)": {
+    "reason": "The same deliberate SipHash-1-3 security choice. The complete quiet Apple M5 PR133 comparison (2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f to 4f6cd7382a73c6964958c96b4e2c19537e111257, ten alternating pairs) measures +3.9%, 95% ratio interval 1.021-1.057. Accept at most 8% in this exact sync/int control, with no acceptance for other key/return/listener shapes or byte/command costs. The unchanged precision requirement still applies.",
+    "time": 1.08
   }
 }

@@ -27,8 +27,15 @@ public class GeneratedContractBenchmarks
     public void Setup()
     {
         // Prefer performance cores for this process under macOS; use the same setting on both revisions.
-        if (SelectPerformanceCores && OperatingSystem.IsMacOS() && SetQualityOfService(0x19, 0) != 0)
-            throw new InvalidOperationException("Could not set benchmark thread quality of service.");
+        if (SelectPerformanceCores && OperatingSystem.IsMacOS())
+        {
+            if (GetThreadQos(CurrentThread(), out var quality, out _) != 0)
+                throw new InvalidOperationException("Could not inspect benchmark thread QoS.");
+            // POSIX scheduling opts a thread out of QoS permanently. In-process BDN
+            // owns that priority; retain it instead of attempting a forbidden override.
+            if (quality != 0 && SetQualityOfService(0x19, 0) != 0)
+                throw new InvalidOperationException("Could not set benchmark thread quality of service.");
+        }
         var services = new ServiceCollection();
         services.AddSingleton<ContractService>();
         services.AddSingleton<IContractService>(provider => provider.GetRequiredService<ContractService>());
@@ -87,6 +94,12 @@ public class GeneratedContractBenchmarks
 
     // A distinct GUID per call, without adding Guid.NewGuid's random-number cost to every miss
     private Guid NextMissId() => new(++_next, 0x4d43, 0x4000, 0x80, 0, 0, 0, 0, 0, 0, 0);
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_self")]
+    private static extern nint CurrentThread();
+
+    [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_get_qos_class_np")]
+    private static extern int GetThreadQos(nint thread, out uint quality, out int priority);
 
     [DllImport("/usr/lib/libSystem.B.dylib", EntryPoint = "pthread_set_qos_class_self_np")]
     private static extern int SetQualityOfService(uint quality, int relativePriority);

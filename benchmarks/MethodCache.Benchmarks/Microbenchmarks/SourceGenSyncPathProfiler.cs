@@ -12,7 +12,7 @@ namespace MethodCache.Benchmarks.Microbenchmarks;
 /// Breaks down each layer to isolate where time is spent.
 /// </summary>
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net90, warmupCount: 3, iterationCount: 10)]
+[SimpleJob(RuntimeMoniker.Net10_0, warmupCount: 3, iterationCount: 10)]
 [RankColumn]
 public class SourceGenSyncPathProfiler
 {

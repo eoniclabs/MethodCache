@@ -134,6 +134,9 @@ await using (var frozenNet10Provider = frozenNet10Services.BuildServiceProvider(
         failures.Add("Frozen net10 closed generic interface did not preserve caching.");
 }
 
+try { await MethodCache.AotSmokeTest.PrefixCases.PrefixAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("Generated prefix AOT check failed: " + error.Message); }
+
 try { await HttpAotChecks.RunAsync(); }
 catch (Exception error) { failures.Add("HTTP storage/admin AOT check failed: " + error.GetType().Name); }
 

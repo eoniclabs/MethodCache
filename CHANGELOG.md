@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Reuse an entry's existing process-keyed hash when evicting or expiring it, avoiding redundant hashing
+  during cache pressure without changing key identity or eviction behavior.
+
 - Reuse the latest SQL Server epoch command shape instead of rebuilding its SQL text on every HTTP lookup.
   Generation values remain fresh; reordered and duplicate keys retain their caller positions.
 

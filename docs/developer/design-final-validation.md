@@ -1,6 +1,271 @@
 # Final design verification
 
-## Latest complete three-platform functional checkpoint
+## Current gate and checkpoint (2026-10-17)
+
+Johan replaced the historical multi-PR BenchmarkDotNet matrix with the two-step
+[§10 cost-profile and paired-time gate](design-spec.md#10-prestandagrind).
+The cancelled matrix's completed reports remain evidence for their original revisions;
+its unmeasured comparisons are no longer outstanding work under that replaced protocol.
+The dated sections below retain the investigation history, not instructions to restart it.
+
+PR #137 is merged into #134 with merge commit
+`5d9c829a857bd377049b3bd18703e97cdb254547`, whose tree exactly matches reviewed
+head `8002c60b5a39fb9a5ad13d58dbaeb7bdee6960d3`. All fourteen functional jobs and
+all four statuses pass: 2,598 Linux tests in sixteen projects, zero failures,
+one intentional opt-in soak skip, real Redis/SQL, 93 randomized properties,
+enabled soak, both cultures, AOT175, seven installed packages, demo and docs.
+Diff coverage is 3527/3751 (94.0%).
+[Complete job logs, exit files and original/stored hashes](../../plans/design-benchmarks/combined-functional-5d9c829/).
+
+The fresh cost profile of that merge against
+`f43854dbcd3646893f490e78a0a1d9651e9c4521` runs all 67 cases on both revisions:
+**zero failures and six accepted costs**, with unchanged reasoned limits.
+Redis HTTP hits use ten commands, all reads; SQL HTTP hits use two commands.
+Every command/byte result, accepted reason, image/SDK/CPU receipt and source/binary
+checksum is retained in the [cost-profile evidence](../../plans/design-benchmarks/cost-profile-5d9c829/).
+This establishes step 1 for the combined runtime, not time acceptance.
+
+Two subsequent timing-tool corrections leave shipped `src/` and measured workloads
+unchanged. The paired reviewer rejects wide intervals before any speedup/accepted-cost
+decision, unmatched launches and duplicate cases. Four tests fail before correction;
+all 60 Python validation tests then pass. The exporter uses BenchmarkDotNet's already
+normalized per-operation statistics once, requires twelve actual iterations and retains
+those measurements plus runtime/GC metadata. Four exporter cases fail before correction;
+all 120 benchmark tests then pass.
+[Reviewer proof](../../plans/design-benchmarks/paired-cost-gate-validation/) and
+[exporter proof](../../plans/design-benchmarks/cost-timing-export/).
+Latest timing-tool head `abd0eae840e9b277358ca643a1d4ddb3d56653cf` also passes all fourteen jobs and all four statuses: 2,603 Linux tests, 120 benchmark tests, 60 Python guards, AOT175 and 94.0% diff coverage. All twenty frozen vendor image/manifest/source files are byte-identical to their actual freeze commits.
+[Exact current CI and independent vendor audit](../../plans/design-benchmarks/combined-functional-abd0eae/).
+
+The final Nimbus timing cohort is complete, with ten alternating pairs for each of the 67
+main cases. Four explicitly separate generated sync/int controls (short/long prefix,
+listeners off/on) receive a legacy-aware setup adapter: the old add-on must be registered
+for listening to be active on f43854d. Its actual metric-flow guard fails before that
+correction and passes on both revisions afterward; the earlier four controls remain
+diagnostics, never pooled with the corrected controls. The normal generated `SyncHit` uses GUIDs and cannot confirm the
+reported int regression. Every launch uses a fresh process; pinned images, runtime/GC,
+actual affinity and interference checks apply on both sides. Work is split into bounded
+capacity leases; no failed preparation or earlier timing sample is pooled into it.
+An own source checkout overlapped main group 01; all of that group's original outputs
+are retained as rejected evidence, and its exact four cases receive a separate complete
+ten-pair reconfirmation with the same compiled files. Final cumulative timing
+acceptance remains open; the two narrow SipHash time limits below are separate.
+
+The original dispatcher stops before its first L2 launch because the SDK image
+does not contain the Docker CLI used by the orchestration script. All completed
+groups and the zero-launch failure are preserved: 1,831 archive entries and all
+1,830 indexed hashes verify; 800 admissible original launches pass the actual
+iteration, runtime/GC, affinity and interference checks. An independent continuation
+uses the same frozen build outputs (444 catalogued files) and C# sources for the six unmeasured main
+groups. It mounts the existing host Docker CLI read-only; client and daemon access
+are verified inside the same SDK image. No host installation, image/runtime change
+or shared provider modification is involved. Corrected int controls remain the
+formal replacement for the known invalid original controls. No partial final
+timing comparison is presented as a pass.
+
+The complete 71-case comparison verifies all 1,420 formal launches and does not
+pass. With the two authorized int limits, the strict full report has eight precise
+slowdowns and 45 overly wide intervals. The 53 existing local CPU cases have
+three precise slowdowns and 32 wide intervals: generated GUID sync hits rise 8.9%,
+Task misses 10.6%, and ValueTask misses 11.8%. These cases receive no waiver.
+An independent quiet-Mac confirmation of all three uses the same frozen compiled
+baseline/final workloads; the implementation is under investigation. The ten
+existing distributed-I/O cases and eight source-classified new-work cases remain
+separate, with the original full report intact. L2 command-cost acceptance is
+established by the independent cost profile, as specified in §10.
+[Complete original/accepted reports, all raw evidence and reversible metadata](../../plans/design-benchmarks/final-paired-time-v3/).
+
+The complete independent quiet-Mac confirmation retains all 60 launches for those
+three cases. GUID sync is unchanged on the Mac (ratio 0.992, interval 0.965–1.020),
+while Task misses rise 33.3% (1.319–1.347) and ValueTask misses 31.5%
+(1.290–1.340). Neither machine's original result is erased or pooled with the
+other. The miss regressions need correction, and the platform difference in the
+GUID result remains explicit.
+[Complete quiet three-case confirmation](../../plans/design-benchmarks/final-cpu-confirmation-v1/).
+
+The miss investigation identifies redundant hashing when the memory engine removes
+an evicted or expired node. `RemoveNode` already remembers the node's saved full
+process-keyed hash; `EvictNode` and `OnTimerExpired` now do the same. An isolated
+comparison of abd0eae against that exact two-line patch verifies all 40 launches
+and improves Task misses by 15.4% and ValueTask misses by 14.6%, with both intervals
+inside the precision limit. The full candidate Core suite passes 1,045 tests,
+zero failures and one intentional opt-in soak skip. SipHash, its process key,
+key text, equality, features and object layout remain unchanged. Separate
+cumulative comparisons and the cost profile are reviewed separately; the isolated
+win does not clear the earlier full-path failures.
+[Exact patch, all raw launches, paired report and Core test log](../../plans/design-benchmarks/eviction-hash-reuse-v1/).
+
+The separate complete Nimbus confirmation against f43854d verifies all sixty
+launches: Task misses are unchanged (ratio 0.982, interval 0.956–1.008), and
+ValueTask misses improve 5.0% (0.926–0.976). Sync GUID hits still rise 7.7%
+(1.050–1.105); all three intervals meet precision, so that hit regression remains
+open. The independent complete Mac confirmation also verifies sixty launches:
+Task misses improve 6.3% (0.913–0.961), and ValueTask misses improve 8.6%
+(0.898–0.931), while sync GUID hits are too noisy. Neither complete three-case
+report passes. No miss/GUID time limit is added and neither report replaces the
+original full-path evidence.
+[Nimbus cumulative candidate report](../../plans/design-benchmarks/eviction-cumulative-time-v1/) and
+[Mac cumulative candidate report](../../plans/design-benchmarks/mac-eviction-cumulative-time-v1/).
+
+The candidate's complete cumulative cost profile also passes all 67 cases on each
+side: zero execution errors, zero cost failures and the same six accepted costs.
+All 222 build files verify before and after measurement; an independent review
+reproduces the result with byte-identical accepted rules. This confirms cost
+acceptance for the node-hash reuse correction, separately from the open GUID
+time regression and the original insufficient-precision results.
+[Complete candidate cost profile and independent review](../../plans/design-benchmarks/eviction-cumulative-cost-v1/).
+
+A separate complete helper-inlining trial retains sixty launches across the three
+generated return shapes. Every interval is too wide, so the attribute change is
+not adopted. The implementation retains its existing lookup-helper attributes;
+no new time limit is inferred from the estimates.
+[Complete unadopted trial](../../plans/design-benchmarks/hit-inlining-trial-v1/).
+
+The completed five-case Nimbus PR128 CPU comparison retains all ten pairs per case.
+Its two generated sync/int controls are faster, but the three GUID return shapes
+have interval widths greater than 6%, so this comparison **does not pass** the time
+gate. All 100 outputs, source/binary hashes, actual iterations and affinity/quiet
+observations are verified and retained. The independently complete PR132 constructor comparison also fails precision
+for four of five cases; the long-prefix int control is unchanged. The independently complete PR133 SipHash comparison has three overly wide
+intervals (including the short-prefix int estimate), with the other two cases
+unchanged. No bound, run exclusion or acceptance is inferred from these results. Each independent comparison is reviewed only after all its fixed
+cases and pairs have completed; ongoing cohorts stay frozen.
+
+All four corrected sync/int cumulative controls are also complete and reviewed:
+three are faster, while the short-prefix/no-listener control is just beyond the
+precision limit. No limit is inferred from these cumulative controls; the later
+quiet-Mac PR133 evidence supplies the two narrow limits below. Original
+pre-correction controls stay diagnostic.
+
+A quieter Mac confirmation uses the same five cases and ten pairs per independent
+CPU comparison, without pooling machines. Its initial setup failure reveals a
+benchmark-only macOS QoS conflict. Native capability checks preserve explicit
+POSIX scheduling; three regressions fail before the fix, and all 126 benchmark
+cases and formatting pass afterward. Measured methods and library source are
+unchanged. The final published commit still requires CI.
+[Native failure, red/green, source checks and primary references](../../plans/design-benchmarks/mac-inprocess-scheduling/).
+Earlier aborted Mac attempts remain separate; aggregate CPU is recorded as a
+diagnostic during measurement, matching the specification's statistical gate
+rather than imposing an additional threshold on ordinary desktop bursts.
+
+The complete independent Mac PR128 confirmation verifies all 100 launches and
+confirms GUID sync/Task slowdowns of 33.9%/35.2% for that earlier prefix runtime.
+ValueTask and short-prefix int remain too noisy; long-prefix int is faster.
+No limit is added or case omitted. The following constructor/SipHash and final
+runtime comparisons remain required; this is not a claim that the final runtime
+has the same regression.
+[Complete Mac PR128 source, raw rows and report](../../plans/design-benchmarks/mac-cpu-pr128-time-v5/).
+
+The complete Mac PR132 constructor comparison passes all five cases and ten pairs:
+GUID sync, Task and ValueTask are 7.5%, 7.9% and 7.3% faster, short-prefix int is
+6.8% faster, and long-prefix int is unchanged. Every interval meets the precision
+limit. This is the actual PR132 base/head comparison, not a comparison with
+f43854d; it does not by itself establish cumulative timing acceptance.
+[Complete Mac PR132 source, raw rows and report](../../plans/design-benchmarks/mac-cpu-pr132-time-v5/).
+
+The complete Mac PR133 SipHash comparison verifies another 100 launches. GUID
+sync, Task and ValueTask are 18.6%, 15.7% and 14.9% faster than its Marvin base.
+Long-prefix sync/int is 3.9% slower (95% ratio interval 1.021–1.057); short-prefix
+sync/int has an interval just wider than the precision limit. The strict original
+review exits 1. An independent ten-pair reconfirmation of that single noisy case
+with the same compiled files, workload and criteria confirms +4.3%, ratio interval
+1.026–1.061, with sufficient precision. Both complete raw studies and their
+original verdicts remain intact.
+[Complete Mac PR133 source, raw rows and report](../../plans/design-benchmarks/mac-cpu-pr133-time-v5/).
+[Independent short-prefix reconfirmation](../../plans/design-benchmarks/mac-cpu-pr133-short-v1/).
+
+Johan accepted the approximately 8% sync/int cost of choosing SipHash. Two exact
+`accepted.json` time rules now cap the confirmed short/long no-listener sync/int
+controls at 1.08. All existing byte/command limits and the 6% precision rule are
+unchanged; GUID and other return/listener shapes receive no waiver. The complete
+five-case PR133 review, using each original complete case and the complete
+short-prefix reconfirmation, passes with three GUID improvements and two accepted
+costs. It remains a comparison against Marvin, not cumulative acceptance.
+[Original-rule and accepted-rule reports with all 100 formal rows](../../plans/design-benchmarks/mac-cpu-pr133-formal-v1/).
+
+The explicit F05 full-path coverage receives one supplementary final comparison,
+f43854d to the combined runtime: all 48 generated-prefix cost cases and 28 timing
+cases (GUID sync/Task/ValueTask hits and misses, short/long prefixes, listeners
+off/on, plus four sync/int controls). Ten pairs per timing case are split into
+seven bounded groups. This is queued after the independent Mac CPU comparisons;
+it does not restart the cancelled historical multi-PR matrix. F05 remains open.
+Preparation and the complete 48-case cost phase now pass: zero execution errors,
+zero cost failures, zero accepted exceptions, and unchanged costs for all 24 hit
+cases. All 444 catalogued build files and both common-source copies were independently
+reverified. This includes existing long-key allocations and makes no universal
+zero-allocation claim. Time acceptance remains separate.
+[Complete generated-prefix cost evidence](../../plans/design-benchmarks/final-prefix-cost-v1/).
+
+The complete 28-case time phase now verifies all 560 launches: eleven precise
+miss slowdowns and two overly wide intervals remain. Most generated hits pass,
+but short/long prefixes and both listener states show miss regressions. The
+original and accepted-rule reports are retained unchanged; no miss waiver is
+added. This is the pre-correction result, not a passing final gate.
+[Complete generated-prefix time evidence](../../plans/design-benchmarks/final-prefix-time-v1/).
+
+The separate current-runtime diagnostic completes all thirty cases in fresh
+processes: eight key-build/growth cases, eighteen full-span/prehashed/ready-string
+lookups and four distinct IMemoryCache ready/built-key and sync/Task references.
+All 54 cost cases and executable setup guards pass. These are descriptive current
+components, not a paired improvement claim or a replacement for full-path gates.
+[Component table and exact runtime/source receipts](../../plans/design-benchmarks/final-components-v3/).
+
+The final source audit also adds explicit native execution of the short/long,
+int/GUID and sync/Task/ValueTask hit/miss paths with listeners off/on. All 24
+shape/flag cases check two independent keys and exact origin counts; enabled
+listeners must record all 48 requests. JIT execution, formatting, native publish
+and actual native execution pass. All twenty frozen vendor files match their
+original freeze commits. Library source and measured benchmark methods are
+unchanged; final published-head CI is still required.
+[Complete native execution, compile marker and vendor receipts](../../plans/design-benchmarks/final-prefix-aot-v1/).
+
+Separate cost-only profiles are complete on twelve verified PR edges (#123–#130,
+#132–#134 and #137), using the same current harness and unchanged accepted limits
+on both sides of each actual base/head pair. Source checkout, compilation and each
+profile run are inside the bounded capacity lease. These records will identify
+historical per-change failures separately from corrections in the combined runtime;
+the cumulative pass is not relabelled as a pass for an earlier head.
+
+The first per-change cost profiles are complete: PR123 passes all 67 cases;
+PR124 executes all 67 on both sides without execution errors but has eight cost
+failures (four listener-enabled allocation cases and four L2 command cases).
+Those historical results are not relabelled as passes because the current combined
+runtime passes. All twelve execute 67 cases per side without execution errors.
+PR125–PR128 also pass. PR129 has six historical failures: three KeepCookies-bypass
+allocation cases, Redis HTTP hit/miss command counts, and SQL HTTP hit allocations.
+All 67 cases execute on both sides. These failures remain visible alongside the
+later combined profile's pass; no new accepted cost is added to hide them.
+PR130 also fails the inherited Redis fresh-hit write check (six writes per hit).
+The read-only epoch change in merged PR137 removes that behavior; the combined
+profile verifies ten Redis commands and zero writes on the same HTTP hit.
+PR132 and PR133 retain the same historical Redis fresh-hit write failure; PR134's
+complete per-change cost profile passes with the unchanged accepted limits.
+PR137 passes too: seven profiles pass and five historical heads retain seventeen
+cost failures. All 1,608 raw records, source/SDK/backend receipts and recursive
+checksums for 4,200 build/runtime files are retained. Independent reviews reproduce
+all twelve original verdicts; the new time-only limits change no cost verdict.
+[Complete per-change profiles and exact failure details](../../plans/design-benchmarks/per-change-cost-v1/).
+
+The final acceptance audit adds the explicit G05 ordinary-late-DI control to the
+existing late-cacheable rejection fact. All 19 Quick Start cases and formatting
+pass locally; production and timed workloads are unchanged. This test addition
+still needs the final published commit's CI.
+[Source/check receipts](../../plans/design-benchmarks/final-g05-acceptance/).
+
+PRs #123–#133 and #135 have all four successful statuses on their current heads,
+verified on 2026-10-16. #134 remains draft until final evidence review. The reported
+double-timer allocation in `DistributedCacheLayer.TryRunAsync` is unchanged; no
+unmeasured optimization or release/API promotion is included.
+
+The [76-row acceptance inventory](../../plans/design-benchmarks/final-acceptance-inventory-v1/)
+maps every explicit specification row to inspected assertions, source hashes and
+its evidence. It distinguishes the green published functional checkpoint from
+candidate-only checks and the still-open timing/final-commit gates; the inventory
+is not a claim that all acceptance rows pass.
+
+## Historical checkpoints and investigations
+
+## Historical 908a94e three-platform functional checkpoint
 
 Combined head `908a94efa23fe27629ed9f00070a6bbd116740d0` passes all fourteen CI jobs
 and all four commit statuses. Linux runs 2,562 facts across sixteen projects, with no failures
@@ -254,31 +519,27 @@ unchanged measurement settings and acceptance criteria. The complete cumulative
 comparison is prioritized. Selection uses source changes before any timing means
 are assessed; missing or uncertain results are not passes.
 [Selected coverage, immutable controller and transition receipts](../../plans/design-benchmarks/focused-schedule-v6/).
-Full selected completion and section-10 review remain required.
+This dispatch was later cancelled when Johan replaced §10; its completed evidence remains historical.
 [Exact frozen inputs, native receipts, build logs, validation and dispatch](../../plans/design-benchmarks/guid-full-preparation-v5/).
 
-## Remaining acceptance gates
+## Remaining acceptance gates under the current §10
 
-- Constructor PR #132 at 2b3cb93 and SipHash PR #133 at 4f6cd73 pass current commit statuses.
-  The GUID-workload update #135 at unchanged 419c786 is integrated and now independently passes
-  all fourteen jobs/four statuses after a deliberate retry with the repaired coordinator. It runs
-  2,522 Linux facts, AOT172, required backends/packages and 94.0% changed-line coverage.
-  [Exact fresh same-head evidence](../../plans/design-benchmarks/guid-functional-419c786/).
-  Its historical macOS checkout lacks reachable Git objects before tests; PR136 reproduces and
-  fixes detached maintenance. Preserve that [original failure and connectivity evidence](../../plans/design-benchmarks/guid-macos-history-419c786/).
-- Corrected primary workload bytes are frozen at 453be95 and component C# at bbff4a6.
-  V5 preparation passes all twenty actual generated-program builds, fourteen native setups
-  and sixty compiled family validations. The independent review rehashes 2,358 harness DLLs.
-  The initial 180-launch dispatcher starts at 09:10:18 UTC on 2026-10-16. After twelve
-  complete families it is superseded at an idle boundary by the source-scoped 153-launch
-  V6 schedule. Full selected completion and review remain required. V4's zero-execution failure stays archived. Compare identical key
-  types and workloads across revisions; keep int and GUID results separate.
-  [Completed V5 preparation and dispatch provenance](../../plans/design-benchmarks/guid-full-preparation-v5/).
-- Section 10: all adjacent behavior changes and the cumulative f43854d comparison need three
-  independent alternating launches, reviewed 95% intervals and no hit allocation increase. Wide
-  intervals are insufficient evidence. There is no accepted full-series timing result yet.
-- Prefix component/facade measurements and current HTTP publication results must pass the same review.
-- Every published head needs its required three-platform CI; drafts remain unmerged meanwhile.
+- V01–V03: collect latest published-head functional CI and verify generated documentation,
+  packages/AOT, public APIs and unchanged original vendor fixtures. Older checkpoints
+  above establish their own source versions only.
+- V04 step 1: the combined runtime's 67-case cost profile is complete and passes with six
+  explicit accepted costs. Per-change evidence must identify its actual base; historical
+  failed or incomplete time series remain historical rather than being relabelled passes.
+- V04 step 2: finish the one final paired comparison against f43854d on a quiet machine,
+  review every interval, and retain required filtered checks for CPU-only changes.
+  An interval wider than 6% fails even when the point estimate is faster or deliberately
+  accepted. Add a reasoned sync/int SipHash limit only after confirming that exact workload.
+- Publish the final evidence and update the PR descriptions around the final state.
+  No merge of the design series into its base or package release is authorized here.
+
+The earlier V4/V5/V6 multi-PR schedules are cancelled and do not remain merge conditions.
+Their source/selection/preparation/failure receipts remain available for audit. Current
+commands and criteria are defined in §10 and the cost-profile README.
 
 Exact current-head functional receipts are now collected for [HTTP f0dd6c2](../../plans/design-benchmarks/http-functional-f0dd6c2/),
 [.NET 10 1bafff1](../../plans/design-benchmarks/net10-functional-1bafff1/) and
