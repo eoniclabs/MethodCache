@@ -1,0 +1,38 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "prepare_label": "design-sparse-tags-pilot-v1-prepare",
+  "pairs": 5,
+  "warmups": 32,
+  "remaining_groups": [
+    0
+  ],
+  "cases": [
+    "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)",
+    "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+  ],
+  "purpose": "Diagnostic cumulative two-case pilot only: f438 versus A2+A3+sparseTagNodeSet, five alternating pairs,32warm12actual150ms. Fixed scope before means. Exact frozen helper and workload bodies. Not full HTTP/cumulative acceptance; no rule changes. Test RED before1043bytes/tag, 55 focused tests GREEN after. All failures retained.",
+  "files_sha256": [
+    {
+      "path": "prepare.py",
+      "sha256": "b09bda914728d3e24355b779d85cb9c419efda899298ad2739f3bb5d1c168e80"
+    },
+    {
+      "path": "run.py",
+      "sha256": "57d75d3c6f576d1bad7cef8a2eaddca009265d760ae50f14bca5c5b22d81f4d7"
+    },
+    {
+      "path": "process_activity.py",
+      "sha256": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+    },
+    {
+      "path": "sparse-tags.patch",
+      "sha256": "ea990c4e4386486876f087874b90e1142412eadcaa6ed0b9225c9b5b0b540798"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "2eb7172e440da2753b1a9ef7a3228ffe57d5995f0318c0933a0951532ecfc8ba"
+    }
+  ]
+}

@@ -141,7 +141,7 @@ internal sealed class CoreTelemetry : IDisposable
         activity?.SetTag("kind", kind).SetTag("name", name);
         RecordIdentities(activity, key, tags);
         return new TelemetryOperation(_loads.Enabled ? _loads : null, _time, activity,
-            new TagList { { "kind", kind }, { "name", name } });
+            new("kind", kind), new("name", name));
     }
 
     internal TelemetryOperation? BeginDistributed(string operation)
@@ -150,7 +150,7 @@ internal sealed class CoreTelemetry : IDisposable
         var activity = Source.StartActivity("MethodCache.distributed", ActivityKind.Client);
         activity?.SetTag("operation", operation);
         return new TelemetryOperation(_distributed.Enabled ? _distributed : null, _time, activity,
-            new TagList { { "operation", operation } });
+            new("operation", operation));
     }
 
     internal Activity? BeginInvalidation(string type, string[]? keys = null, string[]? tags = null)
@@ -202,27 +202,46 @@ internal sealed class TelemetryOperation : IDisposable
     private readonly TimeProvider _time;
     private readonly long _started;
     private readonly Activity? _activity;
-    private TagList _tags;
+    private readonly KeyValuePair<string, object?> _first;
+    private readonly KeyValuePair<string, object?> _second;
+    private string? _errorType;
     private int _disposed;
-    internal TelemetryOperation(Histogram<double>? duration, TimeProvider time, Activity? activity, TagList tags)
+    internal TelemetryOperation(Histogram<double>? duration, TimeProvider time, Activity? activity,
+        KeyValuePair<string, object?> first, KeyValuePair<string, object?> second = default)
     {
         _duration = duration;
         _time = time;
         _started = time.GetTimestamp();
         _activity = activity;
-        _tags = tags;
+        _first = first;
+        _second = second;
     }
     internal void Fail(Exception error)
     {
         var type = error.GetType().FullName ?? error.GetType().Name;
-        _tags.Add("error.type", type);
+        _errorType = type;
         _activity?.SetTag("error.type", type).SetStatus(ActivityStatusCode.Error);
     }
     /// <inheritdoc />
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        _duration?.Record(_time.GetElapsedTime(_started).TotalSeconds, _tags);
+        if (_duration != null)
+        {
+            var seconds = _time.GetElapsedTime(_started).TotalSeconds;
+            // Operations carry one or two fixed tags. Record the optional error tag on the
+            // stack rather than retaining TagList's eight inline slots in every scope.
+            if (_second.Key == null)
+            {
+                if (_errorType == null) _duration.Record(seconds, _first);
+                else _duration.Record(seconds, _first, new("error.type", _errorType));
+            }
+            else
+            {
+                if (_errorType == null) _duration.Record(seconds, _first, _second);
+                else _duration.Record(seconds, _first, _second, new("error.type", _errorType));
+            }
+        }
         _activity?.Dispose();
     }
 }

@@ -3,7 +3,11 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using CsCheck;
 using MethodCache.Core.Runtime.Http;
+using MethodCache.Core.Telemetry;
 using MethodCache.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using MsOptions = Microsoft.Extensions.Options.Options;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Properties;
@@ -11,6 +15,32 @@ namespace MethodCache.Core.Tests.Properties;
 [Collection(nameof(Core.CpuIntensiveCollection))]
 public class HttpStorageIdentityPropertyTests
 {
+    [Fact]
+    public void LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval()
+    {
+        var time = new FakeTimeProvider();
+        Gen.Select(Gen.Int[char.MinValue, char.MaxValue].Array[0, 80], Gen.Int[char.MinValue, char.MaxValue].Array[0, 80]).Sample((prefixUnits, suffixUnits) =>
+        {
+            using var services = new ServiceCollection().AddMetrics().BuildServiceProvider();
+            using var telemetry = new CoreTelemetry(services.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
+                MsOptions.Create(new MethodCacheTelemetryOptions()), time);
+            using var store = new HttpResponseStore(MsOptions.Create(new MethodCacheMemoryOptions()), telemetry, time);
+            var prefix = new string(prefixUnits.Select(unit => (char)unit).ToArray());
+            var key = prefix + new string(suffixUnits.Select(unit => (char)unit).ToArray());
+            var now = time.GetUtcNow();
+            var info = new HttpStorageInfo(string.Empty, string.Empty, "client", 2, 100, [], now,
+                now + TimeSpan.FromMinutes(1), false, prefix.Length, HttpResponseStore.Slot(prefix));
+            Assert.True(store.StoreLocal(key, "payload", info));
+            var observed = Assert.Single(store.List());
+            Assert.Equal(prefix, observed.UrlTarget);
+            Assert.Equal(HttpResponseStore.Identity(key), observed.Id);
+            Assert.Same(observed, Assert.Single(store.List()));
+            Assert.True(store.RemoveObservationAsync(observed.Id, default).GetAwaiter().GetResult());
+            Assert.Null(store.ReadLocal(key));
+            Assert.Empty(store.List());
+        }, seed: PropertySettings.Seed, iter: PropertySettings.ModelIterations);
+    }
+
     [Fact]
     public void ObservationIdentity_ArbitraryUtf16_MatchesFrozenBytesAndPortableStreaming()
     {

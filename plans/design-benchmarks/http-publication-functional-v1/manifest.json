@@ -1,0 +1,186 @@
+{
+  "scope": "Uncommitted candidate proof at collection time: sparse tag sets, lazy initial local epochs, deferred local target strings, completed-origin telemetry. FullCore1054pass/oneintentionalsoakskip;HTTP343pass. Allocation/memo tests fail before corrections. Six telemetry completion cases pass before/after; activity tests pass after. Shared-store property harness error is retained separately from the isolated actual red test. Timing and full cost acceptance are separate.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "empty-prefix-harness-failure.trx",
+      "sha256": "38b81fe1a7dd149532345f02d293c796480ff5c7a14fc5f7009c8df1f1be4d01"
+    },
+    {
+      "path": "empty-prefix-red.trx",
+      "sha256": "b618116502b3252c78630fe147e5d645a6d43273d7de205b74d58a1e799f7ec1"
+    },
+    {
+      "path": "full-stack-core.trx",
+      "sha256": "231d4ff1facda4f50dbad003670422464ff17ca1650bb40cccd68110969b5ed3"
+    },
+    {
+      "path": "full-stack-http.trx",
+      "sha256": "5b28bd5f999a34fb7a10aab51ab61a6fc568e8b354efc34017b8120ed467493a"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "9446f863dfc9e5f76850df5e6f4e4b2714bd785f5670b4f3f4621dc356984692",
+      "original_sha256": "a0b802eedef89694cd3b3f57334c6758daddd4f16513ca533ceb5c1c41fd1808",
+      "catalogue_paths": [
+        [
+          "files_sha256"
+        ]
+      ]
+    },
+    {
+      "path": "lazy-epochs-green.trx",
+      "sha256": "72969b6da6583df8cb07e90316ca0d7b0dec57f3c9e25549e01c137d7b127ae0"
+    },
+    {
+      "path": "lazy-epochs-red.trx",
+      "sha256": "279e861ad7e9c9567c1de852bd5e08e3b2ebfee6a498e70b2ca17a132106a2f6"
+    },
+    {
+      "path": "methodcache-empty-prefix-harness-failure.log",
+      "sha256": "f01a51d697f78fa11cc8ccc99b61c055b0e9f6a22d192896f5a7816f5e9fd8f1"
+    },
+    {
+      "path": "methodcache-empty-prefix-red.log",
+      "sha256": "230f110024f02eb88983e8c8ce7d64584b2afd09a54077303e019ad05c17e850"
+    },
+    {
+      "path": "methodcache-full-stack-core.log",
+      "sha256": "c191c3080768b9adb275df2fbadad7a7ecaac71852a0bdb2acb33483072d27cb"
+    },
+    {
+      "path": "methodcache-full-stack-http.log",
+      "sha256": "2c3cc12e38e58d7320fa5b7c9e1a485372366450b583cb19584e24096f2ff048"
+    },
+    {
+      "path": "methodcache-lazy-epochs-green.log",
+      "sha256": "6ac8b9425325226f7675ffbd82ef57d374c5a5da9d2b5c9198fff5e298820591"
+    },
+    {
+      "path": "methodcache-lazy-epochs-red.log",
+      "sha256": "e916fad996032f1240cd492b2a1944c80d09525988dae766aab3d083b3d266d1"
+    },
+    {
+      "path": "methodcache-origin-activities-after.log",
+      "sha256": "c3d27bdd9e854607defe6123646746ea6dee741a2fb0066caa152840302cd94a"
+    },
+    {
+      "path": "methodcache-origin-telemetry-after.log",
+      "sha256": "4df7845fdba76560b7b00d7b564eb3dd3d74bbc742aacae84a682be2613e8144"
+    },
+    {
+      "path": "methodcache-origin-telemetry-before.log",
+      "sha256": "e1c4b2f02e8c6a37ebcd1e1a940debb68d1d316d6ee33824b33033c486324474"
+    },
+    {
+      "path": "methodcache-sparse-tags-green.log",
+      "sha256": "ce84f5fa456a38c3683ec1c2089fdbd257a7efe7a60d66776345c28ff2f79948"
+    },
+    {
+      "path": "methodcache-sparse-tags-red.log",
+      "sha256": "34cb86b5e8aa49291db8949665ebbc52b6100867ae8e18f4c674dfd81858a5d9"
+    },
+    {
+      "path": "methodcache-target-copy-green.log",
+      "sha256": "f4ba541d77ace048d28b3ae73b7ca2016e69db9a450a95fb7524b637729a0e78"
+    },
+    {
+      "path": "methodcache-target-copy-red.log",
+      "sha256": "ca3d6ce09de13d6f1b9fc5d452df6f877cc01be920e97e0be8fdb846ab87bf41"
+    },
+    {
+      "path": "origin-activities-after.trx",
+      "sha256": "0b651031f018eb849f653dd3d96acebac67932ae78ab1a01e71c7492ac703b4d"
+    },
+    {
+      "path": "origin-telemetry-after.trx",
+      "sha256": "bcc535992fabac1f5783afb9f09e169632044dac53d5b70c25d497fe4197ffab"
+    },
+    {
+      "path": "origin-telemetry-before.trx",
+      "sha256": "eccb6ec5d529ecd3d1695e2a91d1b4ab6ad6359ed663fcfc925ff521a031a371"
+    },
+    {
+      "path": "publication.patch",
+      "sha256": "d8593a9747d7a92ebbf3e748794b09695fb578ce41d3eef7972033f2f04e865f"
+    },
+    {
+      "path": "source/src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
+    },
+    {
+      "path": "source/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+    },
+    {
+      "path": "source/src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+      "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+    },
+    {
+      "path": "source/src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+      "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+    },
+    {
+      "path": "source/src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
+    },
+    {
+      "path": "source/tests/MethodCache.Core.Tests/Core/InMemoryCacheEngineTests.cs",
+      "sha256": "73176ca815f5cccb8f178b01466841a92b10d59b77fa7a3b1699fafd1828ae8a"
+    },
+    {
+      "path": "source/tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs",
+      "sha256": "104951e055b548e410c6be688a055082a3f86e3da5933d2c78b9b040812889dd"
+    },
+    {
+      "path": "source/tests/MethodCache.Core.Tests/Properties/TagNodeSetPropertyTests.cs",
+      "sha256": "3ba7326a203a29da0ec7a4ada9a200fd819854d7d8dbbc94fa0786e7ebc752de"
+    },
+    {
+      "path": "source/tests/MethodCache.HttpCaching.Tests/HttpOriginTelemetryCompletionTests.cs",
+      "sha256": "839e9dd34fc2e6d4bad2b15291b097faa83e8666d5bb7a927c9ee6398f86d243"
+    },
+    {
+      "path": "source/tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+      "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
+    },
+    {
+      "path": "source/tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs",
+      "sha256": "8d469f04c5b50b3e706d4ff37a594678497849a5e7acd4ff32066a11c7a5e081"
+    },
+    {
+      "path": "source-intent.json",
+      "sha256": "e186bb72476ef7ac26b5d5923c5f0ec4464604e0b688e6c4421fde12cd1179ea",
+      "original_sha256": "40dc906c01341719b9f77d3f010a3cbd3be00240b3b737567616368a3b835d63",
+      "catalogue_paths": [
+        [
+          "candidate_sources"
+        ]
+      ]
+    },
+    {
+      "path": "sparse-tags-green.trx",
+      "sha256": "cab08db50b7ca5c9673172f671792019f1d5dfa5dccb435091a99704dd470224"
+    },
+    {
+      "path": "sparse-tags-red.trx",
+      "sha256": "fb329b849e33bb7f010256e8cae79a4e8b1404d55388725c3a63fe94f7177ab0"
+    },
+    {
+      "path": "target-copy-green.trx",
+      "sha256": "8f6e32c81d6ac64231d1c459d07adcd10eda18e8042ef3d8464454022003e991"
+    },
+    {
+      "path": "target-copy-red.trx",
+      "sha256": "799f55462a5964e747cc1b834306e5efb5d6eda88ef6b405303678a44616f9e8"
+    },
+    {
+      "path": "validation.json",
+      "sha256": "8b2c0c4010d1b57acfded6c38c83cc84099de80290c574632204946c7012ed2d"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}

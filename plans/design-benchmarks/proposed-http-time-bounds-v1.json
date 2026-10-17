@@ -1,0 +1,35 @@
+{
+  "_status": "PROPOSAL ONLY. Not active in benchmarks/MethodCache.CostProfile/accepted.json; requires an explicit design decision before activation.",
+  "_base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "_candidate_patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
+  "_scope": "Only the six exact existing cases below. No relaxation of correctness, byte/command gates, alternating pairs or the six-percent precision bound. Every affected current-candidate case still needs complete verification; this file alone establishes no pass.",
+  "_evidence": {
+    "cold": "http-publication-completion-pilot-v1: selected no-listener initial cold case1.226,95%1.206\u20131.246,~1.6us extra; compact enabled-scope change is later and does not establish a new cold measurement.",
+    "revalidation": "http-compact-telemetry-pilot-v1: selected listening/after-invalidation304case1.049,95%1.030\u20131.069,~0.25us extra.",
+    "unmeasured_variants": "Do not infer results for the remaining four variants; all must be checked on the final candidate."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)": {
+    "time": 1.25,
+    "reason": "PROPOSED explicit design tradeoff for cold local HTTP publication. Sections9.1/9.4 add the shared TinyLFU engine, byte-budget metadata and bounded URL/client tag indexes and administration compared with f438. Eager admin identities/targets and unused initial vectors have been removed, and sparse indexes compacted. This bounds the remaining aggregate publication cost; it does not claim attribution of every nanosecond. Must be verified for this exact case on the final candidate."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)": {
+    "time": 1.25,
+    "reason": "PROPOSED explicit design tradeoff for cold local HTTP publication. Sections9.1/9.4 add the shared TinyLFU engine, byte-budget metadata and bounded URL/client tag indexes and administration compared with f438. Eager admin identities/targets and unused initial vectors have been removed, and sparse indexes compacted. This bounds the remaining aggregate publication cost; it does not claim attribution of every nanosecond. Must be verified for this exact case on the final candidate."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)": {
+    "time": 1.25,
+    "reason": "PROPOSED explicit design tradeoff for cold local HTTP publication. Sections9.1/9.4 add the shared TinyLFU engine, byte-budget metadata and bounded URL/client tag indexes and administration compared with f438. Eager admin identities/targets and unused initial vectors have been removed, and sparse indexes compacted. This bounds the remaining aggregate publication cost; it does not claim attribution of every nanosecond. Must be verified for this exact case on the final candidate."
+  },
+  "HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)": {
+    "time": 1.25,
+    "reason": "PROPOSED explicit design tradeoff for cold local HTTP publication. Sections9.1/9.4 add the shared TinyLFU engine, byte-budget metadata and bounded URL/client tag indexes and administration compared with f438. Eager admin identities/targets and unused initial vectors have been removed, and sparse indexes compacted. This bounds the remaining aggregate publication cost; it does not claim attribution of every nanosecond. Must be verified for this exact case on the final candidate."
+  },
+  "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)": {
+    "time": 1.08,
+    "reason": "PROPOSED explicit design tradeoff for enabled Core origin-load instrumentation and shared HTTP residency bookkeeping. Request/load labels, origin duration, errors and activity parenting are preserved. Completed-task wrappers, unused operation tag capacity and repeated local slot hashing have been removed. This accepts only this exact listening304 case; no no-listener or ordinary-hit time budget is broadened. Final candidate measurement still required."
+  },
+  "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)": {
+    "time": 1.08,
+    "reason": "PROPOSED explicit design tradeoff for enabled Core origin-load instrumentation and shared HTTP residency bookkeeping. Request/load labels, origin duration, errors and activity parenting are preserved. Completed-task wrappers, unused operation tag capacity and repeated local slot hashing have been removed. This accepts only this exact listening304 case; no no-listener or ordinary-hit time budget is broadened. Final candidate measurement still required."
+  }
+}

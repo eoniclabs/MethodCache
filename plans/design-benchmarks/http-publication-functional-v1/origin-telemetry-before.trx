@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="f8556aa7-7a8a-4a7f-bdb0-998f0fcfd94c" name="@Megatron 2026-10-17 09:27:11" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-17T09:27:11.0804590+02:00" queuing="2026-10-17T09:27:11.0804590+02:00" start="2026-10-17T09:27:10.7369980+02:00" finish="2026-10-17T09:27:11.0820970+02:00" />
+  <TestSettings name="default" id="33c60d3d-fa93-4eb0-898c-d492a3bf10fb">
+    <Deployment runDeploymentRoot="_Megatron_2026-10-17_09_27_11" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="06194cf9-de46-4e04-aa05-ad5acbf49ff6" testId="6c6681eb-4def-c8a9-4eea-e86ccfb277fc" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-cancel&quot;)" computerName="Megatron" duration="00:00:00.0003454" startTime="2026-10-17T09:27:11.0455690+02:00" endTime="2026-10-17T09:27:11.0455840+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="06194cf9-de46-4e04-aa05-ad5acbf49ff6" />
+    <UnitTestResult executionId="b9f0f932-6947-4733-9b5b-acfe23fbe079" testId="54620b34-631c-8d18-e1df-1765cd595a2f" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-fault&quot;)" computerName="Megatron" duration="00:00:00.0001481" startTime="2026-10-17T09:27:11.0455220+02:00" endTime="2026-10-17T09:27:11.0455400+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b9f0f932-6947-4733-9b5b-acfe23fbe079" />
+    <UnitTestResult executionId="6f8ffd39-b619-43f2-bd5a-bacb0151621b" testId="8322338b-040d-48de-ad0b-6d597e2d42b5" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-success&quot;)" computerName="Megatron" duration="00:00:00.0506161" startTime="2026-10-17T09:27:10.9893620+02:00" endTime="2026-10-17T09:27:11.0423920+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6f8ffd39-b619-43f2-bd5a-bacb0151621b" />
+    <UnitTestResult executionId="ea88bd29-47e2-4b2c-b080-20614b5eec0e" testId="1fd7df98-6e2c-961d-e2f3-df08359f8dab" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-fault&quot;)" computerName="Megatron" duration="00:00:00.0011735" startTime="2026-10-17T09:27:11.0453390+02:00" endTime="2026-10-17T09:27:11.0453700+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ea88bd29-47e2-4b2c-b080-20614b5eec0e" />
+    <UnitTestResult executionId="8010234d-a1ea-44d4-8990-dc75174d504c" testId="9130e360-e9c7-1560-fab3-ee39780269c3" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-throw&quot;)" computerName="Megatron" duration="00:00:00.0001627" startTime="2026-10-17T09:27:11.0456110+02:00" endTime="2026-10-17T09:27:11.0456250+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8010234d-a1ea-44d4-8990-dc75174d504c" />
+    <UnitTestResult executionId="379c4c3b-adfe-4c6f-af5f-c53dabedeed6" testId="1a79b24c-9fdb-a0e5-c398-be111d54bf08" testName="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-success&quot;)" computerName="Megatron" duration="00:00:00.0001223" startTime="2026-10-17T09:27:11.0456500+02:00" endTime="2026-10-17T09:27:11.0456640+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="379c4c3b-adfe-4c6f-af5f-c53dabedeed6" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-fault&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="1fd7df98-6e2c-961d-e2f3-df08359f8dab">
+      <Execution id="ea88bd29-47e2-4b2c-b080-20614b5eec0e" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-cancel&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="6c6681eb-4def-c8a9-4eea-e86ccfb277fc">
+      <Execution id="06194cf9-de46-4e04-aa05-ad5acbf49ff6" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-throw&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="9130e360-e9c7-1560-fab3-ee39780269c3">
+      <Execution id="8010234d-a1ea-44d4-8990-dc75174d504c" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;async-success&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="8322338b-040d-48de-ad0b-6d597e2d42b5">
+      <Execution id="6f8ffd39-b619-43f2-bd5a-bacb0151621b" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-fault&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="54620b34-631c-8d18-e1df-1765cd595a2f">
+      <Execution id="b9f0f932-6947-4733-9b5b-acfe23fbe079" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+    <UnitTest name="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests.OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded(completion: &quot;sync-success&quot;)" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.httpcaching.tests/bin/release/net10.0/methodcache.httpcaching.tests.dll" id="1a79b24c-9fdb-a0e5-c398-be111d54bf08">
+      <Execution id="379c4c3b-adfe-4c6f-af5f-c53dabedeed6" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.HttpCaching.Tests/bin/Release/net10.0/MethodCache.HttpCaching.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.HttpCaching.Tests.HttpOriginTelemetryCompletionTests" name="OriginCompletion_RecordsOneDurationAndRequest_WithErrorWhenNeeded" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="6c6681eb-4def-c8a9-4eea-e86ccfb277fc" executionId="06194cf9-de46-4e04-aa05-ad5acbf49ff6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="54620b34-631c-8d18-e1df-1765cd595a2f" executionId="b9f0f932-6947-4733-9b5b-acfe23fbe079" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8322338b-040d-48de-ad0b-6d597e2d42b5" executionId="6f8ffd39-b619-43f2-bd5a-bacb0151621b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1fd7df98-6e2c-961d-e2f3-df08359f8dab" executionId="ea88bd29-47e2-4b2c-b080-20614b5eec0e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9130e360-e9c7-1560-fab3-ee39780269c3" executionId="8010234d-a1ea-44d4-8990-dc75174d504c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1a79b24c-9fdb-a0e5-c398-be111d54bf08" executionId="379c4c3b-adfe-4c6f-af5f-c53dabedeed6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="6" executed="6" passed="6" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.03]   Discovering: MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.06]   Discovered:  MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.07]   Starting:    MethodCache.HttpCaching.Tests
+[xUnit.net 00:00:00.14]   Finished:    MethodCache.HttpCaching.Tests
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

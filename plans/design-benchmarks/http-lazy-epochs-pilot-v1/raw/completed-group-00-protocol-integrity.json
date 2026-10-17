@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-17T07:38:35.361462+00:00",
+  "scope": "Complete fixed group integrity only; no partial timing means or acceptance decision. Entire fixed cohort still required.",
+  "group": "00",
+  "launches": 20,
+  "observation_samples": 449,
+  "external_builds": 0,
+  "inputs_sha256": "a5796b1ffe6057a3de224643997c7310ef64624810ce9cdb0e6fba4e7e2034b2",
+  "prepared_sha256": "b435bbd3712a73c93791f712dafb73c84025209d561fbe8c7eae097f7e8af6ed",
+  "verifier_sha256": "d2afeca14f556f4830457a98688f2fc15a928e51e444d9f9d5ba759298a348df",
+  "files": [
+    {
+      "path": "results/group-00/launches.jsonl",
+      "sha256": "e2532c3256fc49ec858d79e186b27440ea2dea549f9a597e72b8d49e58342f85"
+    },
+    {
+      "path": "results/group-00/observations.json",
+      "sha256": "34541998703984edc6d5a42fbd6c86f6eb7a7c167f31af8120d44ba73d02e568"
+    },
+    {
+      "path": "results/group-00/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ]
+}

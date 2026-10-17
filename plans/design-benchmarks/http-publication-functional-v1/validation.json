@@ -1,0 +1,61 @@
+{
+  "scope": "Uncommitted full-stack publication/telemetry candidate; no full timing/cost acceptance claimed",
+  "published_ci_head": "62603697d14d00d295aca4d53320a6e90e42cab0",
+  "core_passed": 1054,
+  "core_intentional_soak_skip": 1,
+  "http_passed": 343,
+  "semantic_telemetry_tests": "Six completion modes pass before/after; activity-parent/status checks pass after",
+  "red_before_optimization": [
+    "sparse tags1043.4B/tag exceeds512",
+    "initial slot240B exceeds192",
+    "long local publication33844.4B exceeds4096",
+    "empty-prefix property Assert.Same fails before memo guard correction; corrected actual red probe uses isolated per-case stores. Prior shared-store harness error retained separately."
+  ],
+  "final_green": "Full Core suite includes the corrected arbitrary-UTF16 property; full HTTP suite includes administration/removal and six origin completion/activity cases",
+  "sources": [
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+      "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+    },
+    {
+      "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+      "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+      "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+    },
+    {
+      "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+      "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Core/InMemoryCacheEngineTests.cs",
+      "sha256": "73176ca815f5cccb8f178b01466841a92b10d59b77fa7a3b1699fafd1828ae8a"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/TagNodeSetPropertyTests.cs",
+      "sha256": "3ba7326a203a29da0ec7a4ada9a200fd819854d7d8dbbc94fa0786e7ebc752de"
+    },
+    {
+      "path": "tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs",
+      "sha256": "104951e055b548e410c6be688a055082a3f86e3da5933d2c78b9b040812889dd"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs",
+      "sha256": "8d469f04c5b50b3e706d4ff37a594678497849a5e7acd4ff32066a11c7a5e081"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+      "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
+    },
+    {
+      "path": "tests/MethodCache.HttpCaching.Tests/HttpOriginTelemetryCompletionTests.cs",
+      "sha256": "839e9dd34fc2e6d4bad2b15291b097faa83e8666d5bb7a927c9ee6398f86d243"
+    }
+  ]
+}

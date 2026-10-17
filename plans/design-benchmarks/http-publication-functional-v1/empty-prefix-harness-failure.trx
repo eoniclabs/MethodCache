@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="41572f34-f1cf-4307-baf5-909a8b655f45" name="@Megatron 2026-10-17 09:41:31" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-17T09:41:31.8704360+02:00" queuing="2026-10-17T09:41:31.8704360+02:00" start="2026-10-17T09:41:31.5167460+02:00" finish="2026-10-17T09:41:31.8721500+02:00" />
+  <TestSettings name="default" id="34319035-95a1-4f32-8c56-d1b7461e6912">
+    <Deployment runDeploymentRoot="_Megatron_2026-10-17_09_41_31" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="d704a5a2-0eac-426d-9331-82718f65870e" testId="a8284a0f-7e66-720b-0a41-960ca99ddd2a" testName="MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval" computerName="Megatron" duration="00:00:00.0220422" startTime="2026-10-17T09:41:31.8054890+02:00" endTime="2026-10-17T09:41:31.8323820+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d704a5a2-0eac-426d-9331-82718f65870e">
+      <Output>
+        <ErrorInfo>
+          <Message>CsCheck.CsCheckException : Set seed: "dOTPyMzMFi-1" or -e CsCheck_Seed=dOTPyMzMFi-1 to reproduce (8 shrinks, 1 984 skipped, 2 000 total).
+([], [61727, 3812, 14210, 49548])
+Assert.Single() Failure: The collection contained 15 items
+Collection: [HttpStorageInfo { Id = http:7FF68D67870940B74ECE2F7CFC2FC61F5569396158BDAB4C61D604A4A0DF7F79, UrlTarget = 셌힁放檅恕, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 5, LocalSlot = 798 }, HttpStorageInfo { Id = http:12175139A9805ABDCC79DDE6C99A1156DDB5BC78462CA74E05B613C72470EA6F, UrlTarget = ⵾㑐忠ꯙ裂ꮐ葤㔐痘, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 10, LocalSlot = 1418 }, HttpStorageInfo { Id = http:4E82EF39A0CAFFB1142B00270061190A0163F535580690FE673DC5F8CC8801EB, UrlTarget = ヨ坉, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 2, LocalSlot = 1722 }, HttpStorageInfo { Id = http:16155BFB548EDC8704FA4979CB2B8A2C4B250C1ACCE248E3667448CDECFE7AB5, UrlTarget = 꽅ⓐ붎跶, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 4, LocalSlot = 1220 }, HttpStorageInfo { Id = http:62F4FB2513EB0A83D21F72849E2F97DBA44FA01AC3FA819DBF437845D9A2EAC9, UrlTarget = Ȳᦖ㞂뻴괆r㑃攖뒣ԧ၂媣鉭珜띐䉜汬ᇩꑾ\udaf3\udd01벅賳沟�䊂웆ѵᖓ�샇둚⫔⣉ெ츱ﴰ겉좡ퟺ毬觼弣補鰦뉲㰛ﲓ࿎ᾇꢧ, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 57, LocalSlot = 2192 }, ···]</Message>
+          <StackTrace>   at MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.&lt;&gt;c__DisplayClass0_0.&lt;LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval&gt;b__0(Int32[] prefixUnits, Int32[] suffixUnits) in /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs:line 34
+   at CsCheck.Check.&lt;&gt;c__DisplayClass13_0`2.&lt;Sample&gt;b__0(ValueTuple`2 t)
+   at CsCheck.Check.SampleActionWorker`1.Execute()</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval" storage="/users/johan/.codex/worktrees/design-combined-gates-v1/methodcache/tests/methodcache.core.tests/bin/release/net10.0/methodcache.core.tests.dll" id="a8284a0f-7e66-720b-0a41-960ca99ddd2a">
+      <Execution id="d704a5a2-0eac-426d-9331-82718f65870e" />
+      <TestMethod codeBase="/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/bin/Release/net10.0/MethodCache.Core.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests" name="LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="a8284a0f-7e66-720b-0a41-960ca99ddd2a" executionId="d704a5a2-0eac-426d-9331-82718f65870e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.3)
+[xUnit.net 00:00:00.05]   Discovering: MethodCache.Core.Tests
+[xUnit.net 00:00:00.10]   Discovered:  MethodCache.Core.Tests
+[xUnit.net 00:00:00.11]   Starting:    MethodCache.Core.Tests
+[xUnit.net 00:00:00.14]       CsCheck.CsCheckException : Set seed: "dOTPyMzMFi-1" or -e CsCheck_Seed=dOTPyMzMFi-1 to reproduce (8 shrinks, 1 984 skipped, 2 000 total).
+[xUnit.net 00:00:00.14]       ([], [61727, 3812, 14210, 49548])
+[xUnit.net 00:00:00.14]       Assert.Single() Failure: The collection contained 15 items
+[xUnit.net 00:00:00.14]       Collection: [HttpStorageInfo { Id = http:7FF68D67870940B74ECE2F7CFC2FC61F5569396158BDAB4C61D604A4A0DF7F79, UrlTarget = 셌힁放檅恕, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 5, LocalSlot = 798 }, HttpStorageInfo { Id = http:12175139A9805ABDCC79DDE6C99A1156DDB5BC78462CA74E05B613C72470EA6F, UrlTarget = ⵾㑐忠ꯙ裂ꮐ葤㔐痘, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 10, LocalSlot = 1418 }, HttpStorageInfo { Id = http:4E82EF39A0CAFFB1142B00270061190A0163F535580690FE673DC5F8CC8801EB, UrlTarget = ヨ坉, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 2, LocalSlot = 1722 }, HttpStorageInfo { Id = http:16155BFB548EDC8704FA4979CB2B8A2C4B250C1ACCE248E3667448CDECFE7AB5, UrlTarget = 꽅ⓐ붎跶, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 4, LocalSlot = 1220 }, HttpStorageInfo { Id = http:62F4FB2513EB0A83D21F72849E2F97DBA44FA01AC3FA819DBF437845D9A2EAC9, UrlTarget = Ȳᦖ㞂뻴괆r㑃攖뒣ԧ၂媣鉭珜띐䉜汬ᇩꑾ\udaf3\udd01벅賳沟�䊂웆ѵᖓ�샇둚⫔⣉ெ츱ﴰ겉좡ퟺ毬觼弣補鰦뉲㰛ﲓ࿎ᾇꢧ, Client = client, Format = 2, Cost = 100, Tags = System.String[], CreatedAt = 2000-01-01 00:00:00 +00:00, Deadline = 2000-01-01 00:01:00 +00:00, Selector = False, LocalTargetLength = 57, LocalSlot = 2192 }, ···]
+[xUnit.net 00:00:00.14]       Stack Trace:
+[xUnit.net 00:00:00.14]         /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs(34,0): at MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.&lt;&gt;c__DisplayClass0_0.&lt;LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval&gt;b__0(Int32[] prefixUnits, Int32[] suffixUnits)
+[xUnit.net 00:00:00.14]            at CsCheck.Check.&lt;&gt;c__DisplayClass13_0`2.&lt;Sample&gt;b__0(ValueTuple`2 t)
+[xUnit.net 00:00:00.14]            at CsCheck.Check.SampleActionWorker`1.Execute()
+[xUnit.net 00:00:00.15]   Finished:    MethodCache.Core.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="Megatron" outcome="Error" timestamp="2026-10-17T09:41:31.8332780+02:00">
+        <Text>[xUnit.net 00:00:00.14]     MethodCache.Core.Tests.Properties.HttpStorageIdentityPropertyTests.LocalDeferredMetadata_ArbitraryUtf16Prefix_PreservesIdentityAndRemoval [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

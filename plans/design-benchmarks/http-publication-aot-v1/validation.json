@@ -1,0 +1,49 @@
+{
+  "scope": "Current uncommitted compact/publication candidate, Native AOT osx-arm64. Smoke executable passes including explicit prefix checks and HTTP private variants/admin/metadata JSON. Full signature corpus published and executed separately. Initial Linux-only jobs.sh invocation and noncanonical /tmp corpus-path failures retained as command/setup errors, not product/runtime failures. No tools/packages installed and no cross-compilation workaround claimed.",
+  "source_patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
+  "runtime": ".NET SDK:\n Version:           10.0.103\n Commit:            c2435c3e0f\n Workload version:  10.0.100-manifests.a62d7899\n MSBuild version:   18.0.11+c2435c3e0\n\nRuntime Environment:\n OS Name:     Mac OS X\n OS Version:  27.0\n OS Platform: Darwin\n RID:         osx-arm64\n Base Path:   /usr/local/share/dotnet/sdk/10.0.103/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.3\n  Architecture: arm64\n  Commit:       c2435c3e0f\n\n.NET SDKs installed:\n  6.0.302 [/usr/local/share/dotnet/sdk]\n  6.0.400 [/usr/local/share/dotnet/sdk]\n  6.0.401 [/usr/local/share/dotnet/sdk]\n  6.0.407 [/usr/local/share/dotnet/sdk]\n  6.0.408 [/usr/local/share/dotnet/sdk]\n  6.0.412 [/usr/local/share/dotnet/sdk]\n  6.0.414 [/usr/local/share/dotnet/sdk]\n  6.0.415 [/usr/local/share/dotnet/sdk]\n  6.0.419 [/usr/local/share/dotnet/sdk]\n  6.0.425 [/usr/local/share/dotnet/sdk]\n  7.0.202 [/usr/local/share/dotnet/sdk]\n  7.0.203 [/usr/local/share/dotnet/sdk]\n  7.0.306 [/usr/local/share/dotnet/sdk]\n  7.0.308 [/usr/local/share/dotnet/sdk]\n  7.0.309 [/usr/local/share/dotnet/sdk]\n  7.0.313 [/usr/local/share/dotnet/sdk]\n  7.0.317 [/usr/local/share/dotnet/sdk]\n  8.0.203 [/usr/local/share/dotnet/sdk]\n  9.0.308 [/usr/local/share/dotnet/sdk]\n  10.0.103 [/usr/local/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 6.0.7 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.8 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.15 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.22 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.23 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.27 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 6.0.33 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.4 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.5 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.9 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.12 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.16 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 7.0.20 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 8.0.14 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 9.0.11 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.3 [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  x64   [/usr/local/share/dotnet/x64]\n\nEnvironment variables:\n  Not set\n\nglobal.json file:\n  /Users/johan/dev/MethodCache/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+  "files": [
+    {
+      "path": "methodcache-compact-aot-corpus-execution.log",
+      "sha256": "46939aa00eb51bf60f23145d33c2df03813a9b7dcbceef178697e025e2e372e8"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-export-canonical.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-publish-canonical.log",
+      "sha256": "4aa690f2ef3b2cf3f6144591804d8c87bc1b09a1216674bb32d2873db5a987d6"
+    },
+    {
+      "path": "methodcache-compact-aot-corpus-publish.log",
+      "sha256": "f6353ba12f6378e358f180a4abd2d5b21dfe48c3b5fd4fbdc83c9bf4919c404a"
+    },
+    {
+      "path": "methodcache-compact-aot-execution.log",
+      "sha256": "453f611a7274752118d391c5cd3b394b033ab51200b5fbda6e5f23b4a672eeb6"
+    },
+    {
+      "path": "methodcache-compact-aot-osx.log",
+      "sha256": "f32805f769fca4af07f9b54034d2ce28f4a9a44d2c8427e0e836bf94fa5a5a0e"
+    },
+    {
+      "path": "methodcache-compact-telemetry-aot.log",
+      "sha256": "a7ba80a85ef5fd0fabf4296c8f7e52cedc1de60d6ce3a7cf36cee2a73c5bc6ec"
+    }
+  ],
+  "native_executables": [
+    {
+      "name": "MethodCache.AotSmokeTest",
+      "sha256": "ef5810e68b1a64cf92b10956db0e5ae9fe05efaf5e91dcd45705c335692387ba"
+    },
+    {
+      "name": "Corpus",
+      "sha256": "769095b21096ffdd3c6e6582cacef3784a124d7d98e41a2553af37483ff95e25"
+    }
+  ]
+}

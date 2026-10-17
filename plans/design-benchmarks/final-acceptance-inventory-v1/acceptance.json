@@ -11,7 +11,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -28,7 +28,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -45,7 +45,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -62,7 +62,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -79,7 +79,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Explicit ordinary-late control and cacheable-late rejection pass in the published functional checkpoint; all 542 source-generator integration tests pass.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -97,7 +97,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -114,7 +114,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -132,7 +132,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -149,7 +149,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -166,7 +166,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -183,7 +183,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -200,7 +200,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -217,7 +217,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -234,7 +234,7 @@
       "validation_report": "docs/developer/design-pr1-validation.md",
       "validation_report_sha256": "ef2be488a2309e7c9527bfe3461d456a4458535a4c85c48a31d03bbc912e8c43",
       "state": "Functional assertions and scoped F05 prefix acceptance pass. Nine-case non-HTTP timing confirmation passes. Cumulative gate remains open for HTTP cold publication and listening304; all prior failed/noisy reports retained.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "open",
       "reviewed_sources": [
         {
@@ -275,7 +275,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -292,7 +292,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -310,7 +310,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -327,7 +327,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -344,7 +344,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -362,7 +362,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -380,7 +380,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -397,7 +397,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -414,7 +414,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -431,7 +431,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -448,7 +448,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -465,7 +465,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -482,7 +482,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -499,7 +499,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -516,7 +516,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -546,7 +546,7 @@
       "validation_report": "docs/developer/design-pr2-validation.md",
       "validation_report_sha256": "bf0ba4d5ef61519f731ffc6c5abf92699dd3d1e59f0bd02706b7e30ab2df9ebb",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -563,7 +563,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -580,7 +580,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -597,7 +597,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -614,7 +614,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -631,7 +631,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -648,7 +648,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -673,7 +673,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -702,7 +702,7 @@
       "validation_report": "docs/developer/design-pr3-validation.md",
       "validation_report_sha256": "77268578e2cffad5ccc18cb963ca2db34ab8cb1db45f27b9dc5b182933e38f4b",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -719,7 +719,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -736,7 +736,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -753,7 +753,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -770,7 +770,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -787,7 +787,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -804,7 +804,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -821,7 +821,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -838,7 +838,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -855,7 +855,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -872,7 +872,7 @@
       "validation_report": "docs/developer/design-pr4-validation.md",
       "validation_report_sha256": "519ae8e5ffa0a0b1ea34c178a418e5627f3cd6f5d524cdb76d197a5f7fac8f81",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -889,7 +889,7 @@
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -906,7 +906,7 @@
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -923,7 +923,7 @@
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions and scoped F05 prefix acceptance pass. Nine-case non-HTTP timing confirmation passes. Cumulative gate remains open for HTTP cold publication and listening304; all prior failed/noisy reports retained.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "open",
       "reviewed_sources": [
         {
@@ -949,7 +949,7 @@
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -966,7 +966,7 @@
       "validation_report": "docs/developer/design-pr5-validation.md",
       "validation_report_sha256": "1d4010a9e3d58ebeee07b312db08581beb72c0d4166dca4ae4ed3ac71cb02f22",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -983,7 +983,7 @@
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1000,7 +1000,7 @@
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1017,7 +1017,7 @@
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1038,7 +1038,7 @@
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1055,7 +1055,7 @@
       "validation_report": "docs/developer/design-prefix-validation.md",
       "validation_report_sha256": "ae7159f9cc60a96af21a4a739dd719c05985fe40a12f0c279de06eec59b47716",
       "state": "Scoped prefix full-path acceptance established: 13 complete affected whole cases pass after node-hash reuse, plus 15 earlier precise unaffected resident-hit cases with actual provenance retained. No studies pooled. JIT/native/vendor correctness and costs pass; cumulative V04 remains open.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "PASS for scoped F05 prefix comparison; separate cumulative V04 remains open",
       "reviewed_sources": [
         {
@@ -1102,7 +1102,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions and relevant code invariants reviewed; latest runtime checkpoint CI passed. Timing acceptance remains separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1119,18 +1119,25 @@
         },
         {
           "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-          "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+          "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac",
+          "previous_reviewed_sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         },
         {
           "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-          "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+          "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae",
+          "previous_reviewed_sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         },
         {
           "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
-          "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
+          "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1",
+          "previous_reviewed_sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         }
       ],
-      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json"
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
+      "current_candidate_state": "Localfunctionalassertionspass; full currentcandidateCI/cost/time remains pending."
     },
     {
       "id": "H02",
@@ -1140,7 +1147,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1157,7 +1164,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1174,7 +1181,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1191,7 +1198,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1208,7 +1215,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1225,7 +1232,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1242,7 +1249,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1259,7 +1266,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1276,7 +1283,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1293,7 +1300,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1310,7 +1317,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1327,7 +1334,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1344,7 +1351,7 @@
       "validation_report": "docs/developer/design-pr6-validation.md",
       "validation_report_sha256": "ffa8d184fa04585354d5716eae6bf9b21b4674d251d7e104c939fe52bf4f660a",
       "state": "Functional assertions reviewed in source; latest required CI passed. No timing pass inferred.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1353,18 +1360,25 @@
         },
         {
           "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
-          "sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a"
+          "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac",
+          "previous_reviewed_sha256": "57fd47ddd9e11d8a219de14f31fddaf0962024bb9d36b8c6aa699fcdfcbc2f7a",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         },
         {
           "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
-          "sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475"
+          "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae",
+          "previous_reviewed_sha256": "1419b09149a55053188b88b743d927f0830b13f212d6706c846ec7c7308ba475",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         },
         {
           "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
-          "sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d"
+          "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1",
+          "previous_reviewed_sha256": "e1873e220fb5713ddc723b4f946ead0eb8205e30bdb66f6abf0f3f5f4347073d",
+          "scope": "Inspected current working candidate;localCore1054/HTTP343pass;exactcandidateCIpending."
         }
       ],
-      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json"
+      "http_identity_correction_evidence": "plans/design-benchmarks/http-deferred-id-functional-v1/manifest.json",
+      "current_candidate_state": "Localfunctionalassertionspass; full currentcandidateCI/cost/time remains pending."
     },
     {
       "id": "V01",
@@ -1372,9 +1386,9 @@
       "scenario": "Alla normala tester net10.0, Windows och kulturjobb; riktiga Redis/SQL required.",
       "required_outcome": "Inga nya of\u00f6rklarade skips; relevanta regressions/fault/property/soak-jobb gr\u00f6na.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
+      "validation_report_sha256": "8fb00bce1d56b22a6b87c02e1305f452e3beeb16861c9b6c17ac4349656e1dcf",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1405,9 +1419,9 @@
       "scenario": "Alla sju packade paket, package-smoke, demo, Native AOT och samtliga frysta vendor-DLL:er.",
       "required_outcome": "Installation, bounds, serializer-context och generator-contract fungerar utan regenererade baslinjer.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
+      "validation_report_sha256": "8fb00bce1d56b22a6b87c02e1305f452e3beeb16861c9b6c17ac4349656e1dcf",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1432,9 +1446,9 @@
       "scenario": "mdsnippets, generate-llms, PublicAPI och analyzer-releasefiler; anv\u00e4ndar-README/package-README matchar nya API.",
       "required_outcome": "Ingen drift eller d\u00f6da exempel; endast utgiven kontraktsyta fryses.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
+      "validation_report_sha256": "8fb00bce1d56b22a6b87c02e1305f452e3beeb16861c9b6c17ac4349656e1dcf",
       "state": "Required jobs pass on the exact published 3e9df33 runtime/test checkpoint: fourteen zero exits, four successful statuses. Timing acceptance is separate.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "not an independent timing requirement",
       "reviewed_sources": [
         {
@@ -1458,9 +1472,9 @@
       "scenario": "\u00a710 steg 1 per f\u00f6r\u00e4ndring; steg 1 och steg 2 f\u00f6r hela baslinjen mot f43854d.",
       "required_outcome": "Kostnadsprofilen gr\u00f6n eller godk\u00e4nd i `accepted.json`; ingen f\u00f6rs\u00e4mring i den parade tidsm\u00e4tningen.",
       "validation_report": "docs/developer/design-final-validation.md",
-      "validation_report_sha256": "5025cc465dce2fe95a04fa7f928f9cc5f0ae675efc5838f5e43b3d81c5b9e89e",
+      "validation_report_sha256": "8fb00bce1d56b22a6b87c02e1305f452e3beeb16861c9b6c17ac4349656e1dcf",
       "state": "All67case cumulativeA3 costs pass with unchanged six accepted costs. Final timing FAIL: four coldHTTP regressions, one listening304 regression and one wide listening304 interval; fixed9case nonHTTP confirmation passes.",
-      "latest_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
+      "latest_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
       "timing_gate": "open",
       "reviewed_sources": [
         {
@@ -1493,7 +1507,10 @@
       ],
       "isolated_http_correction_evidence": "plans/design-benchmarks/http-deferred-id-time32-v1/manifest.json",
       "current_cumulative_cost": "PASS:A3all67cases/side;0executionerrors/0failing/6unchangedaccepted;all222buildfilesverified;independentreview0.",
-      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json"
+      "current_cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json",
+      "current_working_cost_state": "PASS67cases/0executionerrors/0failing/6unchangedaccepted;all226buildfilesverify;independentlocalreview0",
+      "current_working_time_state": "OPEN: currentlistening304tenpairsratio1.049preciseslower; priorpublicationcoldratio1.226preciseslower; remainingvariantsunmeasuredonlatestcandidate.",
+      "inactive_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v1.json"
     }
   ],
   "review_notes": "All76explicitrows mapped to inspected assertions; final actual-head CI and HTTP timing remain incomplete. Latest published2a9checkpoint is green; localA3 has passing targeted tests and full cost profile. This is not76passes.",
@@ -1508,7 +1525,9 @@
   "additional_reviewed_sources": [
     {
       "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
-      "sha256": "ed768a892015bbfecdf9aa165b1dc9259c6510748b0707083831211a891f15f3"
+      "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8",
+      "previous_reviewed_sha256": "ed768a892015bbfecdf9aa165b1dc9259c6510748b0707083831211a891f15f3",
+      "scope": "Currentworkingcandidate;small-tagpromotion/model/concurrency/localfullCoretests verified;currentCIpending."
     },
     {
       "path": "src/MethodCache.Core/Runtime/Memory/Node.cs",
@@ -1528,11 +1547,12 @@
     }
   ],
   "candidate_local_checks": {
-    "core": "1045passed,0failures,1intentionaloptinsoakskip",
+    "core": "1055passed/0failed/1intentionaloptinsoakskip;currentworkingcompactcandidate",
     "benchmarks": "126passed,0failed,0skipped",
     "format": "allchangedCSharpfilespass",
     "native_prefix": "24shape/flagcaseswith48observedrequestsandoriginassertions;JIT/nativepassedseparateproof",
-    "final_published_head_CI": "PASS at3e9df33:14exit0/4SUCCESS; subsequent evidence-only documentation batch not yet published."
+    "final_published_head_CI": "PASS at6260369 forA3/evidence; fullCI for newerworkingcandidatepending.",
+    "http": "343passed/0failed/0skipped;currentuncommittedpublicationcandidate"
   },
   "new_evidence": [
     {
@@ -1561,17 +1581,14 @@
     "sha256": "b6d0088bf9914362b5405433c70a2d2f9a5526828746806b0176504321ce0449"
   },
   "line_ending_fix_evidence": "plans/design-benchmarks/evidence-line-endings-v1/manifest.json",
-  "latest_published_functional_checkpoint": "3e9df33eb9da29c7740b2cd4434345a4486a62ce",
-  "latest_published_functional_jobs": "All fourteen jobs exit zero; four SUCCESS statuses; 2612 Linux tests/0 failures/1 intentional opt-in soak skip; diff coverage3529/3753=94.0%.",
+  "latest_published_functional_checkpoint": "62603697d14d00d295aca4d53320a6e90e42cab0",
+  "latest_published_functional_jobs": "All14jobs exit0/all4statusesSUCCESS;2620Linuxtests/0failures/1intentionalopt-insoakskip;diff3534/3758=94.0%. CoversA3,notnewerworkingcandidate.",
   "test_only_corrections": {
     "docs_probe": "10freshcandidateprocesses2factseach/full120Docspass;singlefixedzero-bytewindowandone-allocationnegativecontrol",
     "native_deadlines": "2deterministicbarrierredfacts,3greenfacts;10freshRedis/3SQLcandidatewithcollectorpass;full1047Corepass/1intentionalsoakskip;CoreDLLidentical"
   },
   "snapshot_inputs_trial": "plans/design-benchmarks/hit-snapshot-inputs-trial-v1/manifest.json;NOTadopted,finalGUIDgateandoriginalprecisionfailuresremainopen",
-  "latest_functional_evidence": {
-    "path": "plans/design-benchmarks/combined-functional-3e9df33/manifest.json",
-    "sha256": "85bd33e8d1bf31011a5b1d013fbc97c6e88acf8c8b8ab55dc6c9b9b32d9f8309"
-  },
+  "latest_functional_evidence": "plans/design-benchmarks/combined-functional-6260369/manifest.json",
   "guid_hash_control_evidence": [
     {
       "path": "plans/design-benchmarks/guid-hash-control-v1/manifest.json",
@@ -1596,8 +1613,8 @@
   },
   "latest_local_code_checkpoint": {
     "head": "f49264198631167d22d8c19e8b396d147646a87d",
-    "published": false,
-    "required_published_ci": "pending; existing published2a9CI does not establish A3 validation",
+    "published": true,
+    "required_published_ci": "PASS on6260369;14jobs/4SUCCESS;earlierA3 source bytes preserved in that published checkpoint.",
     "actual_changes": [
       {
         "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
@@ -1623,5 +1640,76 @@
     ],
     "cumulative_cost_evidence": "plans/design-benchmarks/http-deferred-id-cost-v1/manifest.json",
     "cumulative_cost": "PASS all67cases with same six exceptions; no new bound."
+  },
+  "current_working_publication_candidate": {
+    "base": "62603697d14d00d295aca4d53320a6e90e42cab0",
+    "patch_sha256": "d3e970d5afa0237308e876d5edbdbd1e63386d31288bcd43b5d521ec5f7127fb",
+    "evidence": "plans/design-benchmarks/http-publication-functional-v1/manifest.json",
+    "actual_sources": [
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+        "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+        "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+        "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+        "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+        "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
+      },
+      {
+        "path": "tests/MethodCache.Core.Tests/Core/InMemoryCacheEngineTests.cs",
+        "sha256": "73176ca815f5cccb8f178b01466841a92b10d59b77fa7a3b1699fafd1828ae8a"
+      },
+      {
+        "path": "tests/MethodCache.Core.Tests/Properties/TagNodeSetPropertyTests.cs",
+        "sha256": "3ba7326a203a29da0ec7a4ada9a200fd819854d7d8dbbc94fa0786e7ebc752de"
+      },
+      {
+        "path": "tests/MethodCache.Core.Tests/Properties/HttpStorageIdentityPropertyTests.cs",
+        "sha256": "104951e055b548e410c6be688a055082a3f86e3da5933d2c78b9b040812889dd"
+      },
+      {
+        "path": "tests/MethodCache.HttpCaching.Tests/Storage/LocalEpochAllocationTests.cs",
+        "sha256": "8d469f04c5b50b3e706d4ff37a594678497849a5e7acd4ff32066a11c7a5e081"
+      },
+      {
+        "path": "tests/MethodCache.HttpCaching.Tests/Storage/HttpDeferredIdentityTests.cs",
+        "sha256": "98f6f3783ed9402ebe05db44409aa68ea96e39c6c7f715e4d8b16f4939ec6dc1"
+      },
+      {
+        "path": "tests/MethodCache.HttpCaching.Tests/HttpOriginTelemetryCompletionTests.cs",
+        "sha256": "839e9dd34fc2e6d4bad2b15291b097faa83e8666d5bb7a927c9ee6398f86d243"
+      },
+      {
+        "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
+        "sha256": "9640b95cbc935bec3c57aa22010513fd36cdd3fffe5cf3d3e81440d3911cd5bb"
+      },
+      {
+        "path": "tests/MethodCache.Core.Tests/Telemetry/TelemetryOperationAllocationTests.cs",
+        "sha256": "e87bbefb228699aab0321b977d898642ea902315fe73280e5ff9e9e36b153acc"
+      }
+    ],
+    "local_core_passed": 1055,
+    "local_http_passed": 343,
+    "intentional_core_soak_skip": 1,
+    "published_exact_candidate_ci": "pending",
+    "full_cost_profile": "PASS67cases/0executionerrors/0failing/6unchangedaccepted;all226buildfilesverify;independentlocalreview0",
+    "cumulative_timing": "OPEN: currentlistening304tenpairsratio1.049preciseslower; priorpublicationcoldratio1.226preciseslower; remainingvariantsunmeasuredonlatestcandidate.",
+    "time_rule_changes": false,
+    "compact_telemetry_evidence": "plans/design-benchmarks/http-compact-telemetry-functional-v1/manifest.json",
+    "cost_evidence": "plans/design-benchmarks/http-compact-telemetry-cost-v1/manifest.json",
+    "inactive_design_proposal": "plans/design-benchmarks/proposed-http-time-bounds-v1.json",
+    "native_aot": "PASS osx-arm64 smoke explicitprefix/HTTP and175casecorpus compiled/executed; setupfailures/oldwarnings retained",
+    "native_aot_evidence": "plans/design-benchmarks/http-publication-aot-v1/manifest.json"
   }
 }

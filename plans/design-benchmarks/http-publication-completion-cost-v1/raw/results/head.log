@@ -1,0 +1,67 @@
+{"bytes":0.2,"bytesMin":0.1,"ns":488.1,"batch":186124,"case":"GeneratedContractBenchmarks.SyncHit()"}
+{"bytes":0.2,"bytesMin":0.2,"ns":176,"batch":200000,"case":"GeneratedContractBenchmarks.GenericHit()"}
+{"bytes":0.2,"bytesMin":0.2,"ns":123.6,"batch":200000,"case":"GeneratedContractBenchmarks.TaskHit()"}
+{"bytes":0.2,"bytesMin":0.2,"ns":139,"batch":200000,"case":"GeneratedContractBenchmarks.ValueTaskHit()"}
+{"bytes":0.2,"bytesMin":0.2,"ns":112.9,"batch":200000,"case":"GeneratedContractBenchmarks.StringHit()"}
+{"bytes":296.2,"bytesMin":296.2,"ns":327.4,"batch":200000,"case":"GeneratedContractBenchmarks.RecordHit()"}
+{"bytes":896.2,"bytesMin":896.2,"ns":285.7,"batch":200000,"case":"GeneratedContractBenchmarks.CollectionHit()"}
+{"bytes":320.2,"bytesMin":320.2,"ns":518.6,"batch":125781,"case":"GeneratedContractBenchmarks.FallbackHit()"}
+{"bytes":984,"bytesMin":984,"ns":718.2,"batch":70917,"case":"GeneratedContractBenchmarks.SyncMiss()"}
+{"bytes":1088,"bytesMin":1088,"ns":862.3,"batch":69218,"case":"GeneratedContractBenchmarks.ValueTaskMiss()"}
+{"bytes":1080,"bytesMin":1080,"ns":849.2,"batch":104671,"case":"GeneratedContractBenchmarks.TaskMiss()"}
+{"bytes":2112.2,"bytesMin":2112.2,"ns":6418.8,"batch":13428,"case":"HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False)"}
+{"bytes":3160.5,"bytesMin":3160.5,"ns":3143.7,"batch":18228,"case":"HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=False)"}
+{"bytes":7048,"bytesMin":7048,"ns":6404.9,"batch":5993,"case":"HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False)"}
+{"bytes":6571.7,"bytesMin":6530,"ns":12167,"batch":7489,"case":"HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False)"}
+{"bytes":2520.2,"bytesMin":2520.2,"ns":1914.1,"batch":52018,"case":"HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=True)"}
+{"bytes":3720.5,"bytesMin":3720.5,"ns":3431.1,"batch":30109,"case":"HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True)"}
+{"bytes":7048,"bytesMin":7048,"ns":5778.4,"batch":17033,"case":"HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True)"}
+{"bytes":6563.1,"bytesMin":6516.1,"ns":11812.4,"batch":7951,"case":"HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True)"}
+{"bytes":2112.2,"bytesMin":2112.2,"ns":1859.5,"batch":51634,"case":"HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False)"}
+{"bytes":3160.5,"bytesMin":3160.5,"ns":3122,"batch":31819,"case":"HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False)"}
+{"bytes":7248,"bytesMin":7248,"ns":5835,"batch":16440,"case":"HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False)"}
+{"bytes":6757.4,"bytesMin":6715.9,"ns":12856.3,"batch":7992,"case":"HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False)"}
+{"bytes":2520.2,"bytesMin":2520.2,"ns":1937.9,"batch":50301,"case":"HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=True)"}
+{"bytes":3720.5,"bytesMin":3720.5,"ns":3303.6,"batch":29715,"case":"HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=True)"}
+{"bytes":7248,"bytesMin":7248,"ns":6053.5,"batch":16470,"case":"HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"}
+{"bytes":6775.5,"bytesMin":6729.1,"ns":12364.8,"batch":7354,"case":"HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True)"}
+{"bytes":6921.4,"bytesMin":6854,"ns":10891.8,"batch":8192,"case":"HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"}
+{"bytes":6924,"bytesMin":6850.9,"ns":11584.1,"batch":8192,"case":"HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True)"}
+{"bytes":7092,"bytesMin":7059.9,"ns":12026.1,"batch":6922,"case":"HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False)"}
+{"bytes":7145.9,"bytesMin":7069.6,"ns":13613.3,"batch":7615,"case":"HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":76.3,"batch":200000,"case":"DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=False)"}
+{"bytes":1826.9,"bytesMin":1826.9,"ns":1468.9,"batch":70384,"case":"DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=False)"}
+{"bytes":4.7,"bytesMin":4.7,"ns":32.1,"batch":5806,"case":"DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False)"}
+{"bytes":6800.2,"bytesMin":6800.2,"ns":10277.4,"batch":7678,"case":"DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":47.6,"batch":200000,"case":"DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=True)"}
+{"bytes":1852.3,"bytesMin":1849,"ns":2274.3,"batch":49693,"case":"DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=True)"}
+{"bytes":4.7,"bytesMin":4.7,"ns":32.8,"batch":11332,"case":"DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True)"}
+{"bytes":6823.7,"bytesMin":6823.7,"ns":13204.2,"batch":6423,"case":"DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":53.1,"batch":200000,"case":"DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False)"}
+{"bytes":2032.8,"bytesMin":2027.7,"ns":3470.1,"batch":32124,"case":"DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=False)"}
+{"bytes":4.7,"bytesMin":4.7,"ns":37.2,"batch":10504,"case":"DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False)"}
+{"bytes":7006.9,"bytesMin":7006.8,"ns":22484.8,"batch":6085,"case":"DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":51,"batch":200000,"case":"DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True)"}
+{"bytes":2053.8,"bytesMin":2047.8,"ns":4269.4,"batch":26058,"case":"DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=True)"}
+{"bytes":4.7,"bytesMin":4.7,"ns":37.7,"batch":10562,"case":"DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True)"}
+{"bytes":7038.4,"bytesMin":7009.9,"ns":25207.4,"batch":5765,"case":"DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True)"}
+{"bytes":5216,"bytesMin":5216,"ns":103593,"batch":816,"redis":{"hget":2},"case":"DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=False)"}
+{"bytes":10465.2,"bytesMin":10464.1,"ns":263483.4,"batch":319,"redis":{"expire":1,"hget":2,"hmget":1,"hmset":1},"case":"DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=False)"}
+{"bytes":5216.4,"bytesMin":5216,"ns":102206.2,"batch":905,"redis":{"hget":2},"case":"DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=True)"}
+{"bytes":10953,"bytesMin":10952.1,"ns":286331.6,"batch":373,"redis":{"expire":1,"hget":2,"hmget":1,"hmset":1},"case":"DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=True)"}
+{"bytes":9904.1,"bytesMin":9898,"ns":249431.5,"batch":372,"sqlCommands":1,"sqlTextChars":192,"sqlParameters":2,"sqlShapes":{"SELECT CASE [Id] WHEN @value THEN 0 ELSE 1 END, [Value] FROM":1},"case":"DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=False)"}
+{"bytes":24242,"bytesMin":24242,"ns":13967195,"batch":20,"sqlCommands":3,"sqlTextChars":1431,"sqlParameters":9,"sqlShapes":{"SELECT CASE [Id] WHEN @value THEN 0 ELSE 1 END, [Value] FROM":1,"DECLARE @ExpiresAtTime DATETIMEOFFSET; SET @ExpiresAtTime = ":1,"UPDATE [design_5ca3c096e1984919bb8002ba7bfa5d5e].[MethodCach":1},"case":"DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=False)"}
+{"bytes":9856.1,"bytesMin":9856.1,"ns":193872.8,"batch":496,"sqlCommands":1,"sqlTextChars":192,"sqlParameters":2,"sqlShapes":{"SELECT CASE [Id] WHEN @value THEN 0 ELSE 1 END, [Value] FROM":1},"case":"DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=True)"}
+{"bytes":24730,"bytesMin":24730,"ns":15199145,"batch":20,"sqlCommands":3,"sqlTextChars":1431,"sqlParameters":9,"sqlShapes":{"SELECT CASE [Id] WHEN @value THEN 0 ELSE 1 END, [Value] FROM":1,"DECLARE @ExpiresAtTime DATETIMEOFFSET; SET @ExpiresAtTime = ":1,"UPDATE [design_47726bc4e4214713b7f4a65e55ffdc73].[MethodCach":1},"case":"DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=True)"}
+{"bytes":2112.2,"bytesMin":2112.2,"ns":3341.4,"batch":26517,"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=False)"}
+{"bytes":6398.1,"bytesMin":6312,"ns":13011.4,"batch":6108,"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False)"}
+{"bytes":1912,"bytesMin":1912,"ns":804,"batch":120131,"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True)"}
+{"bytes":2064,"bytesMin":2064,"ns":881.9,"batch":110779,"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=True)"}
+{"bytes":14522.6,"bytesMin":14512.1,"ns":236341.3,"batch":395,"redis":{"evalsha":3,"hmget":4,"ttl":3},"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False)"}
+{"bytes":24438.5,"bytesMin":24164,"ns":417392.3,"batch":221,"redis":{"evalsha":3,"expire":1,"hmget":5,"hmset":1,"hset":0.57,"persist":0.57,"ttl":2.42},"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False)"}
+{"bytes":1912,"bytesMin":1912,"ns":780.9,"batch":119589,"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True)"}
+{"bytes":2064,"bytesMin":2064,"ns":869.2,"batch":109854,"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=True)"}
+{"bytes":24082.1,"bytesMin":24080.2,"ns":472862.3,"batch":183,"sqlCommands":2,"sqlTextChars":5265,"sqlParameters":6,"sqlShapes":{"SELECT k.[Position], t.[Value] FROM (VALUES (0, @key0), (1, ":1,"UPDATE [design_http_57844704b84e4ff59e533e2975f679d6].[Metho":1},"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False)"}
+{"bytes":46209.2,"bytesMin":45840.8,"ns":25901805,"batch":20,"sqlCommands":4,"sqlTextChars":6524,"sqlParameters":13,"sqlShapes":{"UPDATE [design_http_7ab7892ee7fe442197cf71ff530007db].[Metho":2,"SELECT k.[Position], t.[Value] FROM (VALUES (0, @key0), (1, ":1,"DECLARE @ExpiresAtTime DATETIMEOFFSET; SET @ExpiresAtTime = ":1},"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=False)"}
+{"bytes":1912,"bytesMin":1912,"ns":834,"batch":117266,"case":"DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True)"}
+{"bytes":2064,"bytesMin":2064,"ns":828.1,"batch":117478,"case":"DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=True)"}

@@ -1,0 +1,2682 @@
+{
+  "inputs_sha256": "a0b802eedef89694cd3b3f57334c6758daddd4f16513ca533ceb5c1c41fd1808",
+  "prepared_utc": "2026-10-17T07:43:59.739712+00:00",
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "source_hashes": {
+    "base": [
+      {
+        "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+        "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+        "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+        "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+        "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+        "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+        "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+        "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+        "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c"
+      }
+    ],
+    "head": [
+      {
+        "path": "benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+        "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+        "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/Program.cs",
+        "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+      },
+      {
+        "path": "benchmarks/MethodCache.CostProfile/Timing.cs",
+        "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+        "sha256": "ad6307f4dfabd43f49c6a8b3818633cccca88df151ee9e06134fc4b0bb931291"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+        "sha256": "e039921fb7d0d21db650523379ffbc3f4100be11084c0b375fc85e844539d248"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+        "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+      },
+      {
+        "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+        "sha256": "590fd1416724f8711580d5bcecf5f1ed4d885d01b6f1b4b086b14c521130242c"
+      }
+    ]
+  },
+  "production_sources": {
+    "base": [
+      {
+        "path": "src/MethodCache.Analyzers/AnalyzerReleases.Shipped.md",
+        "sha256": "d3a172e22c8b37f1f50219a9a3f5d351a1431fcb9084640c9d3295d4eb35143b"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md",
+        "sha256": "06e52fd852164e24803b05390093ad9018e1818f5914637ae7aca0d3181d26a9"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/MethodCache.Analyzers.csproj",
+        "sha256": "5362d9bfdab9e834486bdd0be1c59098975b48118bdbc404df5b0b7e471a2940"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/MethodCacheAnalyzer.cs",
+        "sha256": "4cba450f9f60544e85217e69c207621681dba2a40996438651a22ce7495eaee3"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj",
+        "sha256": "0923d942cbcc70d4daa278c71f42eaa093e34cbe30986f4b5004fe4f2b7fb6ed"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheAdminEndpoints.cs",
+        "sha256": "6c2c4ac6e3b99de00bcc8e92f67e9b5027c29eed263d1c214fc3f866bee9904e"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheHealthCheck.cs",
+        "sha256": "16801630472f047ea03b8f04ff9856fa0e6f6063dc893d3ad9cd0d2332c135fc"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheHealthChecksBuilderExtensions.cs",
+        "sha256": "3e9ad505e8bc140a28a0fee7aeaa960a14201ce62f7b3f7f5375474e9ed06de6"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/PublicAPI.Unshipped.txt",
+        "sha256": "ac744f811f4ecc748debb505f1536eb8035e3091f131e30672b6ad38f825f245"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/README.md",
+        "sha256": "2c4d2054b762af208bd39ccd6ef4cacc363a0c8213cb62bc51913c7145cb91c4"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/FixTagParameterCodeFixProvider.cs",
+        "sha256": "4c8b01c637e19396ebfecfd836ac3e58fab315d321a55b4c9869341c4c80171c"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj",
+        "sha256": "6773768c443c49e8703138be777a77d562eea51f7357149297f5986e76e56cf7"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MethodCacheAttributes.cs",
+        "sha256": "bd06c1d186ffcfa478215ed28e78f1f570f3cbfc99dd7406dd93a9430dfdfebb"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MoveAttributeToInterfaceCodeFixProvider.cs",
+        "sha256": "c83372cce6d703b1bd8a95eae86fc3771a2c3d7eb6eb7c0db0a454ca10cb855f"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/RemoveCacheAttributeCodeFixProvider.cs",
+        "sha256": "a0be8be0b5eadcf4799281634324f373c6bace2850d6e4a72d235eca50b52be8"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/CachePolicy.cs",
+        "sha256": "a9708639c6cf8059b140f6fb7f1b6706fac8c0250cac0aa51eff6cd5286b22f4"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/CachePolicyFields.cs",
+        "sha256": "3f1f3fc2776b9484790946784de82b6319e3bec686b37cefbd533907f6bc9f80"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/PolicyContribution.cs",
+        "sha256": "2663b1b567e3236943af3e169d3fd6b6651eedd89acddaa9c58bd8001afa04ff"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/PolicyProvenance.cs",
+        "sha256": "3fa2a46c61c90d810c1b8e62abc7a203c4d5797f6d92b72872056c9e20d9fcf1"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Registry/IPolicyRegistry.cs",
+        "sha256": "96b8b562f5edcd1cdf14ff939bdbdd14520b0efe81c3acac63a65132d86d6d20"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/CachePolicyDelta.cs",
+        "sha256": "78817ea12480c6399c71938daabf506101d8e628a69a802d75c8cc56aa575ea2"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/IPolicyResolver.cs",
+        "sha256": "5b775b95f42f3dd619eef4001cf7e231bb7d80b7a0e8d8d62f8e4bf19d0e7680"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyChange.cs",
+        "sha256": "ec32d4d725ca0988cc8c8ed291a16e9cf387d90ce2267cc32419d0c1d90a2f2e"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyChangeReason.cs",
+        "sha256": "319981f4b445e9cf2a3d16cc0ad55b0cec02da3adf19046bbb5c43bd4f177020"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyResolutionResult.cs",
+        "sha256": "0845f23272099c0cf8c9b8c5263f0f83845ecf4c8b50cfe4b3f4ffad319d606c"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicySnapshot.cs",
+        "sha256": "44b253b2dd8ebb2a2231b26d9a1bf0032f2adb4f43c6cf6c1a855461ce88b3c6"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Sources/IPolicySource.cs",
+        "sha256": "29d7eac7ced6eb478e094fa09fdcf3056cb167a1b80e07072578f432dcf86f0e"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs",
+        "sha256": "d505037fb65a61017cf7a5e16a57eac0a6178751e705fbc8efff3392d1a83c51"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/MemoryUsageCalculationMode.cs",
+        "sha256": "bf9cd70ed267998a5943930edbf08eb931501f7c3ebcd3978750b6d560561b9c"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+        "sha256": "135ffca956ee7816d204be92dcea39f844463887c97f6a065671166f92bfdb11"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/Any.cs",
+        "sha256": "8456d84af215df4004166c4e36c9870189cb800205b572f42f5ce6728f89e571"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheAttribute.cs",
+        "sha256": "a84ae0aed926e5b2350580f6c8b042ad38c4469c04a6b6a8ec9636ae421e6c67"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheInterfaceAttribute.cs",
+        "sha256": "1f0fc8e66997b0b808c5ad94b563d04916d6677af12a4ad9047f930b4a292f36"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheInvalidateAttribute.cs",
+        "sha256": "10557c6663017647b0c7ecf430d524fc1c26c54073f990976e142a78b5a404da"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheKeyAttribute.cs",
+        "sha256": "5378a934d454d3c932278a289fad24db6b9e909d7cc40952ffa80f06cedaec7f"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/ConfigFile/ConfigFilePolicySourceBuilder.cs",
+        "sha256": "9b495ef2d0e6bd3f76d00a7f4ffe1bded213b12005ea54749ef252e9158292d6"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/ConfigFile/PolicySourceAsyncEnumerable.cs",
+        "sha256": "79180f3b83e3f3c29f0b60a31369d9fccf5b6783b1fa041e6c8fdf7b5e28dd6f"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/CachePolicyBuilderFactory.cs",
+        "sha256": "0cbdf7df8e6a4e279e1e42a534dacc43be1779aca1aa561ccb6692dfdb10e4b4"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/FluentMethodCacheConfiguration.cs",
+        "sha256": "5e99d392e0d9ad7fa2905230d660c19b1faffaaab77ac646e43acc488ba880ed"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/IFluentMethodCacheConfiguration.cs",
+        "sha256": "9176d77e2052fcc0dfce0ef9511c43bb398a8911918edadf94bac3a871980b8c"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/IRuntimeCacheConfigurator.cs",
+        "sha256": "230608170f74970edbd3ca72748dd239ac9dc047c4cccbe4ff14f285c71153c2"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfigurator.cs",
+        "sha256": "a45445d0a267888adb14a2a68ab83406a95426dcc325f328dbef5ff4467f9cfd"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs",
+        "sha256": "7704ceb506a0c804a9c71cc201d0d770d8866bbcdf2ce9c196842fd3a5f40429"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverrideEntry.cs",
+        "sha256": "7c1f6f95a4322e4dbbbefa4b65116014e120b30b79c7b1ffba6b189d584b4aba"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverrideMetadata.cs",
+        "sha256": "668ec38b042565b7bf2f8a1ecd3497f1059a2a3a9ec40eba3f3507adf68bcacd"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimePolicyStore.cs",
+        "sha256": "57b4ddb505682b9399edc27214170009e0520c06bf181a2dd83f53d85d954e5d"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/ConsoleCacheMetricsProvider.cs",
+        "sha256": "79cadf70a42a6d01cf5c968e52526aac2b88dc24aa0bd4cc2b672764da6b1979"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs",
+        "sha256": "e7560558b6b714ac6a004838219f1cfd06179c1db3dcb4505d49bca27a463c47"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Extensions/MethodCacheMetricsServiceCollectionExtensions.cs",
+        "sha256": "e64c8e128b62f1af36afe9844ab1194b1999f396baf8f8a9157e94de661109eb"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs",
+        "sha256": "276c6428cb5f277df5ee3668ef5aead355e5a582ec7e302703b553dd49e3ec78"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/ICacheMetricsProvider.cs",
+        "sha256": "a5ed84e06550c5b6524825f3c1881da42cf6b0b1abb7f3c2bcd555f0d543975b"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/ICacheStats.cs",
+        "sha256": "a905bcb88cd7126b4d14d4dd9285785667bf51f57bd14f765b688bbdcbed4f45"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Metrics/ICacheMetrics.cs",
+        "sha256": "5a2f55ff781e16dd1479600f24c6a1c2cb9b6acd38be20b07546edfa82fe78d2"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/NullCacheMetricsProvider.cs",
+        "sha256": "b99a19ea9e24a53fbc1d4621827fd88a8e8891c88ddcdb19e3c7a13bcad46102"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Registration/MethodCacheDecorators.cs",
+        "sha256": "117e204f078f9f06954a62ccf30d6ff0950d62af7f52e73c5dd70f6717ef3d6f"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Serialization/JsonCacheSerializer.cs",
+        "sha256": "4450b44661ecc270728d8840638df0909a010cd8662a1690bf09bea1a7b5367a"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Utilities/MemoryUsageCalculator.cs",
+        "sha256": "8923051d6b4fa83073624350d758738a95e3cf93aea9e66ac3524a938b006bcc"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Utilities/StripedLockPool.cs",
+        "sha256": "6607984e919aa0d0f373da74820eb5ab1d299c6fb18fbfb1ea49c72ef34238cd"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/CacheEntryInfo.cs",
+        "sha256": "906fc2968ab80873b598be5819701adef0dfa1f112d3c09927cfe0fa339b8288"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/CachedMethodInfo.cs",
+        "sha256": "7c3923bac6b26dba0fd75bc8fb67b622df8f082e459f8f13490c54b45224581c"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/ICacheAdministrator.cs",
+        "sha256": "d6c080ea38d001b59647ab3f1906977ebc364bc9dbb70d9bfbdfd20a6fc243e1"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/InMemoryCacheAdministrator.cs",
+        "sha256": "b61cdcff67f740c2052436e44bdf7cf0442c7981aeaa1c5f464c13068213bd22"
+      },
+      {
+        "path": "src/MethodCache.Core/MethodCache.Core.csproj",
+        "sha256": "2fb1185883d39054d6b9723935c8c5fc8d187f535fb92dcc610393fc1aeaa17d"
+      },
+      {
+        "path": "src/MethodCache.Core/MethodCache.Core.csproj.DotSettings",
+        "sha256": "28e1ca773c301cb3896b0585476139d1863c515515887d6ada1e74c749f98262"
+      },
+      {
+        "path": "src/MethodCache.Core/Options/CacheEntryOptions.cs",
+        "sha256": "b3549bf8cf92d62d5de3be9e0d199400e948ef6880869215051c715f180d3dd6"
+      },
+      {
+        "path": "src/MethodCache.Core/Options/CacheLookupResult.cs",
+        "sha256": "97a67dda1104545865ccda1ea225c1538b4d526b0f983179ed5858cc7e750708"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Diagnostics/PolicyDiagnosticsService.cs",
+        "sha256": "d74e425bba249d18dddbe0ebe41b48c196f9e8a8863d1f725059333d92bc7ef1"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/CachePolicyBuilder.cs",
+        "sha256": "891691f563996d7b322bdd17bde72a8b2a5e4b9bda00b0f68884f885365d738e"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/CachePolicyMapper.cs",
+        "sha256": "83ec34b6e726cad1a3f5662b790435cad44becb7ad802827d596f64e72b97daa"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/MethodIds.cs",
+        "sha256": "cb4cd3164e4c23952a739456d09debc42e4adf9c583150a2ecf0ec13ac3a843c"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicyDraft.cs",
+        "sha256": "afc9fad54d839fb13b7d817c93e345aa010e4ca8fbac4e40a4b57cd65c3ded96"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySnapshotBuilder.cs",
+        "sha256": "27b79243c2102178120a99a7d45ff3d280352bf3e5fd62e6d24e38cdd12d06b8"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySourceIds.cs",
+        "sha256": "db8acfa2e001c1cfe2c530e43c6065c00384a3ad3a2d2f12f33713f7faf317c6"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySourcePriority.cs",
+        "sha256": "93a6e80a39f1ef78e9734f49cc9407f2149add891d0a004b44a88caa3f98d542"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/README.md",
+        "sha256": "66df8029316218cc877ef3b105a994247551fdc36041865d504b801c08491646"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistrationExtensions.cs",
+        "sha256": "d379f184423f8418f65cc92c1f1f0761a8069901e3a527c5dbc0ef84dd8a886f"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistry.cs",
+        "sha256": "1f0248260b08c2afd17f525cd2bc1bdf6e50f038a6717517840d67f2788cf1b4"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyResolver.cs",
+        "sha256": "0cd571cc87de10c0b3a386da08a0a87aa087c5e6e0965ef8442b73c80dd38fd3"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicySourceRegistration.cs",
+        "sha256": "24e85c1d8e7d0b24ae9fe3f8d02f484027356e9169a0063ae0fd6a31c2241486"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyStartupValidation.cs",
+        "sha256": "d8678806f6f218de8826a9048650a382ae829db37bbc5915583e622de4ec2f08"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/ConfigFilePolicySource.cs",
+        "sha256": "b3eaf93180ddac9f83e55082171abdd1087f0c7a54a57fcdd0988fafa712228b"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/FluentPolicySource.cs",
+        "sha256": "ceea0fc6d4f214130dcefab2709bebe18414085f85ef6e6faf96bdb2034eec16"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/IImmediatePolicySource.cs",
+        "sha256": "42a993e8ff338eb00af0978ee46dfa3d069c4501d3e23e4dc764219c4fac81f8"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/RuntimePolicySource.cs",
+        "sha256": "66a2d29cd72315de615deace36c89d4d0c6a26ebaf4692b50d722739766d64bd"
+      },
+      {
+        "path": "src/MethodCache.Core/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Core/PublicAPI.Unshipped.txt",
+        "sha256": "e99a2a50af0eed773e908b01e1c0fa09aa5842581dc7222d4936e806502528f5"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/CacheKeyLookup.cs",
+        "sha256": "b959c78284e6e9733e2556788af4b10dc4564d8ee070b62b4b9aabebe5267108"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/BackgroundLoadScope.cs",
+        "sha256": "a29397f9b81823b58180968ea68fdf2d14c5d87ea2f8cda06a65801ceceec446"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheContext.cs",
+        "sha256": "7fd4a6a0c0f768cc12b85762125a75bfc4f4914beba7cc9d4b53309f4dc6b9ef"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheRuntimePolicy.cs",
+        "sha256": "67d58e49e98cc15e6095782ad421f7c2e84ed885e5ccd666033351a459de0465"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheTagTemplates.cs",
+        "sha256": "ef1aadaebc73217da6273b0da17168ea6e72eb91b0f53aeef443a3081c590346"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CachedMethod.cs",
+        "sha256": "4a723119b824e9c5fa7175b4e4467fc58f68f573f0311eae9c06655811512601"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/DecoratorServices.cs",
+        "sha256": "91038eb24a4eb4a3ca482f98d6805264e3750f7a1234e4356c450872e7290197"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/PolicyHandle.cs",
+        "sha256": "babbb0ef74d607dc5146bb68d2fd1f2088e0b587c847b08ef4981278ab64ad5e"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/RegistrationPolicyRegistry.cs",
+        "sha256": "6556b21272da810968f169af1a0765540445be23a256f874b65fe51158494031"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs",
+        "sha256": "402fa53d863016ee5fa760c58c245867ec732a1a793f4228dc276e2e489d1a82"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/DistributedCacheStoreValidation.cs",
+        "sha256": "86f8d25939752c674ac4181f50dc3adfd12bff1ff91a4b74202c4cd0ac434fa3"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/LosslessWireText.cs",
+        "sha256": "4aed14cdfec19f439a020bbd90d2f785ca07a3d8915c55f6136ce3f37d81f6ab"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs",
+        "sha256": "f1c699273ecd02de1f6491c2a8d4ebe2be948965487e114fef2086dd624474d8"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/NoOpCacheManager.cs",
+        "sha256": "5158ae8015e30a7f9d6e85e7dc4f46d68bb947ac1a23107ea8b7f1ae9d4b1e53"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheKeyProvider.cs",
+        "sha256": "804e71b30790e7ea1a5308ab56b73efbfbcce6ca0f1472300c1be37740f968ad"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheManager.cs",
+        "sha256": "c9896238a2dbeb1dc873978bb1438dbdb485d7fe350068e99014a371e9611caf"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheManagerDecorator.cs",
+        "sha256": "71b5893ac518c1fabedb506e79f08c0ad9036fcae748f6ee29340317334bae7c"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/FastHashKeyGenerator.cs",
+        "sha256": "b5fff3ce112466047a5e6bfc34d2a81b8f52a78051abe8e7899396f2bc396adc"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/ICacheKeyGenerator.cs",
+        "sha256": "3c61bbf54e8c3808555f18b99bfeb047927d412d6fee7fc26467ea14613ae0fa"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/JsonKeyGenerator.cs",
+        "sha256": "d76253c3307919ca97472b5872e56c3b7bee40b80b995aed68a3014951943b0a"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/KeyArguments.cs",
+        "sha256": "c9d391107997e24ebdbb45180b9cc90c05629dd4c2f8d8904f6bd9e9ceecd1e1"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/MethodCacheKeyBuilder.cs",
+        "sha256": "1032461084a8a5e0162a5415a9f6b3a668b79a930346908402748ef68e8427b2"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/MethodCacheKeys.cs",
+        "sha256": "5e92dadf59eada08fce73ff3b6a5876d635b87db601f26c1bc85ea47112639b4"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/AccessOrderDeque.cs",
+        "sha256": "886299261fd8462e39a7e6920c8dcc0d22a3eacd445e90b5bfd9b88a8f5c73d3"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/FrequencySketch.cs",
+        "sha256": "63d3d9e57b52d927c1fb7bb09415bdffde3afa2f6e5cc530b6f2b1b5cd17811b"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+        "sha256": "fdd662acaffa1c5ba0faeb6459a1035451db38cde031077d347a1db49697bf89"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/Node.cs",
+        "sha256": "09510b922758ff185919a092165b6253d2389f881ad34af15969ac6212d3f599"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/ReadBuffer.cs",
+        "sha256": "3e700a5b1c7621148416076655fc4e16610cbe40e19c0c246539a824f2cb39b3"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/StripedCounter.cs",
+        "sha256": "5c470296d554c4ca8882e3c6495ff87d894986a5a9afec189c6f4c81b190e56f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/TimerWheel.cs",
+        "sha256": "c90f48a1277a4ba161920f8c47f6ae7d13e475520df67be7597effda378bd405"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/WildcardPattern.cs",
+        "sha256": "dc0430d53d31ce87055a85c67da8e66ee36c1deba5aed0b37cfd33140ac8e3a3"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IAtomicInvalidationStore.cs",
+        "sha256": "8943517c752ebaa399c3fcac5728aff3fcfd4d97a5984eab55f4180a9a6b49eb"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IBackplane.cs",
+        "sha256": "dd0c4cfbf3606d9a0fa0cd34d4bc36976677be61d4f88a1349f4a5a2d822ca17"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IMemoryCache.cs",
+        "sha256": "5d78f731a3389ecf7fd1d9b3a5c4f497d4225649231a13e18999ee486758e185"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/ISerializer.cs",
+        "sha256": "ad5d706342b53872f6fb832d8358de0e9e1a7f4d2b170af4ef80cba0451a73ff"
+      },
+      {
+        "path": "src/MethodCache.Core/build/MethodCache.props",
+        "sha256": "2939e0fdf9cdad9b2624acb91f247aee6b7722a544251a178d6a9eb67dfd1f86"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheEntry.cs",
+        "sha256": "b35bcc3bd61fe4454ee86ef70c03811aab8d9d083c99c15d4e7d8f395e00cbc5"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheOptions.cs",
+        "sha256": "7667577ab76b5e00f177347b72bc1979eceb6a660059d5e40edebdd98105c0d1"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheStorageOptions.cs",
+        "sha256": "905ba4817fe71abd5745ffd6e9c307853d321ef76329015163d752d390698798"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/IHttpCacheStorage.cs",
+        "sha256": "d1485943f0e6fb183171295ea855c73ef325a99a6a1909b454c9083ed43a30c2"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/FreshnessCalculator.cs",
+        "sha256": "176cd6ad3bce308d06caabed2cdfd3282385c0c2a52bc4245307b7386cc7a166"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheClientState.cs",
+        "sha256": "44094b03270fe3e7f63c887ad6d36fcee7b95af6e80617dd761f0123fc9d18ca"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheEntrySerializer.cs",
+        "sha256": "fa95e91f10ef1661e8385f11f129633847ec62d957694fb3318ab35042229a05"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+        "sha256": "93e2459a0ac31f24d44fc4e991ade8b5d695868e6284c15a9a163c81d8567614"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheKeys.cs",
+        "sha256": "d5c6af0cbec483eaca273ac5e43699b245bb0224bce23293825f244c39b432f2"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheMetrics.cs",
+        "sha256": "5a3f6b877fb1efb6b846baf8a21adabc858b6c0b111895d3a35aee8440c4ad02"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+        "sha256": "3596726631a610265f775c92c5f61ef7229073509bf1ecdfd87296a3b15340cf"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheTransportFilter.cs",
+        "sha256": "9f23885c1dcde0ac2094aeca988da10851ba6e2efc6baa6a23b2cab5ec74c75c"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/RequestCacheDirectives.cs",
+        "sha256": "3053de1ba455b3ba828aecff396f6ab47040faa1a7822f968a43d762c9b564c2"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/ResponseBodyBuffer.cs",
+        "sha256": "f802dd48020cbd49619ae7f57865c77ddc41f43bd2937074efa8c12792f4ecf5"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj",
+        "sha256": "dc0eb70f46ac21f4d486fee005c8b226cc26c79de134e5b91986a6faa8f394c7"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/MethodCacheHttpClientBuilderExtensions.cs",
+        "sha256": "8457e5d0e56bb53d4dc525e61bbbcca368deb2b386a34f4e306ab48e7166b58b"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/PublicAPI.Unshipped.txt",
+        "sha256": "fcb51ba9218b5af955c36486bbc6ce34cb24ea89e15a0309aedd31537fbfd386"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/README.md",
+        "sha256": "d60abacfe61c3311d2ef14e75c1d7840ad21e844380baf89562c026846ed988f"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Configuration/OpenTelemetryOptions.cs",
+        "sha256": "f6b1e71062d125ac0d2150ffd06fecd33b04a31376b9997fdabf4f718d85af45"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Instrumentation/TelemetryCacheManager.cs",
+        "sha256": "b41c503c75c3c1a78321019bf5feaa02c781bd6c711acc5936f3ce4907052bed"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj",
+        "sha256": "f90dcb93df456788000d9f8df9d844beb08ac24f5358461563f33b27a9e5575d"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj.DotSettings",
+        "sha256": "83fc0a3261377c147f14974991b7a73eade146eacf03647df86466f52a68d2e3"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCacheMeterProviderBuilderExtensions.cs",
+        "sha256": "ba91b319a284419d950d0e3de83c7e92dfd3736805e1f3fda6a6f06443e7359e"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCacheOpenTelemetryServiceCollectionExtensions.cs",
+        "sha256": "fe833351a16fa9028eabe781ffbbffb284a3a4ca6dcb7d66e30020e706f06448"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCacheTracerProviderBuilderExtensions.cs",
+        "sha256": "260057506f45996cf5fb0234797a7bc59964bf5132f2014f3e3adce024aeab72"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Metrics/CacheMeterProvider.cs",
+        "sha256": "0221577c52aee7b66f415f77209336d3a8cb350dcd38c1255923e6db3f212b80"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Metrics/MetricInstruments.cs",
+        "sha256": "cd7fa0407395a0b06b1efdafb4caa93499b98de3ee482bee88ced0fd0e5e8e9d"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Propagators/BaggagePropagator.cs",
+        "sha256": "d98fc6de0e7042476347a0c4c2a8829179cce2522015a725b0226c4c16d41c32"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/PublicAPI.Unshipped.txt",
+        "sha256": "a601cb7a24d9d25709d0e0d02b31e7f3bf4714d6da9ed1768091b8d765cceb56"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/README.md",
+        "sha256": "a86d7e67fc671c2f531905cddcc5c8ac9c82bde462d4437297402e90857e5770"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Tracing/CacheActivitySource.cs",
+        "sha256": "635bcf9f6a04bb0f4c2d205a091b9d9a9291a1bb43477e4defef01078625fe02"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/Tracing/TracingConstants.cs",
+        "sha256": "05b4a83b832a4fdfb7878df79b63e17f4d23116f7d10733ddfcace7e93123226"
+      },
+      {
+        "path": "src/MethodCache.Redis/MethodCache.Redis.csproj",
+        "sha256": "675e73519df619b183864f7ff8bd8e4317164787900b4b60e569bf33238260e4"
+      },
+      {
+        "path": "src/MethodCache.Redis/MethodCacheRedisServiceCollectionExtensions.cs",
+        "sha256": "a985b9ff5faac423c50bb0940fec951fd4f2a209a457b63c9c20cbebd0f58ef9"
+      },
+      {
+        "path": "src/MethodCache.Redis/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Redis/PublicAPI.Unshipped.txt",
+        "sha256": "d24ff402c1f2bac0e409ba064dcf857b2f95372305753435d6d144b302ab757b"
+      },
+      {
+        "path": "src/MethodCache.Redis/README.md",
+        "sha256": "991c55d40e5cc87ae66341537f44447fb8c30631fb7698104bbace3442e6e8a8"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisBackplane.cs",
+        "sha256": "7f92d5a28f95223fd1934392d1fe1ce543d01c4cf7ec590ad34255bb3eede1e3"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisConnection.cs",
+        "sha256": "a5867f0e9593a226f528e88d1b0f20466af55b8cbc49f35dfb1cfcd49ab2a99b"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisDistributedCache.cs",
+        "sha256": "33af702eacb45ad1344524462e9f5645b0acb5edaadc5059bcd3f8b50d1013e7"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisOptions.cs",
+        "sha256": "d624019374faba1095e657804539b6d99f83ac1445e84d4ad93f3a7572749aac"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MessagePackCacheSerializer.cs",
+        "sha256": "16d39db6a2cd5a3755224254bcedff0a219e5b08283ce172ee505eb31737d7c1"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MessagePackKeyGenerator.cs",
+        "sha256": "a9e48d24cfcb1f6533686ec31471389e934028746fa1c217d1af8e3f2c7f0b45"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj",
+        "sha256": "81d5f08df5adcff932003cfb8133fc76d932fb18e0cd914015717ae85cf307cf"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MethodCacheMessagePackServiceCollectionExtensions.cs",
+        "sha256": "fbdfe57c8ad65be692eb76fd81129cf1d9295c28374c8b757b3ab5dcfb177636"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/PublicAPI.Unshipped.txt",
+        "sha256": "10ff3437dccc1ca9a3ae50063e09f94812b66bad531ccad1b29c69493b95571b"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/README.md",
+        "sha256": "1147159ddb126d27ac7b4cfcdd796cd998142dbab63d828089af4ca94e0e3bdf"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/AnalyzerReleases.Shipped.md",
+        "sha256": "d3a172e22c8b37f1f50219a9a3f5d351a1431fcb9084640c9d3295d4eb35143b"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/AnalyzerReleases.Unshipped.md",
+        "sha256": "81fe27cb1ede56aa66191631fa4b6ba2b6b86046bbb1fe55376133802cc0d48f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Core/MethodCacheGenerator.EntryPoint.cs",
+        "sha256": "f341a1dfa93c8391cee7c91ef0f759a9f996d9e703f4ab094f6c1b3742151161"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Diagnostics/MethodCacheGenerator.Diagnostics.cs",
+        "sha256": "d8b3fe956e7e62ae8fdeda5bdfb85677af5e2957466e331d605b155d4d0e20b1"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.Discovery.cs",
+        "sha256": "5dbb4bc8616a3bd9ccac233a4829c0ddd03af0b1c8d60ed31577e215456f0b46"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.ExternalDiscovery.cs",
+        "sha256": "2d9a46dbe3ac3bc022a280a6cfa8a770de1039ec6469a84dff4319b5839488d9"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitDecorators.cs",
+        "sha256": "dadd6e2a58ab5a5b876c9ce14fe0ffccd95de4011f0ea9b198b99d2debcf4dec"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitPolicies.cs",
+        "sha256": "3a7f1d3e9686373cb9ceb5a3048c81d5170e32ded83eaff4560e1e1efc4d4bb0"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitRegistrations.cs",
+        "sha256": "4cc70890554cc2393f1567eada1cbffbc4af54f6c4c5a1e5caaa37337da783e7"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Infrastructure/MethodCacheGenerator.Regex.cs",
+        "sha256": "3d66bd7d549313a8a9ec6e0442975ab1bc6938eabecd889e8229966a91a5ebab"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.EquatableModels.cs",
+        "sha256": "d90e519ec7d6d79943afe6fd862660f3fcaf7e292cf63d1d5d441360b59158bc"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.KeyForms.cs",
+        "sha256": "5969655fe2f0170364ea93a557179bed61e3a13f41e39a2940c58e6969a1b656"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.ModelBuilders.cs",
+        "sha256": "5aaca3a036c8949fd74dde6578534258218f5550bc9e394510afa6ec6ac49d5f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.Models.cs",
+        "sha256": "c9440affaa7a7bbfffc68ffc58d778c9114243382ca2a99a5d6fd39b50054a9f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Utilities/MethodCacheGenerator.Utilities.cs",
+        "sha256": "70c4b600f80f992a58890e2b1b3f2dfde3f040537e7e0a5910efcad78d64749c"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj",
+        "sha256": "7ef0ac40dd9e4150d922613686c0ecf0bf10f2bb35d13ec91c4e503d6ba38853"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/MethodCacheGenerator.cs",
+        "sha256": "8373d717156657e347b91494cf4beea8aac21a60f048e0392b73325dfc8d246a"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/MethodCache.SqlServer.csproj",
+        "sha256": "2918713a4f14815bf58d66241438edd936f731fe89cc2e1dd5f4e36cb010da50"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/MethodCacheSqlServerServiceCollectionExtensions.cs",
+        "sha256": "d2bc096fa3e00efd1f21cf3ecfeffd78c3b6e05c49844c8ae2280877c3d3e8d7"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/PublicAPI.Unshipped.txt",
+        "sha256": "fc3aa9491024b562b69ce378f065a91b391298f1fa728522fd9bf0b9a1d03523"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/README.md",
+        "sha256": "d683da6d4178e607e8a08e8eabbba541d5386e06fd5b20faf863a7c0e41c0b74"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerBackplane.cs",
+        "sha256": "9517fa7086aba9a6adbb734bd964eedec964d2afd354418465308c0964d5e48b"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerDistributedCache.cs",
+        "sha256": "70d12645acf2c685796daf9db8160f97305283aa0558f5e3f84fcb68543240e9"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerOptions.cs",
+        "sha256": "bb40e48a7781b0f84df7a66f9df60c3a743bab661a7a003f8cc517725d751fb8"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerTables.cs",
+        "sha256": "4f69d50fbede2f1408c82ef82320aa27338dc0029c1ea162ce8e82df6cd7e042"
+      },
+      {
+        "path": "src/Shared/LosslessUtf16.cs",
+        "sha256": "1f5f0d664688b770fafd71b8a5fea67ccc6ce3b6cf11a9f78a196fd0a5b9853a"
+      }
+    ],
+    "head": [
+      {
+        "path": "src/MethodCache.Analyzers/AnalyzerReleases.Shipped.md",
+        "sha256": "d3a172e22c8b37f1f50219a9a3f5d351a1431fcb9084640c9d3295d4eb35143b"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md",
+        "sha256": "ffa89c0e48f38bc50a4d74a05abfc9287b4e6dd79d09436bc8a807dd1326ab5a"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/MethodCache.Analyzers.csproj",
+        "sha256": "b5aa0eeaac6dc26d47b9296d467e4a4759892c17cc6d60baa59cf5d45dbc2874"
+      },
+      {
+        "path": "src/MethodCache.Analyzers/MethodCacheAnalyzer.cs",
+        "sha256": "14062eb660305fc309530a16eb2a121a4ce298a69670f6c1868c91eed8b66997"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCache.AspNetCore.csproj",
+        "sha256": "c3f5c7ac3dc51d04e80a18c6699efefca0e49e894a8a84aaf5e8b7d56fa394ab"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheAdminEndpoints.cs",
+        "sha256": "00929908e25bdbd2fbed77253e519945e9b5e4d3e64557b7ed3dd61d66c3a236"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheHealthCheck.cs",
+        "sha256": "fa2662b2218c462675ff6fc5923ba6b8815b2042884ffaa985e23b47db2e5283"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/MethodCacheHealthChecksBuilderExtensions.cs",
+        "sha256": "97b3fe6d29b2eb5ba6a5fece1f66bd0c86af6bea83807647a9317d9df9d7e80f"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/PublicAPI.Unshipped.txt",
+        "sha256": "ff629ef8a1fac874601180b8088c640f385bd0096d8eb2ef37b1380cd676fbe7"
+      },
+      {
+        "path": "src/MethodCache.AspNetCore/README.md",
+        "sha256": "b592c0da55362ce7ae20476b78186b72d4ce99fb364caa37d592ecffe99b196d"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/FixTagParameterCodeFixProvider.cs",
+        "sha256": "f8fa41825a60c2b123ef42966c8329de3177fb618ba67c0aa77a11bc8c984f33"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj",
+        "sha256": "6773768c443c49e8703138be777a77d562eea51f7357149297f5986e76e56cf7"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MethodCacheAttributes.cs",
+        "sha256": "bd06c1d186ffcfa478215ed28e78f1f570f3cbfc99dd7406dd93a9430dfdfebb"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/MoveAttributeToInterfaceCodeFixProvider.cs",
+        "sha256": "c83372cce6d703b1bd8a95eae86fc3771a2c3d7eb6eb7c0db0a454ca10cb855f"
+      },
+      {
+        "path": "src/MethodCache.CodeFixes/RemoveCacheAttributeCodeFixProvider.cs",
+        "sha256": "ddde8d121b370f1b63b2283d893a1123f75f943a173f2852aa03030f9a2e6715"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/CachePolicy.cs",
+        "sha256": "f177a83783865ec8ee60d43f43ca1b541963a1df428a7c9b8c77b1fe4b8c72cb"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/CachePolicyFields.cs",
+        "sha256": "c6c93fd6abbf0e0fafb480236a0de4305475082adcee201760d14283879cb50a"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/PolicyContribution.cs",
+        "sha256": "c4ed55d0c7a63984c7d6bc29ce2a8f1eb81a0a7ace7d4bcf6304c9083fe1bdc4"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Policies/PolicyProvenance.cs",
+        "sha256": "3fa2a46c61c90d810c1b8e62abc7a203c4d5797f6d92b72872056c9e20d9fcf1"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Registry/IPolicyRegistry.cs",
+        "sha256": "fb1ec2080d59846f144cdcc67f8c8254079139b31c8a2dc602db591c75433939"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/CachePolicyDelta.cs",
+        "sha256": "39530d05d4dbf5ace0a4f480519f4013d84dfe9a08ca741680e673981834b35d"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/IPolicyResolver.cs",
+        "sha256": "5b775b95f42f3dd619eef4001cf7e231bb7d80b7a0e8d8d62f8e4bf19d0e7680"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyChange.cs",
+        "sha256": "0f500ec4224e0110302af8578f43bb7360380d26e02fd8fc44a1bc5ac47f680d"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyChangeReason.cs",
+        "sha256": "7b33760f2a39dd3154e9f4a1cf7c1982eb68cef9c5777f5eb5f632d3b5b551a3"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicyResolutionResult.cs",
+        "sha256": "1c17953853c1ce80c40981217b2c27f082fa75cc3c54f59faf8070c60e9a0569"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Resolution/PolicySnapshot.cs",
+        "sha256": "7b4491de4a7c5cc2191acab92da274c4a7e341c120192d08108e2f82d803ffd4"
+      },
+      {
+        "path": "src/MethodCache.Core/Abstractions/Sources/IPolicySource.cs",
+        "sha256": "4be7d5441bc86bd4e91235bfbde410b154f87d1302540022439c3a72219006c7"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/DistributedCacheOptions.cs",
+        "sha256": "5c643367931c9c06caa91a79be9eb26d8edcaae7f1bff8e149c8fe1429cc19f9"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/MethodCacheBuilder.cs",
+        "sha256": "2b70b4e750e59bc76ea80036134961a09143334f1fb2b395e0eba82db790911a"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/MethodCacheMemoryOptions.cs",
+        "sha256": "20b54be6b71bfcff966b9eeaded8a156e2b8d05ba223f0022f743d27a7f45a38"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/Any.cs",
+        "sha256": "8456d84af215df4004166c4e36c9870189cb800205b572f42f5ce6728f89e571"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheAttribute.cs",
+        "sha256": "2f253d29c6ffb58cfbbce4c7bbd86954df3827ca7349362c1c380db0fc85428b"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheInterfaceAttribute.cs",
+        "sha256": "59d99f83696de0eda8cb1afaa753d68985338e6bc496753b688308ed4c6cd2c5"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Attributes/CacheInvalidateAttribute.cs",
+        "sha256": "547a567b78f845b15114dec3614185c72a1092ab126fa8f7d762516149dd3cb4"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/ConfigFile/ConfigFilePolicySourceBuilder.cs",
+        "sha256": "91bcf864299ce3ea423b800224f9461a98e88d85c427909b8c7697263a5da271"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/ConfigFile/PolicySourceAsyncEnumerable.cs",
+        "sha256": "5948a3c521a9dead3f2a64cac3f7e79d837505f6ee354506833a8fa0139a2908"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/CachePolicyBuilderFactory.cs",
+        "sha256": "39d215e86f1ffb2705c4a29d10d8453e08ca9e28d833385fe37d4a8c460da0f6"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/FluentMethodCacheConfiguration.cs",
+        "sha256": "ea03f763b81eb91900ef4b5905d9faee58a03edea010583caf06e1e2e2e4b03d"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Fluent/IFluentMethodCacheConfiguration.cs",
+        "sha256": "34ce317fa70f7ee4813ece47b2266d30035c759c96de148fa2c75ed1d08be000"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/IRuntimeCacheConfigurator.cs",
+        "sha256": "034156bad6c4c2396e3f5148683e4fe07d05fd7d044a3b76b2e6b513135c68e1"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/IRuntimeConfiguration.cs",
+        "sha256": "50abb07f1f67a121b8349b94b47963731a14a7abcdf19e4fa4d18ba9c4c08109"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfigurator.UserApi.cs",
+        "sha256": "4e608f2694fefdfdf6ea14a062c157ced6bf6b9a2bdadb7deaaeefc7c0e39485"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfigurator.cs",
+        "sha256": "8a2827464972ac1f8cf701958f28d7acda077a0f72a3f9b35922a90ceea2421b"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeCacheConfiguratorExtensions.cs",
+        "sha256": "beb04494eea5b1f081ba52da94b617849ef15afb99a209853bc97ff237ea81b6"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeConfigurationExtensions.cs",
+        "sha256": "95d5470e8a23860a0951a50bbf171fa03ae2011245135a813bb2a2aabb50ced2"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverride.cs",
+        "sha256": "0fe1e99680c5b972b07a1f0aca149cbd82b42a3d288d72cd01685951e33ec9e9"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverrideEntry.cs",
+        "sha256": "a2bb71c54b83ae76c6ce06339787d85e2bfb1a3dee177154867d57c2e934b6e3"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimeOverrideMetadata.cs",
+        "sha256": "668ec38b042565b7bf2f8a1ecd3497f1059a2a3a9ec40eba3f3507adf68bcacd"
+      },
+      {
+        "path": "src/MethodCache.Core/Configuration/Surfaces/Runtime/RuntimePolicyStore.cs",
+        "sha256": "4bf5093dc2f214681be1d4f5e588e9cf4b7eac54833691430d62e43f76e9c1b9"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/GeneratedModule.cs",
+        "sha256": "f58ed2de732081d5ff7f52c0dc2fde936f864c8366ada4a6438aceda372a72f1"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/GeneratedServices.cs",
+        "sha256": "0daafe98f8378a20a259ec7d0dbacd54ff1d59edc713d0fa5adbf0ff1b508943"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/KeyBuilder.cs",
+        "sha256": "197c77707ba77c31d073cf262ee869c4368f55c7455e57f92b664a69af0c8bdf"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/KeyParts.cs",
+        "sha256": "e339712319d27bea19e45b948f2e15c9a926bb0425b1396ad9450d81dceaceb5"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/MethodCall.cs",
+        "sha256": "8d73f108f198539996bf83b9bf2112a533d757c356c86d8d90ca7589cecf8cfc"
+      },
+      {
+        "path": "src/MethodCache.Core/Generated/TextKey.cs",
+        "sha256": "5593001eeae2cc3160033f1be14252edcf93141062f910538269356001813358"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Extensions/CacheManagerExtensions.cs",
+        "sha256": "e62bec71b8c26b1277f9cefa3eb7c7e2114d169c90f5afac0f58511b90a7575f"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs",
+        "sha256": "697ab9e568b5a17b78c49e982d0f87a81c151ffed73b8cb55cbacfa92c2dd4ea"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/ICacheStats.cs",
+        "sha256": "7b8e0178114e221f6a3459e90dd5668bfd21ad0ba4489b69182fede0a1a1ef61"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/OwnedServices.cs",
+        "sha256": "9ce8e9927c6dd44fa17704047e1dab33b4ae80b12a4966fe5b1a7dbc288c3800"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Registration/MethodCacheDecorators.cs",
+        "sha256": "4293ad7f1d59a168c5eba3bda0887a281c08d64f2fe734c5b01b4d7add8e641c"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Serialization/JsonCacheSerializer.cs",
+        "sha256": "3b7786e7bf889f1fbbb298406e86916fb244fa3059af6f711f55125c5cdbde1f"
+      },
+      {
+        "path": "src/MethodCache.Core/Infrastructure/Utilities/StripedLockPool.cs",
+        "sha256": "6607984e919aa0d0f373da74820eb5ab1d299c6fb18fbfb1ea49c72ef34238cd"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/CacheEntryInfo.cs",
+        "sha256": "28d97d32f9cc207de424fe433c85cd4c9f1ebc1f1d0cdcfa09c76e992439af15"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/CacheEntryStorage.cs",
+        "sha256": "1779c4e43189dcb101671338dfc27115f3629471b0e4ab445f3a88a4b88e0683"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/CachedMethodInfo.cs",
+        "sha256": "afcb8ff1c8f7b5ef968ecb883b75e905e519cd7637ece15eac0f4c2e2b1af693"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/HttpCacheAdministrator.cs",
+        "sha256": "d65ef479b8b6c3bb575398150c82d259fe8a84695ea82d1b137d7c8739e33afa"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/ICacheAdministrator.cs",
+        "sha256": "5f6b87c926f533ea11be42fa3d14b58e8ee1b6e394d5a2c980738888daa8b943"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/InMemoryCacheAdministrator.cs",
+        "sha256": "5e2cb66a0db41c49523972c03bbb3f1caa0ef6d8f15fa8b93db7ce5f7221041f"
+      },
+      {
+        "path": "src/MethodCache.Core/Management/InvalidationQueues.cs",
+        "sha256": "de75cbcb8e86b4e8c27b022d98943303a7f637cc057dd5e78aafd21564ce20bc"
+      },
+      {
+        "path": "src/MethodCache.Core/MethodCache.Core.csproj",
+        "sha256": "e059bb124be3d58fbb25e08734a860aa9942cd90f2572af3408738a196f53ffd"
+      },
+      {
+        "path": "src/MethodCache.Core/MethodCache.Core.csproj.DotSettings",
+        "sha256": "28e1ca773c301cb3896b0585476139d1863c515515887d6ada1e74c749f98262"
+      },
+      {
+        "path": "src/MethodCache.Core/Options/CacheEntryOptions.cs",
+        "sha256": "b509c691a7a85adbe8f5ee948e3ca161fb81debeb38f8502d4d79011e95ad53d"
+      },
+      {
+        "path": "src/MethodCache.Core/Options/CacheLookupResult.cs",
+        "sha256": "97a67dda1104545865ccda1ea225c1538b4d526b0f983179ed5858cc7e750708"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Diagnostics/PolicyDiagnosticsService.cs",
+        "sha256": "f6690d8a604ec918aa1678b746a7e54b024ec3e7d708dde6dcfaa8abcad62124"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/CachePolicyBuilder.cs",
+        "sha256": "7919939a300dee5d4273bc78000326faec222bb0a06a48d6390bf204ef3affd9"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/CachePolicyMapper.cs",
+        "sha256": "223a911d9b60e9b136b330670e2abe583e7b90108fdf56d34b7642b37394a339"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/MethodIds.cs",
+        "sha256": "cb4cd3164e4c23952a739456d09debc42e4adf9c583150a2ecf0ec13ac3a843c"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicyDraft.cs",
+        "sha256": "afc9fad54d839fb13b7d817c93e345aa010e4ca8fbac4e40a4b57cd65c3ded96"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySnapshotBuilder.cs",
+        "sha256": "3ac014468cfa1cbb2d199f6400227181696fb3f17495c8ec9a5479c5c1be3154"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySourceIds.cs",
+        "sha256": "db8acfa2e001c1cfe2c530e43c6065c00384a3ad3a2d2f12f33713f7faf317c6"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Model/PolicySourcePriority.cs",
+        "sha256": "93a6e80a39f1ef78e9734f49cc9407f2149add891d0a004b44a88caa3f98d542"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/README.md",
+        "sha256": "66df8029316218cc877ef3b105a994247551fdc36041865d504b801c08491646"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistrationExtensions.cs",
+        "sha256": "f5e559f7599451317594a7aa55e5aa8c09d28fd1e36a545cc5744db1033f19bf"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyRegistry.cs",
+        "sha256": "4075452453b8d71010c5fc8ab961395262fdb64a4101e84f65ca5ef18a112aa4"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyResolver.cs",
+        "sha256": "e7fad20c019c542a82bef7f2dcfac1bb6079503b6ae774ab1872f0986e95a143"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicySourceRegistration.cs",
+        "sha256": "ff5697945f514e9059fc2c53775527026f7adc9dea2ec7a1ddb553799d40e14f"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Resolution/PolicyStartupValidation.cs",
+        "sha256": "856a5e266d0bda947c6c6243b99c84ef3938f5eddd6df29d01912db2e9aeb9e3"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/ConfigFilePolicySource.cs",
+        "sha256": "187faf1d5d25c4bfd5c918738d2d502311bd442fe5cfd6a2aeafeaa2640b2b7d"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/FluentPolicySource.cs",
+        "sha256": "36e67d01b1ecda838503f46a3dfe38a2a494380cd11765d0903d8b2e68a3f4dd"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/IImmediatePolicySource.cs",
+        "sha256": "713cb6f32a9268e6bd3284f8ff81fe810f32275ed7c666b2522c31697ab68a3e"
+      },
+      {
+        "path": "src/MethodCache.Core/PolicyPipeline/Sources/RuntimePolicySource.cs",
+        "sha256": "27a64e64ce0ff452eeb80594ed5bf30c643a9dc643440edded7c45fa3ab49553"
+      },
+      {
+        "path": "src/MethodCache.Core/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Core/PublicAPI.Unshipped.txt",
+        "sha256": "72e729fad5074712ecba4ccc0d5dc9135b708b65e1d7e0a20a252637b84e20c5"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/CacheKeyLookup.cs",
+        "sha256": "f6762b53c002a3a8d1014201e83725533cbc5defdaf2b65af1b982a09deca12b"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/CacheRuntimeExtensions.cs",
+        "sha256": "739c6bae4ba601cb87aa54cf349c64585df4d8ccc5c0c2385b6002362c82827d"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/BackgroundLoadScope.cs",
+        "sha256": "a29397f9b81823b58180968ea68fdf2d14c5d87ea2f8cda06a65801ceceec446"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheContext.cs",
+        "sha256": "27ee0b6fcad693f0d2585edfb20a05da1a77b1fee04815381f2aa47c5fd9066f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheRuntimePolicy.cs",
+        "sha256": "6971b15510275c17a2180b77ee23f2508eee223b894926ef35078a5efb98d4dc"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CacheTagTemplates.cs",
+        "sha256": "85e27d02117524dae003ca48ad08fe0e5242e05d061439c1fb4fce1e378da4c9"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CachedMethod.cs",
+        "sha256": "2808395fe0424ee7b9aa4c86ab8d6e6e14c10314f72cd8ab7d5a4299425340ee"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/CanonicalTagPart.cs",
+        "sha256": "e6c0b3e9086a227032c851e2f5f722b5b1f2d9319b2c72d7c62701774ba94e3d"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/DecoratorServices.cs",
+        "sha256": "cfe6116e31532b502ca7ee7dfce3ee0fb0c74a6bf810454c493435df83d69a12"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/GeneratedDiagnostics.cs",
+        "sha256": "f505ecf4df9ec57a9923c7d46030cdc3526b753b42d0ff7e881d0f99388152da"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/InvalidationResult.cs",
+        "sha256": "89be978ec18154540d901b2867f8e38e8edcf6187c636bcb950304c82efb88d4"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/PolicyGeneration.cs",
+        "sha256": "3e9cd28bc5d5a337ba9730aed5800587b0ba05ff8ea440b7c0fcb6f5cc644131"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/PolicyHandle.cs",
+        "sha256": "09c36c9f2f2153df8ff6e9e94ae75cc353f4258a4198e0fadf274837385f3b66"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/PolicyIdentity.cs",
+        "sha256": "7d6ad1e3104608968881750a8c1af2e11bd7a91641e8defe20f520a846795d22"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/RegistrationPolicyRegistry.cs",
+        "sha256": "6556b21272da810968f169af1a0765540445be23a256f874b65fe51158494031"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Core/TypedCachePredicate.cs",
+        "sha256": "e71af2826c98670b96bf1b0f08c504935319a538c5154b01cbc60b852cceaeac"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/BackplaneWire.cs",
+        "sha256": "ac4fc900fe5a958b3a5b9a841ab9c7425d50b662e86fe517c0937f2b38e60775"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.Http.cs",
+        "sha256": "568794d48115b3d44506500b2ff282eec98f5f6834ed5f16bc34e54618888b8e"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/DistributedCacheLayer.cs",
+        "sha256": "b103e962f1ed1d85807182ac17ef4dbd60160cc8f366aad222e492c3cb42a99e"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/DistributedCacheStoreValidation.cs",
+        "sha256": "7e8dade3ff4370ec41f09c948f94160d730a3f8c265dc0d395224234d1c2e3b1"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/EpochMetadata.cs",
+        "sha256": "8adc1beb6acace18f24bd4ba8d988c853fd7f377ae217c91bbaf70e6f9107814"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Distributed/LosslessWireText.cs",
+        "sha256": "0d6a699f9316abe74d35c60ffc9ab18cc1c19876e86d8531db5b3bdbc420bf1f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.UserApi.cs",
+        "sha256": "743207e6e787babbf90f5700472a34f5287718bcf5482098bde390607a96abff"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/InMemoryCacheManager.cs",
+        "sha256": "24be711057e79d66e1f141deda5377ab65edc657c2a5ba83a8209e2eb29557fb"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/NoOpCacheManager.UserApi.cs",
+        "sha256": "fea4b49b0a3b562033e73839b087d0e6099be788a457c0c28cfd6c9f447ae053"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Execution/NoOpCacheManager.cs",
+        "sha256": "f35d25b404004f7a54a4afef42a58ba634215a64cc79ecf52098ada508a3515f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Http/HttpResponseStore.cs",
+        "sha256": "95feb3c9adfd712c4af27ae4974b96925b07bd9c4caeb0815b6fa13b6a31fbac"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheKeyProvider.cs",
+        "sha256": "804e71b30790e7ea1a5308ab56b73efbfbcce6ca0f1472300c1be37740f968ad"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheManager.cs",
+        "sha256": "6e697fe613cdefeff052bd6357f38a0e031ee2a6d653f39b6b0b3bd73644fb16"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheManagerDecorator.cs",
+        "sha256": "3c2f655ac90ee6b0b132b60a7b1f369140f3e63fd8e3e56dff6b846f21191bbf"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/ICacheRuntime.cs",
+        "sha256": "7148d07cd74083ddfd97d56f41a876567b3332290a1334bd63eb56afb41cc6a8"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/FastHashKeyGenerator.cs",
+        "sha256": "dbafc0d916c8b561b8721456993d9a67c65ff5406c8134d4daf1234eae630e03"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/ICacheKeyGenerator.cs",
+        "sha256": "cad8f8392fa4b80cdaa226a86bc6599abb6b3d023ae9f57d242d1de80d1097bd"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/JsonKeyGenerator.cs",
+        "sha256": "f7328934fb214aeed12bf4bf12cfa9830d91e49c283b920ebec74c78b54e892f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/KeyArguments.cs",
+        "sha256": "7e9eab1344728da446dd7315bfe4aa80d80e6de970d94a98502671e132bd9a35"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/MethodCacheKeyBuilder.cs",
+        "sha256": "35109a840945facf7b428604288fcc859906c09862444483a614f3ec47a23f21"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/KeyGeneration/MethodCacheKeys.cs",
+        "sha256": "5e92dadf59eada08fce73ff3b6a5876d635b87db601f26c1bc85ea47112639b4"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Keys/KeyComparer.cs",
+        "sha256": "b24e0d9be5c98c686d237c8b7427f964284a302c3d6276ad0dc928cbbf56b442"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Keys/SipHashState.cs",
+        "sha256": "e83fd7c09f29da417a48b4cec456fc95a59a0e84ab693de0ae36e716ad0c8d0a"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/AccessOrderDeque.cs",
+        "sha256": "886299261fd8462e39a7e6920c8dcc0d22a3eacd445e90b5bfd9b88a8f5c73d3"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/FrequencySketch.cs",
+        "sha256": "63d3d9e57b52d927c1fb7bb09415bdffde3afa2f6e5cc530b6f2b1b5cd17811b"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs",
+        "sha256": "1d33ce52654bcfd6e771ecb7161822c6c1556befab89b8dda90e3aac4eeab6e8"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/Node.cs",
+        "sha256": "f4a7c54a786dabc0544d236ae02c75c2e5910ee115d4dd599e58091563d15c54"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/ReadBuffer.cs",
+        "sha256": "3e700a5b1c7621148416076655fc4e16610cbe40e19c0c246539a824f2cb39b3"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/StripedCounter.cs",
+        "sha256": "5c470296d554c4ca8882e3c6495ff87d894986a5a9afec189c6f4c81b190e56f"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/TagNodeSet.cs",
+        "sha256": "955ee05fc60298f0ac770f999b24d15e82b3c2d650e59bfabca6b7f8e6685784"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/TimerWheel.cs",
+        "sha256": "c90f48a1277a4ba161920f8c47f6ae7d13e475520df67be7597effda378bd405"
+      },
+      {
+        "path": "src/MethodCache.Core/Runtime/Memory/WildcardPattern.cs",
+        "sha256": "dc0430d53d31ce87055a85c67da8e66ee36c1deba5aed0b37cfd33140ac8e3a3"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IAtomicInvalidationStore.cs",
+        "sha256": "8533d06090ff5daef6d4a6b28daf94d91922a6493befeeba7639a3ba1856430c"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IBackplane.cs",
+        "sha256": "7e53d5ab4e41fe89ba5dec7a9df53800943c494fa1792a780d5c53aa7136fe09"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IBatchedDistributedStore.cs",
+        "sha256": "3a0d19e88fd64f165fa50cf36f249fc548fed19124341fc775f53bc50ac14e56"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/IMemoryCache.cs",
+        "sha256": "5d78f731a3389ecf7fd1d9b3a5c4f497d4225649231a13e18999ee486758e185"
+      },
+      {
+        "path": "src/MethodCache.Core/Storage/Abstractions/ISerializer.cs",
+        "sha256": "8b84c4f05c77befbfb231003439105a472a7b3ae9bcb45780def64fda3ce585e"
+      },
+      {
+        "path": "src/MethodCache.Core/Telemetry/CoreTelemetry.cs",
+        "sha256": "9db9953593aa5d24dab3a9091c6bc1e7b5a79056cc924987cc328d41426fe4a6"
+      },
+      {
+        "path": "src/MethodCache.Core/Telemetry/MethodCacheTelemetry.cs",
+        "sha256": "1a88984856f6ebc238c94a41debf9a65e144a0d7dedc107cc57f15a07f3a0d17"
+      },
+      {
+        "path": "src/MethodCache.Core/build/MethodCache.props",
+        "sha256": "bc892cc316465b06f3a04d937ffa37883f704e4ca40524bcc6672542dff5b1f7"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheEntry.cs",
+        "sha256": "6757552d6106c4d44a507f7b0959c7338ce9f7eaf8e163f403eb204135e7ef1e"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheInvalidationException.cs",
+        "sha256": "7f0ae606957b566d2228c41b29cbe1711cde7025aacd831555309c66f4476314"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/HttpCacheOptions.cs",
+        "sha256": "2d872fe613280080959080daf7f6f88d08732f5c15747efd393ab99859d0f040"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/IHttpCacheStorage.cs",
+        "sha256": "a44a2ee1836da24316a16a597df643b761e45f2c49b53c1d9bbaf6cc048b1ed6"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/FreshnessCalculator.cs",
+        "sha256": "176cd6ad3bce308d06caabed2cdfd3282385c0c2a52bc4245307b7386cc7a166"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheClientState.cs",
+        "sha256": "fcf2b99757c49e0861e0c8511bfd6a6bb50c8bef917725ed71141db256c51fd8"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheEntrySerializer.cs",
+        "sha256": "1293181b25c51559513d81b55f4f40912af3fcd84257211f37cad4f594763fd3"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheHandler.cs",
+        "sha256": "8ed8af3dc7ee48ef56ba690e57f072e65b420521785a1b147d57490efe31d1d6"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheKeys.cs",
+        "sha256": "9e82894fbabdd9cc377eb2191f6888e1843132ba0f53d85d55291203b0f34342"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheStore.cs",
+        "sha256": "0f66eaca8e4e711643c6c6d2ca9a399b1a160a07046119d6352bb5c1c96f5fae"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/HttpCacheTransportFilter.cs",
+        "sha256": "6bbb3e38dbf2a14df99e1e26fafda59bb9ff3bd5d4cf7567540372235c8f41a6"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/RequestCacheDirectives.cs",
+        "sha256": "b020c14a327d65d0cd5fbff2957a132628422034fb49018814bbcf5109b29fa2"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/Internal/ResponseBodyBuffer.cs",
+        "sha256": "f802dd48020cbd49619ae7f57865c77ddc41f43bd2937074efa8c12792f4ecf5"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj",
+        "sha256": "b0ef329a4616ae4bcafe23017fb7f54462a471eb89ebe05f72ab38bd446668bb"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/MethodCacheHttpClientBuilderExtensions.cs",
+        "sha256": "c0758c5efce33633125a7080fd998903c1f9ef6d7a6a2426904c4d06533378fe"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/PublicAPI.Unshipped.txt",
+        "sha256": "1876380bbc81477712fd4c879d4b682ff2072cd7c464bcfbc4d5f976ef1c1fc3"
+      },
+      {
+        "path": "src/MethodCache.HttpCaching/README.md",
+        "sha256": "4d6d0bee466c8304bf423e4c24e305b9b3ff4b1aac6413830c8f3698040f1e05"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj",
+        "sha256": "9a436745ad8dcb816d45925216daf93c156d12c298529350ec54d55fdf972d15"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCache.OpenTelemetry.csproj.DotSettings",
+        "sha256": "83fc0a3261377c147f14974991b7a73eade146eacf03647df86466f52a68d2e3"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCacheMeterProviderBuilderExtensions.cs",
+        "sha256": "4f3e84c009b3717f64262ff074516ca952a2f4b1ee6093fcc0582d710547c3dc"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/MethodCacheTracerProviderBuilderExtensions.cs",
+        "sha256": "e72a85bdc6b087cf7773fde8521ec9fda88324506d2d22af523709ae33979b50"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/PublicAPI.Unshipped.txt",
+        "sha256": "8912c436f46c1ddb3b6b108093497c913705f8195774b45a394bd5992e8753e0"
+      },
+      {
+        "path": "src/MethodCache.OpenTelemetry/README.md",
+        "sha256": "2cd5fb8c1fac22fd08313bc88b1612da8d8d43583c9cd0f409ddd8f50394606a"
+      },
+      {
+        "path": "src/MethodCache.Redis/MethodCache.Redis.csproj",
+        "sha256": "e9725e37355aeeb15c9fdee6cba04f0a10f764bcbc910d5b32f9f8ab4b20b740"
+      },
+      {
+        "path": "src/MethodCache.Redis/MethodCacheRedisServiceCollectionExtensions.cs",
+        "sha256": "37c06792629108406bd067d1d3385bc988ab37c3eefe27c7a6c6402f30358500"
+      },
+      {
+        "path": "src/MethodCache.Redis/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Redis/PublicAPI.Unshipped.txt",
+        "sha256": "6b01907391ebfecdc0519997595058895450b0cd770316d4edfe9596f4e1014f"
+      },
+      {
+        "path": "src/MethodCache.Redis/README.md",
+        "sha256": "9869718897fa8b435fee96be61498f8395808040071c50a1628f957aaca02979"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisBackplane.cs",
+        "sha256": "7c23b56b82a2b08b88d654dea491090b66eb5aa69399c76ba4c80c1266cdaf1a"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisConnection.cs",
+        "sha256": "a5867f0e9593a226f528e88d1b0f20466af55b8cbc49f35dfb1cfcd49ab2a99b"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisDistributedCache.Atomic.cs",
+        "sha256": "23cd817e11c87bc5266e1400828547457c5f412259ad22e848783daeffb6a682"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisDistributedCache.cs",
+        "sha256": "216002f134d6ea5533c2b05dc387ad27e741e63acdd88d62f326b5787795389c"
+      },
+      {
+        "path": "src/MethodCache.Redis/RedisOptions.cs",
+        "sha256": "28cdb876ea7dcce4b9a8bc3bc5cec8adc54203cf3978137ba55a6ab1081ea27d"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MessagePackCacheSerializer.cs",
+        "sha256": "77bf6ab04fabac7d495806913aab62c6359e1b1f378d6c1e2eadc483b11e09a5"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MessagePackKeyGenerator.cs",
+        "sha256": "03bdb21fc63185223eacc33c87ce88dee3b67c06a99bc9529a28952270906ffc"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MethodCache.Serialization.MessagePack.csproj",
+        "sha256": "f89d135297287f729e9c0c772626ecc8b692d3b700957d8ce3ae95b920f32512"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/MethodCacheMessagePackServiceCollectionExtensions.cs",
+        "sha256": "2223b401a6bedadeb491d2a04ddcf4926083b6452feda59026e184465fb33fc6"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/PublicAPI.Unshipped.txt",
+        "sha256": "1f0a15f6956ebb88cd2a65cca0b43b4425aab9858a40754cc27d80856ee89d24"
+      },
+      {
+        "path": "src/MethodCache.Serialization.MessagePack/README.md",
+        "sha256": "030c94b8d42aa32fe59f9a699605fee8b1baa8d995bd55d0229042ab0dc53fe8"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/AnalyzerReleases.Shipped.md",
+        "sha256": "d3a172e22c8b37f1f50219a9a3f5d351a1431fcb9084640c9d3295d4eb35143b"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/AnalyzerReleases.Unshipped.md",
+        "sha256": "dc152c07ca71c95f3af5e62ff17acc7f736a4e06ca02249eef56aa8612756f13"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Core/MethodCacheGenerator.EntryPoint.cs",
+        "sha256": "f341a1dfa93c8391cee7c91ef0f759a9f996d9e703f4ab094f6c1b3742151161"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Diagnostics/MethodCacheGenerator.Diagnostics.cs",
+        "sha256": "2f15930056754ac1b70f9bef62f18dd5b28f04f4888ae494d393d459c24dbb2d"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.Discovery.cs",
+        "sha256": "620aa8283438c96a1f1f2b9ab99723a35b25842b8591eece86499ab6bf0f3d11"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Discovery/MethodCacheGenerator.ExternalDiscovery.cs",
+        "sha256": "d78d2d1b74d6e7de7f7bc3d523bb82cffb8d5923a8305c1e3d592869da07dcdc"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitDecorators.cs",
+        "sha256": "6859b6467dec3b938b506877ec4156e3f124e9678bc3105227f190b796a1a975"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitPolicies.cs",
+        "sha256": "69eb6234bdff300a0081e180befaca9503c3b76f769fcddc2058fcd1c2c57db5"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Emit/MethodCacheGenerator.EmitRegistrations.cs",
+        "sha256": "9930934e16f5dd973604be11df94882dccc024db89fe362b421bb09fb348c15f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Infrastructure/MethodCacheGenerator.Regex.cs",
+        "sha256": "3d66bd7d549313a8a9ec6e0442975ab1bc6938eabecd889e8229966a91a5ebab"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.AttributeValidation.cs",
+        "sha256": "05a6b27a1a1a46144363ced6ddbab0d5865d2bef6ef125e6a275c250e3ddd4e7"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.EquatableModels.cs",
+        "sha256": "c90ce5a23db9960c99798468519c529952c69c4a9586f857a53f961d50769afa"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.KeyForms.cs",
+        "sha256": "a19a506ce3daea669d2a83afa76d684bf220306212f551946bf6e882e6d2e97e"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.ModelBuilders.cs",
+        "sha256": "f374599cddd0f0c962b85b44e2278612051599896fd24371cdf562f0b206a79f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Modeling/MethodCacheGenerator.Models.cs",
+        "sha256": "c9440affaa7a7bbfffc68ffc58d778c9114243382ca2a99a5d6fd39b50054a9f"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/Generator/Utilities/MethodCacheGenerator.Utilities.cs",
+        "sha256": "a219cc77b2921c96a2ddfdc9c11045d785c3bde3821f3355de7ad09a6ce65ef5"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj",
+        "sha256": "799b3b478fe0752c496c708bcdba06079e5fb845c93b7805253bcd6da476c029"
+      },
+      {
+        "path": "src/MethodCache.SourceGenerator/MethodCacheGenerator.cs",
+        "sha256": "8373d717156657e347b91494cf4beea8aac21a60f048e0392b73325dfc8d246a"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/MethodCache.SqlServer.csproj",
+        "sha256": "9febf51daf5cd76c7b0a417472c73ecb2214cd3265562d876a524f074e771f34"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/MethodCacheSqlServerServiceCollectionExtensions.cs",
+        "sha256": "13b9126b0cb898a174ea3a55c539094625447bc8b00da75eebc1c355c08bba07"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/PublicAPI.Shipped.txt",
+        "sha256": "3c3b422dddb1efeb0fc5b228608fd8682452b2a9507d4031894bce3c4dedadbd"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/PublicAPI.Unshipped.txt",
+        "sha256": "384de61f71a1a8c63393758f623466607a31d63ff8e80b8c810d1388ece6ac74"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/README.md",
+        "sha256": "e1da62e57ce6401ba2dfcde87dc1287ac7767ee5d71560aff2fa144635aa357b"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerBackplane.cs",
+        "sha256": "b52b630f5336d9a5b381d0d1fb28b0f33588fe9607bea9fffc725d3ba736cd92"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerDistributedCache.Atomic.cs",
+        "sha256": "469127009d19e1ff06a226ffacbd8462d88b5f188260bd58f633fc3d43464310"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerDistributedCache.cs",
+        "sha256": "80a0ceeb3ffe3fb4b65883093cdc39103463609a762abea7bbabb5c714b136cf"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerOptions.cs",
+        "sha256": "118c7a736bb7743929a81d3e1151b77856c138e5709d573fb26e23f215ed7915"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/SqlServerTables.cs",
+        "sha256": "518577fc8b4e47e2a099caa982cb23c6ce19209cb10de0f026224d8b01ad76e7"
+      },
+      {
+        "path": "src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql",
+        "sha256": "3982efd534928f7e9cd9c6c46776d97763a157b97e9d54c487bba52698a836a2"
+      },
+      {
+        "path": "src/Shared/DurationParser.cs",
+        "sha256": "888503b4436eda1e6bbabe51c96131ae04815536a8a7fd867b7d0fa5e0ead059"
+      },
+      {
+        "path": "src/Shared/KeyCollectionState.cs",
+        "sha256": "a517e7d6ccb41c23824f2b1b3cd31420da6ca0c7c3fe4738099141f9a4daa14d"
+      },
+      {
+        "path": "src/Shared/LosslessUtf16.cs",
+        "sha256": "5c9c3954af26a75857d25919b8215d69ae6dc9c8ed783aaf36f3da6e6d88c19b"
+      }
+    ]
+  },
+  "binaries": {
+    "base/main": [
+      {
+        "path": "bin/base/main/Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "bin/base/main/Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "bin/base/main/BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "bin/base/main/BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "bin/base/main/CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "bin/base/main/Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "bin/base/main/Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "bin/base/main/Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Analyzers.dll",
+        "sha256": "22a5775695c6bcf878243742c888f85d434746f2b1b1fdf3b322803da328fffe"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Analyzers.pdb",
+        "sha256": "5653f164ef33c67504e00f90da694afdbdd97257f1b3b9b488d115c175395bad"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Analyzers.xml",
+        "sha256": "391ee96b1d62e823952c6017e50e498a84abc6a3916b5ca57602056a3caf687a"
+      },
+      {
+        "path": "bin/base/main/MethodCache.CodeFixes.dll",
+        "sha256": "c7e7cec4e3f620043c5679abc96d0a6127b8bcb99129a91ad028be39dfd4653e"
+      },
+      {
+        "path": "bin/base/main/MethodCache.CodeFixes.pdb",
+        "sha256": "28026b53e654fa4cb01b320edb3a859ce29f3a3853ac29a651357bcedd92e632"
+      },
+      {
+        "path": "bin/base/main/MethodCache.CodeFixes.xml",
+        "sha256": "a3caedd7cf30930fcb19b9506312fbcf72b8766b5eb290dfd7cf1e7335f48177"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Core.dll",
+        "sha256": "7f341bf348e505d5a202071a83d2e128007094a94eaeb1647eed483a6bc491f0"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Core.pdb",
+        "sha256": "d7fa348983a92dae0ae50e5dd079833cc75a880def77f620321ccdc0362de008"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Core.xml",
+        "sha256": "05403b744c6b95676c60f851ae0e4e4529b5bda6725755864721d7a0a940691e"
+      },
+      {
+        "path": "bin/base/main/MethodCache.CostProfile.dll",
+        "sha256": "afe2ea3ef0622fbf712fb4d31bca6fc8bf8428dc7f8f063c70933ea4ea4d5f7e"
+      },
+      {
+        "path": "bin/base/main/MethodCache.CostProfile.pdb",
+        "sha256": "f954cd2b3142dec77478106aab281b2ffe54a71ccc7921ad1698e19f02590fdd"
+      },
+      {
+        "path": "bin/base/main/MethodCache.HttpCaching.dll",
+        "sha256": "75fcb198998b471051ad2c0b265715e558ef3490db68f3cb2c5e5fb1bda8147d"
+      },
+      {
+        "path": "bin/base/main/MethodCache.HttpCaching.pdb",
+        "sha256": "9e7f9c1f0984eadc80aacb33be0b00ca280ba85d5edccb1890cf5f04be2651d8"
+      },
+      {
+        "path": "bin/base/main/MethodCache.HttpCaching.xml",
+        "sha256": "6c27ac66c1ea01c1f167acd63f3e7577fad88673788ca3a3043d7c2de75f8948"
+      },
+      {
+        "path": "bin/base/main/MethodCache.OpenTelemetry.dll",
+        "sha256": "4381714c0e4325b394125d780ecdbe9305f8287e1b0e4ce7c3dbced3e5bcd5c8"
+      },
+      {
+        "path": "bin/base/main/MethodCache.OpenTelemetry.pdb",
+        "sha256": "b2524c7d7efc1da8b7c8b49b1ac8d7fec89fb9e60be50ba382c58527c6748f51"
+      },
+      {
+        "path": "bin/base/main/MethodCache.OpenTelemetry.xml",
+        "sha256": "08b70af1c8911d1e561d95a3664a0301faef8b73e6adb553f43b26527483433e"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Redis.dll",
+        "sha256": "c080c4e32ccd26dd036f224b6bb515315056606e20c0e4077c7d2e79edd3869c"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Redis.pdb",
+        "sha256": "d72adfe9adadc6242ee7eb4f490624bf29948503273ca5af33fbfa40821b2697"
+      },
+      {
+        "path": "bin/base/main/MethodCache.Redis.xml",
+        "sha256": "3d035c01e2dd41ac8eeb9ec0ee98584f5caf22698090f4c399beffc60eebeddb"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SourceGenerator.dll",
+        "sha256": "f5a75806a141d12bf9a91edaefbcdb758349bcc881fdc2df3375b1f5173e8b53"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SourceGenerator.pdb",
+        "sha256": "1a8a7e023f7de26a3927ef2bd535edac8742c7f7d71c2c7f9135ac96c4100ea5"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SourceGenerator.xml",
+        "sha256": "6dd6ffad5da5ebfdb8545000d95d0652383df5d84b690754bbb22b780b4843b5"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SqlServer.dll",
+        "sha256": "9fbf47f6170d6755e0236c7dfae0658f710d468d5226d30b159ef0b2dea6b83a"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SqlServer.pdb",
+        "sha256": "2dd333d7a7f20725f06372d6c41b1272f3b62a424c53de2052af20bc6b00866c"
+      },
+      {
+        "path": "bin/base/main/MethodCache.SqlServer.xml",
+        "sha256": "77ab0aa919ef005e45e3c5a3729d81db7645fe3257cce590ee5cccffc0931eb3"
+      },
+      {
+        "path": "bin/base/main/MethodCache.WarmupProbe",
+        "sha256": "628169bbb2812a7bc290ba7ab6cf2e2f4a28fd73c122fdbfc33e944d6574e503"
+      },
+      {
+        "path": "bin/base/main/MethodCache.WarmupProbe.deps.json",
+        "sha256": "943a1f50b7724e3c7722d2a4e044c2c758fb625f84c4af1bb4fb0e168743ea1a"
+      },
+      {
+        "path": "bin/base/main/MethodCache.WarmupProbe.dll",
+        "sha256": "e89225eeafd7377813f6cc3edb6f6056c866459a2da0bd20674354cd7a14070e"
+      },
+      {
+        "path": "bin/base/main/MethodCache.WarmupProbe.pdb",
+        "sha256": "f835903f5e0fe0de84c648c8bf1e5d11728c7c875bc67077775f4fc404f6b650"
+      },
+      {
+        "path": "bin/base/main/MethodCache.WarmupProbe.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "bin/base/main/Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "bin/base/main/Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "bin/base/main/Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "fea9fbb36234a84093d422caa184cb4fea5f64c43297a74eabf8e469c2fe5df4"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "bin/base/main/Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "bin/base/main/Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      },
+      {
+        "path": "bin/base/main/Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "bin/base/main/OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "bin/base/main/Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "bin/base/main/Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "bin/base/main/StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "bin/base/main/System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "bin/base/main/System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "bin/base/main/System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "bin/base/main/System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "bin/base/main/System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "bin/base/main/System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "bin/base/main/System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "bin/base/main/System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "bin/base/main/System.Security.Cryptography.Pkcs.dll",
+        "sha256": "dfa1ee60ca07b74f7c4de24e3b9a93a302cb0f0e67813801562ffdf2fb89f219"
+      },
+      {
+        "path": "bin/base/main/System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "bin/base/main/TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      }
+    ],
+    "head/main": [
+      {
+        "path": "bin/head/main/Azure.Core.dll",
+        "sha256": "224d09cb39eae4d8c30272a0c49beb19d873c87347eae9487f0ddd859d752b56"
+      },
+      {
+        "path": "bin/head/main/Azure.Identity.dll",
+        "sha256": "af18f20be25b2895c912f3ba0a9f2901a82dda823edcad76e6a19eac9886a40f"
+      },
+      {
+        "path": "bin/head/main/BenchmarkDotNet.Annotations.dll",
+        "sha256": "8b5e247b3abd5c47f7d956498a47aa058e5dcbf18bd0f84a7ac24b0594db9a97"
+      },
+      {
+        "path": "bin/head/main/BenchmarkDotNet.dll",
+        "sha256": "66f2d42a0b995f60d7c254f63184f59ac3c163e4f6173fec60f2e9e6b20cccfe"
+      },
+      {
+        "path": "bin/head/main/CommandLine.dll",
+        "sha256": "8a55501cd1a1590a4bd93a17c6fdd2c01a0ed5bff1aea9036bdc78d98c9a3fad"
+      },
+      {
+        "path": "bin/head/main/Dia2Lib.dll",
+        "sha256": "6c4cac68010fe032218efe5e9fcf46eef9f77bfaa5f3bd33f03c5ff77d5a8fac"
+      },
+      {
+        "path": "bin/head/main/Gee.External.Capstone.dll",
+        "sha256": "6dfda67784598de9677173b89d0692593935f1a4024d36040c95dea48c1b5965"
+      },
+      {
+        "path": "bin/head/main/Iced.dll",
+        "sha256": "f058c01321b4cdfc9b9151879e88e59571c8d0ba176fbcf95bc936a8f3d073ed"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Analyzers.deps.json",
+        "sha256": "b2ec192c4cc9853835898e317dd988774ed6f4877b6aa593e07ac526558a4241"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Analyzers.dll",
+        "sha256": "c0bfc29dc29ee904d27e306f11b4bb256f24e84210d8cc3a82e8f683d25a94a8"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Analyzers.pdb",
+        "sha256": "993e1c65269116145ee9526ca6ad90ee9f2fa7272fe6b11a726264f8d2e71b07"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Analyzers.xml",
+        "sha256": "a348c705abcb6ff44eb4d1a15607b9b0bffa5526450a6878621935280bec4fbb"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CodeFixes.deps.json",
+        "sha256": "ac5ba92e025a5c01688a1fb998c55d9f5940e573fa8195a399fb16cc642511ca"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CodeFixes.dll",
+        "sha256": "65f9ce8b3c9e89a894ae8904e4aab05764162398a7648fcfb9502e0ce7480ae6"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CodeFixes.pdb",
+        "sha256": "472e8e3faa95acaf3570d01861915a1090695fa9f795ad3a05e2bde925e134c7"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CodeFixes.xml",
+        "sha256": "cfa120ce6bac8005d5955ea96d6208a74a992c499c679cc99b0ec161da81c20c"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Core.deps.json",
+        "sha256": "2a68b926b2a5759e8d2c59d216f9519fb5738848f227bb4df3ca4c89bc29ccd4"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Core.dll",
+        "sha256": "84001b84645cb964d1b0ad8994dfd791bda93a88fdca92b53f5df9d4dbb98e43"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Core.pdb",
+        "sha256": "37799f6b72b4553ba0ed135e778e6bd835256630372d5f81f9b7fe8f3b94aa82"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Core.xml",
+        "sha256": "d54cfd8b44748f98933168bf1cefbfff7582db402b75b3bc54987b95916affea"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CostProfile",
+        "sha256": "e64d1a51d99250dd4f603c508c32ac2bb1f3416b7a775760c4adb9f66e9159d4"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CostProfile.deps.json",
+        "sha256": "f507ae7621def0993ac2d1e1ed00f1a86d1b851449c2ad47d19dde3042e3e461"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CostProfile.dll",
+        "sha256": "aab7395b8ffab15cb51230f76fba62f421203fbbb27b8b176e61b9ca2d5f255f"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CostProfile.pdb",
+        "sha256": "4226cde6837813d36ca7069851e270ac3432691f76ce2010b4f6574f75a99263"
+      },
+      {
+        "path": "bin/head/main/MethodCache.CostProfile.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "bin/head/main/MethodCache.HttpCaching.deps.json",
+        "sha256": "6116e4c9fd282be69d1f3143784d18bbe92f8ac57ffba5954bae9ec1a54c815f"
+      },
+      {
+        "path": "bin/head/main/MethodCache.HttpCaching.dll",
+        "sha256": "f9c76cb2a3694ecbf1539ee6a99bb6408b4956ebf140b08e34f24882d35ed2f0"
+      },
+      {
+        "path": "bin/head/main/MethodCache.HttpCaching.pdb",
+        "sha256": "af38f4e66b2b241db609eeeab8cf07280fc4b447144288b810630f9fb4c2dee9"
+      },
+      {
+        "path": "bin/head/main/MethodCache.HttpCaching.xml",
+        "sha256": "5d6a2e47590a015de42d8039667cf719c99d42c0adfc0b2dd683b4566d73f89a"
+      },
+      {
+        "path": "bin/head/main/MethodCache.OpenTelemetry.deps.json",
+        "sha256": "85add8477b0f5a0a6482834e823a921432c1fea30d8d88849a6bf773fdcf0d56"
+      },
+      {
+        "path": "bin/head/main/MethodCache.OpenTelemetry.dll",
+        "sha256": "3753119f7012beb4411105857964cbbac81c6421771f0c4000871b3f372fbf62"
+      },
+      {
+        "path": "bin/head/main/MethodCache.OpenTelemetry.pdb",
+        "sha256": "690792bf2f258cd6533326bea37cd606f40589625e2bfd4dda69a30d992d44ac"
+      },
+      {
+        "path": "bin/head/main/MethodCache.OpenTelemetry.xml",
+        "sha256": "47bc9acb334e179a16615dc8672d6e9acec5581f60f197d96b370bf2b99b5015"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Redis.deps.json",
+        "sha256": "cf5c01bddc3fe672d25d9c0be55ef1d953bc72a744243a955d6de0e03fa573b2"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Redis.dll",
+        "sha256": "e9869833ede47ea5f1f4af6059f50f04be788976adfe325c345264a62ce68ddf"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Redis.pdb",
+        "sha256": "9c8c7429d49bf6e96ba71f03f4e15ec0568887d3f4429f5fe5d7e55446b9a9fb"
+      },
+      {
+        "path": "bin/head/main/MethodCache.Redis.xml",
+        "sha256": "e2e2031dfedae9f7ce64ee5a6564fd276f61372be943844383df4cc30fb4a04a"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SourceGenerator.deps.json",
+        "sha256": "29cf0fa4121c241c0460c61303926a39531eb7ea214d6fc161e4064b3da6c564"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SourceGenerator.dll",
+        "sha256": "e21c117859266e56c5828e0c9fc133d5deeafd781627251e885c0becea435c36"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SourceGenerator.pdb",
+        "sha256": "a1d49347f01c51d31ec2433d3d00aa72dda672b2ef032f42af661c2c7120b2e4"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SourceGenerator.xml",
+        "sha256": "36d6885e64f889aac73279c11e73473953958857629d44595a34504ca20ca3b8"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SqlServer.deps.json",
+        "sha256": "2a8fc536df60f8d109ea6b9054548b3f0b8c57df93c23fb00ab3acad019592fe"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SqlServer.dll",
+        "sha256": "ba6671da652b802bcf4039f0941c9f1f24866b629c14298f560cf2f467363bd8"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SqlServer.pdb",
+        "sha256": "a242be526a742ee26847cfbc0d1f9d01e639eb03cc41a7b052d9d98bda9f0f2e"
+      },
+      {
+        "path": "bin/head/main/MethodCache.SqlServer.xml",
+        "sha256": "4a98ccb94de021e4f26b3df81fc2cd11dfcb841c9edbe2a9fb87f9e6ceeefcea"
+      },
+      {
+        "path": "bin/head/main/MethodCache.WarmupProbe.deps.json",
+        "sha256": "943a1f50b7724e3c7722d2a4e044c2c758fb625f84c4af1bb4fb0e168743ea1a"
+      },
+      {
+        "path": "bin/head/main/MethodCache.WarmupProbe.dll",
+        "sha256": "e89225eeafd7377813f6cc3edb6f6056c866459a2da0bd20674354cd7a14070e"
+      },
+      {
+        "path": "bin/head/main/MethodCache.WarmupProbe.pdb",
+        "sha256": "f835903f5e0fe0de84c648c8bf1e5d11728c7c875bc67077775f4fc404f6b650"
+      },
+      {
+        "path": "bin/head/main/MethodCache.WarmupProbe.runtimeconfig.json",
+        "sha256": "0ce7363b2bf564e2ef36168f00b5a1f5c4ef387dea9a41bf025fe6d5951d64c5"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Bcl.AsyncInterfaces.dll",
+        "sha256": "136d5965cf4768e8420b547a8bddea882921f426c371833d558a858a2f0c235a"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Bcl.Cryptography.dll",
+        "sha256": "009a27b8e3093fdd2960bba63e4acd48eab05c4f8f8a6d9fe8c24b4657f44c4f"
+      },
+      {
+        "path": "bin/head/main/Microsoft.CodeAnalysis.CSharp.dll",
+        "sha256": "53302acca07700e9bb10dcf21034435d6e0454c8eebf2481164ec13e520004c9"
+      },
+      {
+        "path": "bin/head/main/Microsoft.CodeAnalysis.dll",
+        "sha256": "395736b2d0e02be77bedc3847b269da7a93bf8e49cd3431a4a8e68d2c52d5846"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Data.SqlClient.dll",
+        "sha256": "5a34e2fa3479b1508dbc20fbeb2c9172f18c3868bdb147a185213a446645b400"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Diagnostics.FastSerialization.dll",
+        "sha256": "83e89baf0bbecca8cfa194cff13365f716849e22efc374b669206f26998a019f"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Diagnostics.NETCore.Client.dll",
+        "sha256": "baed2d25ca5bc53a3447c237d5572c92eac1fd842807b3e72602a711749b1b22"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Diagnostics.Runtime.dll",
+        "sha256": "06f9910c8a37f8d4d758538e6dd307de58bcfb3bb13e83658142c08087a25382"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Diagnostics.Tracing.TraceEvent.dll",
+        "sha256": "401e948dac99d0f9756ef96d5a8b8e4736e19e9f82ce8cdd744495951e3a94bb"
+      },
+      {
+        "path": "bin/head/main/Microsoft.DotNet.PlatformAbstractions.dll",
+        "sha256": "b1f4ad169fb192747f5d2d3111c01db4257e3ec1f7f18f301f7fc4be3b869ff3"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Caching.Abstractions.dll",
+        "sha256": "1d9834aefdff783b6817023f97a57204e2b1573750f4e1e7d46790bcc073b04b"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Caching.Memory.dll",
+        "sha256": "b2205b4ce4ca238a3d36ab36cd312d59e5189c581c5f5af5775b9853150cb871"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Caching.SqlServer.dll",
+        "sha256": "27e8507b58a8418e0849ea3cc07b2a4a0e6be3359d6b55e552be12f41ff86847"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Caching.StackExchangeRedis.dll",
+        "sha256": "4656f05633f2a025159e7edd2b5de470a46450f347c6b7d4f1eca8e5b197ccd6"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.Abstractions.dll",
+        "sha256": "d36225749cf87a4171db39ff28a0da9216575c54912daa14b6d5935b821b7f82"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.Binder.dll",
+        "sha256": "c6bd760f32a759033f24c9961d80c60dce57bd3696a1f0dafa1c0445a520e036"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.CommandLine.dll",
+        "sha256": "301be40e721a37b4ab9ace6c7775fa274610de7a8e068d879854094ec4a013e1"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+        "sha256": "f4035a09ecd12e29d3c4007c261d3d480bdcac265ae11242eae0fd75211ebea7"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.FileExtensions.dll",
+        "sha256": "2784d06aaad46fe8c982719a066640dc28164b5c5da7bea1d43cea30134943e7"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.Json.dll",
+        "sha256": "d42791aa235e6769aaeaf751d4cc99af4c6333f24c5edca6fa9e5ef92b7df9ce"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.UserSecrets.dll",
+        "sha256": "f6d1e5eee806cddf311e6e05f5e4c9d6c5a481ee92bec190d1fdd06a07a0b683"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Configuration.dll",
+        "sha256": "b870b57af097bd531766500a9e4efd4c67510eeaa01346cd42472e48bdc8b2dc"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        "sha256": "3f733fa41c8b735cf3f7a1a49b43cd41a291bced3953bee46e2b8018be67f44c"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.DependencyInjection.dll",
+        "sha256": "407137262aee12b0dd588258f9c2bf8c91129f119896f60bd1bcd3b67f4d5916"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Diagnostics.Abstractions.dll",
+        "sha256": "b02609a53666238e932e7d88e0aad098467cda11b84d2bff7cd1b21842be4e2c"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Diagnostics.dll",
+        "sha256": "c539715b3b368fdec9da1e9a2f4cbcf99fd3680c908884ff49abe2c23b8a3d0d"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.FileProviders.Abstractions.dll",
+        "sha256": "e1d94ad98e17d02709205db476376037f7510a9ff799ab064e9d97f1d5a1eaeb"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.FileProviders.Physical.dll",
+        "sha256": "53ff1acae97b11e7a47554f945ea6b99249a2133ea2aae406a14714a82b38f90"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.FileSystemGlobbing.dll",
+        "sha256": "910947003447be670d2fb11600bef1d3a7510905c55612343714c5fc5d5bbf19"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Hosting.Abstractions.dll",
+        "sha256": "6fb66393099b843fde40c9d1e2d836a7a8d4a5cd7266e91fcd346907ff20c51e"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Hosting.dll",
+        "sha256": "f9f3cd73cef0cff8ce1f8d5731d968a93f375afa7d95ae2734949c479da6fa90"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Http.dll",
+        "sha256": "5425e838308c79f1b615355b4cd8a142e1db2befd8f39eb5327ba91f61f7f69f"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.Abstractions.dll",
+        "sha256": "622cf6cafd1d5a402c12574515dfaab8ce99018a8b1d324045487ed7a5dfbb62"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.Configuration.dll",
+        "sha256": "e2b7cb59fd63bda10115cc3b917f3a34e6b843be68d30c553878c72773ccf46c"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.Console.dll",
+        "sha256": "dcf79840cd4f5ab215be2b9dd10f983226b0bc6be2f84291029dc360666f2bd3"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.Debug.dll",
+        "sha256": "eb011f2555549acd93ea33b9254c50a7ef309401e3b1eac66cb65dfa52561395"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.EventLog.dll",
+        "sha256": "758fe83679f26075edd6f675482813ea2ff1f23c7234d7e8ef67e831e6acac6b"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.EventSource.dll",
+        "sha256": "f3122df9bc3e168750297c795d17b273f46e7185389bbb5b3f17a634c8990cf0"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Logging.dll",
+        "sha256": "a273665141e349776fcffcdb33bf55ff7baebf1885b0dc5c858f272f8b338524"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+        "sha256": "4322b5e1ce31a1194142a3fab482509b91ac859f780ad84fb83264e71a9871ad"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Options.dll",
+        "sha256": "022e30ae3ce6dd2d5b4526f01effae5fc34f642a1a639aa9605590986c751560"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Extensions.Primitives.dll",
+        "sha256": "6bf0052e4045d89390960b32741a3f4f47050056c870ad5fe189d3dea70182ca"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Identity.Client.Extensions.Msal.dll",
+        "sha256": "9c1f736b16cacd318afe07d3b9d707a4b4b56def5e403b0aff471c1af413aaf0"
+      },
+      {
+        "path": "bin/head/main/Microsoft.Identity.Client.dll",
+        "sha256": "10d59df4170053ea9597e3c20adc9607ad17318ad5d8747eda3d930a5a4b463a"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.Abstractions.dll",
+        "sha256": "27af0812016ee6bb9a22beef2b8697a9d1eda96913f11335878458fff79a717f"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.JsonWebTokens.dll",
+        "sha256": "e6add69ec50664469f739c527fb74c37fbffa072c36e889d91e058faa64542b1"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.Logging.dll",
+        "sha256": "4eb68fb71d38d86e93e0c9145620ea3e528fc49333d82c923140f9868f1ea426"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+        "sha256": "8e845988a113b5c146f1392e993e8f554a34756d37563a85c64bb399e45a4c0b"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.Protocols.dll",
+        "sha256": "4e81eb0584e24d6274916a6f470c990ac3aaa924c2f10255e64679c1a032f0e2"
+      },
+      {
+        "path": "bin/head/main/Microsoft.IdentityModel.Tokens.dll",
+        "sha256": "07d46c63c931f8792e932cc131dc9580dd4575e0872cae92878d26847c9f248e"
+      },
+      {
+        "path": "bin/head/main/Microsoft.SqlServer.Server.dll",
+        "sha256": "a9dca1b42bc875f966b78b2c0880e62b838f0ed6567166d7f1f07ae4b76ec4bf"
+      },
+      {
+        "path": "bin/head/main/OpenTelemetry.Api.dll",
+        "sha256": "ca5ddb7a51bcbb1ab8bcc6484603c70a4077142a8745d521c4bd2363f9e7c217"
+      },
+      {
+        "path": "bin/head/main/Perfolizer.dll",
+        "sha256": "6d2b3f853bcd39eb7070cd2e16e379009d43d7d389f2ba4f98a95e417e427e50"
+      },
+      {
+        "path": "bin/head/main/Pipelines.Sockets.Unofficial.dll",
+        "sha256": "fa2cdb1d5ffbb2b06512c92ce8bd18918a1a996171d0a72dfc73035bc586a711"
+      },
+      {
+        "path": "bin/head/main/StackExchange.Redis.dll",
+        "sha256": "ada40623fb69a742ca0fa97884395d6ac25e2d45e97d6bb417b8653c51e3701c"
+      },
+      {
+        "path": "bin/head/main/System.ClientModel.dll",
+        "sha256": "ce44a4fae4c4787c12475700e19a365fc2f388ae5d0f6182557ce5ea175be7f6"
+      },
+      {
+        "path": "bin/head/main/System.CodeDom.dll",
+        "sha256": "8d0cf191c86feea81c9875652c06e454abe8dbff66bea9e4cb5f8aa2dc02f32a"
+      },
+      {
+        "path": "bin/head/main/System.Configuration.ConfigurationManager.dll",
+        "sha256": "08b618461d62fe65451bdac4dbc25f8ac8ab16a914a687f2dbe3923bf0e8b3e7"
+      },
+      {
+        "path": "bin/head/main/System.Diagnostics.EventLog.dll",
+        "sha256": "776d86ab44e35f1ac90672711744084b600b8a06c5cc47ac67a31803e7c02e5b"
+      },
+      {
+        "path": "bin/head/main/System.IO.Hashing.dll",
+        "sha256": "0de0b63ca11c36ba957bee3deccbbcfd49f6a4be5b85fea10ba8b831db5f81cc"
+      },
+      {
+        "path": "bin/head/main/System.IdentityModel.Tokens.Jwt.dll",
+        "sha256": "8027f6bfe795fd5718b1c7bbb3951af064ba29cb92ee965bbe237f6808cfd28c"
+      },
+      {
+        "path": "bin/head/main/System.Management.dll",
+        "sha256": "0be24b09da5abad0b20efcb58fab14b0dedc79b09d4fbdcb894be268105a2195"
+      },
+      {
+        "path": "bin/head/main/System.Memory.Data.dll",
+        "sha256": "bae79a4ff6e8fcfb65a3d88eb53d281898e699e5471ebd780843e5616753f0c3"
+      },
+      {
+        "path": "bin/head/main/System.Security.Cryptography.Pkcs.dll",
+        "sha256": "6fd9ac565a32464c11b0ee1c3c0bc3d9abffcca27c31e22deac0b6f38b97be62"
+      },
+      {
+        "path": "bin/head/main/System.Security.Cryptography.ProtectedData.dll",
+        "sha256": "02321322ec85e0a68f28ad33e549213b1dbf3de0e66c3f7803f9ae32c0d00ffd"
+      },
+      {
+        "path": "bin/head/main/TraceReloggerLib.dll",
+        "sha256": "6830c0f1d3f3c17719181e73dd5cfa8ccbb3f3c575329d2120576545103467b5"
+      }
+    ]
+  },
+  "groups": [
+    [
+      {
+        "family": "main",
+        "case": "HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False)"
+      },
+      {
+        "family": "main",
+        "case": "HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True)"
+      }
+    ]
+  ],
+  "sdk": ".NET SDK:\n Version:           10.0.401\n Commit:            e34a38d2ae\n Workload version:  10.0.400-manifests.63b36e85\n MSBuild version:   18.9.11+e34a38d2a\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  24.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /usr/share/dotnet/sdk/10.0.401/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.12\n  Architecture: x64\n  Commit:       95017c711e\n\n.NET SDKs installed:\n  10.0.401 [/usr/share/dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_CLI_TELEMETRY_OPTOUT              [1]\n  DOTNET_GENERATE_ASPNET_CERTIFICATE       [false]\n  DOTNET_NOLOGO                            [1]\n  DOTNET_RUNNING_IN_CONTAINER              [true]\n  DOTNET_SDK_VERSION                       [10.0.401]\n  DOTNET_USE_POLLING_FILE_WATCHER          [true]\n  DOTNET_VERSION                           [10.0.12]\n\nglobal.json file:\n  Not found\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download",
+  "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  16\nOn-line CPU(s) list:                     0-15\nVendor ID:                               GenuineIntel\nModel name:                              11th Gen Intel(R) Core(TM) i9-11900 @ 2.50GHz\nCPU family:                              6\nModel:                                   167\nThread(s) per core:                      2\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                1\nCPU(s) scaling MHz:                      60%\nCPU max MHz:                             5200.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                4992.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid mpx avx512f avx512dq rdseed adx smap avx512ifma clflushopt intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm md_clear flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               384 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-15\nVulnerability Gather data sampling:      Vulnerable\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT vulnerable\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Mitigation; Enhanced IBRS\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected",
+  "protocol": "Diagnostic fixed two-case cumulative pilot only: f438 vs A2+A3+sparse tags+lazy local epochs+deferred local target+completed-origin telemetry path. Ten alternating pairs,32warm12actual150ms. Identical frozen helper/workload, SDK/runtime/workstationGC/affinity. All prior failed cohorts retained; not full14HTTP or cumulative acceptance. No limits changed; source frozen before means.",
+  "helper_original_sha256": "e89225eeafd7377813f6cc3edb6f6056c866459a2da0bd20674354cd7a14070e"
+}

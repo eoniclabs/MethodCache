@@ -60,7 +60,7 @@ internal sealed class MemoryCacheEngine
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<ReadOnlySpan<char>> _spanLookup;
     private readonly ConcurrentDictionary<string, Node>.AlternateLookup<PrehashedKey> _keyLookup;
     private readonly bool _hasPrehashedLookup;
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<Node, byte>> _tagIndex = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, TagNodeSet> _tagIndex = new(StringComparer.Ordinal);
     private readonly ReadBuffer _readBuffer = new();
     private readonly ConcurrentQueue<WriteTask> _writeBuffer = new();
     private readonly object _evictionLock = new();
@@ -755,8 +755,8 @@ internal sealed class MemoryCacheEngine
         {
             while (true)
             {
-                var nodes = _tagIndex.GetOrAdd(tag, static _ => new ConcurrentDictionary<Node, byte>(ReferenceEqualityComparer.Instance));
-                nodes.TryAdd(node, 0);
+                var nodes = _tagIndex.GetOrAdd(tag, static _ => new TagNodeSet());
+                nodes.Add(node);
 
                 // UnindexTags may have dropped this set as empty just before the add; retry on the live set.
                 if (_tagIndex.TryGetValue(tag, out var current) && ReferenceEquals(current, nodes))
@@ -782,9 +782,9 @@ internal sealed class MemoryCacheEngine
                 continue;
             }
 
-            nodes.TryRemove(node, out _);
+            nodes.Remove(node);
 
-            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, ConcurrentDictionary<Node, byte>>(tag, nodes)) && !nodes.IsEmpty)
+            if (nodes.IsEmpty && _tagIndex.TryRemove(new KeyValuePair<string, TagNodeSet>(tag, nodes)) && !nodes.IsEmpty)
             {
                 // A concurrent writer added to the set while it was being dropped; put its nodes back.
                 var current = _tagIndex.GetOrAdd(tag, nodes);
@@ -792,7 +792,7 @@ internal sealed class MemoryCacheEngine
                 {
                     foreach (var survivor in nodes.Keys)
                     {
-                        current.TryAdd(survivor, 0);
+                        current.Add(survivor);
                     }
                 }
             }

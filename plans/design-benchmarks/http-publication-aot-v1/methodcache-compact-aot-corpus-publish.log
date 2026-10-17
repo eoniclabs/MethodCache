@@ -1,0 +1,8 @@
+  Determining projects to restore...
+  Skipping project "/private/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/MethodCache.Core.csproj" because it was not found.
+  Skipping project "/private/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" because it was not found.
+  Skipping project "/private/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/MethodCache.Core.csproj" because it was not found.
+  Skipping project "/private/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" because it was not found.
+  Restored /tmp/methodcache-compact-aot-corpus/Corpus.csproj (in 86 ms).
+/usr/local/share/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(1844,5): error MSB3202: The project file "../../Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/MethodCache.Core.csproj" was not found. [/tmp/methodcache-compact-aot-corpus/Corpus.csproj]
+/usr/local/share/dotnet/sdk/10.0.103/Microsoft.Common.CurrentVersion.targets(1844,5): error MSB3202: The project file "../../Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" was not found. [/tmp/methodcache-compact-aot-corpus/Corpus.csproj]

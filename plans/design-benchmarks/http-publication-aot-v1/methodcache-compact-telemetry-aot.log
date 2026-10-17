@@ -1,0 +1,17 @@
+=== aot
+  Determining projects to restore...
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/MethodCache.Core.csproj (in 657 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AotSmokeTest.Vendor/MethodCache.AotSmokeTest.Vendor.csproj (in 653 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj (in 660 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AotSmokeTest/MethodCache.AotSmokeTest.csproj (in 664 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj (in 669 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/MethodCache.CodeFixes.csproj (in 670 ms).
+  Restored /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/MethodCache.Analyzers.csproj (in 671 ms).
+  MethodCache.Analyzers -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Analyzers/bin/Release/netstandard2.0/MethodCache.Analyzers.dll
+  MethodCache.SourceGenerator -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.SourceGenerator/bin/Release/netstandard2.0/MethodCache.SourceGenerator.dll
+  MethodCache.CodeFixes -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.CodeFixes/bin/Release/netstandard2.0/MethodCache.CodeFixes.dll
+  MethodCache.AotSmokeTest.Vendor -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AotSmokeTest.Vendor/bin/Release/net10.0/MethodCache.AotSmokeTest.Vendor.dll
+  MethodCache.Core -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.Core/bin/Release/net10.0/MethodCache.Core.dll
+  MethodCache.HttpCaching -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/src/MethodCache.HttpCaching/bin/Release/net10.0/MethodCache.HttpCaching.dll
+  MethodCache.AotSmokeTest -> /Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AotSmokeTest/bin/Release/net10.0/linux-x64/MethodCache.AotSmokeTest.dll
+/Users/johan/.nuget/packages/microsoft.dotnet.ilcompiler/10.0.3/build/Microsoft.NETCore.Native.Unix.targets(342,5): error : Symbol stripping tool ('llvm-objcopy' or 'objcopy') not found in PATH. Try installing appropriate package for llvm-objcopy or objcopy to resolve the problem or set the StripSymbols property to false to disable symbol stripping. [/Users/johan/.codex/worktrees/design-combined-gates-v1/MethodCache/tests/MethodCache.AotSmokeTest/MethodCache.AotSmokeTest.csproj]

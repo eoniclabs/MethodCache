@@ -1,0 +1,111 @@
+{
+  "scope": "Complete cumulative67case f438 versus full publication/target/completed-origin candidate. All67cases/side,0executionerrors,0failingcosts; unchanged accepted rules. All226binaryfiles independentlyverifiedbefore/after andlocalreview0; ownexact-label temporaryprovidersgone. Later compactTelemetryOperation is separate.",
+  "normalization": "Only reversible SHA256 catalogue maps become path/hash records; every original/stored hash retained. No measurements removed or changed.",
+  "files": [
+    {
+      "path": "cost-report.md",
+      "sha256": "f4fa546dbb25538dcdab49e410adca55dfeb4e75b3c39a75025ea42cab278189"
+    },
+    {
+      "path": "raw/accepted.json",
+      "sha256": "5f1358997312fcd369488172a4a224b0582607b8bd74f492c411a2c93dc141b6"
+    },
+    {
+      "path": "raw/collect.py",
+      "sha256": "83820160373a35a1048b8fd1e885dfbb75a3c1844ed414420c2e9fdc98e45fa1"
+    },
+    {
+      "path": "raw/compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "raw/completed-integrity.json",
+      "sha256": "0500ad71b5eeaed7f64e356ee1d65b14c598dbc51d0fc3c62054112344f15771"
+    },
+    {
+      "path": "raw/dispatcher.log",
+      "sha256": "0ebca7eb80a20fbfd1728fce31d20f56a106173c6f943bb18670b417977e6e69"
+    },
+    {
+      "path": "raw/dispatcher.pid",
+      "sha256": "7b76a936e8da204fc44da8c572e258ab3dc4d74d21788a63bdbba79a1d372f34"
+    },
+    {
+      "path": "raw/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/inputs.json",
+      "sha256": "f918da311720997b903341d0df587072e39c80e60809e271de05642e7a06b85a",
+      "original_sha256": "219a0fc2dd939ea95d91b645fe177566346ce4779ce66852da427a9f1d4196d3",
+      "catalogue_paths": [
+        [
+          "sources",
+          "base",
+          "binaries"
+        ],
+        [
+          "sources",
+          "head",
+          "binaries"
+        ]
+      ]
+    },
+    {
+      "path": "raw/receipt.json",
+      "sha256": "598995178ec7d1e93758cb92efe1b02e879b3acac10eb9712134684ee7a0c02f"
+    },
+    {
+      "path": "raw/results/base.jsonl",
+      "sha256": "be286dc5850170c1ac510c1b8c5c3b9190424407abcc766cb2d76e1e1f4d791f"
+    },
+    {
+      "path": "raw/results/base.log",
+      "sha256": "be286dc5850170c1ac510c1b8c5c3b9190424407abcc766cb2d76e1e1f4d791f"
+    },
+    {
+      "path": "raw/results/head.jsonl",
+      "sha256": "e7bb4abfa08e1422b164e9960592b5857ba32276ff398d34480d72350b1b851a"
+    },
+    {
+      "path": "raw/results/head.log",
+      "sha256": "e7bb4abfa08e1422b164e9960592b5857ba32276ff398d34480d72350b1b851a"
+    },
+    {
+      "path": "raw/results/report.md",
+      "sha256": "f4fa546dbb25538dcdab49e410adca55dfeb4e75b3c39a75025ea42cab278189"
+    },
+    {
+      "path": "raw/results/review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "raw/results/review.log",
+      "sha256": "dc6b20bbc24538c44e576f5b026818707c67b1b1919eb331b2de8437d0563733"
+    },
+    {
+      "path": "raw/run.py",
+      "sha256": "8465ac83e3ad168b9042fd5ffe1fb1951b0e4614c1fd4f4b7a3503a170a8201e"
+    },
+    {
+      "path": "raw/started.json",
+      "sha256": "74db62a6bb3f7f4e9e1348c39eb91620f13d65654cadb4612d043606e0f237e7"
+    },
+    {
+      "path": "raw/worker.log",
+      "sha256": "5d9030aec2f03d79556edc175ecbc4c153505c09ce1d5f9cfa5649bb6658563c"
+    },
+    {
+      "path": "review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "review.log",
+      "sha256": "dc6b20bbc24538c44e576f5b026818707c67b1b1919eb331b2de8437d0563733"
+    },
+    {
+      "path": "restore-original-metadata.py",
+      "sha256": "c769311cdfc13a484e8b585e97160259e93849ec2376a0b1be2e256fd02dc7d2"
+    }
+  ]
+}
