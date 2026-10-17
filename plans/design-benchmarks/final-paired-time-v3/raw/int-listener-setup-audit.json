@@ -1,0 +1,17 @@
+{
+  "recorded_utc": "2026-10-16T21:23:44.503070+00:00",
+  "before_int_control_timing": true,
+  "cohort": "final-paired-cost-v2",
+  "source_head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "scope": "The 67 ordinary cases are unaffected; only the four additional int controls need a baseline-aware setup adapter.",
+  "finding": "GeneratedPrefixHitPathBenchmarks was intended for post-Core-telemetry component points. It creates a MeterListener but does not install the legacy OpenTelemetry manager when compiled against f43854d. That baseline registers NullCacheMetricsProvider, so its Listening=true control has no active instrumented provider.",
+  "evidence": [
+    "f43854d:src/MethodCache.Core/Infrastructure/Extensions/MethodCacheServiceCollectionExtensions.cs:132",
+    "f43854d:src/MethodCache.OpenTelemetry/MethodCacheOpenTelemetryServiceCollectionExtensions.cs",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs:Setup",
+    "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs:DesignWorkloadSetup.Listen"
+  ],
+  "decision": "Keep the frozen main cohort and all original four raw controls intact. Treat the four supplemental controls as diagnostics and measure a separate corrected four-control cohort with identical common setup sources and actual metric-flow checks on both revisions. Do not pool or select old control timings.",
+  "correction": "Use existing DesignWorkloadSetup.Listen after services.AddMethodCache in the derived external int workload, on both sides. No hot benchmark operation or shipped source change.",
+  "required_proof": "Baseline-aware setup guard first fails on the original f438 adapter because no metrics arrive, then passes after the correction on both revisions; ten complete alternating pairs for every corrected control."
+}

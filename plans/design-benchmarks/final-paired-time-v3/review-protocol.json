@@ -1,0 +1,39 @@
+{
+  "source_head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "pairs": 10,
+  "frozen_before_any_timing": true,
+  "time_evidence": "One independent process per side/case/pair, retain all ten pairs, actual12 measurements and same runtime/GC; no selecting best runs or dropping noisy cases",
+  "precision": "Reject interval width >0.06 before any faster/accepted decision; >3% slowdown requires entire interval >1, unless a deliberate reasoned bound exists",
+  "primary_scope": "Run the strict paired reviewer on all 67 main and four int-control cases; additionally report the already identified eight new-work cases separately as required by \u00a710. No new exemption is inferred from observed results.",
+  "new_work": {
+    "DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=False)": "New serialization round-trip opt-out; historical writes always verified. Report changed work separately; both Read labels remain comparable.",
+    "DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=False)": "New serialization round-trip opt-out; historical writes always verified. Report changed work separately; both Read labels remain comparable.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim.",
+    "DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=True)": "KeepCookies is new policy; the f43854d harness explicitly uses an uncached client without the handler. Report new-work overhead separately under \u00a710; no existing-path speedup claim."
+  },
+  "classification_source": "benchmarks/MethodCache.Benchmarks/validation/summarize-design.py:new_work, preserved classification from before the new cohort",
+  "classification_source_sha256": "d10b416c58d5e6b9496aaa0e5d4477324da20ec124c0aca414372f93d6e5cca1",
+  "cpu_only_filtered_checks_remaining": [
+    {
+      "pr": 128,
+      "base": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+      "head": "9c31e3b150b269d10dec99e2e93043918a718579"
+    },
+    {
+      "pr": 132,
+      "base": "9767fec6adcfe41cbe83862915ba922e06770030",
+      "head": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f"
+    },
+    {
+      "pr": 133,
+      "base": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+      "head": "4f6cd7382a73c6964958c96b4e2c19537e111257"
+    }
+  ],
+  "siphash_acceptance": "Only after confirming actual sync/int regression on quiet host. Algorithm choice and the existing byte/command exceptions do not waive other existing-path time failures."
+}

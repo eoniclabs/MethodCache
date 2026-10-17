@@ -1,0 +1,14 @@
+{
+  "scope": "Complete separate cumulative confirmation;all3cases/10pairs/60launches;no pooling with originals or experiment",
+  "utc": "2026-10-17T01:21:28.672324+00:00",
+  "archive_sha256": "b43cab7d6839a13c583cf1ea481c81d18da28e131769f1b413c8c8148e953e5e",
+  "indexed_files_verified": 143,
+  "inputs_sha256": "a625bc88b9abf1ff58bbe10d14aacd8c4ef2e9105a8127ec1e250c5123eaf9a8",
+  "prepared_sha256": "006f71ffd185719622b7f53d1d754e7fef9488e44216ebabfa883b6fc21d6d0f",
+  "review_exit": 1,
+  "revisions": {
+    "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "head_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a"
+}

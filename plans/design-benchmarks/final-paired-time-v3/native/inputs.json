@@ -1,0 +1,35 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "pairs": 10,
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "redis_image": "redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+  "sql_image": "mcr.microsoft.com/mssql/server@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090",
+  "purpose": "Continue only unmeasured final main cases11..16 after terminal orchestration failure before any L2 sample; same original frozen compiled workloads and paired protocol",
+  "files_sha256": {
+    "run.py": "f0551ba16bdb6ab65ad9b8a6bb0bf6bd71e743dd5bab4fea6e587cf7cb6a97f1",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "source.bundle": "4d25cb0f0fcc038250f582de1e64cbff748aa88f33b979f6ed363fffdfee1e28"
+  },
+  "lease_helper_sha256": "4a83e0b505eaef6d91599479c8fa6c78ddc2958e698882740cca7ecad57a6830",
+  "preparation_attempt": "v2 after v1 failed before compiling or timing because Path.home resolved inside the image; original v1 inputs/logs/checkouts retained",
+  "docker_cli_sha256": "1d7a20313e3a5ed83409f1bf3f06279a2726663f7a127a56354c97beb3261c08",
+  "remaining_groups": [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "continuation_of": {
+    "folder": "final-paired-cost-v2",
+    "inputs_sha256": "87c4d5bfab9768ead9847381b9511572666ec015bfaf40be12f8b4f911f362f6",
+    "prepared_sha256": "d4c5aa3abe2b89c1fb2e765573f50febdd3b3b03599cc0c611badc2d6b1f3e1c",
+    "controller_terminal": true,
+    "failed_group": 11,
+    "failed_group_launches": 0,
+    "reason": "SDK image lacks Docker CLI. Read-only mount of existing host CLI compatible with SDK Ubuntu24.04 (requires at most GLIBC2.34). No image/daemon/host install or runtime workload changes.",
+    "group17": "Preclassified original listener controls are semantically invalid and already replaced by the complete corrected80-row cohort. No formal case removed."
+  }
+}

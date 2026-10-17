@@ -1,0 +1,4 @@
+Verified int setup LongPrefix=False,Listening=False,measurements=0
+Verified int setup LongPrefix=False,Listening=True,measurements=699
+Verified int setup LongPrefix=True,Listening=False,measurements=0
+Verified int setup LongPrefix=True,Listening=True,measurements=699

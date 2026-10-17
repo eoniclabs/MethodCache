@@ -59,5 +59,17 @@ step is required.
 
 The precision limit applies even to a faster result or an accepted slowdown. Both sides must contain every
 launch; duplicate cases and non-finite times are rejected instead of being discarded or overwritten.
+On macOS, setup queries the thread's native QoS class before requesting a performance
+preference. A thread with an explicit POSIX scheduling policy has permanently left the
+QoS system; setup preserves that policy, including the in-process engine's thread
+priority. This follows [Apple's pthread QoS contract](https://github.com/apple-oss-distributions/libpthread/blob/main/include/pthread/qos.h)
+and [BenchmarkDotNet 0.15.4's in-process executor](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.4/src/BenchmarkDotNet/Toolchains/InProcess/Emit/InProcessEmitExecutor.cs).
+It does not establish a fixed physical-core affinity.
+
 Timing records retain all 12 actual workload measurements, the runtime and GC mode. The exported time is
 BenchmarkDotNet's time per operation, including its normalization for batched benchmarks; it is not divided again.
+
+The two exact sync/int time limits in `accepted.json` record Johan's SipHash choice
+and the [complete quiet-Mac confirmations](../../plans/design-benchmarks/mac-cpu-pr133-formal-v1/).
+They cap those controls at 8%; they do not waive other cases, byte/command costs
+or the precision requirement. Original reports before acceptance are retained.

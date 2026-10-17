@@ -1,0 +1,108 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-per-change-cost-pr-134 2026-10-16T23:54:00.345278+00:00
+Cloning into '/home/agent-admin/methodcache-design-bench-20261015/per-change-cost-v1/pr-134/tree'...
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+HEAD is now at abd0eae Export normalized and complete paired timing measurements
+Preparing worktree (detached HEAD 419c786)
+Building the base profile
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:08.08
+Building the head profile
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:05.23
+Profiling base
+Profiling head
+| Case | Bytes base | Bytes head | Redis base | Redis head | SQL base | SQL head | Gate |
+|---|---:|---:|---|---|---:|---:|---|
+| GeneratedContractBenchmarks.SyncHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.GenericHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.TaskHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.ValueTaskHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.StringHit() | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.RecordHit() | 296.2 | 296.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.CollectionHit() | 896.2 | 896.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.FallbackHit() | 320.2 | 320.2 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.SyncMiss() | 984 | 984 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.ValueTaskMiss() | 1136 | 1088 | - | - | - | - | ok |
+| GeneratedContractBenchmarks.TaskMiss() | 1128 | 1080 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=False) | 2200.2 | 2112.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=False) | 3248.5 | 3160.5 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=False) | 7536 | 7008 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 7794.8 | 6951.9 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=False,AfterInvalidation=True) | 2608.2 | 2520.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=False,AfterInvalidation=True) | 3808.5 | 3720.5 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=False,AfterInvalidation=True) | 7536 | 7008 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 7765.3 | 6971.6 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=False) | 2200.2 | 2112.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=False) | 3248.5 | 3160.5 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=False) | 7736 | 7280 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 7960.6 | 7224 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.FreshHit(Listening=True,AfterInvalidation=True) | 2608.2 | 2520.2 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.VariantHit(Listening=True,AfterInvalidation=True) | 3808.5 | 3720.4 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Revalidated(Listening=True,AfterInvalidation=True) | 7736 | 7280 | - | - | - | - | ok |
+| HttpResponsePathBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 7958.1 | 7235.6 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=False) | 8582.9 | 7768.7 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=False,AfterInvalidation=True) | 8600.5 | 7767.9 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=False) | 8871 | 8202.3 | - | - | - | - | ok |
+| HttpColdMissBenchmarks.Miss(Listening=True,AfterInvalidation=True) | 8837.3 | 8134.8 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=False) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=False) | 1875.2 | 1827.4 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=False) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=False) | 6966.1 | 6806.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=False,Weighted=True) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=False,Weighted=True) | 1899.4 | 1849.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=False,Weighted=True) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=False,Weighted=True) | 6989.8 | 6817.9 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=False) | 2071.7 | 2030.4 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=False) | 7174.4 | 7012.8 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True) | 0.2 | 0.2 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.EvictionPressure(Listening=True,Weighted=True) | 2101.3 | 2053 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True) | 4.7 | 4.7 | - | - | - | - | ok |
+| DesignMemoryWorkloadBenchmarks.SingleFlightBatch(Listening=True,Weighted=True) | 7176.7 | 7031.7 | - | - | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=False) | 5688.1 | 5216 | hget 2 | hget 2 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=False) | 10937.1 | 10465.1 | expire 1, hget 2, hmget 1, hmset 1 | expire 1, hget 2, hmget 1, hmset 1 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=True) | 5688.4 | 5216 | hget 2 | hget 2 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=Redis,RoundTrip=True) | 11424.1 | 10952.1 | expire 1, hget 2, hmget 1, hmset 1 | expire 1, hget 2, hmget 1, hmset 1 | - | - | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=False) | 11128.1 | 9893.3 | - | - | 1 (160 ch) | 1 (192 ch) | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=False) | 26034 | 24242 | - | - | 3 (1396 ch) | 3 (1431 ch) | ok |
+| DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=True) | 11080.1 | 9856.1 | - | - | 1 (157 ch) | 1 (195 ch) | ok |
+| DesignL2WorkloadBenchmarks.Write(Backend=SqlServer,RoundTrip=True) | 26522 | 24730 | - | - | 3 (1396 ch) | 3 (1431 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=False) | 2200.2 | 2112.2 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=False) | 7596.3 | 6776.9 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True) | 2072 | 1912 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Local,KeepCookies=True) | 2224 | 2064 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False) | 15696.7 | 14444.2 | evalsha 3, hget 3, hmget 1, hset 3, persist 3 | evalsha 3, hmget 4, ttl 3 | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False) | 27133.3 | 25157.1 | evalsha 3, expire 1, hget 3, hmget 2, hmset 1, hset 3, persist 3 | evalsha 3, expire 1, hmget 5, hmset 1, hset 0.54, persist 0.54, ttl 2.46 | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True) | 2072 | 1912 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=True) | 2224 | 2064 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False) | 46138 | 24009.5 | - | - | 2 (3919 ch) | 2 (5265 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=False) | 68072.4 | 47456.4 | - | - | 4 (5178 ch) | 4 (6524 ch) | ok |
+| DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True) | 2072 | 1912 | - | - | - | - | ok |
+| DesignHttpWorkloadBenchmarks.Miss(Backend=SqlServer,KeepCookies=True) | 2224 | 2064 | - | - | - | - | ok |
+
+
+
+0 failing, 0 accepted, 67 compared
+3d2f4862b58b
+790e60bfa30e
+Releasing exclusive lease methodcache-design-20261015-01a13a93-per-change-cost-pr-134 exit 0 2026-10-16T23:56:38.014285+00:00

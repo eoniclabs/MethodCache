@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-16T21:28:13.223632+00:00",
+  "inputs_sha256": "0254c65ca7cd8baca5a9fac6268ee1134ef7b6d6170cccfd5387d40356109ad5",
+  "prepared_sha256": "64d0d3aa01d0f4c45da27975cab6b1f085bf2b3423287b0df7b436c2eef2081c",
+  "scope": "Four exact main group01 cases, independent fixed ten-pair reconfirmation after source-activity rejection; same original read-only compiled files; no additional checkout/build",
+  "command": [
+    "python3",
+    "-B",
+    "-u",
+    "/home/agent-admin/methodcache-design-bench-20261015/final-paired-group01-reconfirmation-v1/run.py",
+    "run"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "collected_utc": "2026-10-16T23:07:57.769378+00:00",
+  "scope": "Benchmark setup only: Mac native QoS capability check; preserve explicit POSIX scheduling. No library/runtime or measured method changes.",
+  "before": {
+    "highest_priority_regressions_failed": 3
+  },
+  "intermediate_diagnostic": {
+    "managed_priority_heuristic_normal_controls_failed": 3,
+    "not_final_implementation": true
+  },
+  "after": {
+    "benchmark_tests_passed": 126,
+    "failed": 0,
+    "skipped": 0,
+    "format_exit": 0
+  },
+  "files": [
+    {
+      "path": "before.log",
+      "original_sha256": "0c6e086496a0e1175c2b4c37296c0dca76a9743cab53de6b1109f5edfb6b1071",
+      "stored_sha256": "4043b80c1efe253086d0adc7f79cb62ec1bcee26081b79ee7d2def1c06ed42ce"
+    },
+    {
+      "path": "before.exit",
+      "original_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stored_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "after-all.log",
+      "original_sha256": "6de45f1075bf604fb020571ebed3397faf7833d1e6813e028ec7ab2555470aa4",
+      "stored_sha256": "a559a73c10a4d37ca26ba284af93444175b4222282bfbc2925262bf7c34fe5b9"
+    },
+    {
+      "path": "after-all.exit",
+      "original_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stored_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "after-native-check.log",
+      "original_sha256": "2ecaf122ad6dd2fdbf3296003c10265f87840c0c1d6c1e43413d1a4cecfa693b",
+      "stored_sha256": "bff8aa56d379de4b96c93de8b310a7cda52c9ac18e9c89248fc49a924edfbaa3"
+    },
+    {
+      "path": "after-native-check.exit",
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "format.log",
+      "original_sha256": "02ee228f470ca3d220713841aabacc37f8c98d1e6d06c3f193c1038d3e511473",
+      "stored_sha256": "6d305d4510bf429c48f07099247c13b0cd6c8d5a790bdc51f77970fbad0461c7"
+    },
+    {
+      "path": "format.exit",
+      "original_sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3",
+      "stored_sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+    },
+    {
+      "path": "failed-engine-diagnostic.log",
+      "original_sha256": "29abb55bffe4f8e9f354b77a9155ea9f3eb335aa8353788820beb2cf59eb47cd",
+      "stored_sha256": "29abb55bffe4f8e9f354b77a9155ea9f3eb335aa8353788820beb2cf59eb47cd"
+    },
+    {
+      "path": "failed-engine-result.jsonl",
+      "original_sha256": "63f3888ad5df6f5c821bf2dba2a0ee6dd8fe7b5fd6bffeef8e91563e9c28dfd9",
+      "stored_sha256": "63f3888ad5df6f5c821bf2dba2a0ee6dd8fe7b5fd6bffeef8e91563e9c28dfd9"
+    },
+    {
+      "path": "format-final.log",
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "format-final.exit",
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ],
+  "sources": [
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e"
+    },
+    {
+      "path": "benchmarks/MethodCache.Benchmarks/Microbenchmarks/PrefixHitPathBenchmarks.cs",
+      "sha256": "c93d3e146e9fbc20c24ebda71f0c3f1aaf20cb7fd0b9383df0d87d43530a40f1"
+    },
+    {
+      "path": "tests/MethodCache.Benchmarks.Tests/InProcessSchedulingTests.cs",
+      "sha256": "889a23ff3b535b35e79198e384b6917b64174990e0eade6b9777115ce12d29d2"
+    }
+  ],
+  "primary_sources": [
+    "https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.4/src/BenchmarkDotNet/Toolchains/InProcess/Emit/InProcessEmitExecutor.cs",
+    "https://github.com/apple-oss-distributions/libpthread/blob/main/include/pthread/qos.h"
+  ],
+  "measured_methods_and_service_code_unchanged": [
+    "Comparison/GeneratedContractBenchmarks.cs",
+    "Microbenchmarks/DesignWorkloadBenchmarks.cs"
+  ]
+}

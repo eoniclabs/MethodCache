@@ -1,0 +1,35 @@
+{
+  "source_base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "collected_utc": "2026-10-16T22:31:36.255114+00:00",
+  "scope": "G05 explicit ordinary late registration control added to the existing late-cacheable rejection fact; test-only, no production change; final published-head CI still required",
+  "test_source": "tests/MethodCache.SourceGenerator.IntegrationTests/Tests/QuickStartRegistrationTests.cs",
+  "test_source_sha256": "9b4ae9d65fc94242f762d467be75434b3eab0d25e5c79785867cd168f9dc22f8",
+  "files": [
+    {
+      "path": "format.exit",
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "format.log",
+      "original_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c",
+      "stored_sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "quick-start-tests.exit",
+      "original_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "stored_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "quick-start-tests.log",
+      "original_sha256": "5a1e68218b1df5ec02ed81b0a49105e275929ff318341af01a4a50b5596e9d28",
+      "stored_sha256": "b271a0dea482ade5d7d3b787deb9c4bd41116a3d1775997cf45e2972c88579b2"
+    }
+  ],
+  "results": {
+    "quick_start_tests": 19,
+    "failures": 0,
+    "skips": 0,
+    "format_exit": 0
+  }
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "pr": 123,
+    "base": "a023336088c0df4fe887ee336dabcbbdb41f5b26",
+    "head": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 124,
+    "base": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+    "head": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "profile_exit": 1,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 1,
+    "failures": [
+      "- **DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=False): hit bytes 504.2 -> 1681.5**",
+      "- **DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=False): hit bytes 508.7 -> 1681.2**",
+      "- **DesignMemoryWorkloadBenchmarks.Hit(Listening=True,Weighted=True): hit bytes 504.2 -> 1675**",
+      "- **DesignMemoryWorkloadBenchmarks.ContendedHits(Listening=True,Weighted=True): hit bytes 508.7 -> 1674.3**",
+      "- **DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=False): Redis commands 2.00 -> 3.00**",
+      "- **DesignL2WorkloadBenchmarks.Read(Backend=Redis,RoundTrip=True): Redis commands 2.00 -> 3.00**",
+      "- **DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=False): SQL commands 1 -> 2**",
+      "- **DesignL2WorkloadBenchmarks.Read(Backend=SqlServer,RoundTrip=True): SQL commands 1 -> 2**"
+    ]
+  },
+  {
+    "pr": 125,
+    "base": "e368484321cbb1c846ade78e10991e64f8cb41dc",
+    "head": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 126,
+    "base": "a8ad8a53814c7f3fc4e44a0bd3d2e9f2c83e6d52",
+    "head": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 127,
+    "base": "399e16587487a65a064c067b91a31ac4ab2c2527",
+    "head": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 128,
+    "base": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+    "head": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 129,
+    "base": "9c31e3b150b269d10dec99e2e93043918a718579",
+    "head": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "profile_exit": 1,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 1,
+    "failures": [
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Local,KeepCookies=True): hit bytes 1792 -> 2072**",
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False): Redis commands 2.00 -> 13.00**",
+      "- **DesignHttpWorkloadBenchmarks.Miss(Backend=Redis,KeepCookies=False): Redis commands 6.14 -> 16.00**",
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=True): hit bytes 1792 -> 2072**",
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=False): hit bytes 18818.2 -> 46138**",
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=SqlServer,KeepCookies=True): hit bytes 1792 -> 2072**"
+    ]
+  },
+  {
+    "pr": 130,
+    "base": "f0dd6c204cd3eefb8fb08ef0509340caf242da92",
+    "head": "1bafff182df69a4cf156280f904b9248bae8ce74",
+    "profile_exit": 1,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 1,
+    "failures": [
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False): Redis writes on a hit: 6.00**"
+    ]
+  },
+  {
+    "pr": 132,
+    "base": "9767fec6adcfe41cbe83862915ba922e06770030",
+    "head": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "profile_exit": 1,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 1,
+    "failures": [
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False): Redis writes on a hit: 6.00**"
+    ]
+  },
+  {
+    "pr": 133,
+    "base": "2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f",
+    "head": "4f6cd7382a73c6964958c96b4e2c19537e111257",
+    "profile_exit": 1,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 1,
+    "failures": [
+      "- **DesignHttpWorkloadBenchmarks.Fresh(Backend=Redis,KeepCookies=False): Redis writes on a hit: 6.00**"
+    ]
+  },
+  {
+    "pr": 134,
+    "base": "419c786d949d361cd2acd418178e4b0a8e21a860",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  },
+  {
+    "pr": 137,
+    "base": "e39fb705c0a5c07165b378675224053082ac64fe",
+    "head": "5d9c829a857bd377049b3bd18703e97cdb254547",
+    "profile_exit": 0,
+    "cases_per_side": 67,
+    "execution_errors": 0,
+    "recursive_compiled_files": 350,
+    "independent_review_exit": 0,
+    "failures": []
+  }
+]

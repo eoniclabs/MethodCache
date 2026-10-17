@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-16T23:17:12.369893+00:00",
+  "pid": 69994,
+  "existing_pr128_pid": 69993,
+  "next": [
+    132,
+    133
+  ],
+  "queue_sha256": "9ba7d24a8135c8436adcdb1e38fa5c7c56cc0cb9e62b93f9c89d2da931a6c799",
+  "controller_sha256": "a46e5f4c3cc506d9fa3192924743b4c88ba71138374e1bc5f74106529d6b0a2a",
+  "inputs_sha256": "2076cde2708669caabaa7120c15c228e7f913ac2806a0637482166c47ca63f96",
+  "no_measurement_restarts": true
+}

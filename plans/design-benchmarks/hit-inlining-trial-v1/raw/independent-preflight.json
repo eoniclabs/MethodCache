@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-17T01:24:20.898231+00:00",
+  "inputs_sha256": "789f0acc9a6193b81a7e7c91c8abc487f4c5a652a4204338c43fcb36e0645d6b",
+  "prepared_sha256": "6caed7324a01cf5bd97b52a2097fde3c745bd151b8a9c1d5e9561d91ffae9644",
+  "verified_binary_files": 222,
+  "head_diff_numstat": [
+    "3\t3\tsrc/MethodCache.Core/Generated/MethodCall.cs",
+    "2\t0\tsrc/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs"
+  ],
+  "base_is_exact_prior_hash_reuse_candidate": true,
+  "scope": "Three lookup helper inline attributes only differ between compared binaries; no timed values read"
+}

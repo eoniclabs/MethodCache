@@ -1,0 +1,20 @@
+diff --git a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+index 4c115708..8e50eebf 100644
+--- a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
++++ b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+@@ -603,6 +603,7 @@ internal sealed class MemoryCacheEngine
+     private bool OnTimerExpired(Node node)
+     {
+         // Already detached from the wheel by the caller.
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -732,6 +733,7 @@ internal sealed class MemoryCacheEngine
+ 
+     private void EvictNode(Node node)
+     {
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);

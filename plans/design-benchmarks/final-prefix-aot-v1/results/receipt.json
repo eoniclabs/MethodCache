@@ -1,0 +1,13 @@
+{
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "label": "methodcache-design-20261015-01a13a93-final-prefix-aot-v1",
+  "sources": {
+    "tests/MethodCache.AotSmokeTest/Program.cs": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1",
+    "tests/MethodCache.AotSmokeTest/PrefixAotChecks.cs": "4ee98780386cae47f0ff04dfe10dbf5b4ef3c03abe4d055c20b7bbc28aff847a"
+  },
+  "controller_sha256": "ad651bab5e3b57bde92f73a19e9023b539edc3ace1a07f5c3c044883c319005b",
+  "scope": "F05 explicit JIT and Native AOT execution: short/long generated keys, int/Guid, sync/Task/ValueTask, actual listeners off/on; original frozen vendor images unchanged. No library source edits. Standard existing CI capacity lock,1470secondlimit.",
+  "completed_utc": "2026-10-17T00:13:30.154484+00:00",
+  "production_diff_empty": true
+}

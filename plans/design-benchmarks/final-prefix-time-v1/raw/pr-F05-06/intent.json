@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-17T01:01:13.346726+00:00",
+  "inputs_sha256": "93bd00cd762783f67aaa3a5556dfe60e464ea340ff92152b5a856770dabaf774",
+  "prepared_sha256": "a5329508c885e80727a7367e6067d38edb87c3384cd282e2e9201a3f3cb45e5c",
+  "comparison": {
+    "pr": "F05-06",
+    "base": "baseline",
+    "head": "final",
+    "cases": {
+      "main": [],
+      "int": [
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int)",
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)",
+        "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int)"
+      ]
+    }
+  },
+  "cases": {
+    "main": [],
+    "int": [
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int)",
+      "GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int)"
+    ]
+  }
+}

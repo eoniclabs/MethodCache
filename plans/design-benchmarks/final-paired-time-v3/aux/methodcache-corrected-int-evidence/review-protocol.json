@@ -1,0 +1,8 @@
+{
+  "scope": "All four corrected actual generated sync/int controls: short/long prefixes and listening off/on, ten complete alternating pairs. Main-cohort original four supplemental controls remain diagnostics, never pooled.",
+  "metric_flow": "Real baseline add-on enabled only for Listening=true, current Core owns instrumentation. Actual setup guards prove zero observed events with listeners off and positive same-thread cache events with listeners on on both sides. All origin/resident/miss assertions preserved.",
+  "measured_methods_unchanged": true,
+  "all_222_compiled_files_rehashed": true,
+  "precision": "95% paired log-ratio Student t df9; interval width >6% fails before any acceptance/speedup; no time exception added before results",
+  "user_authorization": "Johan handover permits a reasoned sync/int SipHash bound after quiet-host confirmation; other existing-path slowdowns are not waived."
+}

@@ -1,0 +1,30 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 48.9 | 43.3 | 0.893 | 0.873-0.913 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 45.0 | 36.5 | 0.802 | 0.787-0.817 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 57.2 | 45.2 | 0.779 | 0.741-0.818 | **too noisy** |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int) | 55.7 | 37.6 | 0.678 | 0.670-0.686 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 129.0 | 93.7 | 0.732 | 0.711-0.753 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 126.5 | 88.5 | 0.697 | 0.682-0.712 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 140.4 | 97.9 | 0.692 | 0.678-0.705 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int) | 137.0 | 91.3 | 0.660 | 0.646-0.673 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 558.5 | 688.2 | 1.237 | 1.228-1.246 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 680.5 | 752.2 | 1.103 | 1.094-1.112 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 995.3 | 1224.1 | 1.228 | 1.218-1.238 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1115.1 | 1284.3 | 1.147 | 1.140-1.155 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 51.1 | 45.5 | 0.888 | 0.865-0.912 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 59.6 | 46.8 | 0.775 | 0.755-0.796 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 132.9 | 95.5 | 0.721 | 0.708-0.735 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 143.6 | 96.5 | 0.670 | 0.661-0.680 | faster |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 569.7 | 734.3 | 1.291 | 1.271-1.312 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 696.3 | 778.9 | 1.134 | 1.109-1.160 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1008.2 | 1308.4 | 1.302 | 1.295-1.310 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1125.5 | 1338.4 | 1.193 | 1.184-1.202 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 53.6 | 51.4 | 0.976 | 0.954-0.997 | same |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 64.0 | 50.8 | 0.789 | 0.772-0.806 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 134.1 | 97.4 | 0.723 | 0.713-0.733 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 144.9 | 98.4 | 0.680 | 0.670-0.691 | faster |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 582.1 | 755.1 | 1.288 | 1.256-1.321 | **too noisy** |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 714.0 | 812.5 | 1.138 | 1.116-1.161 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1013.0 | 1320.4 | 1.299 | 1.292-1.305 | **slower** |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1142.8 | 1354.5 | 1.184 | 1.173-1.195 | **slower** |

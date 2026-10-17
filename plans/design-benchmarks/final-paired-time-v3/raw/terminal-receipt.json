@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-16T23:55:16.405308+00:00",
+  "controller_pid": 1228542,
+  "controller_missing_from_proc": true,
+  "completed_groups": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "failed_group": 11,
+  "failed_group_launches": 0,
+  "reason": "FileNotFoundError docker before L2 measurement",
+  "worker_exit": 1,
+  "dispatcher_terminal_assertion": true,
+  "continuation": "final-paired-native-v3",
+  "old_source_and_results_unchanged": true
+}

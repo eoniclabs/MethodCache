@@ -1,0 +1,6 @@
+{
+  "sha256": "e47e6034f434a73319e6d2b042bcb0d460057e4f15dffa1c8db24a5326fde077",
+  "bytes": 9604536,
+  "file_type": "/home/agent-admin/methodcache-design-bench-20261015/final-prefix-aot-v1/results/native/MethodCache.AotSmokeTest: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=ae2a8f5d18467ab198f6b0780dbdfec8c3cf2bf1, for GNU/Linux 3.2.0, stripped",
+  "native_compile_marker_present": true
+}

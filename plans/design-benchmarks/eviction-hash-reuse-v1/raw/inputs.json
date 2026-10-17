@@ -1,0 +1,22 @@
+{
+  "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "pairs": 10,
+  "remaining_groups": [
+    0
+  ],
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "label": "methodcache-design-20261015-01a13a93-eviction-hash-experiment-v1",
+  "runtime_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "cases": [
+    "GeneratedContractBenchmarks.TaskMiss()",
+    "GeneratedContractBenchmarks.ValueTaskMiss()"
+  ],
+  "files_sha256": {
+    "run.py": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00",
+    "runtime.patch": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+    "prepare.py": "60c8495f531f0e1fcbeae75871b64ac87d3cf7d51063ca508d25b677256a5d1b"
+  },
+  "purpose": "Controlled experiment for confirmed async miss regression. Reuse saved full process-keyed node hash during eviction/expiry; no library layout/API/algorithm/feature removal."
+}

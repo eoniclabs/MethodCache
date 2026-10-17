@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-16T23:47:01.790244+00:00",
+  "inputs_sha256": "d4324d1c51d95efe9f69ae3080cb82267bad86e93b347d657802ebc49e37d9e8",
+  "prepared_sha256": "1a57ec31f7c24a253df759252e51add1d8b0b0b69915bff2cc3b9c56a2dba08e",
+  "controller_sha256": "a46e5f4c3cc506d9fa3192924743b4c88ba71138374e1bc5f74106529d6b0a2a",
+  "queue_sha256": "1a03ed454140d7205e39e7b484acdca016d3f5951d1dc62fa0424b096d18267f",
+  "pairs": 10,
+  "cases": 1,
+  "launches": 20,
+  "original_five_case_cohort_retained": true,
+  "criteria_unchanged": true,
+  "no_pooling": true
+}

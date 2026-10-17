@@ -148,6 +148,12 @@ namespace QuickStart
         var services = new ServiceCollection();
         services.AddSingleton(type, implementation);
         services.AddMethodCache();
+        services.AddSingleton("late-non-cacheable");
+        await using (var valid = services.BuildServiceProvider())
+        {
+            Assert.Equal("late-non-cacheable", valid.GetRequiredService<string>());
+            Assert.Contains("Decorator", valid.GetRequiredService(type).GetType().Name);
+        }
         services.AddSingleton(type, implementation);
         await using var provider = services.BuildServiceProvider();
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetServices(type).ToArray());

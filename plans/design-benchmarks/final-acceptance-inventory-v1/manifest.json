@@ -1,0 +1,14 @@
+{
+  "scope": "76explicitrows;reviewedinventoryonly;finaltimeandpublished-headCIremainopen",
+  "rows": 76,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "29c9c53ff7ef79f243a6582ca9caa033826a29bc7192adb9918e595c25b20527"
+    },
+    {
+      "path": "acceptance.json",
+      "sha256": "0cb6ed07081f3b7ed7f6f55ee1409c786eda76664dd90017dcf81921ab564eaa"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "Complete isolated lookup-helper inlining trial;all3returnshapes/10pairs/60launches;bothsides contain two-line node-hash reuse;no cumulative acceptance claim",
+  "utc": "2026-10-17T01:29:54.487076+00:00",
+  "archive_sha256": "f2e5b4f9424179607c296f12f8482dd1c3800cfe67e3ab2fbde2c3b0757b3da1",
+  "indexed_files_verified": 151,
+  "inputs_sha256": "789f0acc9a6193b81a7e7c91c8abc487f4c5a652a4204338c43fcb36e0645d6b",
+  "prepared_sha256": "6caed7324a01cf5bd97b52a2097fde3c745bd151b8a9c1d5e9561d91ffae9644",
+  "review_exit": 1,
+  "revisions": {
+    "base": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+    "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "head_patch_sha256": "a1d01229ba99be48dffcdad704b895f3f4cac025b79cacb841d47a6d5758a491"
+}

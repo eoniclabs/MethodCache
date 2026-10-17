@@ -1,0 +1,94 @@
+{
+  "utc": "2026-10-17T00:19:01.574667+00:00",
+  "scope": "Explicit final F05 JIT/native execution, all5phaseexits0, original frozen images unmodified; no library change or timing claim",
+  "files": [
+    {
+      "path": "driver.log",
+      "sha256": "d22b87017eac62c768e3b8009c00e440b1d87a19aa15d5ad474d971183c66ee7"
+    },
+    {
+      "path": "driver.pid",
+      "sha256": "6d433ce7446d888e7853e52bee2371ec071dab76c7dae49ae394aff2e008c3bd"
+    },
+    {
+      "path": "exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "c96f2d8d1473e1f4554bfc966176bcbaf0c5bd8a9bd0d28d0dff446bc3035e0b"
+    },
+    {
+      "path": "native-executable-receipt.json",
+      "sha256": "92986fdb29c508fa4db7124f2980dcc88b5f0355c9d188e7248742311d7193b3"
+    },
+    {
+      "path": "results/format.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/format.log",
+      "sha256": "239c224f01960886368326d9ef5ebdcce071dcd0996d157bef6a963fc1eaa49c"
+    },
+    {
+      "path": "results/jit.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/jit.log",
+      "sha256": "453f611a7274752118d391c5cd3b394b033ab51200b5fbda6e5f23b4a672eeb6"
+    },
+    {
+      "path": "results/native.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/native.log",
+      "sha256": "453f611a7274752118d391c5cd3b394b033ab51200b5fbda6e5f23b4a672eeb6"
+    },
+    {
+      "path": "results/publish.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/publish.log",
+      "sha256": "ed0e986c20251b10c2e92fa2bfcab0771e79c45e53d532b1f66fc949c0b070f9"
+    },
+    {
+      "path": "results/receipt.json",
+      "sha256": "02a31210ae4010b2973b2e6cb216ac3ed8a804a31e7890bfdad8960d59da449f"
+    },
+    {
+      "path": "results/sdk-info.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "results/sdk-info.log",
+      "sha256": "131d8f89a7c082995ac68bc0eea11d0d90f999e3a9353957841a63b580d247ac"
+    },
+    {
+      "path": "run.py",
+      "sha256": "ad651bab5e3b57bde92f73a19e9023b539edc3ace1a07f5c3c044883c319005b"
+    },
+    {
+      "path": "sources/tests/MethodCache.AotSmokeTest/PrefixAotChecks.cs",
+      "sha256": "4ee98780386cae47f0ff04dfe10dbf5b4ef3c03abe4d055c20b7bbc28aff847a"
+    },
+    {
+      "path": "sources/tests/MethodCache.AotSmokeTest/Program.cs",
+      "sha256": "37a9f793e6e60ea1fc3c93a5b13657cbdb10bec034fb3fb4183ecda8561bffe1"
+    },
+    {
+      "path": "started.json",
+      "sha256": "04659e15fefb45fb3e9afdaeb5ba6fc246be5db36da10fe6c9045d09ac36963e"
+    },
+    {
+      "path": "vendor-unchanged-audit.json",
+      "sha256": "9b3b16870511bcd7539b1c1309d7d72986498a4a24ed70ae523a3eba5aa71900"
+    },
+    {
+      "path": "worker.log",
+      "sha256": "b84e50352f7d53f7e5c4d491533caf0604a3646314e47f2394bd6fdc2a2fd147"
+    }
+  ]
+}

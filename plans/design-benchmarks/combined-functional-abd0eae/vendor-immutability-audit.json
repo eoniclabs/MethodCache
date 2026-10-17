@@ -1,0 +1,127 @@
+{
+  "checked_utc": "2026-10-16T21:12:23.542367+00:00",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "scope": "Every Contract1/Contract1Net10 frozen DLL, manifest and manifest-listed source byte-identical to its actual freeze commit (not the earlier implementation/source-only commit)",
+  "files": [
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.Contract1.dll",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "18a21d41a3f909334887f94c8389641f86e966b80b260970a220f8a22f126ec9",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.Contract99.dll",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "7c34e96164d848ebbf02d70495ba50fdc5d24eddc4abedce9f52c9544b32ec05",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/FrozenVendor.ThirdParty.dll",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "0c04fa60a407815d9d8ef573eda503f2ab53d2ecd10c6c31d24d6d88501ba186",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/manifest.json",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "e710aba8df3755073d336885ce2b3f3c94ffabcd8f426c92b0b266b49b56d974",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/Incompatible/Incompatible.csproj",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "64ea7c21f356e4f7fcc77cf2d93904c4d37e889f3400e2d99a1fa0285b88438e",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/Incompatible/Module.cs",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "a463f8060f86072acf36f1abe718eb1b848376dd63df2a0ab46a9e4388924327",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/ThirdParty/Client.cs",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "a6acf749f8e114ce54bca4c5d6bd09579e5337710c1523c99168813565cc683a",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/ThirdParty/ThirdParty.csproj",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "473ebbd7a12d1b46a6e2f3e8f3f61daf93ceb426433f123c517d0395a2650eed",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/Vendor/Services.cs",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "4a92b56767b27e962fd31bbe668f9af5c40b860d960a4c0000e43e1cfbad90f8",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1/source/Vendor/Vendor.csproj",
+      "frozen_commit": "8abc020b8f118331b1c5b74d676ae0957af1b91e",
+      "sha256": "60a78830b57a9c0643b2c5d6a07e7b4f266a4d785ca6bb7282a6eccf03d0c603",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/FrozenVendor.Contract1Net10.dll",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "acecc6cdca10046a86769d61dd8b494536efa25de8a849d914eb66698743d3d4",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/FrozenVendor.Contract99Net10.dll",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "f9129e9f34f20cd8268f912e21858120a0b41ad6f4628c8b98bc68a5feb81d03",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/FrozenVendor.ThirdPartyNet10.dll",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "66c1aa4fe6d74058b7c56575ef6f3d646863d3b7f980ee08b68085ea5da6ed9c",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/manifest.json",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "0d5f52c4f89bdedfbf6bad6038fa6c8f657c74282f0b6e567faf92ed9d777127",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Incompatible/Incompatible.csproj",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "1bcc20034647569fd6096e009c5f9a56ce1a79ccc9e0ab43f0235728933d692e",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Incompatible/Module.cs",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "f7f94437fa31aabba3bc439aaae2490beea620feac82e6c7273f044113477406",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/ThirdParty/Client.cs",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "71437dddebd078d3d7a1b0c1354ac38bcf8b971c24ef78e79a6cfcc89f80aba7",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/ThirdParty/ThirdParty.csproj",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "7d7061c9f340536d7e4df7875a84e2412fd6088a6c044e23ac93066bc941c50e",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Vendor/Services.cs",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "ca09a82138ec5a68b4a15ae661e622786f9ff2bfd179b841232df3c1acf02c2c",
+      "unchanged_since_freeze": true
+    },
+    {
+      "path": "tests/MethodCache.CompatTests/Baselines/Contract1Net10/source/Vendor/Vendor.csproj",
+      "frozen_commit": "508e91cf8765cf0101d7d18140eab9626f30555a",
+      "sha256": "7432ff1231b62c5cb3c7d642ade8bb4443989f4749b93d9b3ce846d1bfd20ad1",
+      "unchanged_since_freeze": true
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+| Case | Bytes base | Bytes head | Redis base | Redis head | SQL base | SQL head | Gate |
+|---|---:|---:|---|---|---:|---:|---|
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Int) | 1088 | 992 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Int) | 1104 | 1104 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Int) | 1112 | 1112 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 1144 | 1048 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 1152 | 1152 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=False,ArgumentKind=Guid) | 1168 | 1168 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=True,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=True,ArgumentKind=Int) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Int) | 1640 | 1192 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Int) | 1656 | 1304 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Int) | 1664 | 1312 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 0.2 | 0.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 1696 | 1248 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 1704 | 1352 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=False,Listening=True,ArgumentKind=Guid) | 1720 | 1368 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Int) | 2512 | 2416 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Int) | 2528 | 2528 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Int) | 2536 | 2536 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 2568 | 2472 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 2576 | 2576 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=False,ArgumentKind=Guid) | 2592 | 2592 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=True,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=True,ArgumentKind=Int) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Int) | 3064 | 2616 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Int) | 3080.1 | 2728 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Int) | 3088 | 2736.1 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskHit(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 1048.2 | 1048.2 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.SyncMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 3120 | 2672 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.TaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 3128 | 2776 | - | - | - | - | ok |
+| GeneratedPrefixHitPathBenchmarks.ValueTaskMiss(LongPrefix=True,Listening=True,ArgumentKind=Guid) | 3144 | 2792 | - | - | - | - | ok |
+
+
+
+0 failing, 0 accepted, 48 compared

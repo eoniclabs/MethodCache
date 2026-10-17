@@ -1,0 +1,7 @@
+| Case | Base ns | Head ns | Head/base | 95 % interval | Verdict |
+|---|---:|---:|---:|---|---|
+| GeneratedContractBenchmarks.SyncHit() | 51.1 | 41.3 | 0.814 | 0.800-0.829 | faster |
+| GeneratedContractBenchmarks.TaskHit() | 50.8 | 43.2 | 0.843 | 0.829-0.857 | faster |
+| GeneratedContractBenchmarks.ValueTaskHit() | 54.7 | 45.8 | 0.851 | 0.838-0.864 | faster |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=False,Listening=False,ArgumentKind=Int) | 33.3 | 34.8 | 1.043 | 1.026-1.061 | accepted: Johan accepted the approximately 8% sync/int cost of choosing process-keyed SipHash-1-3 over Marvin. The complete quiet Apple M5 PR133 reconfirmation (2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f to 4f6cd7382a73c6964958c96b4e2c19537e111257, ten alternating pairs) measures +4.3%, 95% ratio interval 1.026-1.061. Accept at most 8% in this exact control. This does not waive GUID performance, allocation or I/O costs, or the 6% precision requirement. |
+| GeneratedPrefixHitPathBenchmarks.SyncHit(LongPrefix=True,Listening=False,ArgumentKind=Int) | 86.7 | 89.8 | 1.039 | 1.021-1.057 | accepted: The same deliberate SipHash-1-3 security choice. The complete quiet Apple M5 PR133 comparison (2b3cb93e4558d2b2c7a2cf36e8b9f0b8e422ec7f to 4f6cd7382a73c6964958c96b4e2c19537e111257, ten alternating pairs) measures +3.9%, 95% ratio interval 1.021-1.057. Accept at most 8% in this exact sync/int control, with no acceptance for other key/return/listener shapes or byte/command costs. The unchanged precision requirement still applies. |

@@ -1,0 +1,20 @@
+{
+  "base": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+  "head": "abd0eae840e9b277358ca643a1d4ddb3d56653cf",
+  "head_patch_sha256": "8829ce3c5f5c3bd5b6b09e0678dc22abc540e39f2672d2f1dc129f2f2e64055a",
+  "pairs": 10,
+  "remaining_groups": [
+    0
+  ],
+  "image": "sha256:800f1bd715743c32891eb73ba59d22a028d9d6a221234be54b440391a6c793e3",
+  "cases": [
+    "GeneratedContractBenchmarks.SyncHit()",
+    "GeneratedContractBenchmarks.TaskMiss()",
+    "GeneratedContractBenchmarks.ValueTaskMiss()"
+  ],
+  "files_sha256": {
+    "run.py": "2e3392bff6052a42de5a342d597adb17466b7dd0dd637af0ae1fe1b4a4293a22",
+    "process_activity.py": "cd3418a2dded15909b87a31ad86118e67ac485bb033ccd35a7272c229c7f0c00"
+  },
+  "purpose": "Independent full cumulative confirmation against original f43854d, keeping complete three-case cohort; same frozen workloads, candidate eviction hash reuse only."
+}

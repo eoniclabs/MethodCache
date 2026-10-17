@@ -1,0 +1,140 @@
+{
+  "utc": "2026-10-16T23:48:39.083184+00:00",
+  "scope": "Complete independent generated-prefix cost profile only. All48 cases/side, no execution errors, no failure, no accepted exception. Time acceptance remains separate and pending.",
+  "points": {
+    "baseline": "f43854dbcd3646893f490e78a0a1d9651e9c4521",
+    "final": "abd0eae840e9b277358ca643a1d4ddb3d56653cf"
+  },
+  "cases_per_side": 48,
+  "execution_errors": 0,
+  "cost_review_exit": 0,
+  "accepted_sha256": "476d5c922ad8138a2f74500845e227b3e8d510baa7eee863f9795dc12caca084",
+  "source_and_preparation_verified": true,
+  "compiled_files_independently_verified": 444,
+  "files": [
+    {
+      "path": "accepted.json",
+      "sha256": "476d5c922ad8138a2f74500845e227b3e8d510baa7eee863f9795dc12caca084"
+    },
+    {
+      "path": "compare.py",
+      "sha256": "5cfd0fe405eb268d81a373a516b74c8d270e37c0a86e227fece43780d980b3f4"
+    },
+    {
+      "path": "cost-driver.log",
+      "sha256": "ab94e04924457c71ff0802a9f10cc242d16c79da5bd05d1358206ebcb018b033"
+    },
+    {
+      "path": "cost-results/base.jsonl",
+      "sha256": "a7739f3669398b9fc2a5dae661b4c4993278ac5975cc2c43cb3f34bef061ae30"
+    },
+    {
+      "path": "cost-results/base.log",
+      "sha256": "a7739f3669398b9fc2a5dae661b4c4993278ac5975cc2c43cb3f34bef061ae30"
+    },
+    {
+      "path": "cost-results/exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cost-results/head.jsonl",
+      "sha256": "1dbabec19b391f94ad0059f281680fb175f161143e7547329276fc1ff4b22a92"
+    },
+    {
+      "path": "cost-results/head.log",
+      "sha256": "1dbabec19b391f94ad0059f281680fb175f161143e7547329276fc1ff4b22a92"
+    },
+    {
+      "path": "cost-results/report.md",
+      "sha256": "ed462f8dcd3627bb910031739a3d89443470dd7d5ec1ffc794638aee0fed44b3"
+    },
+    {
+      "path": "cost-results/review.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "cost-results/review.log",
+      "sha256": "c171dc61588a0b263b6d37a29b818ef88d78cd23a55becb42b67583c21526257"
+    },
+    {
+      "path": "cost.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs",
+      "sha256": "3bc8a85d9a5dea9513fea6b8c62e3e8f01577d35281a32a16073dba4b3f07ee4"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs",
+      "sha256": "339d730f84068248d6e48d29ccf3ffd728a5671bbc2ded04b9938b0c313f978e"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs",
+      "sha256": "811299146d087a7e6171c191f8842eab351bb210852c4b375198ae8e41e1e42c"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs",
+      "sha256": "6f8553eb01a76881b01fc1597b82f2b5454e9623f5e7d93c5bdca68499047227"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.CostProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.CostProfile/MethodCache.CostProfile.csproj",
+      "sha256": "79178714ac272a138415636ff2e0539eb2f6d90b6751376f33200a481f8dc73b"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.CostProfile/Program.cs",
+      "sha256": "7a17c0d940e4d7bba7ac0b6cfbf01fe8e74454f8d08e5cb168850a34442f8c2f"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.CostProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.IntProfile/AllocationSites.cs",
+      "sha256": "b0f4f28041291b721c3733cd5f4f240aae0f698919cc8cc9ad4699f24d69ae82"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.IntProfile/MethodCache.IntProfile.csproj",
+      "sha256": "5e6d910267584ee318936ffb326e1ddd847790815c96d62a2f62c5607ecdc330"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.IntProfile/PrefixSetup.cs",
+      "sha256": "9c8c9e60ab0a399d61908160cc152ad3c38ba25d77ca89a44fd10e2fbaefd658"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.IntProfile/Program.cs",
+      "sha256": "d1c3ef3cb0f4c67dd34269e9717057b00e63048a74f587eeefcae7701e14b777"
+    },
+    {
+      "path": "harness/benchmarks/MethodCache.IntProfile/Timing.cs",
+      "sha256": "a074294d1fa9f652f076769bf85b048cf2e9b0e7eb61ae2980e6f958f12c9cd5"
+    },
+    {
+      "path": "independent-preflight.json",
+      "sha256": "00632bf093db65cc42b01c876908fe63335220c81040107074adb97a7647ad5d"
+    },
+    {
+      "path": "inputs.json",
+      "sha256": "93bd00cd762783f67aaa3a5556dfe60e464ea340ff92152b5a856770dabaf774"
+    },
+    {
+      "path": "prepared.json",
+      "sha256": "a5329508c885e80727a7367e6067d38edb87c3384cd282e2e9201a3f3cb45e5c"
+    },
+    {
+      "path": "queue.py",
+      "sha256": "de7ec0e673fa405ce4e50e45067a45e48d2b8a1f7132f9fda4c25fe782dc7ef7"
+    },
+    {
+      "path": "run.py",
+      "sha256": "778e7247a37360ec2d5c53fc658f82bc1935d7dc8bc718ac8343dfa665b4a777"
+    },
+    {
+      "path": "sequence-intent.json",
+      "sha256": "33d939ce63c4decb5cc28f5853e24d85853568dd43666ddaee147c69b5d4b817"
+    }
+  ]
+}

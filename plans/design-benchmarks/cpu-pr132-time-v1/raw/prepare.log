@@ -1,0 +1,31 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-cpu-filtered-pr132-v1-prepare 2026-10-16T22:15:22.320182+00:00
+Cloning into '/home/agent-admin/methodcache-design-bench-20261015/cpu-filtered-pr132-v1/tree'...
+HEAD is now at 2b3cb93 Merge codex/design-final-gates-v1 into claude/faster-cache-hits-xft398
+Preparing worktree (detached HEAD 9767fec)
+HEAD is now at 9767fec Forward strict body-budget probe isolation and evidence
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:08.06
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.19
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.74
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.61
+Prepared five actual CPU-only PR cases and verified instrumented setup 2026-10-16T22:15:43.347641+00:00
+Releasing exclusive lease methodcache-design-20261015-01a13a93-cpu-filtered-pr132-v1-prepare exit 0 2026-10-16T22:15:43.655839+00:00

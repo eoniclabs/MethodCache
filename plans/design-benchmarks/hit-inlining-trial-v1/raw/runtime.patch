@@ -1,0 +1,49 @@
+diff --git a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+index 4c115708..8e50eebf 100644
+--- a/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
++++ b/src/MethodCache.Core/Runtime/Memory/MemoryCacheEngine.cs
+@@ -603,6 +603,7 @@ internal sealed class MemoryCacheEngine
+     private bool OnTimerExpired(Node node)
+     {
+         // Already detached from the wheel by the caller.
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+@@ -732,6 +733,7 @@ internal sealed class MemoryCacheEngine
+ 
+     private void EvictNode(Node node)
+     {
++        ProcessKeyHash.Remember(node.Key, node.KeyHash);
+         if (_map.TryRemove(new KeyValuePair<string, Node>(node.Key, node)))
+         {
+             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
+--- a/src/MethodCache.Core/Generated/MethodCall.cs
++++ b/src/MethodCache.Core/Generated/MethodCall.cs
+@@ -109,7 +109,7 @@
+     }
+ 
+     /// <summary>Looks up a completed task without allocating a task or key on the built-in hit path.</summary>
+-    [MethodImpl(MethodImplOptions.NoInlining)]
++    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+     public bool TryGetTask<T>(ref KeyBuilder key, [NotNullWhen(true)] out Task<T>? task)
+     {
+         if (CanRead(ref key) && _snapshot.Services.FastMemory is { } memory &&
+@@ -122,7 +122,7 @@
+     }
+ 
+     /// <summary>Looks up a value without blocking an asynchronous custom manager.</summary>
+-    [MethodImpl(MethodImplOptions.NoInlining)]
++    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+     public bool TryGetValue<T>(ref KeyBuilder key, out T? value)
+     {
+         if (CanRead(ref key) && _snapshot.Services.FastMemory is { } memory &&
+@@ -135,7 +135,7 @@
+     }
+ 
+     /// <summary>Looks up an allocation-free completed value task.</summary>
+-    [MethodImpl(MethodImplOptions.NoInlining)]
++    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+     public bool TryGetValueTask<T>(ref KeyBuilder key, out ValueTask<T> value)
+     {
+         if (TryGetValue<T>(ref key, out var found))

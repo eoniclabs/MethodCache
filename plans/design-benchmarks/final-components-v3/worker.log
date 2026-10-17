@@ -1,0 +1,106 @@
+Acquired exclusive lease methodcache-design-20261015-01a13a93-components-final-v3 2026-10-17T00:54:31.049108+00:00
+Cloning into '/home/agent-admin/methodcache-design-bench-20261015/components-final-v3/tree'...
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+HEAD is now at abd0eae Export normalized and complete paired timing measurements
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:11.45
+{"bytes":0.2,"bytesMin":0.2,"ns":442,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=4,BufferCharacters=128,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":121.4,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=4,BufferCharacters=128,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":97,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=4,BufferCharacters=128,Listening=False)"}
+{"bytes":0,"bytesMin":0,"ns":29.3,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=128,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":106.5,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=4,BufferCharacters=128,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":115.3,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=4,BufferCharacters=128,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":134.6,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=4,BufferCharacters=128,Listening=True)"}
+{"bytes":0,"bytesMin":0,"ns":29.4,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=128,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":82.4,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=4,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":86.9,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=4,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":87.1,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=4,BufferCharacters=512,Listening=False)"}
+{"bytes":0,"bytesMin":0,"ns":41.8,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":82.1,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=4,BufferCharacters=512,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":85.1,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=4,BufferCharacters=512,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":90.3,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=4,BufferCharacters=512,Listening=True)"}
+{"bytes":0,"bytesMin":0,"ns":24.8,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=4,BufferCharacters=512,Listening=True)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":200.4,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=256,BufferCharacters=128,Listening=False)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":180.4,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=256,BufferCharacters=128,Listening=False)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":205.5,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=256,BufferCharacters=128,Listening=False)"}
+{"bytes":2008,"bytesMin":2008,"ns":143,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=128,Listening=False)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":209.6,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=256,BufferCharacters=128,Listening=True)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":209.3,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=256,BufferCharacters=128,Listening=True)"}
+{"bytes":2008.2,"bytesMin":2008.2,"ns":215.2,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=256,BufferCharacters=128,Listening=True)"}
+{"bytes":2008,"bytesMin":2008,"ns":135.1,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=128,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":88.2,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=256,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":88.9,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=256,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":94.7,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=256,BufferCharacters=512,Listening=False)"}
+{"bytes":0,"bytesMin":0,"ns":31,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=512,Listening=False)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":91.8,"batch":200000,"case":"PrefixHitPathBenchmarks.SyncHit(MethodNameLength=256,BufferCharacters=512,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":93.8,"batch":200000,"case":"PrefixHitPathBenchmarks.TaskHit(MethodNameLength=256,BufferCharacters=512,Listening=True)"}
+{"bytes":0.2,"bytesMin":0.2,"ns":96.9,"batch":200000,"case":"PrefixHitPathBenchmarks.ValueTaskHit(MethodNameLength=256,BufferCharacters=512,Listening=True)"}
+{"bytes":0,"bytesMin":0,"ns":29.3,"batch":200000,"case":"PrefixHitPathBenchmarks.KeyBuild(MethodNameLength=256,BufferCharacters=512,Listening=True)"}
+{"bytes":0,"bytesMin":0,"ns":31.2,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=4,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":43.9,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=4,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":44.2,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=4,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":31,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=4,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":53.2,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=4,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":53.7,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=4,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":28.8,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=80,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":38.5,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=80,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":12.9,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=80,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":8,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=80,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":51.4,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=80,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":24.9,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=80,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":8,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=256,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":98.5,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=256,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":13.4,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=256,ArgumentKind=Int)"}
+{"bytes":0,"bytesMin":0,"ns":8.1,"batch":200000,"case":"KeyHashLookupBenchmarks.ReadyStringLookup(PrefixCharacters=256,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":108.7,"batch":200000,"case":"KeyHashLookupBenchmarks.FullSpanLookup(PrefixCharacters=256,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":22.1,"batch":200000,"case":"KeyHashLookupBenchmarks.PrefixLookup(PrefixCharacters=256,ArgumentKind=Guid)"}
+{"bytes":0,"bytesMin":0,"ns":46.8,"batch":200000,"case":"MemoryCacheLookupReferenceBenchmarks.ReadyKeySync()"}
+{"bytes":104,"bytesMin":104,"ns":92.5,"batch":200000,"case":"MemoryCacheLookupReferenceBenchmarks.BuiltKeySync()"}
+{"bytes":72,"bytesMin":72,"ns":36,"batch":200000,"case":"MemoryCacheLookupReferenceBenchmarks.ReadyKeyTask()"}
+{"bytes":176,"bytesMin":176,"ns":72.8,"batch":200000,"case":"MemoryCacheLookupReferenceBenchmarks.BuiltKeyTask()"}
+Finished component diagnostic 1 of30 2026-10-17T00:55:57.889963+00:00
+Finished component diagnostic 2 of30 2026-10-17T00:56:02.483601+00:00
+Finished component diagnostic 3 of30 2026-10-17T00:56:07.072015+00:00
+Finished component diagnostic 4 of30 2026-10-17T00:56:11.156201+00:00
+Finished component diagnostic 5 of30 2026-10-17T00:56:15.247026+00:00
+Finished component diagnostic 6 of30 2026-10-17T00:56:19.843809+00:00
+Finished component diagnostic 7 of30 2026-10-17T00:56:24.437141+00:00
+Finished component diagnostic 8 of30 2026-10-17T00:56:29.029949+00:00
+Finished component diagnostic 9 of30 2026-10-17T00:56:34.640760+00:00
+Finished component diagnostic 10 of30 2026-10-17T00:56:39.739317+00:00
+Finished component diagnostic 11 of30 2026-10-17T00:56:44.835245+00:00
+Finished component diagnostic 12 of30 2026-10-17T00:56:50.443241+00:00
+Finished component diagnostic 13 of30 2026-10-17T00:56:55.031806+00:00
+Finished component diagnostic 14 of30 2026-10-17T00:57:00.639953+00:00
+Finished component diagnostic 15 of30 2026-10-17T00:57:05.735298+00:00
+Finished component diagnostic 16 of30 2026-10-17T00:57:10.323262+00:00
+Finished component diagnostic 17 of30 2026-10-17T00:57:15.424214+00:00
+Finished component diagnostic 18 of30 2026-10-17T00:57:21.031361+00:00
+Finished component diagnostic 19 of30 2026-10-17T00:57:26.128661+00:00
+Finished component diagnostic 20 of30 2026-10-17T00:57:31.735647+00:00
+Finished component diagnostic 21 of30 2026-10-17T00:57:36.832613+00:00
+Finished component diagnostic 22 of30 2026-10-17T00:57:40.911004+00:00
+Finished component diagnostic 23 of30 2026-10-17T00:57:45.508308+00:00
+Finished component diagnostic 24 of30 2026-10-17T00:57:51.624631+00:00
+Finished component diagnostic 25 of30 2026-10-17T00:57:55.703709+00:00
+Finished component diagnostic 26 of30 2026-10-17T00:58:00.299894+00:00
+Finished component diagnostic 27 of30 2026-10-17T00:58:04.888005+00:00
+Finished component diagnostic 28 of30 2026-10-17T00:58:09.478952+00:00
+Finished component diagnostic 29 of30 2026-10-17T00:58:14.081150+00:00
+Finished component diagnostic 30 of30 2026-10-17T00:58:19.183752+00:00
+Releasing exclusive lease methodcache-design-20261015-01a13a93-components-final-v3 exit 0 2026-10-17T00:58:19.402332+00:00

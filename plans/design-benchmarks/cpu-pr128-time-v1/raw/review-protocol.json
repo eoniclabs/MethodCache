@@ -1,0 +1,14 @@
+{
+  "pr": 128,
+  "base": "2f4a91d0c9144dd0cd9de3482291f365c4443508",
+  "head": "9c31e3b150b269d10dec99e2e93043918a718579",
+  "selected_main_cases": [
+    "GeneratedContractBenchmarks.SyncHit()",
+    "GeneratedContractBenchmarks.TaskHit()",
+    "GeneratedContractBenchmarks.ValueTaskHit()"
+  ],
+  "int_cases": "SyncHit ArgumentKind=Int Listening=False short/long prefixes",
+  "scope": "Five representative affected generated hit paths; cumulative cohort covers other key shapes and listeners. No native backend I/O in measured paths.",
+  "criteria": "Ten fixed independent alternating pairs per case; paired 95% log ratios with df9, 6% width guard before any speedup/accepted cost; runtime/GC/affinity/source guards unchanged; no partial mean review, no new time exception before evidence",
+  "preparation": "All clone/checkout/copy/build work occurs after exclusive lease acquisition; same corrected public workload sources copied to both actual runtime points; real metric-flow setup guards must pass"
+}

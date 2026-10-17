@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Comparison;
 
-[SimpleJob(RuntimeMoniker.Net90, invocationCount: 1000, iterationCount: 5)]
+[SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1000, iterationCount: 5)]
 [MemoryDiagnoser]
 [DisassemblyDiagnoser(maxDepth: 0, exportDiff: true)]
 public class SourceGenOptimizationBenchmarks
