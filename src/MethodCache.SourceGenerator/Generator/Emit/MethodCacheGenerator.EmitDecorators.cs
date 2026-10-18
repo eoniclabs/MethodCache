@@ -438,10 +438,13 @@ namespace MethodCache.SourceGenerator
 
                 if (key != "__mcKeyBuilder.AsSpan()")
                     sb.AppendLine($"            var __mcKeyBuilder = __mcCall.BindTextKey({key});");
-                var lookup = kind == ResultKind.Task ? "TryGetTask" : kind == ResultKind.ValueTask ? "TryGetValueTask" : "TryGetValue";
+                // A value task is built here from the value: returned through an out parameter it costs a copy per hit
+                var lookup = kind == ResultKind.Task ? "TryGetTask" : "TryGetValue";
                 sb.AppendLine($"            if (__mcCall.{lookup}<{type}>({(key == "__mcKeyBuilder.AsSpan()" ? "ref" : "in")} __mcKeyBuilder, out var __mcCachedValue))");
                 sb.AppendLine("            {");
-                sb.AppendLine("                return __mcCachedValue!;");
+                sb.AppendLine(kind == ResultKind.ValueTask
+                    ? $"                return new global::System.Threading.Tasks.ValueTask<{type}>(__mcCachedValue!);"
+                    : "                return __mcCachedValue!;");
                 sb.AppendLine("            }");
                 sb.AppendLine();
             }
