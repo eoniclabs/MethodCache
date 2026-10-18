@@ -41,6 +41,18 @@ accepted costs. The five new time rules waive no bytes or commands. Separate F05
 prefix and filtered SipHash CPU evidence retain their actual source points and the
 two earlier exact sync/int caps. Historical failures remain failures.
 
+On 2026-10-18 Johan approved three exact generated-contract time limits in
+[accepted.json](../../benchmarks/MethodCache.CostProfile/accepted.json). They were
+measured on a Ryzen 7 5800X (Windows 11) with 20 alternating pairs against f43854d and
+waive no bytes, commands or precision. Raw launches are kept outside Git in
+`/Users/johan/methodcache-evidence/` (`final-baloo/` and the `followup*-baloo/` folders).
+
+| Scenario | Measured head/base | Approved cap |
+|---|---:|---:|
+| Record hit, non-ASCII key hashed again as UTF-16 | 1.143 | 1.18 |
+| Fallback hit, JSON key for an object argument | 1.093 | 1.12 |
+| Value-task miss | 1.048 | 1.08 |
+
 ## External measurement archive
 
 Raw measurements, generated reports, per-launch logs, binary/source catalogues and
