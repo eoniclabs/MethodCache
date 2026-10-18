@@ -8,7 +8,7 @@ namespace MethodCache.Infrastructure
     /// when the policy changes, for example when a runtime override bumps the version.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class CachedMethod
+    internal sealed class CachedMethod
     {
         private readonly PolicyHandle _handle;
         private readonly Type _serviceType;
@@ -21,11 +21,16 @@ namespace MethodCache.Infrastructure
         /// <param name="displayName">The name reported to the cache manager and metrics; defaults to <paramref name="methodName"/>.</param>
         public CachedMethod(PolicyHandle handle, Type serviceType, string methodName, string? displayName = null)
         {
-            _handle = handle ?? throw new ArgumentNullException(nameof(handle));
+            if (handle == null) throw new ArgumentNullException(nameof(handle));
             _serviceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
-            _keyMethodName = methodName ?? throw new ArgumentNullException(nameof(methodName));
+            if (methodName == null) throw new ArgumentNullException(nameof(methodName));
             Name = displayName ?? methodName;
-            KeyMethod = MethodCacheKeys.Prefix(serviceType, methodName);
+
+            // A keyed registration's keys carry its service key (Get@ecb), so each registration caches its own results
+            _keyMethodName = handle.KeySuffix != null ? string.Concat(methodName, handle.KeySuffix) : methodName;
+            Background = handle.Background;
+            _handle = handle.Shared ?? handle;
+            KeyMethod = MethodCacheKeys.Prefix(serviceType, _keyMethodName);
             _snapshot = CreateSnapshot(handle.Current);
         }
 
@@ -33,6 +38,11 @@ namespace MethodCache.Infrastructure
         /// The name reported to the cache manager and metrics.
         /// </summary>
         public string Name { get; }
+
+        /// <summary>
+        /// For a scoped or transient registration, how a background load gets its own instance.
+        /// </summary>
+        internal BackgroundLoadTarget? Background { get; }
 
         /// <summary>
         /// The key prefix without a version, passed to key generators, which add the version themselves.

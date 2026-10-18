@@ -8,18 +8,18 @@ namespace MethodCache.Core.Tests.Core
         public void CacheAttribute_DefaultConstructor_HasNoSettings()
         {
             var attribute = new CacheAttribute();
-            Assert.Null(attribute.GroupName);
+            Assert.Null(attribute.Group);
             Assert.Null(attribute.Duration);
             Assert.Null(attribute.SlidingExpiration);
             Assert.Null(attribute.RefreshAhead);
-            Assert.Equal(-1, attribute.Version);
+            Assert.Equal(0, attribute.Version);
         }
 
         [Fact]
         public void CacheAttribute_WithGroupName_GroupNameIsSet()
         {
-            var attribute = new CacheAttribute("MyGroup");
-            Assert.Equal("MyGroup", attribute.GroupName);
+            var attribute = new CacheAttribute { Group = "MyGroup" };
+            Assert.Equal("MyGroup", attribute.Group);
         }
 
         [Fact]

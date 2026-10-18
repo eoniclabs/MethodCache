@@ -84,7 +84,9 @@ namespace MethodCache.SourceGenerator
             var cachedMethods = new List<MethodModel>();
             var diagnostics = new List<DiagnosticInfo>();
 
-            foreach (var name in methodNames)
+            var attributeErrors = ValidateCacheAttribute(attribute, location);
+            diagnostics.AddRange(attributeErrors);
+            foreach (var name in methodNames.Where(_ => attributeErrors.Count == 0))
             {
                 var candidates = allMethods.Where(m => m.Name == name).ToList();
                 if (candidates.Count != 1)
@@ -167,12 +169,13 @@ namespace MethodCache.SourceGenerator
         // The [Cache] diagnostics end with "or remove [Cache]", which makes no sense for a method listed by name
         private static string UncacheableReason(DiagnosticInfo diagnostic) => diagnostic.Id switch
         {
-            "MCG001" => "it returns void, so there is nothing to cache",
-            "MCG002" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
-            "MCG003" => "ref, out and in parameters can't be part of a cache key",
-            "MCG006" => "pointer parameters can't be part of a cache key",
-            "MCG007" => "ref struct parameters such as Span<T> can't be part of a cache key",
-            "MCG014" => "it returns a lazy sequence, which would run again on every enumeration",
+            "MC0003" => "it returns void, so there is nothing to cache",
+            "MC0022" => "it returns a Task or ValueTask without a result, so there is nothing to cache",
+            "MC0005" => "ref, out and in parameters can't be part of a cache key",
+            "MC0008" => "pointer parameters can't be part of a cache key",
+            "MC0009" => "ref struct parameters such as Span<T> can't be part of a cache key",
+            "MC0015" => "it returns a lazy sequence, which would run again on every enumeration",
+            "MC0019" => $"'{diagnostic.Arguments[1]}' is a '{diagnostic.Arguments[2]}', a framework type the cache key can't be written from; pass a value that identifies it or wrap it in a type that implements ICacheKeyProvider",
             _ => diagnostic.ToDiagnostic().GetMessage(System.Globalization.CultureInfo.InvariantCulture),
         };
     }

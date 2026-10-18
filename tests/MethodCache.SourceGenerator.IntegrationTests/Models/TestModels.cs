@@ -11,12 +11,12 @@ public class User
     public string Email { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public bool IsActive { get; set; }
-    
+
     public override bool Equals(object? obj)
     {
         return obj is User user && Id == user.Id && Name == user.Name;
     }
-    
+
     public override int GetHashCode()
     {
         return HashCode.Combine(Id, Name);
@@ -64,9 +64,9 @@ public class CacheMetrics
     public int MissCount { get; set; }
     public int ErrorCount { get; set; }
     public Dictionary<string, int> TagInvalidations { get; set; } = new();
-    
+
     public double HitRatio => HitCount + MissCount > 0 ? (double)HitCount / (HitCount + MissCount) : 0;
-    
+
     public void Reset()
     {
         HitCount = 0;

@@ -13,6 +13,7 @@ public class HttpCacheValidationTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddSingleton<TimeProvider>(time);
         var origin = new ValidationOrigin();
         services.AddHttpClient("validated").ConfigurePrimaryHttpMessageHandler(() => origin)
@@ -38,6 +39,7 @@ public class HttpCacheValidationTests
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddSingleton<TimeProvider>(time);
         var origin = new ValidationOrigin(noStoreOnValidation: true);
         services.AddHttpClient("policy").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);

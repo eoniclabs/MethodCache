@@ -6,7 +6,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// One method's policy as a single source currently defines it.
 /// </summary>
-public sealed class PolicySnapshot
+internal sealed class PolicySnapshot
 {
     /// <summary>
     /// Creates a snapshot.

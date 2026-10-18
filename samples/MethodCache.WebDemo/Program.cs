@@ -9,8 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Your service, registered as usual. AddMethodCache() wraps it in the generated cache decorator.
 builder.Services.AddSingleton<IProductCatalog, ProductCatalog>();
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration); // "MethodCache" in appsettings.json, reloaded live
+builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration)); // "MethodCache" in appsettings.json, reloaded live
 
 // Optional: share the cache between instances. Set ConnectionStrings:Redis (the "redis" launch profiles do).
 var redis = builder.Configuration.GetConnectionString("Redis");
@@ -20,7 +19,6 @@ if (!string.IsNullOrEmpty(redis))
 }
 
 // Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
-builder.Services.AddMethodCacheOpenTelemetry();
 var telemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? "MethodCache.WebDemo"))
     .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())

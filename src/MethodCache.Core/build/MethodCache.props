@@ -1,7 +1,7 @@
 <Project>
   <!--
-    The source generator needs the Roslyn 4.8 compiler (.NET 8 SDK or Visual Studio 17.8) or newer. An older compiler
-    only warns (CS9057) and skips the generator, so nothing would be cached; make that a build error instead.
+    Packages require .NET 10 and the .NET 10 SDK. If a compiler cannot load the generator or analyzers,
+    CS9057 must fail the build rather than silently skipping generated caching.
   -->
   <PropertyGroup>
     <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>

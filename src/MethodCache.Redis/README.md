@@ -1,6 +1,13 @@
 # MethodCache.Redis
 
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
 Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
+
+Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.
 
 ## Usage
 
@@ -18,12 +25,13 @@ With options:
 builder.Services.AddMethodCacheRedis(options =>
 {
     options.Configuration = "redis1:6379,redis2:6379,password=...";
-    options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
 });
+builder.Services.Configure<DistributedCacheOptions>(options =>
+    options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
 ```
 <!-- endSnippet -->
 
-MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis.
+MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops. Once subscribed after a failure, it clears this instance's in-memory cache, as after a reconnect, since invalidations other instances sent meanwhile never arrived.
 
 To share a connection your app already has instead:
 
@@ -35,17 +43,26 @@ builder.Services.AddMethodCacheRedis(options =>
 <!-- endSnippet -->
 
 MethodCache doesn't dispose a shared connection; disposing the service provider only removes MethodCache's own
-subscriptions (`DisposeAsync` waits for that).
+subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe acknowledgement does not fail application shutdown; the handler has already been removed locally.
 
 ## How it works
 
 - Entries are stored through `Microsoft.Extensions.Caching.StackExchangeRedis`, so values are written without extra copies.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
-- Invalidating a key removes it from Redis. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
+- Invalidating a key writes a logical tombstone shared by all value formats and policy identities, then removes the current physical value. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
 - Invalidation times are written with one Lua script, so an older invalidation that arrives late never undoes a newer one.
 - Every invalidation is also published on the backplane channel, so every instance drops its in-memory copies at once.
 - Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
 - Keys with unpaired UTF-16 surrogates or backslashes are escaped, so two different keys never share a Redis key. Other keys are stored unchanged.
+
+## Memory and eviction
+
+Invalidations are stored as expiring keys beside the entries. If Redis evicts one under memory pressure, the entries it
+invalidated are served again by every instance until they expire. Set `maxmemory-policy noeviction` on the Redis
+MethodCache uses (or give it a Redis of its own) and enough memory: method invalidation keys have a time to live; HTTP epochs and the scope-retention contract are permanent, so
+`volatile-lru` and the other `volatile-*` policies, the default of some managed Redis services, can evict them too. A
+full Redis with `noeviction` refuses writes, which MethodCache handles like an outage. See
+[Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted).
 
 ## When Redis is down
 
@@ -63,6 +80,12 @@ that tune all of this.
 |--------|---------|-------------|
 | `Configuration` | `localhost:6379` | StackExchange.Redis configuration string |
 | `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
-| `KeyPrefix` | `methodcache:` | Prefix for every key MethodCache writes |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
-| `BackplaneChannel` | `KeyPrefix` + `invalidations` | Pub/sub channel; applications with different key prefixes get different channels |
+
+
+Configure `DistributedCacheOptions.KeyPrefix` once for values, invalidations, permanent HTTP epochs and the
+`<prefix>invalidations` channel. All Configure registrations are applied before the snapshot is frozen.
+Wire v1 supports mixed entry formats; malformed mandatory frames clear local entries and warn once.
+Value and logical tombstone are read in one pipeline. Atomic metadata updates never shorten retention.
+The first node establishes the scope retention floor; a shorter setting is rejected, while longer settings
+use that common bound. Use a new prefix to change it.

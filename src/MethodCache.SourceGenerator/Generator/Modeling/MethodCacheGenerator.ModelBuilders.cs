@@ -58,6 +58,29 @@ namespace MethodCache.SourceGenerator
                 return (DiagnosticInfo.Create(Diagnostics.UnsupportedRefLikeType, location, methodName), false);
             }
 
+            // Framework types must have a canonical key form.
+            var visited = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            foreach (var parameter in method.Parameters)
+            {
+                if (!Utils.IsCancellationToken(parameter.Type) &&
+                    FindTypeWithoutKeyForm(parameter.Type, parameter.Name, visited) is { } found)
+                {
+                    return (DiagnosticInfo.Create(Diagnostics.FrameworkTypeWithoutKeyForm, location, methodName, found.Path,
+                        found.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), false);
+                }
+            }
+
+            // A distributed cache stores the declared type, so it can't bring back what object or an interface held
+            var result = (Utils.IsTask(method.ReturnType, out var inner) || Utils.IsValueTask(method.ReturnType, out inner)) && inner != null
+                ? inner
+                : method.ReturnType;
+            if (FindUnrestorableResultType(result) is { } unrestorable)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.UnrestorableResultType, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    unrestorable.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
             return (null, true);
         }
 

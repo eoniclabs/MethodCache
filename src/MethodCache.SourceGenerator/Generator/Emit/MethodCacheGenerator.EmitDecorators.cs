@@ -18,7 +18,7 @@ namespace MethodCache.SourceGenerator
             // Add static tags
             if (staticTags.Any())
             {
-                // A placeholder that names no parameter stays literal text (MCG009), as it does on cached entries
+                // A placeholder that names no parameter stays literal text (MC0010), as it does on cached entries
                 var staticTagsWithoutDynamic = staticTags.Where(t => !NamesParameter(method, t)).ToList();
                 if (staticTagsWithoutDynamic.Any())
                 {
@@ -60,7 +60,7 @@ namespace MethodCache.SourceGenerator
         private static string FormatTagArgument(IMethodSymbol method, string paramName)
         {
             // Invariant, so every node and culture builds the same tag text for the same argument
-            return $"(global::System.Convert.ToString((object?){Utils.ParameterIdentifier(method.Parameters.Single(p => p.Name == paramName))}, global::System.Globalization.CultureInfo.InvariantCulture) ?? \"null\")";
+            return $"global::MethodCache.Generated.KeyParts.TagPart({Utils.ParameterIdentifier(method.Parameters.Single(p => p.Name == paramName))})";
         }
 
         private static class DecoratorEmitter
@@ -90,10 +90,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using global::System.Linq;");
                 sb.AppendLine("using global::System.Threading;");
                 sb.AppendLine("using global::System.Threading.Tasks;");
-                sb.AppendLine("using global::MethodCache;");
-                sb.AppendLine("using global::MethodCache.Extensibility;");
-                sb.AppendLine("using global::MethodCache.Infrastructure;");
-                sb.AppendLine("using global::MethodCache.Policies;");
                 sb.AppendLine();
                 sb.AppendLine($"namespace {ns}");
                 sb.AppendLine("{");
@@ -115,10 +111,15 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("    /// </remarks>");
                 }
 
-                sb.AppendLine("    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", \"1.0.0\")]");
+                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(ThisAssembly.AssemblyInformationalVersion)})]");
                 sb.AppendLine("    [global::System.Diagnostics.DebuggerNonUserCode]");
                 // Internal: generated code in the application's assembly, never part of its public API
-                sb.AppendLine($"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable");
+                // Disposable only when the interface is: the container keeps every disposable transient it creates.
+                // Then both kinds, so disposing the container synchronously still works for an IAsyncDisposable one
+                var disposable = info.Symbol.AllInterfaces.Any(i => i.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable");
+                sb.AppendLine(disposable
+                    ? $"    internal sealed class {className}{genericParams} : {interfaceFqn}, global::System.IDisposable, global::System.IAsyncDisposable"
+                    : $"    internal sealed class {className}{genericParams} : {interfaceFqn}");
 
                 // Add generic constraints after class declaration
                 foreach (var typeParam in Utils.AllTypeParameters(info.Symbol))
@@ -134,16 +135,13 @@ namespace MethodCache.SourceGenerator
 
                 // Fields
                 sb.AppendLine($"        private readonly {interfaceFqn} _decorated;");
-                sb.AppendLine("        private readonly bool _ownsDecorated;");
-                sb.AppendLine("        private readonly global::MethodCache.ICacheManager _cacheManager;");
-                sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;");
-                sb.AppendLine("        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;");
+                sb.AppendLine("        private readonly global::MethodCache.Generated.GeneratedServices _services;");
                 sb.AppendLine();
 
                 // Each cached method reads its live policy and key prefix from a CachedMethod shared per registry
                 foreach (var cached in info.CachedMethods)
                 {
-                    sb.AppendLine($"        private readonly global::MethodCache.Infrastructure.CachedMethod _method_{SiteName(cached, info.CachedMethods)};");
+                    sb.AppendLine($"        private readonly global::MethodCache.Generated.CachedMethod _method_{SiteName(cached, info.CachedMethods)};");
                 }
                 sb.AppendLine();
 
@@ -157,7 +155,7 @@ namespace MethodCache.SourceGenerator
                     .Concat(info.Symbol.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IMethodSymbol>()))
                     .Distinct(SymbolEqualityComparer.Default)
                     .Cast<IMethodSymbol>()
-                    .Where(m => m.MethodKind == MethodKind.Ordinary && !m.IsStatic && (m.IsAbstract || (m.IsVirtual && m.DeclaredAccessibility == Accessibility.Public)));
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && Utils.IsInterceptable(m));
 
                 foreach (var method in allMethods)
                 {
@@ -166,26 +164,19 @@ namespace MethodCache.SourceGenerator
                     var invalidate = info.InvalidateMethods.FirstOrDefault(m => SymbolEqualityComparer.Default.Equals(m.Method, method));
 
                     if (cached != null)
-                        EmitCachedMethod(sb, cached, SiteName(cached, info.CachedMethods));
+                        EmitCachedMethod(sb, cached, SiteName(cached, info.CachedMethods), info.Symbol);
                     else if (invalidate != null)
                         EmitInvalidateMethod(sb, invalidate);
                     else
                         EmitPassthroughMethod(sb, method);
                 }
 
-                sb.AppendLine("        void global::System.IDisposable.Dispose()");
-                sb.AppendLine("        {");
-                sb.AppendLine("            if (!this._ownsDecorated) return;");
-                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
-                sb.AppendLine("            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException(\"This owned implementation requires asynchronous disposal. Use DisposeAsync.\");");
-                sb.AppendLine("        }");
-                sb.AppendLine("        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()");
-                sb.AppendLine("        {");
-                sb.AppendLine("            if (!this._ownsDecorated) return default;");
-                sb.AppendLine("            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();");
-                sb.AppendLine("            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();");
-                sb.AppendLine("            return default;");
-                sb.AppendLine("        }");
+                // The container owns and disposes the implementation, so disposing the decorator does nothing
+                if (disposable)
+                {
+                    sb.AppendLine("        void global::System.IDisposable.Dispose() { }");
+                    sb.AppendLine("        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync() => default;");
+                }
 
                 // Properties, indexers and events always call the decorated instance
                 var otherMembers = info.Symbol.GetMembers()
@@ -225,24 +216,27 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("        {");
                 foreach (var cached in cachedMethods)
                 {
-                    sb.AppendLine($"            public readonly global::MethodCache.Infrastructure.CachedMethod {SiteName(cached, cachedMethods)};");
+                    sb.AppendLine($"            public readonly global::MethodCache.Generated.CachedMethod {SiteName(cached, cachedMethods)};");
                 }
                 sb.AppendLine();
-                sb.AppendLine("            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)");
+                sb.AppendLine("            public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)");
                 sb.AppendLine("            {");
                 foreach (var cached in cachedMethods)
                 {
                     var methodId = Utils.GetMethodId(cached.Method);
                     var safeFieldName = SiteName(cached, cachedMethods);
-                    // Overloads add their parameter types, so Find(int) and Find(string) never share keys
-                    var methodName = Utils.GetMethodName(cached.Method);
+                    // Overloads, and names other interfaces in the hierarchy declare too, add their parameter types,
+                    // so Find(int) and Find(string) never share keys
+                    var keyMethodName = Utils.GetKeyMethodName(cached.Method, interfaceSymbol);
 
-                    // Generic interfaces report the closed type in their name, for example IRepository<User>.Get
-                    var displayName = interfaceSymbol.IsGenericType
-                        ? $"\"{interfaceSymbol.Name}<\" + string.Join(\",\", typeof({interfaceFqn}).GetGenericArguments().Select(t => t.Name)) + \">.{methodName}\""
-                        : Utils.Literal(methodName);
+                    // Keep the contract-1 display name for diagnostics. Runtime instrumentation uses the declared
+                    // policy method id, so closed generic registrations share the policy's bounded metric identity.
+                    var owner = cached.Method.ContainingType.IsGenericType ? cached.Method.ContainingType : interfaceSymbol;
+                    var displayName = owner.IsGenericType
+                        ? $"{Utils.Literal(owner.Name + "<")} + string.Join(\",\", typeof({Utils.GetFullyQualifiedName(owner)}).GetGenericArguments().Select(t => t.Name)) + {Utils.Literal(">." + Utils.GetMethodName(cached.Method))}"
+                        : Utils.Literal(methodId);
 
-                    sb.AppendLine($"                {safeFieldName} = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, {Utils.Literal(methodId)}), typeof({interfaceFqn}), {Utils.Literal(methodName)}, {displayName});");
+                    sb.AppendLine($"                {safeFieldName} = registry.Method({Utils.Literal(methodId)}, typeof({interfaceFqn}), {Utils.Literal(keyMethodName)}, {displayName});");
                 }
                 sb.AppendLine("            }");
                 sb.AppendLine("        }");
@@ -252,14 +246,15 @@ namespace MethodCache.SourceGenerator
             private static void EmitConstructorWithPolicies(StringBuilder sb, string className, string interfaceFqn, INamedTypeSymbol interfaceSymbol, System.Collections.Immutable.ImmutableArray<MethodModel> cachedMethods)
             {
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
-                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)");
+                sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Generated.GeneratedServices services)");
                 sb.AppendLine("        {");
                 sb.AppendLine("            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));");
-                sb.AppendLine("            _ownsDecorated = ownsDecorated;");
                 sb.AppendLine("            if (services == null) throw new global::System.ArgumentNullException(nameof(services));");
-                sb.AppendLine("            _cacheManager = services.CacheManager;");
-                sb.AppendLine("            _keyGenerator = services.KeyGenerator;");
-                sb.AppendLine("            _metricsProvider = services.MetricsProvider;");
+                sb.AppendLine("            _services = services;");
+                if (interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Concat(interfaceSymbol.AllInterfaces.SelectMany(static type => type.GetMembers().OfType<IMethodSymbol>()))
+                    .Any(static method => method.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() == "MethodCache.CacheInvalidateAttribute" && ExtractTags(attribute).Count > 0) &&
+                        !Utils.IsTask(method.ReturnType, out _) && !Utils.IsValueTask(method.ReturnType, out _)))
+                    sb.AppendLine("            services.ValidateSynchronousInvalidation();");
                 if (cachedMethods.Length > 0)
                 {
                     sb.AppendLine();
@@ -283,7 +278,7 @@ namespace MethodCache.SourceGenerator
                 return "Method" + cachedMethods.IndexOf(model);
             }
 
-            private static void EmitCachedMethod(StringBuilder sb, MethodModel model, string safeFieldName)
+            private static void EmitCachedMethod(StringBuilder sb, MethodModel model, string safeFieldName, INamedTypeSymbol serviceType)
             {
                 var method = model.Method;
 
@@ -309,75 +304,75 @@ namespace MethodCache.SourceGenerator
                     valueType = method.ReturnType;
                 }
 
+                sb.AppendLine("        [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
                 EmitMethodSignature(sb, method);
                 sb.AppendLine("        {");
 
-                if (kind == ResultKind.Sync)
+                sb.AppendLine($"            var __mcCall = this._method_{safeFieldName}.Capture();");
+                if (method.IsGenericMethod)
                 {
-                    sb.AppendLine("            // Hits return without blocking. A miss blocks this thread while the value loads; the cache never");
-                    sb.AppendLine("            // resumes on the caller's SynchronizationContext, so this can't deadlock. With Redis or SQL Server");
-                    sb.AppendLine("            // the wait includes the network read, so prefer async methods on hot paths there.");
+                    var arguments = string.Join(", ", method.TypeParameters.Select(Utils.TypeParameterIdentifier));
+                    sb.AppendLine($"            __mcCall = __mcCall.WithTypeArguments(TypeArguments_{safeFieldName}<{arguments}>.Value);");
                 }
-
-                // One read gives the policy and key prefix for this call, even if the policy changes meanwhile
-                sb.AppendLine($"            var __mcSnapshot = this._method_{safeFieldName}.Current;");
-                var keyStart = sb.Length;
 
                 // Simple arguments, and records or DTOs made of them, are formatted inline; anything else goes
                 // through the key generator.
-                var rawKeyParam = GetRawKeyParameter(keyParams);
-                var stackKeyLookup = false;
-                if (rawKeyParam != null)
+                if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
                 {
-                    EmitRawKey(sb, rawKeyParam, "            ");
+                    EmitStackKeyLookup(sb, keyParams, kind, valueType, safeFieldName, serviceType, method);
                 }
-                else if (keyParams.Count > 0 && keyParams.All(p => IsSimpleType(p.Type)))
+                else if (TryBuildInlineParts(keyParams, out _, out var exactTypeChecks))
                 {
-                    EmitStackKeyLookup(sb, keyParams, kind, valueType, safeFieldName);
-                    stackKeyLookup = true;
-                }
-                else if (TryBuildInlineKey(keyParams, out var inlineKey, out var exactTypeChecks))
-                {
-                    if (exactTypeChecks.Count == 0)
+                    sb.AppendLine(keyParams.Count == 0
+                        ? "            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, default);"
+                        : "            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);");
+                    if (exactTypeChecks.Count > 0)
                     {
-                        sb.AppendLine($"            var __mcKey = {inlineKey};");
+                        sb.AppendLine($"            if (!({string.Join(" && ", exactTypeChecks)}))");
+                        sb.AppendLine($"                __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                        sb.AppendLine("            else");
+                        sb.AppendLine("            {");
                     }
-                    else
+                    foreach (var parameter in keyParams)
                     {
-                        // A subclass can carry state the declared type doesn't have, so it goes through the key generator
-                        sb.AppendLine($"            var __mcKey = {string.Join(" && ", exactTypeChecks)}");
-                        sb.AppendLine($"                ? {inlineKey}");
-                        sb.AppendLine($"                : {GeneratedKeyExpression(safeFieldName, keyParams)};");
+                        if (IsSimpleType(parameter.Type)) sb.AppendLine(AppendSimpleValue(Utils.ParameterIdentifier(parameter), parameter.Type));
+                        else
+                        {
+                            TryBuildInlineParts(new List<IParameterSymbol> { parameter }, out var expression, out _, "__mcPart");
+                            sb.AppendLine($"            __mcKeyBuilder.AppendPart({Utils.ParameterIdentifier(parameter)}, static __mcPart => {expression});");
+                        }
                     }
+                    if (exactTypeChecks.Count > 0) sb.AppendLine("            }");
+                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
+                    sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
                 }
                 else
                 {
-                    EmitGeneratedKey(sb, safeFieldName, keyParams);
+                    sb.AppendLine($"            var __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
+                    sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
                 }
 
-                if (!stackKeyLookup)
-                {
-                    sb.AppendLine();
-                    EmitHit(sb, kind, valueType, safeFieldName, "__mcKey");
-                }
-
-                if (method.IsGenericMethod)
-                {
-                    // The type arguments are part of the key, so Get<int>(1) and Get<string>(1) never share an entry
-                    var typeArguments = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"typeof({Utils.TypeParameterIdentifier(tp)}).ToString()"));
-                    var declarations = $"            var __mcTypeArguments = string.Concat(\"<\", {typeArguments}, \">\");\n" +
-                                       "            var __mcPrefix = string.Concat(__mcSnapshot.KeyPrefix, __mcTypeArguments);\n";
-                    // The key code was emitted with the plain prefix; point it at the one with the type arguments
-                    sb.Replace("__mcSnapshot.KeyPrefix", "__mcPrefix", keyStart, sb.Length - keyStart);
-                    sb.Insert(keyStart, declarations);
-                    sb.Replace($"this._method_{safeFieldName}.KeyMethod", $"string.Concat(this._method_{safeFieldName}.KeyMethod, __mcTypeArguments)", keyStart, sb.Length - keyStart);
-                }
-
-                EmitMiss(sb, method, kind, valueType, safeFieldName, GetTagParameters(method));
+                EmitMiss(sb, method, safeFieldName);
 
                 sb.AppendLine("        }");
                 sb.AppendLine();
                 EmitLoader(sb, method, kind, valueType, safeFieldName);
+                if (method.IsGenericMethod)
+                {
+                    var parameters = string.Join(", ", method.TypeParameters.Select(Utils.TypeParameterIdentifier));
+                    var values = string.Join(", \",\", ", method.TypeParameters.Select(tp => $"global::MethodCache.Generated.KeyParts.TypeIdentity(typeof({Utils.TypeParameterIdentifier(tp)}))"));
+                    sb.AppendLine($"        private static class TypeArguments_{safeFieldName}<{parameters}>");
+                    foreach (var tp in method.TypeParameters)
+                    {
+                        var constraints = BuildConstraints(tp);
+                        if (!string.IsNullOrEmpty(constraints)) sb.AppendLine($"            {constraints}");
+                    }
+                    sb.AppendLine("        {");
+                    sb.AppendLine($"            internal static readonly string Value = string.Concat(\"<\", {values}, \">\");");
+                    sb.AppendLine("        }");
+                    sb.AppendLine();
+                }
             }
 
             private enum ResultKind
@@ -388,18 +383,20 @@ namespace MethodCache.SourceGenerator
             }
 
             /// <summary>
-            /// Emits the key and the hit lookup for methods whose arguments are all simple values. On .NET 9 and later
-            /// the key is written into a stack buffer and looked up as a span, so a hit allocates no key string; the
-            /// string is only made on a miss. Older frameworks have no allocation-free dictionary lookup, so they keep
-            /// the string key.
+            /// Emits the key and the hit lookup for methods whose arguments are all simple values.
+            /// The key is written into a stack buffer and looked up as a span, so a hit allocates no key string;
+            /// the string is only made on a miss.
             /// </summary>
-            private static void EmitStackKeyLookup(StringBuilder sb, List<IParameterSymbol> keyParams, ResultKind kind, ITypeSymbol valueType, string safeFieldName)
+            private static void EmitStackKeyLookup(StringBuilder sb, List<IParameterSymbol> keyParams, ResultKind kind, ITypeSymbol valueType, string safeFieldName, INamedTypeSymbol serviceType, IMethodSymbol method)
             {
-                TryBuildInlineKey(keyParams, out var stringKey, out _);
-
-                sb.AppendLine("#if NET9_0_OR_GREATER");
-                sb.AppendLine("            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);");
-                sb.AppendLine("            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);");
+                // Strings and generic prefixes are unbounded; retain their previous 256-char capacity.
+                var bounded = !serviceType.IsGenericType && !method.IsGenericMethod && keyParams.All(p => p.Type.SpecialType != SpecialType.System_String);
+                var argumentsBound = keyParams.Sum(p => MaxPartLength(p.Type) + 1);
+                var prefixBound = MethodCache.Internal.AssemblyIdentity.Prefix(serviceType.ContainingAssembly.Name).Length + Utils.GetFullyQualifiedName(serviceType).Replace("global::", "").Length + 1 + Utils.GetKeyMethodName(method, serviceType).Length + 12;
+                var bufferSize = bounded ? Math.Min(256, Math.Max(64, prefixBound + argumentsBound)) : 256;
+                var buffer = $"stackalloc char[{bufferSize}]";
+                // Constructed in place: a builder returned from a helper is copied, which costs ~12 ns per hit on x64
+                sb.AppendLine($"            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, {buffer});");
                 foreach (var param in keyParams)
                 {
                     sb.AppendLine(AppendSimpleValue(Utils.ParameterIdentifier(param), param.Type));
@@ -408,15 +405,28 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine();
                 EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
                 sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
-                sb.AppendLine("#else");
-                sb.AppendLine($"            var __mcKey = {stringKey};");
-                sb.AppendLine();
-                EmitHit(sb, kind, valueType, safeFieldName, "__mcKey");
-                sb.AppendLine("#endif");
             }
 
-            private static List<string> GetTagParameters(IMethodSymbol method)
-                => method.Parameters.Select(parameter => parameter.Name).ToList();
+            private static int MaxPartLength(ITypeSymbol type)
+            {
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
+                    return Math.Max(2, MaxPartLength(nullable.TypeArguments[0]));
+                if (type.TypeKind == TypeKind.Enum) return 20;
+                return type.SpecialType switch
+                {
+                    SpecialType.System_Boolean => 5,
+                    SpecialType.System_Char => 2,
+                    SpecialType.System_Byte => 3,
+                    SpecialType.System_SByte => 4,
+                    SpecialType.System_Int16 => 6,
+                    SpecialType.System_UInt16 => 5,
+                    SpecialType.System_Int32 => 11,
+                    SpecialType.System_UInt32 => 10,
+                    SpecialType.System_Int64 or SpecialType.System_UInt64 => 20,
+                    // Round-trip floating point, decimal, dates and Guid fit this conservative bound.
+                    _ => 40
+                };
+            }
 
             /// <summary>
             /// Emits the lookup shared by every cached method: one synchronous probe whose result says whether an
@@ -426,63 +436,27 @@ namespace MethodCache.SourceGenerator
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
 
-                // Task methods get the entry's completed task back, so a hit does not allocate a new Task
-                sb.AppendLine(kind == ResultKind.Task
-                    ? $"            if (this._cacheManager.TryGetFastTask<{type}>({key}, out var __mcCachedTask))"
-                    : $"            if (this._cacheManager.TryGetFast<{type}>({key}, out var __mcCachedValue))");
+                if (key != "__mcKeyBuilder.AsSpan()")
+                    sb.AppendLine($"            var __mcKeyBuilder = __mcCall.BindTextKey({key});");
+                // A value task is built here from the value: returned through an out parameter it costs a copy per hit
+                var lookup = kind == ResultKind.Task ? "TryGetTask" : "TryGetValue";
+                sb.AppendLine($"            if (__mcCall.{lookup}<{type}>({(key == "__mcKeyBuilder.AsSpan()" ? "ref" : "in")} __mcKeyBuilder, out var __mcCachedValue))");
                 sb.AppendLine("            {");
-                sb.AppendLine($"                this._metricsProvider?.CacheHit(this._method_{safeFieldName}.Name);");
-                switch (kind)
-                {
-                    case ResultKind.Task:
-                        sb.AppendLine("                return __mcCachedTask;");
-                        break;
-                    case ResultKind.ValueTask:
-                        sb.AppendLine($"                return new global::System.Threading.Tasks.ValueTask<{type}>(__mcCachedValue!);");
-                        break;
-                    default:
-                        sb.AppendLine("                return __mcCachedValue!;");
-                        break;
-                }
-
+                sb.AppendLine(kind == ResultKind.ValueTask
+                    ? $"                return new global::System.Threading.Tasks.ValueTask<{type}>(__mcCachedValue!);"
+                    : "                return __mcCachedValue!;");
                 sb.AppendLine("            }");
                 sb.AppendLine();
             }
 
             /// <summary>Emits the cache manager's loading path for a miss.</summary>
-            private static void EmitMiss(StringBuilder sb, IMethodSymbol method, ResultKind kind, ITypeSymbol valueType, string safeFieldName, List<string> tagParameters)
+            private static void EmitMiss(StringBuilder sb, IMethodSymbol method, string safeFieldName)
             {
-                var type = Utils.GetReturnTypeForSignature(valueType);
                 sb.AppendLine("            // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)");
 
-                var policy = "__mcSnapshot.Policy";
-                if (tagParameters.Count > 0)
-                {
-                    // Tags such as "user:{userId}" get this call's arguments, matching what [CacheInvalidate] removes
-                    var names = string.Join(", ", tagParameters.Select(p => $"\"{p}\""));
-                    var values = string.Join(", ", tagParameters.Select(p => FormatTagArgument(method, p)));
-                    sb.AppendLine($"            var __mcPolicy = {policy};");
-                    sb.AppendLine("            if (__mcPolicy.Tags.Count > 0)");
-                    sb.AppendLine($"                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] {{ {names} }}, new[] {{ {values} }});");
-                    policy = "__mcPolicy";
-                }
-
-                // The key code may have tested reference arguments for null; they are passed on unchanged
                 var arguments = string.Concat(method.Parameters.Select(p => ", " + Utils.ParameterIdentifier(p) + (p.Type.IsValueType ? "" : "!")));
-                var load = $"{LoaderName(method, safeFieldName)}(__mcKey, {policy}{arguments})";
-
-                switch (kind)
-                {
-                    case ResultKind.Task:
-                        sb.AppendLine($"            return {load};");
-                        break;
-                    case ResultKind.ValueTask:
-                        sb.AppendLine($"            return new global::System.Threading.Tasks.ValueTask<{type}>({load});");
-                        break;
-                    default:
-                        sb.AppendLine($"            return {load}.ConfigureAwait(false).GetAwaiter().GetResult();");
-                        break;
-                }
+                var load = $"{LoaderName(method, safeFieldName)}(__mcKey, __mcCall{arguments})";
+                sb.AppendLine($"            return {load};");
             }
 
             private static string LoaderName(IMethodSymbol method, string safeFieldName)
@@ -502,30 +476,25 @@ namespace MethodCache.SourceGenerator
             {
                 var type = Utils.GetReturnTypeForSignature(valueType);
                 var parameters = string.Concat(method.Parameters.Select(p => $", {Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}"));
-                var call = BuildMethodCall(method);
-
-                // The decorated method's own task is the factory, so a miss doesn't add an async state machine
-                var factory = kind switch
-                {
-                    ResultKind.Task => $"() => {call}!",
-                    ResultKind.ValueTask => $"() => {call}.AsTask()!",
-                    _ => $"() => global::System.Threading.Tasks.Task.FromResult({call})!"
-                };
-
-                sb.AppendLine($"        private global::System.Threading.Tasks.Task<{type}> {LoaderName(method, safeFieldName)}(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy{parameters})");
+                var returnType = kind == ResultKind.Task ? $"global::System.Threading.Tasks.Task<{type}>"
+                    : kind == ResultKind.ValueTask ? $"global::System.Threading.Tasks.ValueTask<{type}>" : type;
+                sb.AppendLine($"        private {returnType} {LoaderName(method, safeFieldName)}(string __cacheKey, global::MethodCache.Generated.MethodCall __call{parameters})");
                 foreach (var tp in method.TypeParameters)
                 {
                     var constraints = BuildConstraints(tp);
-                    if (!string.IsNullOrEmpty(constraints))
-                    {
-                        sb.AppendLine($"            {constraints}");
-                    }
+                    if (!string.IsNullOrEmpty(constraints)) sb.AppendLine($"            {constraints}");
                 }
-
-                // The method's own token lets the cache tell a caller giving up from a failing dependency
+                var state = method.Parameters.Length == 0 ? "this._decorated"
+                    : "(Inner: this._decorated" + string.Concat(method.Parameters.Select((p, i) => $", Arg{i}: {Utils.ParameterIdentifier(p)}")) + ")";
+                var inner = method.Parameters.Length == 0 ? "__state" : "__state.Inner";
+                var argList = string.Join(", ", method.Parameters.Select((p, i) => $"__state.Arg{i}"));
+                var call = BuildMethodCall(method, $"__invocation.ServiceForLoad({inner})", argList);
+                var values = method.Parameters.Length == 0 ? "global::System.Array.Empty<object?>()"
+                    : "(__call.NeedsTagArguments ? new object?[] { " + string.Join(", ", method.Parameters.Select(Utils.ParameterIdentifier)) + " } : global::System.Array.Empty<object?>())";
                 var token = method.Parameters.FirstOrDefault(p => Utils.IsCancellationToken(p.Type));
-                var tokenArgument = token != null ? ", " + Utils.ParameterIdentifier(token) : string.Empty;
-                sb.AppendLine($"            => this._cacheManager.GetOrCreateFastAsync<{type}>(__cacheKey, this._method_{safeFieldName}.Name, {factory}, __policy{tokenArgument});");
+                var tokenArgument = token == null ? "default" : Utils.ParameterIdentifier(token);
+                var load = kind == ResultKind.Task ? "LoadAsync" : kind == ResultKind.ValueTask ? "LoadValueAsync" : "Load";
+                sb.AppendLine($"            => __call.{load}(__cacheKey, {state}, static (__invocation, __state) => {call}, {values}, {tokenArgument});");
                 sb.AppendLine();
             }
 
@@ -535,20 +504,20 @@ namespace MethodCache.SourceGenerator
             /// simple values. <paramref name="exactTypeChecks"/> lists the conditions under which the expression is
             /// valid; when one fails at runtime, the caller uses the key generator instead.
             /// </summary>
-            private static bool TryBuildInlineKey(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks)
+            private static bool TryBuildInlineParts(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks, string? parameterName = null)
             {
-                expression = "__mcSnapshot.KeyPrefix";
+                expression = "string.Empty";
                 exactTypeChecks = new List<string>();
                 if (keyParams.Count == 0)
                 {
                     return true;
                 }
 
-                var pieces = new List<string> { "__mcSnapshot.KeyPrefix" };
+                var pieces = new List<string>();
                 foreach (var param in keyParams)
                 {
-                    pieces.Add("global::MethodCache.MethodCacheKeys.Separator");
-                    var name = Utils.ParameterIdentifier(param);
+                    if (pieces.Count != 0) pieces.Add("global::MethodCache.Generated.KeyParts.Separator");
+                    var name = parameterName ?? Utils.ParameterIdentifier(param);
                     if (IsSimpleType(param.Type))
                     {
                         pieces.Add(FormatSimpleValue(name, param.Type));
@@ -556,10 +525,10 @@ namespace MethodCache.SourceGenerator
                     else if (ImplementsCacheKeyProvider(param.Type))
                     {
                         // Through the interface, so explicit and re-implemented CacheKeyPart members are the ones called
-                        var keyPart = $"global::MethodCache.MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){name}).CacheKeyPart)";
+                        var keyPart = $"global::MethodCache.Generated.KeyParts.Provider({name})";
                         pieces.Add(param.Type.IsValueType
                             ? keyPart
-                            : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {keyPart})");
+                            : $"({name} is null ? global::MethodCache.Generated.KeyParts.Null : {keyPart})");
                     }
                     else if (TryGetKeyMembers(param.Type, out var members))
                     {
@@ -577,13 +546,24 @@ namespace MethodCache.SourceGenerator
                         }
                         else
                         {
+                            // The runtime collection can add public state even if its declared base/interface
+                            // has none. Only exact concrete types and known plain framework collections inline.
+                            if (param.Type is INamedTypeSymbol { TypeKind: TypeKind.Interface } && GetSequenceElementType(param.Type) is { } element)
+                            {
+                                var elementType = Utils.GetFullyQualifiedName(element);
+                                exactTypeChecks.Add($"({name} is null || {name} is {elementType}[] || {name}.GetType() == typeof(global::System.Collections.Generic.List<{elementType}>) || {name}.GetType() == typeof(global::System.Collections.Generic.HashSet<{elementType}>))");
+                            }
+                            else
+                            {
+                                exactTypeChecks.Add($"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}))");
+                            }
                             // Another runtime type than the declared one (an array and a list behind IEnumerable<T>, a
                             // subclass of List<T>) is written before the elements, so equal elements in two collection
                             // types stay two arguments. A type name never starts like a sequence or null does.
-                            var typed = $"string.Concat(global::MethodCache.MethodCacheKeys.Part({name}.GetType().ToString()), global::MethodCache.MethodCacheKeys.Separator, {sequence})";
+                            var typed = $"string.Concat(global::MethodCache.Generated.KeyParts.Part({name}.GetType().ToString()), global::MethodCache.Generated.KeyParts.Separator, {sequence})";
                             pieces.Add(param.Type is IArrayTypeSymbol || (param.Type.TypeKind == TypeKind.Class && !param.Type.IsAbstract)
                                 ? $"({name} is null || {name}.GetType() == typeof({Utils.GetFullyQualifiedName(param.Type)}) ? {sequence} : {typed})"
-                                : $"({name} is null ? global::MethodCache.MethodCacheKeys.Null : {typed})");
+                                : $"({name} is null ? global::MethodCache.Generated.KeyParts.Null : {typed})");
                         }
                     }
                     else
@@ -593,7 +573,7 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                expression = $"string.Concat({string.Join(", ", pieces)})";
+                expression = pieces.Count == 1 ? pieces[0] : $"string.Concat({string.Join(", ", pieces)})";
                 return true;
             }
 
@@ -607,7 +587,7 @@ namespace MethodCache.SourceGenerator
             {
                 expression = string.Empty;
                 var element = GetSequenceElementType(type);
-                if (element == null)
+                if (element == null || HasCollectionState(type))
                 {
                     return false;
                 }
@@ -620,8 +600,8 @@ namespace MethodCache.SourceGenerator
                 }
                 else if (ImplementsCacheKeyProvider(element))
                 {
-                    var keyPart = $"global::MethodCache.MethodCacheKeys.Part(((global::MethodCache.ICacheKeyProvider){item}).CacheKeyPart)";
-                    part = element.IsValueType ? keyPart : $"({item} is null ? global::MethodCache.MethodCacheKeys.Null : {keyPart})";
+                    var keyPart = $"global::MethodCache.Generated.KeyParts.Provider({item})";
+                    part = element.IsValueType ? keyPart : $"({item} is null ? global::MethodCache.Generated.KeyParts.Null : {keyPart})";
                 }
                 else if ((element.IsValueType || element.IsSealed) && TryGetKeyMembers(element, out var members))
                 {
@@ -634,8 +614,20 @@ namespace MethodCache.SourceGenerator
                     return false;
                 }
 
-                expression = $"global::MethodCache.MethodCacheKeys.Sequence({name}, static {item} => {part})";
+                expression = $"global::MethodCache.Generated.KeyParts.Sequence({name}, static {item} => {part})";
                 return true;
+            }
+
+            private static bool HasCollectionState(ITypeSymbol type)
+            {
+                for (var current = type as INamedTypeSymbol; current != null && !IsFrameworkType(current); current = current.BaseType)
+                {
+                    if (current.GetMembers().Any(member => !member.IsStatic && member.DeclaredAccessibility == Accessibility.Public &&
+                        (member is IFieldSymbol || member is IPropertySymbol { IsIndexer: false, GetMethod.DeclaredAccessibility: Accessibility.Public }) &&
+                        !member.GetAttributes().Any(attribute => attribute.AttributeClass?.Name is "JsonIgnoreAttribute" or "IgnoreDataMemberAttribute" or "IgnoreMemberAttribute")))
+                        return true;
+                }
+                return false;
             }
 
             /// <summary>
@@ -651,7 +643,7 @@ namespace MethodCache.SourceGenerator
             /// The element type of a one-dimensional array, or of a type that is or implements exactly one
             /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
             /// </summary>
-            private static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
+            internal static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
             {
                 if (type is IArrayTypeSymbol array)
                 {
@@ -686,7 +678,7 @@ namespace MethodCache.SourceGenerator
                 {
                     if (memberPieces.Count > 0)
                     {
-                        memberPieces.Add("global::MethodCache.MethodCacheKeys.Separator");
+                        memberPieces.Add("global::MethodCache.Generated.KeyParts.Separator");
                     }
 
                     memberPieces.Add(FormatSimpleValue($"{name}.@{member.Name}", member.Type));
@@ -700,17 +692,17 @@ namespace MethodCache.SourceGenerator
                     return;
                 }
 
-                pieces.Add($"({name} is null ? global::MethodCache.MethodCacheKeys.Null : string.Concat(\"(\", {string.Join(", ", memberPieces)}, \")\"))");
+                pieces.Add($"({name} is null ? global::MethodCache.Generated.KeyParts.Null : string.Concat(\"(\", {string.Join(", ", memberPieces)}, \")\"))");
             }
 
             private static string FormatSimpleValue(string expression, ITypeSymbol type)
             {
                 if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T })
                 {
-                    return $"({expression}.HasValue ? global::MethodCache.MethodCacheKeys.Part({expression}.Value) : global::MethodCache.MethodCacheKeys.Null)";
+                    return $"({expression}.HasValue ? global::MethodCache.Generated.KeyParts.Part({expression}.Value) : global::MethodCache.Generated.KeyParts.Null)";
                 }
 
-                return $"global::MethodCache.MethodCacheKeys.Part({expression})";
+                return $"global::MethodCache.Generated.KeyParts.Part({expression})";
             }
 
             private static string AppendSimpleValue(string expression, ITypeSymbol type)
@@ -726,7 +718,7 @@ namespace MethodCache.SourceGenerator
             /// <summary>
             /// A class or struct that implements <c>ICacheKeyProvider</c>, or that interface or one derived from it.
             /// </summary>
-            private static bool ImplementsCacheKeyProvider(ITypeSymbol type)
+            internal static bool ImplementsCacheKeyProvider(ITypeSymbol type)
                 => type.TypeKind switch
                 {
                     TypeKind.Class or TypeKind.Struct => type.AllInterfaces.Any(IsCacheKeyProvider),
@@ -748,6 +740,7 @@ namespace MethodCache.SourceGenerator
                     named.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
                     named.IsAbstract ||
                     named.SpecialType != SpecialType.None ||
+                    (IsFrameworkType(named) && !FrameworkComposites.Contains(MetadataName(named.OriginalDefinition))) ||
                     named.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable))
                 {
                     return false;
@@ -830,117 +823,6 @@ namespace MethodCache.SourceGenerator
                        type.Name is "Guid" or "DateTimeOffset";
             }
 
-            private static string GetRawKeyExpression(IParameterSymbol param)
-            {
-                var name = Utils.ParameterIdentifier(param);
-                if (param.Type.SpecialType == SpecialType.System_String)
-                {
-                    return $"{name} ?? \"null\"";
-                }
-
-                // Invariant, so 1.5 is "1.5" and -1 is "-1" on every machine, whatever its culture
-                const string invariant = "global::System.Globalization.CultureInfo.InvariantCulture";
-                if (param.Type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
-                {
-                    var underlying = nullable.TypeArguments[0];
-                    return underlying.TypeKind == TypeKind.Enum
-                        ? $"({name} is null ? \"null\" : {GetRawEnumExpression($"{name}.Value")})"
-                        : $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
-                }
-
-                if (param.Type.TypeKind == TypeKind.Enum)
-                {
-                    return GetRawEnumExpression(name);
-                }
-
-                if (param.Type.IsValueType)
-                {
-                    if (!IsFormattable(param.Type))
-                    {
-                        return $"{name}.ToString()";
-                    }
-
-                    // A struct that implements IFormattable explicitly has no public ToString(format, provider)
-                    return HasPublicFormattableToString(param.Type)
-                        ? $"{name}.ToString(null, {invariant})"
-                        : $"((global::System.IFormattable){name}).ToString(null, {invariant})";
-                }
-
-                return $"({name} is null ? \"null\" : global::System.Convert.ToString((object){name}, {invariant}) ?? \"null\")";
-            }
-
-            /// <summary>
-            /// A named enum value keeps its name; a value without one is written as its number in the invariant culture,
-            /// since the enum's own formatting would write a negative number with the culture's minus sign.
-            /// </summary>
-            private static string GetRawEnumExpression(string value)
-                => $"({value}.ToString() is var __rawEnumName && (char.IsLetter(__rawEnumName[0]) || __rawEnumName[0] == '_') ? __rawEnumName : global::MethodCache.MethodCacheKeys.Part({value}))";
-
-            private static bool IsFormattable(ITypeSymbol type)
-                => type.AllInterfaces.Any(i => i.ToDisplayString() == "System.IFormattable");
-
-            private static bool HasPublicFormattableToString(ITypeSymbol type)
-                => type.GetMembers("ToString").OfType<IMethodSymbol>().Any(m =>
-                    m.DeclaredAccessibility == Accessibility.Public && !m.IsStatic && m.Parameters.Length == 2 &&
-                    m.Parameters[0].Type.SpecialType == SpecialType.System_String &&
-                    m.Parameters[1].Type.ToDisplayString() == "System.IFormatProvider");
-
-            private static IParameterSymbol? GetRawKeyParameter(IEnumerable<IParameterSymbol> keyParams)
-            {
-                foreach (var param in keyParams)
-                {
-                    foreach (var attribute in param.GetAttributes())
-                    {
-                        if (IsRawKeyAttribute(attribute))
-                        {
-                            return param;
-                        }
-                    }
-                }
-
-                return null;
-            }
-
-            private static bool IsRawKeyAttribute(AttributeData attribute)
-            {
-                if (!string.Equals(attribute.AttributeClass?.ToDisplayString(), "MethodCache.CacheKeyAttribute", StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                foreach (var namedArgument in attribute.NamedArguments)
-                {
-                    if (namedArgument.Key == "UseAsRawKey" && namedArgument.Value.Value is bool flag && flag)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            private static void EmitRawKey(StringBuilder sb, IParameterSymbol rawKeyParam, string indent)
-            {
-                sb.AppendLine($"{indent}// Raw key optimization: [CacheKey(UseAsRawKey = true)] detected");
-                sb.AppendLine($"{indent}var __mcKey = {GetRawKeyExpression(rawKeyParam)};");
-            }
-
-            private static void EmitGeneratedKey(StringBuilder sb, string safeFieldName, List<IParameterSymbol> keyParams)
-            {
-                if (keyParams.Count == 0)
-                {
-                    sb.AppendLine("            var __mcKey = __mcSnapshot.KeyPrefix;");
-                    return;
-                }
-
-                // Arguments that have no inline key format go through the registered key generator,
-                // which keeps the service and method prefix so keys stay recognizable.
-                sb.AppendLine($"            var __mcKey = {GeneratedKeyExpression(safeFieldName, keyParams)};");
-            }
-
-            private static string GeneratedKeyExpression(string safeFieldName, List<IParameterSymbol> keyParams)
-                => $"this._keyGenerator.GenerateKey(this._method_{safeFieldName}.KeyMethod, new object?[] {{ {string.Join(", ", keyParams.Select(p => Utils.ParameterIdentifier(p)))} }}, __mcSnapshot.Policy)";
-
             private static void EmitInvalidateMethod(StringBuilder sb, MethodModel model)
             {
                 var method = model.Method;
@@ -984,7 +866,7 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine(hasResult
                     ? "                var __mcResult = await __mcOperation.ConfigureAwait(false);"
                     : "                await __mcOperation.ConfigureAwait(false);");
-                sb.AppendLine("                await this._cacheManager.InvalidateByTagsAsync(__mcCapturedTags).ConfigureAwait(false);");
+                sb.AppendLine("                await this._services.InvalidateTagsAsync(__mcCapturedTags, default).ConfigureAwait(false);");
                 if (hasResult)
                     sb.AppendLine("                return __mcResult;");
                 sb.AppendLine("            }");
@@ -1010,7 +892,7 @@ namespace MethodCache.SourceGenerator
                 if (staticTags.Any() || dynamicTags.Any())
                 {
                     EmitTagInvalidation(sb, method, staticTags, dynamicTags, "                ");
-                    sb.AppendLine("                await this._cacheManager.InvalidateByTagsAsync(__mcTags.ToArray()).ConfigureAwait(false);");
+                    sb.AppendLine("                await this._services.InvalidateTagsAsync(__mcTags.ToArray(), default).ConfigureAwait(false);");
                 }
 
                 if (hasResult)
@@ -1046,7 +928,7 @@ namespace MethodCache.SourceGenerator
                 if (staticTags.Any() || dynamicTags.Any())
                 {
                     EmitTagInvalidation(sb, method, staticTags, dynamicTags, "                ");
-                    sb.AppendLine("                this._cacheManager.InvalidateByTagsAsync(__mcTags.ToArray()).GetAwaiter().GetResult();");
+                    sb.AppendLine("                this._services.InvalidateTags(__mcTags.ToArray());");
                 }
 
                 if (!method.ReturnsVoid)
@@ -1066,17 +948,6 @@ namespace MethodCache.SourceGenerator
             {
                 EmitMethodSignature(sb, method);
                 sb.AppendLine("        {");
-
-                if (method.Name == "Dispose" && method.Parameters.Length == 0 &&
-                    method.ContainingType.ToDisplayString() == "System.IDisposable")
-                {
-                    sb.AppendLine("            if (!this._ownsDecorated) return;");
-                }
-                else if (method.Name == "DisposeAsync" && method.Parameters.Length == 0 &&
-                    method.ContainingType.ToDisplayString() == "System.IAsyncDisposable")
-                {
-                    sb.AppendLine("            if (!this._ownsDecorated) return default;");
-                }
 
                 var call = BuildMethodCall(method);
                 if (method.ReturnsVoid)
@@ -1105,10 +976,7 @@ namespace MethodCache.SourceGenerator
                 if (property.IsIndexer)
                 {
                     var parameters = string.Join(", ", property.Parameters.Select(p =>
-                    {
-                        var modifier = p.RefKind == RefKind.In ? "in " : string.Empty;
-                        return $"{modifier}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}";
-                    }));
+                        $"{ParameterModifier(p)}{Utils.GetReturnTypeForSignature(p.Type)} {Utils.ParameterIdentifier(p)}"));
                     name = $"this[{parameters}]";
                     access = $"{target}[{string.Join(", ", property.Parameters.Select(p => Utils.ParameterIdentifier(p)))}]";
                 }
@@ -1167,34 +1035,45 @@ namespace MethodCache.SourceGenerator
                 var unsafeModifier = IsPointerType(method.ReturnType) || method.Parameters.Any(p => IsPointerType(p.Type)) ? "unsafe " : "";
                 sb.AppendLine($"        {modifiers}{unsafeModifier}{byRef}{returnType} {declaring}.{Utils.Identifier(method.Name)}{typeParams}({parameters})");
 
-                // An explicit implementation inherits the constraints; it may only say how T? reads
+                // An explicit implementation inherits the constraints; it may only say how T? reads. A type parameter
+                // constrained to a class type (where T : Entity) is a reference type, and C# rejects `default` for it.
                 foreach (var tp in method.TypeParameters)
                 {
-                    var clause = tp.HasReferenceTypeConstraint ? "class" : tp.HasValueTypeConstraint ? "struct" : "default";
+                    var clause = tp.HasReferenceTypeConstraint || tp.IsReferenceType ? "class"
+                        : tp.HasValueTypeConstraint || tp.IsValueType ? "struct"
+                        : "default";
                     sb.AppendLine($"            where {Utils.TypeParameterIdentifier(tp)} : {clause}");
                 }
             }
 
-            private static string ParameterModifier(IParameterSymbol parameter) => parameter.RefKind switch
+            /// <summary>
+            /// The parameter's modifiers as the interface declares them. <c>scoped</c> must match too, or the explicit
+            /// implementation doesn't compile (CS8987); an <c>out</c> parameter is scoped implicitly.
+            /// </summary>
+            private static string ParameterModifier(IParameterSymbol parameter)
             {
-                RefKind.Ref => "ref ",
-                RefKind.Out => "out ",
-                RefKind.In => "in ",
-                RefKind.RefReadOnlyParameter => "ref readonly ",
-                _ => string.Empty
-            };
+                var scoped = parameter.ScopedKind != ScopedKind.None && parameter.RefKind != RefKind.Out ? "scoped " : string.Empty;
+                return scoped + parameter.RefKind switch
+                {
+                    RefKind.Ref => "ref ",
+                    RefKind.Out => "out ",
+                    RefKind.In => "in ",
+                    RefKind.RefReadOnlyParameter => "ref readonly ",
+                    _ => string.Empty
+                };
+            }
 
             /// <summary>
             /// The call to the decorated instance, through the interface that declares the method, so a method two
             /// base interfaces both declare is never ambiguous.
             /// </summary>
-            private static string BuildMethodCall(IMethodSymbol method)
+            private static string BuildMethodCall(IMethodSymbol method, string target = "this._decorated", string? arguments = null)
             {
                 var typeArgs = method.TypeParameters.Any()
                     ? $"<{string.Join(", ", method.TypeParameters.Select(tp => Utils.TypeParameterIdentifier(tp)))}>"
                     : string.Empty;
 
-                var args = string.Join(", ", method.Parameters.Select(p =>
+                var args = arguments ?? string.Join(", ", method.Parameters.Select(p =>
                 {
                     // 'ref readonly' parameters are passed with 'in'
                     var modifier = p.RefKind switch
@@ -1208,7 +1087,7 @@ namespace MethodCache.SourceGenerator
                 }));
 
                 var declaring = Utils.GetReturnTypeForSignature(method.ContainingType);
-                return $"(({declaring})this._decorated).{Utils.Identifier(method.Name)}{typeArgs}({args})";
+                return $"(({declaring}){target}).{Utils.Identifier(method.Name)}{typeArgs}({args})";
             }
 
             private static string BuildConstraints(ITypeParameterSymbol tp)

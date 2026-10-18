@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Globalization;
+using MethodCache.Core.Telemetry;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
@@ -11,10 +11,8 @@ namespace MethodCache
     /// </summary>
     public static class CacheManagerExtensions
     {
-        private const string FluentMethodName = "MethodCache.Fluent";
+        private const string FluentMethodName = CacheKeyLookup.MethodName;
         private const string BulkMethodName = "MethodCache.Fluent.Bulk";
-        private static readonly CacheRuntimePolicy LookupPolicy = CacheRuntimePolicy.Empty(FluentMethodName);
-        private static readonly ICacheKeyGenerator LookupKeyGenerator = new ExplicitKeyGenerator();
 
         // Distributed lookups a bulk read runs at once, so a large batch doesn't exhaust the cache's connections
         private const int MaxConcurrentDistributedReads = 8;
@@ -31,77 +29,32 @@ namespace MethodCache
             string key,
             Func<CacheContext, CancellationToken, ValueTask<T>> factory,
             Action<CacheEntryOptions.Builder>? configure = null,
-            IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
-            if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            ValidateKey(key);
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
+            ArgumentNullException.ThrowIfNull(cacheManager);
             var options = BuildOptions(configure);
-            var cacheKey = VersionedKey(key, options.Version);
-
-            // A hit needs neither the runtime policy nor a context, unless a predicate or callback asks for one
-            var plain = options.Predicate == null && options.Metrics == null && options.OnHitCallbacks.Count == 0;
-            if (plain && cacheManager.TryGetFast<T>(cacheKey, out var cached))
-            {
-                return new ValueTask<T>(cached!);
-            }
-
-            return GetOrCreateSlowAsync(cacheManager, key, cacheKey, factory, options, services, cancellationToken);
+            ValidateKey(key);
+            return cacheManager.GetOrCreateAsync(key, factory, options, cancellationToken);
         }
 
-        private static async ValueTask<T> GetOrCreateSlowAsync<T>(
-            ICacheManager cacheManager,
-            string key,
-            string cacheKey,
-            Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            CacheEntryOptions options,
-            IServiceProvider? services,
-            CancellationToken cancellationToken)
+        /// <summary>Gets or creates a value with a factory that does not need the cache context.</summary>
+        public static ValueTask<T> GetOrCreateAsync<T>(this ICacheManager cacheManager, string key,
+            Func<CancellationToken, ValueTask<T>> factory, Action<CacheEntryOptions.Builder>? configure = null,
+            CancellationToken cancellationToken = default)
         {
-            var context = new CacheContext(key, services);
-            var stopwatch = options.Metrics != null ? Stopwatch.StartNew() : null;
-
-            if (options.Predicate != null && !options.Predicate(context))
-            {
-                var bypassResult = await factory(context, cancellationToken).ConfigureAwait(false);
-                options.Metrics?.RecordMiss(context.Key);
-                return bypassResult;
-            }
-
-            var factoryExecuted = false;
-            async Task<T> WrappedFactory()
-            {
-                factoryExecuted = true;
-                InvokeCallbacks(options.OnMissCallbacks, context);
-
-                try
-                {
-                    var result = await factory(context, cancellationToken).ConfigureAwait(false);
-                    options.Metrics?.RecordMiss(context.Key);
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    options.Metrics?.RecordError(context.Key, ex);
-                    throw;
-                }
-            }
-
-            var policy = CreateRuntimePolicy(FluentMethodName, options);
-            var value = await cacheManager.GetOrCreateFastAsync(cacheKey, FluentMethodName, WrappedFactory, policy, cancellationToken).ConfigureAwait(false);
-
-            if (!factoryExecuted)
-            {
-                InvokeCallbacks(options.OnHitCallbacks, context);
-                options.Metrics?.RecordHit(context.Key, stopwatch?.Elapsed, value);
-            }
-
-            return value;
+            ArgumentNullException.ThrowIfNull(factory);
+            return GetOrCreateAsync(cacheManager, key, (_, token) => factory(token), configure, cancellationToken);
         }
+
+        /// <summary>Invalidates one logical key, optionally in a versioned key family.</summary>
+        public static ValueTask<InvalidationResult> InvalidateKeyAsync(this ICacheManager cacheManager, string key,
+            int? version = null, CancellationToken cancellationToken = default)
+            => cacheManager.InvalidateKeysAsync([key], version, cancellationToken);
+
+        /// <summary>Invalidates one application tag.</summary>
+        public static ValueTask<InvalidationResult> InvalidateTagAsync(this ICacheManager cacheManager, string tag,
+            CancellationToken cancellationToken = default)
+            => cacheManager.InvalidateTagsAsync([tag], cancellationToken);
 
         /// <summary>
         /// Attempts to read a cached value without executing a factory.
@@ -121,12 +74,7 @@ namespace MethodCache
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return cacheManager.LookupAsync<T>(VersionedKey(key, version), Array.Empty<object>(), LookupPolicy, LookupKeyGenerator);
-        }
-
-        private sealed class ExplicitKeyGenerator : ICacheKeyGenerator
-        {
-            public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy) => methodName;
+            return cacheManager.TryGetAsync<T>(key, version, cancellationToken);
         }
 
         /// <summary>
@@ -142,7 +90,6 @@ namespace MethodCache
             IEnumerable<string> keys,
             Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
             Action<CacheEntryOptions.Builder>? configure = null,
-            IServiceProvider? services = null,
             CancellationToken cancellationToken = default)
         {
             if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
@@ -152,72 +99,158 @@ namespace MethodCache
             cancellationToken.ThrowIfCancellationRequested();
 
             var options = BuildOptions(configure);
-            var keyList = keys as IList<string> ?? keys.ToList();
-            var results = new Dictionary<string, T>(keyList.Count);
-            var missingKeys = new List<string>();
-            HashSet<string>? skipCacheKeys = options.Predicate != null ? new HashSet<string>(StringComparer.Ordinal) : null;
-
-            foreach (var key in keyList)
+            var keyList = keys.Distinct(StringComparer.Ordinal).ToArray();
+            foreach (var key in keyList) ValidateKey(key);
+            if (FindMemoryManager(cacheManager) == null)
+                return await GetOrCreateManyCustomAsync(cacheManager, keyList, factory, options, cancellationToken).ConfigureAwait(false);
+            var telemetry = FindMemoryManager(cacheManager)!.Telemetry;
+            var outcome = RequestResult.Hit;
+            try
             {
-                if (string.IsNullOrWhiteSpace(key))
-                {
-                    throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
-                }
+                var results = new Dictionary<string, T>(keyList.Length);
+                var missingKeys = new List<string>();
+                HashSet<string>? skipCacheKeys = options.Enabled == false ? new HashSet<string>(keyList, StringComparer.Ordinal) : null;
 
-                var singleContext = new CacheContext(key, services);
-                if (options.Predicate == null || options.Predicate(singleContext))
+                foreach (var key in keyList)
                 {
-                    if (cacheManager.TryGetFast<T>(VersionedKey(key, options.Version), out var cached))
+                    if (string.IsNullOrWhiteSpace(key))
                     {
-                        results[key] = cached!;
-                        InvokeCallbacks(options.OnHitCallbacks, singleContext);
-                        continue;
-                    }
-                }
-                else
-                {
-                    skipCacheKeys!.Add(key);
-                }
-
-                missingKeys.Add(key);
-            }
-
-            if (missingKeys.Count > 0 && FindMemoryManager(cacheManager) is { } manager)
-            {
-                missingKeys = await TakeDistributedHitsAsync(manager, missingKeys, skipCacheKeys, results, options, services, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (missingKeys.Count > 0)
-            {
-                var bulkContext = new CacheContext(BulkMethodName, services);
-                var produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false);
-                var policy = CreateRuntimePolicy(FluentMethodName, options);
-
-                foreach (var key in missingKeys)
-                {
-                    if (!produced.TryGetValue(key, out var value))
-                    {
-                        throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+                        throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
                     }
 
-                    if (skipCacheKeys != null && skipCacheKeys.Contains(key))
+                    var singleContext = new CacheContext(key);
+                    if (options.Enabled != false)
                     {
-                        results[key] = value!;
-                        continue;
+                        // A real lookup: the fast path also reports entries due for an early refresh as missing,
+                        // and with EnableFastPath off every entry, which would send cached keys to the factory
+                        var cached = FindMemoryManager(cacheManager) is { } local
+                            ? local.TryGetFreshForLookup<T>(VersionedKey(key, options.Version))
+                            : await cacheManager.TryGetAsync<T>(key, options.Version, cancellationToken).ConfigureAwait(false);
+                        if (cached.Found)
+                        {
+                            results[key] = cached.Value!;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        skipCacheKeys!.Add(key);
                     }
 
-                    // A distributed hit or a concurrent publisher can win over this batch's candidate value.
-                    results[key] = await cacheManager.GetOrCreateFastAsync(
-                        VersionedKey(key, options.Version),
-                        FluentMethodName,
-                        () => Task.FromResult(value!),
-                        policy,
-                        cancellationToken).ConfigureAwait(false);
+                    missingKeys.Add(key);
                 }
-            }
 
-            return results;
+                if (missingKeys.Count > 0 && FindMemoryManager(cacheManager) is { } manager)
+                {
+                    missingKeys = await TakeDistributedHitsAsync(manager, missingKeys, skipCacheKeys, results, options, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (missingKeys.Count > 0)
+                {
+                    var bulkContext = new CacheContext(BulkMethodName);
+                    var policy = CreateRuntimePolicy(FluentMethodName, options);
+                    using var batch = options.Enabled == false ? null : FindMemoryManager(cacheManager)?.BeginBulkLoad(
+                        missingKeys.Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
+                            .Select(key => VersionedKey(key, options.Version)), policy);
+                    IDictionary<string, T> produced;
+                    using (var origin = telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
+                    {
+                        try { produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false); }
+                        catch (Exception error) { origin?.Fail(error); throw; }
+                    }
+                    outcome = options.Enabled == false ? RequestResult.Bypass : RequestResult.Miss;
+
+                    foreach (var key in missingKeys)
+                    {
+                        if (!produced.TryGetValue(key, out var value))
+                        {
+                            throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+                        }
+
+                        if (skipCacheKeys != null && skipCacheKeys.Contains(key))
+                        {
+                            results[key] = value!;
+                            continue;
+                        }
+
+                        // A distributed hit or a concurrent publisher can win over this batch's candidate value.
+                        var cacheKey = VersionedKey(key, options.Version);
+                        results[key] = await (batch != null
+                            ? batch.GetOrCreateAsync(cacheManager, cacheKey, () => Task.FromResult(value!), cancellationToken)
+                            : cacheManager.GetOrCreateFastAsync(cacheKey, FluentMethodName, () => Task.FromResult(value!), policy, cancellationToken))
+                            .ConfigureAwait(false);
+                    }
+                }
+
+                return results;
+            }
+            catch { outcome = RequestResult.Error; throw; }
+            finally { telemetry?.Request("method", BulkMethodName, outcome); }
         }
+
+        private static async ValueTask<IDictionary<string, T>> GetOrCreateManyCustomAsync<T>(ICacheManager manager,
+            string[] keys, Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+            CacheEntryOptions options, CancellationToken token)
+        {
+            var results = new Dictionary<string, T>(StringComparer.Ordinal);
+            if (options.Enabled == false)
+            {
+                var bypass = await factory(keys, new CacheContext(BulkMethodName), token).ConfigureAwait(false);
+                foreach (var key in keys) results[key] = Candidate(bypass, key);
+                return results;
+            }
+            var hits = new CacheLookupResult<T>[keys.Length];
+            await Parallel.ForEachAsync(Enumerable.Range(0, keys.Length),
+                new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentDistributedReads, CancellationToken = token }, async (index, ct) =>
+                {
+                    var lookup = manager.TryGetAsync<T>(keys[index], options.Version, ct);
+                    hits[index] = lookup.IsCompletedSuccessfully ? lookup.Result : await lookup.AsTask().WaitAsync(ct).ConfigureAwait(false);
+                }).ConfigureAwait(false);
+            var missing = new List<string>();
+            for (var i = 0; i < keys.Length; i++)
+                if (hits[i].Found && options.CanCache(hits[i].Value)) results[keys[i]] = hits[i].Value!;
+                else missing.Add(keys[i]);
+            if (missing.Count == 0) return results;
+
+            var produced = new TaskCompletionSource<IDictionary<string, T>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Observe(produced.Task);
+            var entered = new bool[missing.Count];
+            var arrivals = new TaskCompletionSource[missing.Count];
+            var pending = new Task<T>[missing.Count];
+            try
+            {
+                for (var i = 0; i < missing.Count; i++)
+                {
+                    var index = i;
+                    arrivals[i] = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    pending[i] = manager.GetOrCreateAsync(missing[i], async (_, ct) =>
+                    {
+                        entered[index] = true;
+                        arrivals[index].TrySetResult();
+                        return Candidate(await produced.Task.WaitAsync(ct).ConfigureAwait(false), missing[index]);
+                    }, options, token).AsTask();
+                    Observe(pending[i]);
+                    _ = pending[i].ContinueWith(static (_, state) => ((TaskCompletionSource)state!).TrySetResult(), arrivals[i],
+                        CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                }
+                await Task.WhenAll(arrivals.Select(static arrival => arrival.Task)).WaitAsync(token).ConfigureAwait(false);
+                foreach (var load in pending.Where(static load => load.IsFaulted || load.IsCanceled)) await load.ConfigureAwait(false);
+                var required = missing.Where((_, index) => entered[index]).ToArray();
+                var candidates = required.Length == 0 ? new Dictionary<string, T>() : await factory(required, new CacheContext(BulkMethodName), token).ConfigureAwait(false);
+                produced.TrySetResult(candidates);
+                var published = await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false);
+                for (var i = 0; i < missing.Count; i++) results[missing[i]] = published[i];
+                return results;
+            }
+            catch (Exception error) { produced.TrySetException(error); throw; }
+        }
+
+        private static T Candidate<T>(IDictionary<string, T> values, string key)
+            => values.TryGetValue(key, out var value) ? value : throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+
+        private static void Observe(Task task)
+            => _ = task.ContinueWith(static completed => _ = completed.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
         /// <summary>
         /// Reads the distributed cache for the keys missing from memory, a few at a time, and moves the hits into
@@ -229,7 +262,6 @@ namespace MethodCache
             HashSet<string>? skipCacheKeys,
             Dictionary<string, T> results,
             CacheEntryOptions options,
-            IServiceProvider? services,
             CancellationToken cancellationToken)
         {
             var lookups = missingKeys.Distinct(StringComparer.Ordinal)
@@ -253,7 +285,6 @@ namespace MethodCache
                 if (hits[i].Found)
                 {
                     results[lookups[i]] = hits[i].Value!;
-                    InvokeCallbacks(options.OnHitCallbacks, new CacheContext(lookups[i], services));
                     (found ??= new HashSet<string>(StringComparer.Ordinal)).Add(lookups[i]);
                 }
             }
@@ -262,16 +293,11 @@ namespace MethodCache
         }
 
         /// <summary>
-        /// The in-memory manager behind <paramref name="cacheManager"/>, looking through decorators such as the
-        /// telemetry one, or <see langword="null"/> when there is none.
+        /// The built-in in-memory manager, or <see langword="null"/> for another manager.
         /// </summary>
         private static InMemoryCacheManager? FindMemoryManager(ICacheManager cacheManager)
         {
-            while (cacheManager is ICacheManagerDecorator decorator)
-            {
-                cacheManager = decorator.InnerManager;
-            }
-
+            while (cacheManager is ICacheManagerDecorator decorator) cacheManager = decorator.InnerManager;
             return cacheManager as InMemoryCacheManager;
         }
 
@@ -309,8 +335,9 @@ namespace MethodCache
 
         private static CacheEntryOptions BuildOptions(Action<CacheEntryOptions.Builder>? configure)
         {
+            if (configure == null) return CacheEntryOptions.Default;
             var builder = new CacheEntryOptions.Builder();
-            configure?.Invoke(builder);
+            configure(builder);
             return builder.Build();
         }
 
@@ -320,12 +347,5 @@ namespace MethodCache
             return CacheRuntimePolicy.FromPolicy(methodId, policy, fields);
         }
 
-        private static void InvokeCallbacks(IReadOnlyList<Action<CacheContext>> callbacks, CacheContext context)
-        {
-            foreach (var callback in callbacks)
-            {
-                callback(context);
-            }
-        }
     }
 }

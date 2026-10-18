@@ -102,7 +102,10 @@ checkout_script() { # root sha run_id
 set -euo pipefail
 cd ~ && mkdir -p '$1/runs' && cd '$1'
 [ -d mirror.git ] || git clone --quiet --mirror '$clone_url' mirror.git
-git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+# A fetch may start an automatic gc. Detached, it would pack and delete loose objects while the clone below copies
+# them, and the clone would miss objects (git: "unable to read tree"; Nerdbank.GitVersioning: "tree ... could not be
+# found"). Run it before the fetch returns instead.
+git -C mirror.git -c gc.autoDetach=false -c maintenance.autoDetach=false fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
 # macOS is collected by the owned-checkout collector; never age-delete an active local checkout.
 if [ '$1' != '$state/macos' ]; then
   find runs -mindepth 1 -maxdepth 1 -mtime +$keep_runs_days -exec rm -rf {} +
@@ -116,18 +119,32 @@ SCRIPT
 
 run_linux() { # sha run_id results_dir
   {
+    if [ -n "$nimbus_lock" ]; then
+      # Repository checkout and age-based collection also consume shared host capacity.
+      # Hold this descriptor through the whole remote pass.
+      cat <<SCRIPT
+set -euo pipefail
+exec 8>>'$nimbus_lock'
+flock --shared --timeout 1800 8
+SCRIPT
+    fi
     checkout_script "$nimbus_root" "$1" "$2"
     cat <<SCRIPT
 export METHODCACHE_CI_RUN_ID='$2' METHODCACHE_CI_CACHE=~/'$nimbus_root/cache'
-# Always held when configured: a missing lease directory fails the run instead of building without the lease
-${nimbus_lock:+export METHODCACHE_CI_SHARED_LOCK='$nimbus_lock'}
+# Descriptor 8 already owns the configured lease from before checkout. Do not reacquire a second
+# shared descriptor: an intervening queued exclusive holder could otherwise deadlock nested leases.
+unset METHODCACHE_CI_SHARED_LOCK
 code=0
 nice -n 10 build/ci/linux.sh || code=\$?
 # Written only when every job got its turn, so a dropped connection or timeout is retried
 echo "\$code" > artifacts/ci/finished
 exit "\$code"
 SCRIPT
-  } | with_timeout "$timeout_seconds" ssh "${ssh_options[@]}" "$nimbus" bash -s > "$3/console.log" 2>&1
+  # An SSH disconnect does not reliably terminate its remote Docker client or daemon-owned containers.
+  # Enforce the deadline on Nimbus, killing the remote process group so linux.sh's EXIT cleanup runs.
+  # Keep the transport alive through the server's 30-second forced-exit grace and result delivery.
+  } | with_timeout "$((timeout_seconds + 60))" ssh "${ssh_options[@]}" "$nimbus" \
+      timeout --signal=TERM --kill-after=30s "$timeout_seconds" bash -s > "$3/console.log" 2>&1
   local code=$?
   # Preserve both SSH and extraction diagnostics: an empty archive must not look like a job that never ran.
   fetch_linux_results "$2" "$3" "$1" || return 75
@@ -155,10 +172,10 @@ New-Item -ItemType Directory -Force -Path (Join-Path $Root 'runs') | Out-Null
 Set-Location $Root
 function Invoke-Native { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
 
-# The .NET 8, 9 and 10 SDKs in a folder of our own, so CI needs no administrator and leaves the machine's alone
+# The .NET 10 SDK in a folder of our own; no administrator or changes to machine-wide SDKs
 $dotnet = Join-Path $Root 'dotnet'
 $sdks = if (Test-Path "$dotnet\dotnet.exe") { & "$dotnet\dotnet.exe" --list-sdks } else { @() }
-foreach ($channel in '8.0', '9.0', '10.0') {
+foreach ($channel in '10.0') {
     if (-not ($sdks -match "^$([regex]::Escape($channel))\.")) {
         if (-not (Test-Path dotnet-install.ps1)) { Invoke-WebRequest -UseBasicParsing https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1 }
         & powershell -NoProfile -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel $channel -InstallDir $dotnet -NoPath
@@ -170,7 +187,8 @@ $env:DOTNET_MULTILEVEL_LOOKUP = '0'
 $env:PATH = "$dotnet;$env:PATH"
 
 if (-not (Test-Path mirror.git)) { Invoke-Native git clone --quiet --mirror $CloneUrl mirror.git }
-Invoke-Native git -C mirror.git fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
+# Any automatic gc finishes before the fetch returns, so the clone below copies a stable object store
+Invoke-Native git -C mirror.git -c gc.autoDetach=false -c maintenance.autoDetach=false fetch --quiet --prune origin '+refs/heads/*:refs/heads/*' '+refs/pull/*/head:refs/pull/*/head'
 Get-ChildItem runs -Directory | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$KeepDays) } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 $run = Join-Path $Root "runs\$RunId"

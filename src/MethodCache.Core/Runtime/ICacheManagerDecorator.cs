@@ -9,7 +9,7 @@ namespace MethodCache
     /// <c>GetOrCreateManyAsync</c> uses it to read the distributed cache for the keys missing from memory before it
     /// runs the bulk factory. Implement it on your own decorator so bulk reads keep doing that through it.
     /// </remarks>
-    public interface ICacheManagerDecorator
+    internal interface ICacheManagerDecorator
     {
         /// <summary>The cache manager this one wraps.</summary>
         ICacheManager InnerManager { get; }

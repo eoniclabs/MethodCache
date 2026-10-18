@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # HTTP response caching
 
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response headers,
@@ -6,14 +8,23 @@ conditional validation, and a successful 304 is returned to the caller as the fu
 
 <!-- snippet: http-basic -->
 ```cs
+builder.Services.AddMethodCache();
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```
 <!-- endSnippet -->
 
 The [package guide](../../src/MethodCache.HttpCaching/README.md) covers settings, storage, private and shared caches,
-limits and metrics. This page covers the rules the cache follows and how to write your own storage. See
+limits and metrics. This page covers the rules the cache follows and Core-owned storage. See
 [Security](../security.md#methodcachehttpcaching) for the threat model.
+
+Responses without custom key headers or `Vary` fields use direct variant selection, avoiding temporary sets
+and sorting. Private caches still isolate `Authorization` and `Cookie`; configured headers and `Vary` retain
+their combined, case-insensitive selection rules.
+
+A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
+
+Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
 
 ## Freshness and validation
 
@@ -56,84 +67,44 @@ limits and metrics. This page covers the rules the cache follows and how to writ
 A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
 the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
 background revalidation that was already in flight can still complete, but it stores its response under the old
-generation, so later requests fetch the updated response. With `UseDistributedCache` the generation is shared by
-every instance.
+generation, so later requests fetch the updated response. With native Redis or SQL Server configured, the generation is shared by every instance, even when backplane
+messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
+SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
+non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
+The transport retains only its latest bounded command-text shape. It does not cache generation values;
+reordered or duplicate keys still return generations in the caller's order.
 
 The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
-URLs that share a slot can cause an extra cache miss when either is invalidated. Generation records never expire on
+URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
+the retired bodies from that slot, releasing their byte budget immediately. Generation records never expire on
 their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
-to the origin. If storing a new generation fails, the error reaches the caller, although the write to the origin may
-already have succeeded.
+to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
+bounded recovery. The origin mutation may have succeeded: do not automatically retry it. Cancelling the caller stops
+its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
+tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
+bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
+lost when the process exits; other nodes may retain old responses until they expire.
 
-## Custom storage
+## Core storage and administration
 
-To store responses somewhere else, implement `IHttpCacheStorage`. A successful write calls only `InvalidateAsync`,
-and responses are looked up under the generation from `GetGenerationAsync`, so both must be correct:
+`AddHttpCaching` requires an explicit `AddMethodCache` registration in the same container. Either registration
+order works. Without L2, Core uses a separate HTTP byte budget (100 MiB by default), independent of method entries.
+Bodies exceeding the whole HTTP budget remain streamed and are not stored. Headers and metadata are charged too.
+With MethodCache Redis or SQL Server configured, HTTP responses live exclusively in that owned L2; the application's
+unrelated `IDistributedCache` is never a fallback. HTTP entries use an internal codec, independent of method serializers.
+The former `HttpCacheStorageOptions`, `IHttpCacheStorage` and `HttpCacheEntry` public extension points are removed.
 
-- Every invalidation publishes a new generation, unique and shared by every storage instance. A storage that returns
-  a constant generation, or implements `InvalidateAsync` as a no-op, keeps serving old responses after a write.
-- A generation value is never reused. A missing or lost generation record starts a new unique one, never one used
-  before. Several keys may share a generation.
-- Clearing the storage also changes generations, so a request still in flight can't store an older response into
-  the active generation.
+`ICacheAdministrator` lists actual local representations, or at most 1024 historical local L2 observations.
+`Storage=ObservedDistributed` is not verified backend presence or a global inventory; observations contain no body,
+credentials, cookie header or raw URL query. An unknown observation id returns NotFound. Removing a known id retires
+its URL generation and all variants. `Clear` retires the shared global generation. Client tags are
+`http:` followed by `MethodCacheKeys.Part(clientName)`; configured static `HttpCacheOptions.Tags` participate too.
+The HTTP administration and byte statistics also work with a NoOp method manager.
 
-A minimal correct storage:
-
-<!-- snippet: http-custom-storage -->
-```cs
-public sealed class DictionaryHttpCacheStorage(TimeProvider time) : IHttpCacheStorage
-{
-    private readonly ConcurrentDictionary<string, (HttpCacheEntry Entry, DateTimeOffset Expires)> _entries = new();
-    private readonly ConcurrentDictionary<string, string> _generations = new();
-
-    // Responses are stored per generation. A missing generation (never set, cleared or lost) starts a new
-    // unique one, never a value used before, so losing it can only cause cache misses.
-    public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
-        => ValueTask.FromResult(_generations.GetOrAdd(key, _ => Guid.NewGuid().ToString("N")));
-
-    // Called after a successful POST, PUT, PATCH or DELETE: a fresh generation hides every older response.
-    public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
-    {
-        _generations[key] = Guid.NewGuid().ToString("N");
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
-        => ValueTask.FromResult(_entries.TryGetValue(key, out var stored) && stored.Expires > time.GetUtcNow() ? stored.Entry : null);
-
-    public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
-    {
-        _entries[key] = (entry, time.GetUtcNow() + timeToLive);
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
-    {
-        _entries.TryRemove(key, out _);
-        return ValueTask.CompletedTask;
-    }
-
-    public ValueTask ClearAsync(CancellationToken cancellationToken = default)
-    {
-        _generations.Clear(); // in-flight requests can then only publish into orphaned generations
-        _entries.Clear();
-        return ValueTask.CompletedTask;
-    }
-}
-```
-<!-- endSnippet -->
-
-A production storage also bounds its generation records (the built-in one groups URLs into 4096 slots). Register it
-before `AddHttpCaching()`:
-
-<!-- snippet: http-custom-storage-registration -->
-```cs
-builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
-    .AddHttpCaching();
-```
-<!-- endSnippet -->
+Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and their byte budget.
+Its work grows with the resident entry count; URL invalidation and other configured application tags use their indexes.
+This keeps the implicit client tag out of the publication index while preserving administration and generation checks.
 
 ## Transport and cookies
 
@@ -142,6 +113,8 @@ other configuration of that handler, so the default registration caches at once.
 A handler that already has cookies off is left alone, so a cookie-free handler shared between clients keeps working.
 `ConfigureHttpClientDefaults(b => b.AddHttpCaching())` caches every client, each under its own name: two clients
 never share entries, and they all use the settings given there.
+`KeepCookies=true` preserves the transport configuration and completely bypasses response caching, validation and
+stale fallback. `only-if-cached` then returns 504. A successful unsafe mutation still retires shared generations.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP
 caching.
 

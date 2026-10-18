@@ -35,8 +35,24 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Serialization.MessagePack\MethodCache.Serialization.MessagePack.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.SqlServer\MethodCache.SqlServer.csproj" Aliases="SqlProvider" />
   </ItemGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <Compile Include="../TestSupport/AtomicTestCache.cs" Link="TestSupport/AtomicTestCache.cs" />
+    <!-- Real SQL lock checks supplement the always-running fault tests below; their infrastructure lives in the integration project. -->
+    <Compile Remove="FaultInjection/SqlServerIntegration/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/DurationCorpus.cs" Link="DurationCorpus.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Fixtures/wire-v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
+    <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+    <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
   </ItemGroup>
 </Project>

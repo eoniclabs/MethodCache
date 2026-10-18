@@ -5,29 +5,50 @@ using MethodCache.Policies;
 namespace MethodCache.Infrastructure
 {
     /// <summary>
-    /// The live policy of one cached method. Every decorator for the method shares the same handle and reads
-    /// <see cref="Current"/> on each call, so a runtime override or a configuration reload reaches services that
-    /// were already created, at the cost of one volatile read.
+    /// Publishes policy changes to the method slots of each bound registration. Generated decorators capture
+    /// the slot snapshot once per invocation; runtime changes also reach existing decorator instances.
     /// </summary>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class PolicyHandle
+    internal sealed class PolicyHandle
     {
         private readonly object _sync = new();
         private CacheRuntimePolicy _current;
         private long _version;
+        private Action<CacheRuntimePolicy>? _changed;
 
         internal PolicyHandle(PolicyResolutionResult result)
         {
             MethodId = result.MethodId;
-            _current = CacheRuntimePolicy.FromResolverResult(result);
+            var policy = CacheRuntimePolicy.FromResolverResult(result);
+            var isPrivate = PolicyIdentity.IsRuntime(result);
+            _current = policy with { Generation = new PolicyGeneration(), Identity = isPrivate ? PolicyIdentity.Private() : PolicyIdentity.Shared(policy), PrivateIdentity = isPrivate };
             _version = result.Version;
         }
 
         private PolicyHandle(CacheRuntimePolicy policy)
         {
             MethodId = policy.MethodId;
-            _current = policy;
+            _current = policy with { Generation = new PolicyGeneration(), Identity = policy.Identity ?? PolicyIdentity.Shared(policy) };
         }
+
+        // The handle of one registration of an interface: the method's shared handle, plus what the registration adds
+        private PolicyHandle(PolicyHandle shared, RegistrationPolicyRegistry registration)
+        {
+            MethodId = shared.MethodId;
+            _current = shared.Current;
+            Shared = shared;
+            KeySuffix = registration.KeySuffix;
+            Background = registration.Background;
+        }
+
+        /// <summary>For the handle of one registration, the method's shared handle; otherwise null.</summary>
+        internal PolicyHandle? Shared { get; }
+
+        /// <summary>The service key part of a keyed registration's cache keys (<c>@ecb</c>), else null.</summary>
+        internal string? KeySuffix { get; }
+
+        /// <summary>How a background load gets its own instance of a scoped or transient registration, else null.</summary>
+        internal BackgroundLoadTarget? Background { get; }
 
         /// <summary>
         /// The method the policy applies to.
@@ -37,7 +58,7 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// The method's policy as it is right now.
         /// </summary>
-        public CacheRuntimePolicy Current => Volatile.Read(ref _current);
+        public CacheRuntimePolicy Current => Shared?.Current ?? Volatile.Read(ref _current);
 
         /// <summary>
         /// Returns the shared handle for a method. Registries other than MethodCache's own cannot report changes,
@@ -46,6 +67,11 @@ namespace MethodCache.Infrastructure
         public static PolicyHandle For(IPolicyRegistry registry, string methodId)
         {
             if (registry == null) throw new ArgumentNullException(nameof(registry));
+
+            if (registry is RegistrationPolicyRegistry registration)
+            {
+                return new PolicyHandle(For(registration.Inner, methodId), registration);
+            }
 
             return registry is PolicyRegistry policyRegistry
                 ? policyRegistry.GetHandle(methodId)
@@ -61,20 +87,62 @@ namespace MethodCache.Infrastructure
             return new PolicyHandle(policy);
         }
 
+        internal void Subscribe(Action<CacheRuntimePolicy> changed)
+        {
+            lock (_sync)
+            {
+                changed(_current);
+                _changed += changed;
+            }
+        }
+
+        internal void InvalidateGeneration()
+        {
+            lock (_sync)
+                lock (_current.Generation!.Gate)
+                {
+                    _current.Generation.Retire();
+                    var next = _current with { Generation = new PolicyGeneration() };
+                    Volatile.Write(ref _current, next);
+                    _changed?.Invoke(next);
+                }
+        }
+
         /// <summary>
         /// Publishes a newly resolved policy unless the handle already holds the same or a newer version.
         /// </summary>
-        internal void Update(PolicyResolutionResult result)
+        internal bool Update(PolicyResolutionResult result, bool awaitInvalidation = false)
         {
             lock (_sync)
             {
                 if (result.Version <= _version)
                 {
-                    return;
+                    return false;
                 }
 
                 _version = result.Version;
-                Volatile.Write(ref _current, CacheRuntimePolicy.FromResolverResult(result));
+                var resolved = CacheRuntimePolicy.FromResolverResult(result);
+                if (PolicyIdentity.SameBehavior(_current, resolved) && !(_current.PrivateIdentity && !PolicyIdentity.IsRuntime(result)))
+                {
+                    var audited = resolved with { Generation = _current.Generation, Identity = _current.Identity, PrivateIdentity = _current.PrivateIdentity };
+                    Volatile.Write(ref _current, audited);
+                    _changed?.Invoke(audited);
+                    return false;
+                }
+                var isPrivate = PolicyIdentity.IsRuntime(result);
+                var next = resolved with
+                {
+                    Generation = new PolicyGeneration { DistributedReady = !awaitInvalidation },
+                    Identity = isPrivate ? PolicyIdentity.Private() : PolicyIdentity.Shared(resolved),
+                    PrivateIdentity = isPrivate
+                };
+                lock (_current.Generation!.Gate)
+                {
+                    _current.Generation.Retire();
+                    Volatile.Write(ref _current, next);
+                    _changed?.Invoke(next);
+                    return true;
+                }
             }
         }
     }

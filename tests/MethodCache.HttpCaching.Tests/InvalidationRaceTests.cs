@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Net;
 using System.Net.Http.Headers;
 using MethodCache.HttpCaching.Internal;
@@ -26,7 +27,7 @@ public class InvalidationRaceTests
     public async Task SuccessfulPost_DuringOlderOriginRequest_DoesNotRepublishOldResponse(bool distributed, bool variant, bool background)
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
-        var backend = distributed ? new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())) : null;
+        var backend = distributed ? HttpEpochTestCache.Create(time) : null;
         using var firstStore = Store(time, backend);
         using var secondStore = distributed ? Store(time, backend) : null;
         using var origin = new GatedOrigin(background);
@@ -64,7 +65,7 @@ public class InvalidationRaceTests
     public async Task SuccessfulPost_DuringStoragePublication_DoesNotExposeLateOldWrite(bool distributed)
     {
         var time = new FakeTimeProvider();
-        var backend = distributed ? new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())) : null;
+        var backend = distributed ? HttpEpochTestCache.Create(time) : null;
         using var storage = Store(time, backend);
         using var secondStore = distributed ? Store(time, backend) : null;
         var gated = new GatedStorage(storage);
@@ -81,8 +82,8 @@ public class InvalidationRaceTests
         Assert.Equal("new", await fresh.Content.ReadAsStringAsync());
     }
 
-    private static HttpCacheStore Store(TimeProvider time, IDistributedCache? distributed = null)
-        => new(Options.Create(new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, time, distributed);
+    private static TestHttpStore Store(TimeProvider time, IDistributedCache? distributed = null)
+        => new(time, distributed);
 
     private sealed class GatedOrigin(bool background) : HttpMessageHandler
     {

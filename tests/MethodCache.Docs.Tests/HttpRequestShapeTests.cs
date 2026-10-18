@@ -73,6 +73,7 @@ public class HttpRequestShapeTests
     {
         using var origin = new Origin { MaxAge = TimeSpan.Zero, ETag = "\"v1\"" };
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("api")
             .ConfigurePrimaryHttpMessageHandler(() => origin)
             .AddHttpMessageHandler(() => new SendTwice())
@@ -118,6 +119,7 @@ public class HttpRequestShapeTests
         using var first = new Origin { Version = "first" };
         using var second = new Origin { Version = "second" };
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.ConfigureHttpClientDefaults(builder => builder.AddHttpCaching(options => options.AllowUnverifiedTransport = true));
         services.AddHttpClient("first").ConfigurePrimaryHttpMessageHandler(() => first);
         services.AddHttpClient("second").ConfigurePrimaryHttpMessageHandler(() => second);
@@ -135,6 +137,7 @@ public class HttpRequestShapeTests
     private static ServiceProvider Provider(Origin origin)
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("api").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         return services.BuildServiceProvider();
     }

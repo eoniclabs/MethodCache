@@ -25,7 +25,11 @@ public interface ICacheAdministrator
     /// <summary>Describes one live entry, or returns <c>null</c> when the key is not cached.</summary>
     CacheEntryInfo? GetEntry(string key);
 
-    /// <summary>Removes one entry. Returns <c>false</c> when the key was not cached.</summary>
+    /// <summary>
+    /// Removes one entry, from memory and, when one is configured, from the distributed cache and the other
+    /// instances. Returns <c>false</c> when the key was not cached in this instance's memory and there is no
+    /// distributed cache that could hold it.
+    /// </summary>
     ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>Removes every entry carrying any of <paramref name="tags"/>.</summary>
@@ -33,6 +37,9 @@ public interface ICacheAdministrator
 
     /// <summary>Removes every entry and resets the hit and miss counters.</summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Reports bounded local invalidation recovery queues.</summary>
+    InvalidationQueues GetInvalidationQueues() => new(0, 0);
 
     /// <summary>The effective policy of every cached method, as resolved from attributes, configuration and overrides.</summary>
     IReadOnlyList<CachedMethodInfo> GetMethods();

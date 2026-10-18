@@ -3,13 +3,15 @@ using MethodCache.Policies;
 
 namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
-internal sealed class RuntimeCacheConfigurator : IRuntimeCacheConfigurator
+internal sealed partial class RuntimeCacheConfigurator : IRuntimeConfiguration
 {
     private readonly RuntimePolicyStore _store;
+    private readonly IPolicyRegistry? _registry;
 
-    public RuntimeCacheConfigurator(RuntimePolicyStore store)
+    public RuntimeCacheConfigurator(RuntimePolicyStore store, IPolicyRegistry? registry = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _registry = registry;
     }
 
     public Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure, RuntimeOverrideMetadata? metadata = null)

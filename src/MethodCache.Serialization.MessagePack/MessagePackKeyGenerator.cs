@@ -24,7 +24,7 @@ namespace MethodCache.Serialization.MessagePack;
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, MessagePackKeyGenerator&gt;());
 /// </code>
 /// </example>
-public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
+internal sealed class MessagePackKeyGenerator : ICacheKeyGenerator
 {
     private const byte NullFrame = 0x00;
     private const byte KeyProviderFrame = 0x01;
@@ -33,7 +33,7 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
     private static readonly KeyObjectFormatter ObjectFormatter = new();
     private static readonly MessagePackSerializerOptions KeyOptions = TypelessContractlessStandardResolver.Options
         .WithResolver(CompositeResolver.Create(
-            new IMessagePackFormatter[] { new KeyStringFormatter(), ObjectFormatter },
+            new IMessagePackFormatter[] { new KeyStringFormatter(), new KeyIPAddressFormatter(), new KeyJsonElementFormatter(), ObjectFormatter },
             new IFormatterResolver[] { new PolymorphicKeyResolver() }));
 
     /// <inheritdoc />
@@ -85,11 +85,33 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
 
         private static class FormatterCache<T>
         {
-            internal static readonly IMessagePackFormatter<T>? Instance =
-                !typeof(T).IsValueType && !typeof(T).IsSealed && typeof(T) != typeof(Type)
+            internal static readonly IMessagePackFormatter<T>? Instance = KeyCollectionState.For(typeof(T)).Length > 0
+                ? new CollectionStateFormatter<T>()
+                : !typeof(T).IsValueType && !typeof(T).IsSealed && typeof(T) != typeof(Type)
                     ? new PolymorphicKeyFormatter<T>()
                     : TypelessContractlessStandardResolver.Instance.GetFormatter<T>();
         }
+    }
+
+    private sealed class CollectionStateFormatter<T> : IMessagePackFormatter<T>
+    {
+        public void Serialize(ref MessagePackWriter writer, T value, MessagePackSerializerOptions options)
+        {
+            if (value is null) { writer.WriteNil(); return; }
+            if (value.GetType() != typeof(T)) { ObjectFormatter.Serialize(ref writer, value, options); return; }
+            var members = KeyCollectionState.For(typeof(T));
+            writer.WriteArrayHeader(2);
+            writer.WriteMapHeader(members.Length);
+            foreach (var member in members)
+            {
+                writer.Write(member.Name);
+                ObjectFormatter.Serialize(ref writer, member.Read(value), options);
+            }
+            TypelessContractlessStandardResolver.Instance.GetFormatterWithVerify<T>().Serialize(ref writer, value, options);
+        }
+
+        public T Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+            => throw new NotSupportedException("Cache keys are hashed, never deserialized.");
     }
 
     private sealed class PolymorphicKeyFormatter<T> : IMessagePackFormatter<T>
@@ -127,12 +149,36 @@ public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
             throw new NotSupportedException("Cache keys are hashed, never deserialized.");
     }
 
+    // MessagePack has no formatter for these; the contractless one would read IPAddress.ScopeId (which throws for IPv4)
+    // and JsonElement.ValueKind (the same for every object), so they are written as their text
+    internal sealed class KeyIPAddressFormatter : IMessagePackFormatter<System.Net.IPAddress?>
+    {
+        public void Serialize(ref MessagePackWriter writer, System.Net.IPAddress? value, MessagePackSerializerOptions options)
+        {
+            if (value is null) writer.WriteNil();
+            else writer.Write(value.ToString());
+        }
+        public System.Net.IPAddress? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
+
+    internal sealed class KeyJsonElementFormatter : IMessagePackFormatter<System.Text.Json.JsonElement>
+    {
+        public void Serialize(ref MessagePackWriter writer, System.Text.Json.JsonElement value, MessagePackSerializerOptions options)
+            => writer.Write(System.Text.Json.JsonSerializer.Serialize(value));
+        public System.Text.Json.JsonElement Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) =>
+            throw new NotSupportedException("Cache keys are hashed, never deserialized.");
+    }
+
     internal sealed class KeyObjectFormatter : IMessagePackFormatter<object?>
     {
         public void Serialize(ref MessagePackWriter writer, object? value, MessagePackSerializerOptions options)
         {
             if (value is string text)
                 options.Resolver.GetFormatterWithVerify<string?>().Serialize(ref writer, text, options);
+            else if (value is System.Net.IPAddress address && value.GetType() != typeof(System.Net.IPAddress))
+                // IPAddress.Loopback and the like are a framework subclass; write them as the IPAddress they equal
+                TypelessFormatter.Instance.Serialize(ref writer, System.Net.IPAddress.Parse(address.ToString()), options);
             else
                 TypelessFormatter.Instance.Serialize(ref writer, value, options);
         }

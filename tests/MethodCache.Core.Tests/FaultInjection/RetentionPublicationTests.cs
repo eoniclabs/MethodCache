@@ -39,7 +39,7 @@ public class RetentionPublicationTests
         var writeFinish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         if (slowBackend) backend.BeforeWrite = async key =>
         {
-            if (!key.EndsWith("e:slow", StringComparison.Ordinal)) return;
+            if (!key.EndsWith("e6:s1:slow", StringComparison.Ordinal)) return;
             writeBegan.TrySetResult();
             await writeFinish.Task;
         };

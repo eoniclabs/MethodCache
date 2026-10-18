@@ -26,7 +26,7 @@ public class BackplaneShutdownTests
     {
         var backplane = new ControlledBackplane();
         var layer = Create(backplane);
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), null, new FakeTimeProvider(), layer);
+        var manager = new InMemoryCacheManager(null, new FakeTimeProvider(), layer);
         manager.Dispose();
         Assert.Equal(1, backplane.UnsubscribeCalls);
         layer.Dispose();

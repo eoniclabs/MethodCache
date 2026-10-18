@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache.Core.PolicyPipeline.Model;
+using MethodCache.Core.PolicyPipeline.Sources;
 using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,7 @@ public sealed class JsonPolicySourceTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
 
         var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -56,7 +57,7 @@ public sealed class JsonPolicySourceTests
         };
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
         var registry = services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>();
 
         // Methods without settings of their own get the section through the defaults; the source generator
@@ -77,7 +78,7 @@ public sealed class JsonPolicySourceTests
 
         var error = Assert.Throws<InvalidOperationException>(() =>
         {
-            services.AddMethodCacheFromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build());
+            services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
             services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Other");
         });
         Assert.Contains("MethodCache:FailSafe", error.Message);
@@ -97,7 +98,7 @@ public sealed class JsonPolicySourceTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
 
         var provider = services.BuildServiceProvider();
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -178,16 +179,54 @@ public sealed class JsonPolicySourceTests
     [InlineData("SlidingExpiration", "00:00:00")]
     [InlineData("RefreshAhead", "soon")]
     [InlineData("Version", "-1")]
-    public void AddMethodCacheFromConfiguration_Throws_ForInvalidValues(string key, string value)
+    public void InvalidValue_ThrowsWhenThePoliciesLoad(string key, string value)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             [$"MethodCache:Services:Sample.Type.Method:{key}"] = value
         });
+        using var provider = BuildProvider(configuration);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddMethodCacheFromConfiguration(configuration));
+        var exception = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
 
         Assert.Contains($"MethodCache:Services:Sample.Type.Method:{key}", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("Duration", "00:01:00")]
+    [InlineData("SlidingExpiration", "00:00:30")]
+    public void RefreshWindowAsLongAsTheEntryLives_ThrowsWhenThePoliciesLoad(string lifetime, string value)
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            [$"MethodCache:Services:Sample.Type.Method:{lifetime}"] = value,
+            ["MethodCache:Services:Sample.Type.Method:RefreshAhead"] = "00:01:00"
+        });
+        using var provider = BuildProvider(configuration);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
+
+        Assert.Contains("MethodCache:Services:Sample.Type.Method:RefreshAhead", exception.Message);
+    }
+
+    [Fact]
+    public async Task Snapshot_ReadsConfigurationAddedAfterRegistration()
+    {
+        var configuration = new ConfigurationManager();
+        configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "01:00:00"
+        });
+        var source = new ConfigFilePolicySource(configuration, "MethodCache");
+
+        // For example a source Program.cs adds later, or WebApplicationFactory's test configuration
+        configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:00:01"
+        });
+
+        var snapshot = Assert.Single(await source.GetSnapshotAsync());
+        Assert.Equal(TimeSpan.FromSeconds(1), snapshot.Policy.Duration);
     }
 
     private static IConfigurationRoot BuildConfiguration(Dictionary<string, string?> data)
@@ -196,7 +235,7 @@ public sealed class JsonPolicySourceTests
     private static ServiceProvider BuildProvider(IConfiguration configuration)
     {
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         return services.BuildServiceProvider();
     }
 

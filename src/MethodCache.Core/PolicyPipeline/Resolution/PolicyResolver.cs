@@ -260,17 +260,9 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             source.Changed += Handler;
             _immediateSubscriptions.Add((source, Handler));
 
-            IReadOnlyCollection<PolicySnapshot> snapshots;
-            if (source is RuntimePolicySource runtime)
-            {
-                var captured = runtime.CaptureSnapshots();
-                snapshots = captured.Snapshots;
-                _snapshotRevisions[registration] = captured.Revision;
-            }
-            else
-            {
-                snapshots = source.GetSnapshot();
-            }
+            var captured = source.CaptureSnapshots();
+            var snapshots = captured.Snapshots;
+            _snapshotRevisions[registration] = captured.Revision;
             foreach (var snapshot in snapshots)
             {
                 if (!string.IsNullOrWhiteSpace(snapshot.MethodId))
@@ -310,7 +302,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "MethodCache stopped watching the policy source '{SourceId}'; its policies stay as they were last read.", registration.SourceId);
+            _logger.LogError("MethodCache stopped watching the policy source '{SourceId}'; its policies stay as they were last read. Error type: {ErrorType}.", registration.SourceId, ex.GetType().FullName);
         }
     }
 
@@ -435,7 +427,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private void Publish(PolicyAggregator aggregator, DateTimeOffset? timestamp)
     {
         var result = aggregator.Rebuild(DefaultLayers, timestamp);
-        _resolutions[aggregator.MethodId] = result;
+
+        // Rebuilt under the aggregator's lock but stored after it, so a slower publisher must not replace a newer result
+        _resolutions.AddOrUpdate(
+            aggregator.MethodId,
+            static (_, added) => added,
+            static (_, existing, added) => existing.Version > added.Version ? existing : added,
+            result);
         if (_initialized)
         {
             RaisePolicyChanged(result);
@@ -557,98 +555,127 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
                 layers.AddRange(defaultLayers(MethodIds.AllMethods).Reverse());
 
-                TimeSpan? duration = null;
-                IReadOnlyList<string>? tags = null;
-                TimeSpan? slidingExpiration = null;
-                TimeSpan? refreshAhead = null;
-                Func<object?, bool>? cacheWhen = null;
-                var cacheWhenSet = false;
-                TimeSpan? failSafe = null;
-                TimeSpan? failSafeTimeout = null;
-                TimeSpan? failSafeRetryAfter = null;
-                int? version = null;
-                List<PolicyContribution>? contributions = null;
-
-                foreach (var layer in layers)
-                {
-                    var fields = layer.Fields;
-                    var policy = layer.Policy;
-
-                    if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
-                    {
-                        duration = policy.Duration;
-                    }
-
-                    if (tags == null && fields.HasFlag(CachePolicyFields.Tags))
-                    {
-                        tags = policy.Tags;
-                    }
-
-                    if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
-                    {
-                        slidingExpiration = policy.SlidingExpiration;
-                    }
-
-                    if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
-                    {
-                        refreshAhead = policy.RefreshAhead;
-                    }
-
-                    if (!cacheWhenSet && fields.HasFlag(CachePolicyFields.CacheWhen))
-                    {
-                        cacheWhen = policy.CacheWhen;
-                        cacheWhenSet = true;
-                    }
-
-                    if (failSafe == null && fields.HasFlag(CachePolicyFields.FailSafe))
-                    {
-                        failSafe = policy.FailSafe;
-                    }
-
-                    if (failSafeTimeout == null && fields.HasFlag(CachePolicyFields.FailSafeTimeout))
-                    {
-                        failSafeTimeout = policy.FailSafeTimeout;
-                    }
-
-                    if (failSafeRetryAfter == null && fields.HasFlag(CachePolicyFields.FailSafeRetryAfter))
-                    {
-                        failSafeRetryAfter = policy.FailSafeRetryAfter;
-                    }
-
-                    if (version == null && fields.HasFlag(CachePolicyFields.Version))
-                    {
-                        version = policy.Version;
-                    }
-
-                    if (policy.Provenance.Count > 0)
-                    {
-                        contributions ??= new List<PolicyContribution>();
-                        contributions.InsertRange(0, policy.Provenance);
-                    }
-                }
-
-                var effectivePolicy = CachePolicy.Empty with
-                {
-                    Duration = duration,
-                    Tags = tags ?? Array.Empty<string>(),
-                    SlidingExpiration = slidingExpiration,
-                    RefreshAhead = refreshAhead,
-                    CacheWhen = cacheWhen,
-                    FailSafe = failSafe,
-                    FailSafeTimeout = failSafeTimeout,
-                    FailSafeRetryAfter = failSafeRetryAfter,
-                    Version = version,
-                    Metadata = metadata,
-                    Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty
-                };
+                var (effectivePolicy, fieldSources) = ResolveLayers(layers, metadata);
+                var (declaration, _) = ResolveLayers(layers.Where(static layer => !layer.Policy.Provenance.Any(static contribution => contribution.SourceId == "runtime-overrides")), metadata);
 
                 return new PolicyResolutionResult(
                     MethodId,
                     effectivePolicy,
-                    contributions is { Count: > 0 } ? contributions : Array.Empty<PolicyContribution>(),
+                    effectivePolicy.Provenance.ToArray(),
                     resolvedAt,
-                    currentVersion);
+                    currentVersion)
+                { Declaration = declaration, FieldSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(fieldSources) };
             }
+        }
+        private static (CachePolicy Policy, Dictionary<string, string> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
+        {
+            var canonicalTagParts = true;
+            bool? enabled = null;
+            bool? distributed = null;
+            TimeSpan? duration = null;
+            List<string>? tags = null;
+            var tagsCleared = false;
+            TimeSpan? slidingExpiration = null;
+            TimeSpan? refreshAhead = null;
+            Func<object?, bool>? cacheWhen = null;
+            var cacheWhenSet = false;
+            TimeSpan? failSafe = null;
+            TimeSpan? failSafeTimeout = null;
+            TimeSpan? failSafeRetryAfter = null;
+            int? version = null;
+            List<PolicyContribution>? contributions = null;
+            var fieldSources = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var layer in layers)
+            {
+                var fields = layer.Fields;
+                var policy = layer.Policy;
+                var sourceId = policy.Provenance.LastOrDefault()?.SourceId;
+                if (sourceId == PolicySourceIds.Attributes) canonicalTagParts = policy.CanonicalTagParts;
+                if (sourceId != null)
+                    foreach (var field in Enum.GetValues<CachePolicyFields>())
+                        if (field != CachePolicyFields.None && fields.HasFlag(field)) fieldSources.TryAdd(field.ToString(), sourceId);
+
+                if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
+                {
+                    duration = policy.Duration;
+                }
+
+                // Tags combine across layers, so an override never disconnects the attribute's [CacheInvalidate]
+                // tags; a layer that clears them stops the lower layers from adding theirs
+                if (!tagsCleared && (fields & (CachePolicyFields.Tags | CachePolicyFields.ClearTags)) != 0)
+                {
+                    tags ??= new List<string>();
+                    var layerTags = policy.Tags.Distinct(StringComparer.Ordinal).Where(tag => !tags.Contains(tag, StringComparer.Ordinal)).ToList();
+                    tags.InsertRange(0, layerTags);
+                    tagsCleared = fields.HasFlag(CachePolicyFields.ClearTags);
+                }
+
+                if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
+                {
+                    slidingExpiration = policy.SlidingExpiration;
+                }
+
+                if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
+                {
+                    refreshAhead = policy.RefreshAhead;
+                }
+
+                if (!cacheWhenSet && fields.HasFlag(CachePolicyFields.CacheWhen))
+                {
+                    cacheWhen = policy.CacheWhen;
+                    cacheWhenSet = true;
+                }
+
+                if (failSafe == null && fields.HasFlag(CachePolicyFields.FailSafe))
+                {
+                    failSafe = policy.FailSafe;
+                }
+
+                if (failSafeTimeout == null && fields.HasFlag(CachePolicyFields.FailSafeTimeout))
+                {
+                    failSafeTimeout = policy.FailSafeTimeout;
+                }
+
+                if (failSafeRetryAfter == null && fields.HasFlag(CachePolicyFields.FailSafeRetryAfter))
+                {
+                    failSafeRetryAfter = policy.FailSafeRetryAfter;
+                }
+
+                if (enabled == null && fields.HasFlag(CachePolicyFields.Enabled)) enabled = policy.Enabled;
+                if (distributed == null && fields.HasFlag(CachePolicyFields.Distributed)) distributed = policy.Distributed;
+
+                if (version == null && fields.HasFlag(CachePolicyFields.Version))
+                {
+                    version = policy.Version;
+                }
+
+                if (policy.Provenance.Count > 0)
+                {
+                    contributions ??= new List<PolicyContribution>();
+                    contributions.InsertRange(0, policy.Provenance);
+                }
+            }
+
+            var effectivePolicy = CachePolicy.Empty with
+            {
+                Duration = duration,
+                Enabled = enabled,
+                CanonicalTagParts = canonicalTagParts,
+                Distributed = distributed,
+                Tags = tags is { Count: > 0 } ? tags.ToArray() : Array.Empty<string>(),
+                SlidingExpiration = slidingExpiration,
+                RefreshAhead = refreshAhead,
+                CacheWhen = cacheWhen,
+                FailSafe = failSafe,
+                FailSafeTimeout = failSafeTimeout,
+                FailSafeRetryAfter = failSafeRetryAfter,
+                Version = version,
+                Metadata = metadata,
+                Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty
+            };
+
+            return (effectivePolicy, fieldSources);
         }
     }
 }

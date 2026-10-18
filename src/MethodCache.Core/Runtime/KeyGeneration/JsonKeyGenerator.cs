@@ -30,7 +30,7 @@ namespace MethodCache.Extensibility;
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, JsonKeyGenerator&gt;());
 /// </code>
 /// </example>
-public class JsonKeyGenerator : ICacheKeyGenerator
+internal class JsonKeyGenerator : ICacheKeyGenerator
 {
     /// <summary>The longest argument list, in characters, that is written into the key as is.</summary>
     public const int MaxReadableLength = 200;
@@ -90,7 +90,7 @@ public class JsonKeyGenerator : ICacheKeyGenerator
 
             if (args[i] is { } arg)
             {
-                names.Append(KeyArguments.TypeName(arg.GetType()));
+                names.Append(KeyArguments.TypeName(KeyArguments.KeyType(arg)));
             }
             else
             {

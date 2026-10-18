@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using MethodCache.Infrastructure;
 
 namespace MethodCache.Core.Runtime.KeyGeneration;
 
@@ -16,15 +16,17 @@ internal static class KeyArguments
     // Fields count too, so two values that differ only in a public field don't share a key. JSON writes every lone
     // surrogate as U+FFFD, so strings and chars that hold one are written in a form no valid text can take. A value
     // whose runtime type differs from the type it is declared as is written with that type (see RuntimeTypeResolver).
-    // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to.
+    // JSON has no converter for nint and nuint, so they are written as the 64-bit numbers they widen to. NaN and
+    // infinities, such as a "no limit" double.PositiveInfinity, are written as their names instead of failing. Framework
+    // types whose public properties don't hold their value (BigInteger's are IsZero, Sign...; IPAddress's throw) are
+    // written as their text. A JsonElement is written as its JSON.
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerOptions.Default)
     {
         IncludeFields = true,
-        Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter() },
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new LosslessStringConverter(), new LosslessCharConverter(), new NativeIntConverter(), new NativeUIntConverter(), new BigIntegerConverter(), new IPAddressConverter() },
         TypeInfoResolver = new RuntimeTypeResolver(),
     };
-
-    private static readonly ConcurrentDictionary<Type, string> TypeNames = new();
 
     /// <summary>
     /// Serializes <paramref name="arg"/> to JSON. Throws when the type can't be serialized, or when it or any value
@@ -33,7 +35,7 @@ internal static class KeyArguments
     /// </summary>
     public static byte[] Serialize(object arg)
     {
-        var type = arg.GetType();
+        var type = KeyType(arg);
         try
         {
             return JsonSerializer.SerializeToUtf8Bytes(arg, JsonOptions.GetTypeInfo(type));
@@ -113,47 +115,16 @@ internal static class KeyArguments
     // By runtime type alone: RuntimeTypeConverter only runs with JsonOptions
     private static readonly ConcurrentDictionary<Type, RuntimeWriter> RuntimeWriters = new();
 
+    private static readonly ConcurrentDictionary<Type, string> TypeNames = new();
+    /// <summary>Version-independent type identity, including assemblies for nested runtime values and generic arguments.</summary>
+    public static string TypeName(Type type) => TypeNames.GetOrAdd(type, static item => StableTypeIdentity.For(item));
+
     /// <summary>
-    /// The namespace-qualified name of <paramref name="type"/>, with its generic arguments but without the assembly
-    /// versions <see cref="Type.FullName"/> puts in them, so the name stays the same across releases.
+    /// The type a value is written as: its runtime type, except that the framework's own read-only subclass of
+    /// <see cref="System.Net.IPAddress"/> (behind <c>IPAddress.Loopback</c> and the like) is an <c>IPAddress</c>, so
+    /// <c>IPAddress.Loopback</c> and <c>IPAddress.Parse("127.0.0.1")</c> get one key.
     /// </summary>
-    public static string TypeName(Type type) => TypeNames.GetOrAdd(type, static t =>
-    {
-        var builder = new StringBuilder();
-        AppendTypeName(builder, t);
-        return builder.ToString();
-    });
-
-    private static void AppendTypeName(StringBuilder builder, Type type)
-    {
-        if (type.IsArray)
-        {
-            AppendTypeName(builder, type.GetElementType()!);
-            builder.Append('[').Append(',', type.GetArrayRank() - 1).Append(']');
-            return;
-        }
-
-        if (!type.IsGenericType)
-        {
-            builder.Append(type.FullName ?? type.Name);
-            return;
-        }
-
-        var definition = type.GetGenericTypeDefinition();
-        builder.Append(definition.FullName ?? definition.Name).Append('[');
-        var arguments = type.GetGenericArguments();
-        for (var i = 0; i < arguments.Length; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(',');
-            }
-
-            AppendTypeName(builder, arguments[i]);
-        }
-
-        builder.Append(']');
-    }
+    internal static Type KeyType(object value) => value is System.Net.IPAddress ? typeof(System.Net.IPAddress) : value.GetType();
 
     /// <summary>
     /// True when every value declared as <paramref name="type"/> has exactly that runtime type: value types, and sealed
@@ -177,11 +148,46 @@ internal static class KeyArguments
 
         public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
             => IsExact(type)
-                ? RefuseHiddenState(_default.GetTypeInfo(type, options))
+                ? ExactInfo(_default, type, options)
                 : (JsonTypeInfo)CreateInfoMethod.MakeGenericMethod(type).Invoke(null, [_default, options])!;
 
         private static JsonTypeInfo<T> CreateInfo<T>(DefaultJsonTypeInfoResolver resolver, JsonSerializerOptions options)
             => JsonMetadataServices.CreateValueInfo<T>(options, new RuntimeTypeConverter<T>(resolver));
+    }
+
+    private static JsonTypeInfo? ExactInfo(DefaultJsonTypeInfoResolver resolver, Type type, JsonSerializerOptions options)
+    {
+        var info = RefuseHiddenState(resolver.GetTypeInfo(type, options));
+        return KeyCollectionState.For(type).Length == 0 ? info
+            : (JsonTypeInfo)CreateCollectionInfoMethod.MakeGenericMethod(type).Invoke(null, [info, options])!;
+    }
+
+    private static readonly MethodInfo CreateCollectionInfoMethod = typeof(KeyArguments)
+        .GetMethod(nameof(CreateCollectionInfo), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static JsonTypeInfo<T> CreateCollectionInfo<T>(JsonTypeInfo<T> elements, JsonSerializerOptions options)
+        => JsonMetadataServices.CreateValueInfo<T>(options, new CollectionStateConverter<T>(elements));
+
+    private sealed class CollectionStateConverter<T>(JsonTypeInfo<T> elements) : JsonConverter<T>
+    {
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+        {
+            // Every instance of this runtime type has this envelope; state never aliases an element list.
+            writer.WriteStartObject();
+            writer.WriteStartObject("state");
+            foreach (var member in KeyCollectionState.For(typeof(T)))
+            {
+                writer.WritePropertyName(member.Name);
+                JsonSerializer.Serialize(writer, member.Read(value!), options.GetTypeInfo(member.Type));
+            }
+            writer.WriteEndObject();
+            writer.WritePropertyName("items");
+            JsonSerializer.Serialize(writer, value, elements);
+            writer.WriteEndObject();
+        }
     }
 
     /// <summary>
@@ -197,11 +203,11 @@ internal static class KeyArguments
 
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
         {
-            var type = value!.GetType();
+            var type = KeyType(value!);
             if (type == typeof(T))
             {
                 // The usual contract of T, built here because options resolve T to this converter
-                _exact ??= (JsonTypeInfo<T>)RefuseHiddenState(resolver.GetTypeInfo(typeof(T), options))!;
+                _exact ??= (JsonTypeInfo<T>)ExactInfo(resolver, typeof(T), options)!;
                 JsonSerializer.Serialize(writer, value, _exact);
                 return;
             }
@@ -210,7 +216,7 @@ internal static class KeyArguments
             writer.WriteStartObject();
             writer.WriteString(TypeMarker, runtime.Name);
             writer.WritePropertyName(ValueName);
-            runtime.Write(writer, value, options);
+            runtime.Write(writer, value!, options);
             writer.WriteEndObject();
         }
     }
@@ -354,5 +360,25 @@ internal static class KeyArguments
 
         public override void WriteAsPropertyName(Utf8JsonWriter writer, nuint value, JsonSerializerOptions options)
             => writer.WritePropertyName(((ulong)value).ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Writes a <see cref="System.Numerics.BigInteger"/> as its digits.</summary>
+    private sealed class BigIntegerConverter : JsonConverter<System.Numerics.BigInteger>
+    {
+        public override System.Numerics.BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, System.Numerics.BigInteger value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Writes an <see cref="System.Net.IPAddress"/> as its text, with the scope of an IPv6 address.</summary>
+    private sealed class IPAddressConverter : JsonConverter<System.Net.IPAddress>
+    {
+        public override System.Net.IPAddress Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, System.Net.IPAddress value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value.ToString());
     }
 }

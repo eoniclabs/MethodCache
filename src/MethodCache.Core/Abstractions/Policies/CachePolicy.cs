@@ -7,8 +7,10 @@ namespace MethodCache.Policies;
 /// The caching settings for one method: how long results live, their tags, expiration, refresh and fail-safe behavior.
 /// A field left unset falls through to a lower-priority source or the default.
 /// </summary>
-public sealed record CachePolicy
+internal sealed record CachePolicy
 {
+    internal bool CanonicalTagParts { get; init; } = true;
+
     private readonly IReadOnlyList<string> _tags = Array.Empty<string>();
     private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(StringComparer.Ordinal);
 
@@ -21,6 +23,12 @@ public sealed record CachePolicy
     /// How long an entry lives after it is stored.
     /// </summary>
     public TimeSpan? Duration { get; init; }
+
+    /// <summary>Whether caching is enabled; unset inherits defaults.</summary>
+    public bool? Enabled { get; init; }
+
+    /// <summary>Whether this policy uses distributed storage; unset inherits defaults.</summary>
+    public bool? Distributed { get; init; }
     /// <summary>
     /// Tags attached to stored entries, so related entries can be invalidated together.
     /// </summary>

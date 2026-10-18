@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Caching third-party code
 
 MethodCache can cache calls to code you don't own, such as API clients, cloud SDKs or payment gateways, to cut API
@@ -28,16 +30,14 @@ builder.Services.AddMethodCache();
 <!-- endSnippet -->
 
 - The listed methods behave like methods with `[Cache]`: keys from the arguments, tag templates with the method's
-  parameter names, zero-allocation hits on .NET 9 and later. Methods you don't list always reach the client, so writes
+  parameter names, zero-allocation hits on .NET 10. Methods you don't list always reach the client, so writes
   are never cached by accident.
 - The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`, `FailSafe`,
   `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:
 
 <!-- snippet: third-party-per-method -->
 ```cs
-builder.Services.AddMethodCache(config => config
-    .ForService<IFxRatesClient>()
-    .Method(c => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
+builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
     .Configure(o => o.WithDuration(TimeSpan.FromSeconds(30))));
 ```
 <!-- endSnippet -->
@@ -46,9 +46,21 @@ builder.Services.AddMethodCache(config => config
   for example `FxVendor.IFxRatesClient.GetRateAsync`.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
-- Mistakes are build errors: [MCG010](../user-guide/DIAGNOSTICS.md#mcg010) (a type it can't cache, such as one with
-  static abstract or non-public abstract members), [MCG011](../user-guide/DIAGNOSTICS.md#mcg011) (a method that is
-  missing, overloaded, static, or one `[Cache]` would reject) and [MCG012](../user-guide/DIAGNOSTICS.md#mcg012) (an
+- The attribute can live in a class library, such as your infrastructure project. Select its generated module
+  explicitly with `MethodCacheBuilder.FromAssemblyOf<T>()`, using a type declared in that assembly. This also
+  bootstraps the module under Native AOT without relying on discovery of loaded assemblies.
+- When multiple assemblies generate the same interface, select exactly one module. Calling and entry assemblies
+  have no special precedence. An ambiguous registration throws `InvalidOperationException` naming the candidates.
+
+<!-- snippet: third-party-module-selection -->
+```cs
+builder.Services.AddMethodCache(cache => cache.FromAssemblyOf<Rates>());
+```
+<!-- endSnippet -->
+
+- Mistakes are build errors: [MC0011](../user-guide/DIAGNOSTICS.md#mc0011) (a type it can't cache, such as one with
+  static abstract or non-public abstract members), [MC0012](../user-guide/DIAGNOSTICS.md#mc0012) (a method that is
+  missing, overloaded, static, or one `[Cache]` would reject) and [MC0013](../user-guide/DIAGNOSTICS.md#mc0013) (an
   interface listed twice).
 
 ## A wrapper interface
@@ -99,7 +111,7 @@ See [Manual caching](manual-caching.md).
   with `[CacheInvalidate(Tags = ...)]`.
 - **Exceptions are not cached.** With [fail-safe](fail-safe.md) on, the previous value is served while the client
   fails.
-- **Invalidate from a webhook** with `cache.InvalidateByTagsAsync("fx:EUR")` when the vendor tells you data changed.
+- **Invalidate from a webhook** with `cache.InvalidateTagAsync("fx:EUR")` when the vendor tells you data changed.
 - **Share results between instances** with a [distributed cache](distributed-cache.md) when every instance calls the
   same paid API.
 - **Start with short durations** and lengthen them once you know how fresh the data must be.

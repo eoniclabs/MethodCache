@@ -25,14 +25,14 @@
     <PackageReference Include="OpenTelemetry.Exporter.InMemory" Version="1.15.3" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
     <!-- OpenTelemetry already brings 10.x on net10.0 -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" Condition="'$(TargetFramework)' != 'net10.0'" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.OpenTelemetry\MethodCache.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

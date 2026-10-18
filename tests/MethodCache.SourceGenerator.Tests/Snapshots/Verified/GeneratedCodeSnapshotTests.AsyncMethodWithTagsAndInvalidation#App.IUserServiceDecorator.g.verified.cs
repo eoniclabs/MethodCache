@@ -8,33 +8,23 @@ using global::System.Collections.Concurrent;
 using global::System.Linq;
 using global::System.Threading;
 using global::System.Threading.Tasks;
-using global::MethodCache;
-using global::MethodCache.Extensibility;
-using global::MethodCache.Infrastructure;
-using global::MethodCache.Policies;
 
 namespace App
 {
-    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "1.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
     [global::System.Diagnostics.DebuggerNonUserCode]
-    internal sealed class IUserServiceDecorator : global::App.IUserService, global::System.IDisposable, global::System.IAsyncDisposable
+    internal sealed class IUserServiceDecorator : global::App.IUserService
     {
         private readonly global::App.IUserService _decorated;
-        private readonly bool _ownsDecorated;
-        private readonly global::MethodCache.ICacheManager _cacheManager;
-        private readonly global::MethodCache.Extensibility.ICacheKeyGenerator _keyGenerator;
-        private readonly global::MethodCache.Extensibility.ICacheMetricsProvider? _metricsProvider;
+        private readonly global::MethodCache.Generated.GeneratedServices _services;
 
-        private readonly global::MethodCache.Infrastructure.CachedMethod _method_Method0;
+        private readonly global::MethodCache.Generated.CachedMethod _method_Method0;
 
-        public IUserServiceDecorator(global::App.IUserService decorated, global::MethodCache.Infrastructure.DecoratorServices services, bool ownsDecorated = true)
+        public IUserServiceDecorator(global::App.IUserService decorated, global::MethodCache.Generated.GeneratedServices services)
         {
             _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
-            _ownsDecorated = ownsDecorated;
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
-            _cacheManager = services.CacheManager;
-            _keyGenerator = services.KeyGenerator;
-            _metricsProvider = services.MetricsProvider;
+            _services = services;
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
             var sites = services.GetSites(static registry => new CachedMethodSites(registry));
@@ -43,48 +33,33 @@ namespace App
 
         private sealed class CachedMethodSites
         {
-            public readonly global::MethodCache.Infrastructure.CachedMethod Method0;
+            public readonly global::MethodCache.Generated.CachedMethod Method0;
 
-            public CachedMethodSites(global::MethodCache.Policies.IPolicyRegistry registry)
+            public CachedMethodSites(global::MethodCache.Generated.GeneratedServices registry)
             {
-                Method0 = new global::MethodCache.Infrastructure.CachedMethod(global::MethodCache.Infrastructure.PolicyHandle.For(registry, "App.IUserService.GetUserAsync"), typeof(global::App.IUserService), "GetUserAsync", "GetUserAsync");
+                Method0 = registry.Method("[SnapshotApp]App.IUserService.GetUserAsync", typeof(global::App.IUserService), "GetUserAsync", "[SnapshotApp]App.IUserService.GetUserAsync");
             }
         }
 
+        [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         global::System.Threading.Tasks.Task<global::App.User> global::App.IUserService.GetUserAsync(int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
         {
-            var __mcSnapshot = this._method_Method0.Current;
-#if NET9_0_OR_GREATER
-            var __mcKeyBuilder = new global::MethodCache.Infrastructure.MethodCacheKeyBuilder(stackalloc char[global::MethodCache.Infrastructure.MethodCacheKeyBuilder.StackBufferSize]);
-            __mcKeyBuilder.Append(__mcSnapshot.KeyPrefix);
+            var __mcCall = this._method_Method0.Capture();
+            var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[66]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (this._cacheManager.TryGetFastTask<global::App.User>(__mcKeyBuilder.AsSpan(), out var __mcCachedTask))
+            if (__mcCall.TryGetTask<global::App.User>(ref __mcKeyBuilder, out var __mcCachedValue))
             {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
-                return __mcCachedTask;
+                return __mcCachedValue!;
             }
 
             var __mcKey = __mcKeyBuilder.ToString();
-#else
-            var __mcKey = string.Concat(__mcSnapshot.KeyPrefix, global::MethodCache.MethodCacheKeys.Separator, global::MethodCache.MethodCacheKeys.Part(__mcArgument0));
-
-            if (this._cacheManager.TryGetFastTask<global::App.User>(__mcKey, out var __mcCachedTask))
-            {
-                this._metricsProvider?.CacheHit(this._method_Method0.Name);
-                return __mcCachedTask;
-            }
-
-#endif
             // Miss: the cache manager records the hit or miss (another caller may have loaded it meanwhile)
-            var __mcPolicy = __mcSnapshot.Policy;
-            if (__mcPolicy.Tags.Count > 0)
-                __mcPolicy = global::MethodCache.Infrastructure.CacheTagTemplates.Expand(__mcPolicy, new[] { "userId", "cancellationToken" }, new[] { (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null"), (global::System.Convert.ToString((object?)__mcArgument1, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null") });
-            return __Load_Method0(__mcKey, __mcPolicy, __mcArgument0, __mcArgument1);
+            return __Load_Method0(__mcKey, __mcCall, __mcArgument0, __mcArgument1);
         }
 
-        private global::System.Threading.Tasks.Task<global::App.User> __Load_Method0(string __cacheKey, global::MethodCache.Infrastructure.CacheRuntimePolicy __policy, int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
-            => this._cacheManager.GetOrCreateFastAsync<global::App.User>(__cacheKey, this._method_Method0.Name, () => ((global::App.IUserService)this._decorated).GetUserAsync(__mcArgument0, __mcArgument1)!, __policy, __mcArgument1);
+        private global::System.Threading.Tasks.Task<global::App.User> __Load_Method0(string __cacheKey, global::MethodCache.Generated.MethodCall __call, int __mcArgument0, global::System.Threading.CancellationToken __mcArgument1)
+            => __call.LoadAsync(__cacheKey, (Inner: this._decorated, Arg0: __mcArgument0, Arg1: __mcArgument1), static (__invocation, __state) => ((global::App.IUserService)__invocation.ServiceForLoad(__state.Inner)).GetUserAsync(__state.Arg0, __state.Arg1), (__call.NeedsTagArguments ? new object?[] { __mcArgument0, __mcArgument1 } : global::System.Array.Empty<object?>()), __mcArgument1);
 
         async global::System.Threading.Tasks.Task global::App.IUserService.UpdateUserAsync(int __mcArgument0, string __mcArgument1)
         {
@@ -93,8 +68,8 @@ namespace App
                 await ((global::App.IUserService)this._decorated).UpdateUserAsync(__mcArgument0, __mcArgument1).ConfigureAwait(false);
                 var __mcTags = new global::System.Collections.Generic.List<string>();
                 __mcTags.AddRange(new[] { "users" });
-                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", (global::System.Convert.ToString((object?)__mcArgument0, global::System.Globalization.CultureInfo.InvariantCulture) ?? "null")));
-                await this._cacheManager.InvalidateByTagsAsync(__mcTags.ToArray()).ConfigureAwait(false);
+                __mcTags.Add(string.Format(global::System.Globalization.CultureInfo.InvariantCulture, "user:{0}", global::MethodCache.Generated.KeyParts.TagPart(__mcArgument0)));
+                await this._services.InvalidateTagsAsync(__mcTags.ToArray(), default).ConfigureAwait(false);
             }
             catch
             {
@@ -108,19 +83,6 @@ namespace App
             return ((global::App.IUserService)this._decorated).CountAsync();
         }
 
-        void global::System.IDisposable.Dispose()
-        {
-            if (!this._ownsDecorated) return;
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            else if (this._decorated is global::System.IAsyncDisposable) throw new global::System.InvalidOperationException("This owned implementation requires asynchronous disposal. Use DisposeAsync.");
-        }
-        global::System.Threading.Tasks.ValueTask global::System.IAsyncDisposable.DisposeAsync()
-        {
-            if (!this._ownsDecorated) return default;
-            if (this._decorated is global::System.IAsyncDisposable asyncDisposable) return asyncDisposable.DisposeAsync();
-            if (this._decorated is global::System.IDisposable disposable) disposable.Dispose();
-            return default;
-        }
     }
 }
 #pragma warning restore CS8019

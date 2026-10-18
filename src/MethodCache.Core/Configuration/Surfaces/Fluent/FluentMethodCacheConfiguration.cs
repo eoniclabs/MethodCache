@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using System.Linq.Expressions;
 using System.Reflection;
 using MethodCache.Core.PolicyPipeline.Model;
@@ -273,7 +274,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 ArgumentNullException.ThrowIfNull(predicate);
 
                 // Results reach the cache as object; a null can only be a TResult that allows null.
-                _inner.CacheWhen = value => value is TResult result ? predicate(result) : value is not null || predicate(default!);
+                _inner.CacheWhen = new TypedCachePredicate<TResult>(predicate).Accept;
                 return this;
             }
 

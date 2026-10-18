@@ -68,6 +68,13 @@ namespace MethodCache.SourceGenerator
             internal static bool HasStaticAbstractMembers(INamedTypeSymbol interfaceSymbol)
                 => new[] { interfaceSymbol }.Concat(interfaceSymbol.AllInterfaces).SelectMany(i => i.GetMembers()).Any(m => m.IsStatic && m.IsAbstract);
 
+            /// <summary>
+            /// Whether the decorator implements the interface method, and so can cache it: an abstract member, or a
+            /// public default method a class can override. Static, non-public and sealed members are not.
+            /// </summary>
+            internal static bool IsInterceptable(IMethodSymbol method)
+                => !method.IsStatic && (method.IsAbstract || (method.IsVirtual && method.DeclaredAccessibility == Accessibility.Public));
+
             internal static bool IsFromReferencedAssembly(INamedTypeSymbol interfaceSymbol)
                 => interfaceSymbol.Locations.All(l => l.IsInMetadata);
 
@@ -102,7 +109,23 @@ namespace MethodCache.SourceGenerator
             internal static string GetDecoratorHintName(INamedTypeSymbol interfaceSymbol)
             {
                 var arity = interfaceSymbol.Arity > 0 ? "`" + interfaceSymbol.Arity : string.Empty;
-                return $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                var hint = $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                if (Encoding.UTF8.GetByteCount(hint) <= 200)
+                {
+                    return hint;
+                }
+
+                // Roslyn writes the hint verbatim when EmitCompilerGeneratedFiles is enabled. Keep long
+                // namespace/type names inside the source, while giving their files bounded stable names.
+                using var hash = System.Security.Cryptography.SHA256.Create();
+                var digest = hash.ComputeHash(Encoding.UTF8.GetBytes(hint));
+                var result = new StringBuilder("Decorator.");
+                foreach (var value in digest)
+                {
+                    result.Append(value.ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                return result.Append(".g.cs").ToString();
             }
 
             /// <summary>A parameter or member name as C# source: keywords such as <c>class</c> become <c>@class</c>.</summary>
@@ -122,17 +145,42 @@ namespace MethodCache.SourceGenerator
             internal static string GetMethodId(IMethodSymbol method)
             {
                 var definition = method.OriginalDefinition;
-                return definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
+                return MethodCache.Internal.AssemblyIdentity.PolicyPrefix(definition.ContainingAssembly.Name) + definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
             }
 
             /// <summary>The method's name in ids and keys: <c>Find</c>, or <c>Find(int)</c> when it is overloaded.</summary>
             internal static string GetMethodName(IMethodSymbol method)
+                => IsOverloaded(method.OriginalDefinition) ? GetSignatureName(method) : method.Name;
+
+            /// <summary>
+            /// The method's name in the keys of <paramref name="service"/>'s decorator. Keys start with the decorated
+            /// interface, so a name that another interface in its hierarchy also declares adds the parameter types
+            /// (<c>Find(int)</c> and <c>Find(string)</c>), and a signature two interfaces both declare adds the
+            /// declaring interface too (<c>MyApp.IA.Get(int)</c>), so no two methods share entries.
+            /// </summary>
+            internal static string GetKeyMethodName(IMethodSymbol method, INamedTypeSymbol service)
+            {
+                var others = new[] { service }.Concat(service.AllInterfaces)
+                    .SelectMany(i => i.GetMembers(method.Name).OfType<IMethodSymbol>())
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && !SymbolEqualityComparer.Default.Equals(m, method))
+                    .ToList();
+                if (others.All(m => SymbolEqualityComparer.Default.Equals(m.ContainingType, method.ContainingType)))
+                {
+                    return GetMethodName(method);
+                }
+
+                var signature = GetSignatureName(method);
+                return others.Any(m => GetSignatureName(m) == signature)
+                    ? MethodCache.Internal.AssemblyIdentity.PolicyPrefix(method.ContainingAssembly.Name) + method.ContainingType.ToDisplayString(TypeIdFormat) + "." + signature
+                    : signature;
+            }
+
+            /// <summary>The name with the generic arity and parameter types, such as <c>Find(int)</c> or <c>Get``1(T)</c>.</summary>
+            private static string GetSignatureName(IMethodSymbol method)
             {
                 var definition = method.OriginalDefinition;
-                return IsOverloaded(definition)
-                    ? definition.Name + (definition.Arity > 0 ? "``" + definition.Arity.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")
-                      + "(" + string.Join(", ", definition.Parameters.Select(p => ParameterTypeName(p.Type))) + ")"
-                    : definition.Name;
+                return definition.Name + (definition.Arity > 0 ? "``" + definition.Arity.ToString(System.Globalization.CultureInfo.InvariantCulture) : "")
+                       + "(" + string.Join(", ", definition.Parameters.Select(p => ParameterTypeName(p.Type))) + ")";
             }
 
             /// <summary>Whether the declaring interface has more than one method with this name.</summary>

@@ -1,6 +1,9 @@
+using MethodCache.Policies;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using MethodCache;
 using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Infrastructure;
 using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,15 +35,38 @@ namespace VendorApp
         public static void Configure(IServiceCollection services, FxVendorClient client)
         {
             services.AddSingleton<IFxVendorClient>(client);
-            services.AddMethodCache(config => config
-                .ForService<IFxVendorClient>()
-                .Method(c => c.GetCurrenciesAsync())
-                .Configure(o => o.WithDuration(TimeSpan.FromHours(1))));
+            services.AddMethodCache(config =>
+            {
+                config.FromAssembly(typeof(Startup).Assembly);
+                config.Method((IFxVendorClient c) => c.GetCurrenciesAsync()).Configure(o => o.WithDuration(TimeSpan.FromHours(1)));
+            });
         }
     }
 }";
 
     private readonly SourceGeneratorTestEngine _engine = new();
+
+    [Fact]
+    public async Task SelectedModule_OtherModuleAlsoBindsItsOwnService_DoesNotImportItsUnselectedPolicy()
+    {
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SelectedFx", "00:00:30"), "SelectedPolicyModule");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("OtherFx", "01:00:00") + """
+            namespace OtherFx {
+                public interface IAuxiliary { [MethodCache.Cache] int Read(int id); }
+                public sealed class Auxiliary : IAuxiliary { public int Read(int id) => id; }
+            }
+            """, "OtherPolicyModule");
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        services.AddSingleton(second.Assembly.GetType("OtherFx.IAuxiliary")!, second.Assembly.GetType("OtherFx.Auxiliary")!);
+        services.AddMethodCache(b => b.FromAssembly(first.Assembly));
+        await using var provider = services.BuildServiceProvider();
+        var snapshots = new List<PolicySnapshot>();
+        foreach (var source in provider.GetServices<PolicySourceRegistration>().Where(s => s.Source.SourceId == "attributes"))
+            snapshots.AddRange(await source.Source.GetSnapshotAsync());
+        var selected = Assert.Single(snapshots, s => s.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromSeconds(30), selected.Policy.Duration);
+    }
 
     [Fact]
     public async Task ListedMethods_AreCached_AndOthersCallTheClient()
@@ -110,6 +136,84 @@ namespace VendorApp
         Assert.DoesNotContain(methods, m => m.MethodId.EndsWith("IFxVendorClient.CreateOrderAsync", StringComparison.Ordinal));
     }
 
+    // A library and the application can both list a vendor interface; the module initializer that ran last must not
+    // decide whose policies the application gets
+    [Fact]
+    public async Task TwoAssembliesListingTheSameInterface_TheCallingAssemblysDecoratorWins()
+    {
+        var app = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("AppFx", "00:00:30"), "SharedVendor_App");
+        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryFx", "01:00:00"), "SharedVendor_Library");
+        RuntimeHelpers.RunModuleConstructor(app.Assembly.ManifestModule.ModuleHandle);
+        RuntimeHelpers.RunModuleConstructor(library.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        app.Assembly.GetType("AppFx.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+        await using var provider = services.BuildServiceProvider();
+
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromSeconds(30), rate.Duration);
+    }
+
+    [Fact]
+    public async Task TwoAssembliesListingTheSameInterface_AnotherCaller_GetsAClearError()
+    {
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("FirstFx", "00:00:30"), "SharedVendor_First");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SecondFx", "01:00:00"), "SharedVendor_Second");
+        RuntimeHelpers.RunModuleConstructor(first.Assembly.ManifestModule.ModuleHandle);
+        RuntimeHelpers.RunModuleConstructor(second.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+
+        var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
+        Assert.Contains("SharedVendor_First", error.Message);
+        Assert.Contains("SharedVendor_Second", error.Message);
+        Assert.Contains("FromAssemblyOf", error.Message);
+
+        // Naming the assembly settles it
+        services.AddMethodCache(b => b.FromAssembly(second.Assembly));
+        await using var provider = services.BuildServiceProvider();
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+    }
+
+    // An assembly passed to AddMethodCache whose code hasn't run yet still has its decorator chosen, even when
+    // another assembly already registered one for the interface
+    [Fact]
+    public async Task NamedAssemblyNotYetInitialized_ItsDecoratorWins()
+    {
+        var registered = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("RegisteredFx", "00:00:30"), "SharedVendor_Registered");
+        var named = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("NamedFx", "01:00:00"), "SharedVendor_Named");
+        RuntimeHelpers.RunModuleConstructor(registered.Assembly.ManifestModule.ModuleHandle);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(new FxVendorClient());
+        services.AddMethodCache(b => b.FromAssembly(named.Assembly));
+        await using var provider = services.BuildServiceProvider();
+
+        var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+    }
+
+    private static string SharedVendorSource(string ns, string duration) => $@"
+using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
+using MethodCache.SourceGenerator.IntegrationTests.Vendor;
+
+[assembly: CacheInterface(typeof(IFxVendorClient), nameof(IFxVendorClient.GetRateAsync), Duration = ""{duration}"")]
+
+namespace {ns}
+{{
+    public static class Startup
+    {{
+        public static void Configure(IServiceCollection services) => services.AddMethodCache(b => b.FromAssembly(typeof(Startup).Assembly));
+    }}
+}}";
+
     [Fact]
     public async Task PropertiesIndexersAndEvents_ReachTheClient_AndNestedNamesDontCollide()
     {
@@ -168,9 +272,9 @@ namespace VendorApp
     }
 
     [Theory]
-    [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MCG011", "\"GetMissingAsync\"")]
-    [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MCG011", "overloads")]
-    [InlineData("nameof(IFxVendorClient.PingAsync)", "MCG011", "without a result")]
+    [InlineData("nameof(IFxVendorClient.GetMissingAsync)", "MC0012", "\"GetMissingAsync\"")]
+    [InlineData("nameof(IFxVendorClient.GetOverloadedAsync)", "MC0012", "overloads")]
+    [InlineData("nameof(IFxVendorClient.PingAsync)", "MC0012", "without a result")]
     public async Task ListingAMethodItCannotCache_IsAnError(string method, string id, string expected)
     {
         var source = $@"
@@ -210,7 +314,7 @@ namespace VendorApp
 ";
 
         var errors = await GeneratorErrorsAsync(source, "VendorApp_Type_" + (uint)expected.GetHashCode());
-        Assert.Contains("MCG010", errors);
+        Assert.Contains("MC0011", errors);
         Assert.Contains(expected, errors);
     }
 
@@ -226,7 +330,7 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 ";
 
         var errors = await GeneratorErrorsAsync(source, "VendorApp_Duplicate");
-        Assert.Contains("MCG012", errors);
+        Assert.Contains("MC0013", errors);
     }
 
     [Fact]
@@ -240,9 +344,60 @@ using MethodCache.SourceGenerator.IntegrationTests.Vendor;
 ";
 
         var result = await _engine.CompileWithSourceGeneratorAsync(source, "VendorApp_Tags");
-        var warnings = result.Diagnostics.Where(d => d.Id is "MCG009" or "MCG015").ToList();
-        Assert.Equal(new[] { "MCG009", "MCG015" }, warnings.Select(d => d.Id).OrderBy(id => id));
+        var warnings = result.Diagnostics.Where(d => d.Id is "MC0010" or "MC0016").ToList();
+        Assert.Equal(new[] { "MC0010", "MC0016" }, warnings.Select(d => d.Id).OrderBy(id => id));
         Assert.All(warnings, d => Assert.True(d.Location.IsInSource));
+    }
+
+    [Fact]
+    public async Task AttributeInALibraryWhoseCodeHasNotRun_StillDecoratesTheClient()
+    {
+        // A library (think Infrastructure.dll) that only holds [assembly: CacheInterface] for a vendor interface. It is
+        // loaded, but nothing in it has run, so its module initializer has not registered the decorator yet.
+        var library = await _engine.CompileWithSourceGeneratorAsync("""
+            [assembly: MethodCache.CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Vendor.IClockVendorClient), "Get")]
+            namespace Infrastructure { public static class Marker { } }
+            """, "VendorLibrary_" + Guid.NewGuid().ToString("N"));
+        Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IClockVendorClient", StringComparison.Ordinal));
+
+        // The application registers the vendor client and calls AddMethodCache() itself
+        var services = new ServiceCollection();
+        services.AddSingleton<IClockVendorClient, ClockVendorClient>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.IsNotType<ClockVendorClient>(provider.GetRequiredService<IClockVendorClient>());
+    }
+
+    [Fact]
+    public async Task LookupWhileAnotherThreadRunsTheLibrarysInitializer_WaitsForItAndFindsTheDecorator()
+    {
+        // The library's own module initializer runs before the generated one and holds until the test opens the gate
+        var library = await _engine.CompileWithSourceGeneratorAsync("""
+            [assembly: MethodCache.CacheInterface(typeof(MethodCache.SourceGenerator.IntegrationTests.Vendor.IGatedVendorClient), "Get")]
+            namespace Infrastructure
+            {
+                internal static class Gate
+                {
+                    [System.Runtime.CompilerServices.ModuleInitializer]
+                    internal static void Hold() => MethodCache.SourceGenerator.IntegrationTests.Vendor.ModuleInitializerGate.Wait();
+                }
+            }
+            """, "GatedLibrary_" + Guid.NewGuid().ToString("N"));
+        Assert.Contains(library.GeneratedSources.Values, s => s.Contains("IGatedVendorClient", StringComparison.Ordinal));
+
+        static bool Find(Assembly assembly) => MethodCache.Generated.GeneratedCode.Describe([assembly], [])
+            .Where(m => m.Module.GetType().Assembly == assembly).SelectMany(m => m.Decorators)
+            .Any(d => d.ServiceType == typeof(IGatedVendorClient));
+        var first = Task.Run(() => Find(library.Assembly));
+        Assert.True(await ModuleInitializerGate.Entered.WaitAsync(TimeSpan.FromSeconds(30)), "the library's initializer did not run");
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = Task.Run(() => { secondStarted.SetResult(); return Find(library.Assembly); });
+        await secondStarted.Task;
+        try { Assert.False(first.IsCompleted); }
+        finally { ModuleInitializerGate.Open.Set(); }
+        Assert.True(await first);
+        Assert.True(await second);
     }
 
     private async Task<string> GeneratorErrorsAsync(string source, string assemblyName)

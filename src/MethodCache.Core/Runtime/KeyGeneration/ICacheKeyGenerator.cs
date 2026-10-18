@@ -20,21 +20,7 @@ namespace MethodCache.Extensibility
     /// - JsonKeyGenerator: human-readable format, useful for debugging
     /// - MessagePackKeyGenerator (MethodCache.Serialization.MessagePack package): SHA-256 of the MessagePack form
     /// </remarks>
-    /// <example>
-    /// Implementing a custom key generator:
-    /// <code>
-    /// public class CustomKeyGenerator : ICacheKeyGenerator
-    /// {
-    ///     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
-    ///     {
-    ///         var version = policy.Version?.ToString() ?? "v1";
-    ///         var argsKey = string.Join("_", args.Select(a => a?.ToString() ?? "null"));
-    ///         return $"{methodName}_{version}_{argsKey}";
-    ///     }
-    /// }
-    /// </code>
-    /// </example>
-    public interface ICacheKeyGenerator
+    internal interface ICacheKeyGenerator
     {
         /// <summary>
         /// Generates a unique cache key from method information and arguments using a runtime policy.

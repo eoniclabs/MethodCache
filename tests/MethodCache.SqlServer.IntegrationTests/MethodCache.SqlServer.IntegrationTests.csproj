@@ -37,5 +37,27 @@
 
   <ItemGroup>
     <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+    <Compile Include="../MethodCache.Core.Tests/FaultInjection/SqlServerIntegration/*.cs" Link="FaultInjection/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/EpochBackendContract.cs" Link="EpochBackendContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql" Link="migrations/0001-version-existing-schema.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/MethodCache.HttpCaching/MethodCache.HttpCaching.csproj" />
+    <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs" Link="TestSupport/NativePolicyFaultContract.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
+    <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
   </ItemGroup>
 </Project>

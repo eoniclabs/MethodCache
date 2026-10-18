@@ -85,7 +85,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/methodcache/entries")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await user.DeleteAsync("/methodcache/entries")).StatusCode);
-        Assert.Equal(3, (await _app.Services.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).Entries);
+        Assert.Equal(3, (await _app.Services.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).LocalMethodEntries);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var stats = await _client.GetFromJsonAsync<CacheStatsResponse>("/methodcache/stats");
 
         Assert.NotNull(stats);
-        Assert.Equal(3, stats.Entries);
+        Assert.Equal(3, stats.LocalMethodEntries);
         Assert.Equal(3, stats.Misses);
     }
 
@@ -166,7 +166,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var stats = await _client.GetFromJsonAsync<CacheStatsResponse>("/methodcache/stats");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal(0, stats!.Entries);
+        Assert.Equal(0, stats!.LocalMethodEntries);
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var entry = Assert.Single(report.Entries);
         Assert.Equal("methodcache", entry.Key);
         Assert.Equal(HealthStatus.Healthy, entry.Value.Status);
-        Assert.Equal(3L, entry.Value.Data["entries"]);
+        Assert.Equal(3L, entry.Value.Data["localMethodEntries"]);
         Assert.False(entry.Value.Data.ContainsKey("distributedCacheAvailable"));
     }
 

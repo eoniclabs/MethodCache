@@ -5,6 +5,7 @@ using System.Text;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
+using MethodCache.Generated;
 using MethodCache.Policies;
 using MethodCache.SourceGenerator;
 using Microsoft.CodeAnalysis;
@@ -67,6 +68,21 @@ public class SourceGeneratorTestEngine
             throw new InvalidOperationException($"Compilation failed:\n{errors}");
         }
 
+        // G03: validate semantic references for every corpus shape, not just text patterns in snapshots.
+        foreach (var generatedTree in outputCompilation.SyntaxTrees.Where(tree => tree != syntaxTree))
+        {
+            var semantic = outputCompilation.GetSemanticModel(generatedTree);
+            foreach (var name in generatedTree.GetRoot().DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.NameSyntax>())
+            {
+                var symbol = semantic.GetSymbolInfo(name).Symbol;
+                if (symbol != null && symbol.ContainingAssembly?.Name == typeof(ICacheManager).Assembly.GetName().Name &&
+                    symbol is not INamedTypeSymbol { Name: "ICacheKeyProvider" } &&
+                    symbol.ContainingNamespace?.ToDisplayString() is { } ns &&
+                    ns != "MethodCache.Generated" && !ns.StartsWith("MethodCache.Generated.", StringComparison.Ordinal))
+                    throw new InvalidOperationException($"Generated code bypasses the stable facade: {symbol.ToDisplayString()} in {generatedTree.FilePath}.");
+            }
+        }
+
         // Emit to memory stream
         using var stream = new MemoryStream();
         var emitResult = outputCompilation.Emit(stream);
@@ -111,18 +127,17 @@ public class SourceGeneratorTestEngine
         services.AddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
 
         // Add default metrics provider (will be overridden by tests)
-        services.AddSingleton<ICacheMetricsProvider, TestCacheMetricsProvider>();
+        services.AddSingleton<TestCacheProbe, TestCacheProbe>();
 
         // Add policy registry and resolver services (required by generated decorators)
         // Add a dummy policy source to satisfy PolicyResolver's requirement for at least one source
         services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(new EmptyPolicySource(), 0));
         PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
-        // Register generated services using reflection
-        RegisterGeneratedServices(services, testAssembly.Assembly, logger);
-
-        // Allow additional service configuration
+        // Configure the selected manager before binding any generated registration.
         configureServices?.Invoke(services);
+        RegisterGeneratedServices(services, testAssembly.Assembly, logger);
+        services.AddMethodCache(builder => builder.FromAssembly(testAssembly.Assembly));
 
         return services.BuildServiceProvider();
     }
@@ -130,18 +145,19 @@ public class SourceGeneratorTestEngine
     private void RegisterGeneratedServices(IServiceCollection services, Assembly assembly, Action<string>? logger = null)
     {
         // The generated module initializer lists every decorator in the assembly, as AddMethodCache() sees them
-        var registrations = MethodCacheDecorators.For(assembly);
-        logger?.Invoke($"Found {registrations.Count} decorators: {string.Join(", ", registrations.Select(r => r.ServiceType.Name))}");
+        var registrations = GeneratedCode.Describe([assembly], []).Where(m => m.Module.GetType().Assembly == assembly)
+            .SelectMany(m => m.Decorators).ToArray();
+        logger?.Invoke($"Found {registrations.Length} decorators: {string.Join(", ", registrations.Select(r => r.ServiceType.Name))}");
 
         foreach (var registration in registrations)
         {
+            if (services.Any(d => d.ServiceType == registration.ServiceType)) continue;
             try
             {
                 var mockImplementation = CreateMockImplementation(assembly, registration.ServiceType);
                 logger?.Invoke($"Created mock implementation for {registration.ServiceType.Name}");
 
-                services.AddSingleton(registration.ServiceType, provider => registration.Decorate(provider, mockImplementation));
-                registration.AddPolicies?.Invoke(services);
+                services.AddSingleton(registration.ServiceType, mockImplementation);
                 logger?.Invoke($"Successfully registered {registration.ServiceType.Name}");
             }
             catch (Exception ex)
@@ -214,7 +230,13 @@ namespace {namespaceName}
             "Microsoft.Extensions.DependencyInjection.Abstractions",
             "System.ComponentModel",
             "System.Linq.Expressions",
-            "System.Private.CoreLib"
+            "System.Private.CoreLib",
+            "System.Memory",
+            "System.Runtime.Numerics",
+            "System.Net.Primitives",
+            "System.Text.Json",
+            "System.Private.Uri",
+            "System.Numerics.Vectors",
         };
 
         foreach (var assemblyName in assemblyNames)

@@ -1,7 +1,7 @@
 namespace MethodCache
 {
     /// <summary>
-    /// Statistics for cache operations.
+    /// Statistics observed by this container; these do not inventory the shared backend.
     /// </summary>
     public interface ICacheStats
     {
@@ -21,23 +21,25 @@ namespace MethodCache
         long Evictions { get; }
 
         /// <summary>
-        /// Current number of entries in the cache.
+        /// Number of locally stored method results.
         /// </summary>
-        long Entries { get; }
+        long LocalMethodEntries { get; }
 
         /// <summary>
-        /// Approximate memory usage in bytes.
+        /// Total weight of locally stored method results, in the application weigher's units (one per entry by default).
         /// </summary>
-        long MemoryUsage { get; }
+        long TotalWeight { get; }
 
-        /// <summary>
-        /// Hit ratio (hits / (hits + misses)).
-        /// </summary>
-        double HitRatio { get; }
+        /// <summary>Number of locally stored HTTP representations.</summary>
+        long LocalHttpEntries { get; }
+        /// <summary>Conservative storage cost of local HTTP representations, in bytes.</summary>
+        long LocalHttpBytes { get; }
+        /// <summary>Bounded local observations of L2 HTTP representations; not resident or global entries.</summary>
+        long ObservedDistributedEntries { get; }
     }
 
     /// <summary>
-    /// Default implementation of cache statistics.
+    /// An immutable snapshot of statistics from one container.
     /// </summary>
     public class CacheStats : ICacheStats
     {
@@ -51,12 +53,16 @@ namespace MethodCache
         public long Evictions { get; init; }
 
         /// <inheritdoc />
-        public long Entries { get; init; }
+        public long LocalMethodEntries { get; init; }
 
         /// <inheritdoc />
-        public long MemoryUsage { get; init; }
+        public long TotalWeight { get; init; }
 
         /// <inheritdoc />
-        public double HitRatio => Hits + Misses > 0 ? (double)Hits / (Hits + Misses) : 0;
+        public long LocalHttpEntries { get; init; }
+        /// <inheritdoc />
+        public long LocalHttpBytes { get; init; }
+        /// <inheritdoc />
+        public long ObservedDistributedEntries { get; init; }
     }
 }

@@ -13,7 +13,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace MethodCache.CodeFixes
 {
     /// <summary>
-    /// MCG009: a tag such as "user:{usrId}" names a parameter the method doesn't have. Offers the closest
+    /// MC0010: a tag such as "user:{usrId}" names a parameter the method doesn't have. Offers the closest
     /// parameter names, so a typo becomes "user:{userId}".
     /// </summary>
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(FixTagParameterCodeFixProvider)), Shared]
@@ -22,7 +22,7 @@ namespace MethodCache.CodeFixes
         private const int MaxSuggestions = 3;
 
         /// <inheritdoc />
-        public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create("MCG009");
+        public override ImmutableArray<string> FixableDiagnosticIds { get; } = ImmutableArray.Create("MC0010");
 
         /// <inheritdoc />
         public override FixAllProvider? GetFixAllProvider() => null;

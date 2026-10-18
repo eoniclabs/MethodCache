@@ -5,17 +5,17 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 
 | Script | Runs on | What it does |
 |---|---|---|
-| `jobs.sh <job>...` | anything with the .NET 8, 9 and 10 SDKs | the jobs themselves: `build`, `demo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
+| `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
 | `diff_coverage.py` | | the share of changed lines under `src/` that a Cobertura report covers (used by `diffcoverage`) |
 | `linux.sh [job...]` | Linux with Docker | every Linux job inside the build image (`Dockerfile`), with Redis and SQL Server for the package apps |
 | `windows.ps1 [job...]` | Windows | `build` and `unit` (the Docker-backed tests run on Linux only) |
-| `Dockerfile` | | the Linux build image: .NET 10 SDK plus the .NET 8 and 9 SDKs, clang for Native AOT, Python |
+| `Dockerfile` | | the Linux build image: .NET 10 SDK, clang for Native AOT, Python |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
 | `storage_gc.py` | macOS, Linux, Windows | collects idle generated build output and explicitly configured disposable CI archives |
 | `install-storage-gc.sh`, `install-storage-gc.ps1` | build hosts and workstations | install independent collection every 15 minutes |
-| `publish.sh <tag>` | Megatron | publishes a release tag the build servers passed to GitHub Packages |
+| `publish.sh <tag> [--github]` | Megatron | publishes a release tag the build servers passed; nuget.org via BWS by default, GitHub Packages with `--github` |
 
 Run all Linux jobs locally, the way the build server does:
 
@@ -28,7 +28,7 @@ Each job writes `artifacts/ci/<job>.log` and `artifacts/ci/<job>.exit`. A new CI
 `windows.ps1`) as a script or `dotnet` command, never as a step that only works in one CI system.
 
 `jobs.sh build unit` is what the Windows and macOS servers run: every test except the Docker-backed ones. It takes
-about 50 s on Linux with `FRAMEWORK=net10.0`, which runs one framework instead of three.
+one .NET 10 test pass per platform. Earlier timings for the three-framework matrix are historical.
 
 ## Diff coverage (pull requests)
 
@@ -38,6 +38,15 @@ base with `origin/main` ran. It prints each uncovered changed line. `DIFF_COVERA
 `DIFF_COVERAGE_BASE` the commit to compare with. It is in the default `linux.sh` job list, after `tests`, and
 needs the full history and `origin/main` (the build servers clone both). It takes about 1.5 min
 (the net10.0 test run with coverage).
+
+## Native AOT contract checks
+
+`jobs.sh aot` publishes and executes the smoke app, including the frozen vendor DLLs. It also exports every
+supported SignatureCorpus case into `artifacts/aot-corpus`, publishes that project with Native AOT, and runs
+the resulting compilation check. Every scenario call remains reachable to the native compiler; normal execution
+of those cases is covered by the JIT corpus and by the smoke app's supported inline key forms. Reflection-based
+JSON fallback retains its documented Native AOT limitations and its compiler warnings. The exporter shares the
+actual corpus definitions rather than keeping a second list of signatures.
 
 ## Randomized, soak and mutation checks
 
@@ -49,14 +58,14 @@ checkout; `mutation` builds for itself.
 
 | Entry point | Run time (measured, 4 cores) | Fails on |
 |---|---|---|
-| `jobs.sh build properties` | about 2 min (5 s per property, 2 frameworks; raise `PROPERTY_SECONDS` for a longer search) | a property failing from a random seed |
+| `jobs.sh build properties` | 5 s per property on .NET 10; raise `PROPERTY_SECONDS` for a longer search | a property failing from a random seed |
 | `jobs.sh build soak` | `METHODCACHE_SOAK_SECONDS` plus about 3 s (30 s by default) | an exception, a stampede, wrong values, inconsistent counters, the size bound or memory growth |
 | `jobs.sh mutation` | about 62 min (2,251 mutants tested, concurrency 2) | Stryker itself failing, never the score |
 
 - **properties**: the CsCheck properties in `tests/MethodCache.Core.Tests/Properties` with
   `METHODCACHE_PROPERTY_RANDOM_SEED=true` and `CsCheck_Time` set, so each property runs for `PROPERTY_SECONDS`
   (default 5) from a fresh seed instead of its fixed iteration count, on `PROPERTY_FRAMEWORKS` (default
-  `net10.0 net8.0`). A failure prints CsCheck's `CsCheck_Seed=...`, repeated at the end of the log with the command
+  `net10.0`). A failure prints CsCheck's `CsCheck_Seed=...`, repeated at the end of the log with the command
   that replays it. Logs: `artifacts/properties/<framework>.log`.
 - **soak**: `tests/MethodCache.Core.Tests/Soak` (`Category=Soak`) runs the in-memory cache under load from every
   core for `METHODCACHE_SOAK_SECONDS` (default 30 in the job; without the variable the test is skipped).
@@ -112,8 +121,8 @@ shared lock are settings in `~/.config/methodcache-ci/env` on Megatron (see "Ins
 | Server | Role |
 |---|---|
 | Megatron (macOS) | coordinator; runs `jobs.sh build unit` itself with the SDKs in `/usr/local/share/dotnet` |
-| Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; a MethodCache run holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`), so those builds wait for it |
-| baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 8, 9 and 10 SDKs are installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
+| Nimbus (Linux) | `linux.sh` in Docker, under `~/methodcache-ci`. Nimbus also builds another project's images; the coordinator holds that project's capacity lock shared (`METHODCACHE_CI_NIMBUS_SHARED_LOCK`) from before checkout/collection through all jobs, so those builds wait for it |
+| baloo (Windows) | `windows.ps1`, under `C:\mc`. The .NET 10 SDK is installed per user in `C:\mc\dotnet` by the first run (no administrator needed) |
 
 Every minute the coordinator looks at the head of `main` and every open pull request from this repository. Each
 commit without a result runs on all three servers, one commit at a time. Each server keeps a mirror of the
@@ -132,6 +141,13 @@ on Megatron run `~/.local/share/methodcache-ci/coordinator.sh --pr <number>`. Th
 again, after waiting for a pass that is already running. Missing results or failed status publication trigger a
 retry after 30 minutes, then exponential backoff capped at six hours. Automatic attempts stop after five passes
 for the commit; a deliberate `--pr` run resets that budget and reruns every platform.
+
+The Linux pass enforces `METHODCACHE_CI_TIMEOUT_SECONDS` (default 3600) on Nimbus itself, including capacity
+waiting and checkout. Its server-side `timeout` terminates the remote process group and allows 30 seconds
+for `linux.sh` to clean up that run's labelled containers before a forced exit. The local SSH watchdog
+allows another 60 seconds beyond the configured deadline; disconnecting SSH alone can leave Docker jobs
+alive. A timed-out pass is incomplete/failed and never a passing result. Coordinator changes require
+reinstallation; use `install-coordinator.sh --update-only` while an existing pass is active.
 
 Automatic retries reuse complete passing results for the exact full commit SHA, including their logs. They
 first try to recover Linux results from Nimbus when a finished job's archive did not arrive. Only platforms
@@ -268,4 +284,6 @@ not update the installed copy automatically.
 ## Publishing a release
 
 `publish.sh <tag>` publishes a tag the build servers passed; [docs/developer/RELEASE.md](../../docs/developer/RELEASE.md)
-has the whole release procedure.
+has the whole release procedure, including the BWS configuration and optional `--github` destination.
+The `build` job also runs the Python tests under `build/ci/tests`, including simulated publishing checks
+that never contact a package feed or use real secrets.

@@ -147,10 +147,10 @@ public class AdvancedCachingIntegrationTests
     }");
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         // Get both services
@@ -178,10 +178,10 @@ public class AdvancedCachingIntegrationTests
 
         // Cache some data from both services
         var orderType = testAssembly.Assembly.GetType("TestNamespace.Order")!;
-        
+
         var orderTask = (Task)getOrderMethod!.Invoke(orderService, new object[] { 1 })!;
         var order = await GetTaskResult(orderTask, orderType);
-        
+
         var stockTask = (Task)getStockMethod!.Invoke(inventoryService, new object[] { 1 })!;
         var stock = await GetTaskResult<int>(stockTask);
 
@@ -191,7 +191,7 @@ public class AdvancedCachingIntegrationTests
         // Verify data is cached (hits)
         var orderAgainTask = (Task)getOrderMethod.Invoke(orderService, new object[] { 1 })!;
         await GetTaskResult(orderAgainTask, orderType);
-        
+
         var stockAgainTask = (Task)getStockMethod.Invoke(inventoryService, new object[] { 1 })!;
         await GetTaskResult<int>(stockAgainTask);
 
@@ -205,13 +205,13 @@ public class AdvancedCachingIntegrationTests
         // Verify inventory cache was invalidated but order cache wasn't
         var stockAfterUpdateTask = (Task)getStockMethod.Invoke(inventoryService, new object[] { 1 })!;
         await GetTaskResult<int>(stockAfterUpdateTask);
-        
+
         var orderAfterUpdateTask = (Task)getOrderMethod.Invoke(orderService, new object[] { 1 })!;
         await GetTaskResult(orderAfterUpdateTask, orderType);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 4);
         var finalMetrics = metricsProvider.Metrics;
-        
+
         // Adjusted for simplified test infrastructure behavior
         Assert.Equal(2, finalMetrics.HitCount);
         Assert.Equal(4, finalMetrics.MissCount);
@@ -262,11 +262,11 @@ public class AdvancedCachingIntegrationTests
     }");
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
             services.AddSingleton<TimeProvider>(time);
         });
 
@@ -274,9 +274,9 @@ public class AdvancedCachingIntegrationTests
         Assert.NotNull(serviceType);
         var service = serviceProvider.GetService(serviceType);
         var implType = testAssembly.Assembly.GetType("TestNamespace.TimeBasedService");
-        
+
         Assert.NotNull(service);
-        
+
         implType?.GetMethod("ResetCallCounts")?.Invoke(null, null);
         metricsProvider.Reset();
 
@@ -286,7 +286,7 @@ public class AdvancedCachingIntegrationTests
         // Test short cache - should be cache miss
         var shortTask1 = (Task)shortMethod!.Invoke(service, new object[] { "test" })!;
         var shortResult1 = await GetTaskResult<string>(shortTask1);
-        
+
         // Test long cache - should be cache miss  
         var longTask1 = (Task)longMethod!.Invoke(service, new object[] { "test" })!;
         var longResult1 = await GetTaskResult<string>(longTask1);
@@ -297,13 +297,13 @@ public class AdvancedCachingIntegrationTests
         // Both should be cache hits immediately
         var shortTask2 = (Task)shortMethod.Invoke(service, new object[] { "test" })!;
         var shortResult2 = await GetTaskResult<string>(shortTask2);
-        
+
         var longTask2 = (Task)longMethod.Invoke(service, new object[] { "test" })!;
         var longResult2 = await GetTaskResult<string>(longTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
         Assert.Equal(2, metricsProvider.Metrics.HitCount);
-        
+
         // Cached values should be identical
         Assert.Equal(shortResult1, shortResult2);
         Assert.Equal(longResult1, longResult2);
@@ -317,7 +317,7 @@ public class AdvancedCachingIntegrationTests
         time.Advance(TimeSpan.FromTicks(1));
         var shortTask3 = (Task)shortMethod.Invoke(service, new object[] { "test" })!;
         var shortResult3 = await GetTaskResult<string>(shortTask3);
-        
+
         var longTask3 = (Task)longMethod.Invoke(service, new object[] { "test" })!;
         var longResult3 = await GetTaskResult<string>(longTask3);
 
@@ -330,7 +330,7 @@ public class AdvancedCachingIntegrationTests
         Assert.Equal(2, (int)implType!.GetProperty("ShortCallCount")!.GetValue(null)!);
         Assert.Equal(1, (int)implType.GetProperty("LongCallCount")!.GetValue(null)!);
         Assert.Equal(longResult1, longResult3);
-        
+
         // Just verify we got results successfully
         Assert.NotNull(shortResult1);
         Assert.NotNull(longResult1);
@@ -346,17 +346,17 @@ public class AdvancedCachingIntegrationTests
         var property = task.GetType().GetProperty("Result");
         return (T)property!.GetValue(task)!;
     }
-    
+
     private static async Task<object> GetTaskResult(Task task, Type expectedType)
     {
         await task;
         var property = task.GetType().GetProperty("Result");
         var result = property!.GetValue(task)!;
-        
+
         // Verify the result is of the expected type
-        Assert.True(expectedType.IsAssignableFrom(result.GetType()), 
+        Assert.True(expectedType.IsAssignableFrom(result.GetType()),
             $"Expected type {expectedType.Name}, but got {result.GetType().Name}");
-        
+
         return result;
     }
 }

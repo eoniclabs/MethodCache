@@ -10,7 +10,7 @@ public class CacheSerializerTests
 {
     public record Order(int Id, string Customer, decimal Total, DateTime PlacedAt, List<string> Lines);
 
-    public static TheoryData<ISerializer> Serializers => new()
+    public static TheoryData<object> Serializers => new()
     {
         new JsonCacheSerializer(),
         new MessagePackCacheSerializer(),
@@ -18,8 +18,9 @@ public class CacheSerializerTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void RoundTrip_PreservesPrimitives(ISerializer serializer)
+    public void RoundTrip_PreservesPrimitives(object serializerInstance)
     {
+        var serializer = (ISerializer)serializerInstance;
         RoundTrip(serializer, 42).Should().Be(42);
         RoundTrip(serializer, "text").Should().Be("text");
         RoundTrip(serializer, true).Should().BeTrue();
@@ -29,8 +30,9 @@ public class CacheSerializerTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void RoundTrip_PreservesRecordsAndCollections(ISerializer serializer)
+    public void RoundTrip_PreservesRecordsAndCollections(object serializerInstance)
     {
+        var serializer = (ISerializer)serializerInstance;
         var order = new Order(7, "Ada", 99.95m, new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc), new List<string> { "a", "b" });
 
         var copy = RoundTrip(serializer, order);
@@ -41,8 +43,9 @@ public class CacheSerializerTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void RoundTrip_KeepsDateTimeKind(ISerializer serializer)
+    public void RoundTrip_KeepsDateTimeKind(object serializerInstance)
     {
+        var serializer = (ISerializer)serializerInstance;
         // A value read from the distributed cache must equal the one the method returned, kind included
         foreach (var kind in new[] { DateTimeKind.Utc, DateTimeKind.Local, DateTimeKind.Unspecified })
         {
@@ -57,8 +60,9 @@ public class CacheSerializerTests
 
     [Theory]
     [MemberData(nameof(Serializers))]
-    public void Deserialize_EmptyInput_ReturnsDefault(ISerializer serializer)
+    public void Deserialize_EmptyInput_ReturnsDefault(object serializerInstance)
     {
+        var serializer = (ISerializer)serializerInstance;
         serializer.Deserialize<string>(ReadOnlySequence<byte>.Empty).Should().BeNull();
     }
 

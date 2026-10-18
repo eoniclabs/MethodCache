@@ -48,6 +48,36 @@ public static class BenchmarkCommands
 
         switch (cleanedArgs[0].ToLowerInvariant())
         {
+            case "design-http":
+                RunBenchmark<Microbenchmarks.DesignHttpWorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "design-memory":
+                RunBenchmark<Microbenchmarks.DesignMemoryWorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "design-l2":
+                RunBenchmark<Microbenchmarks.DesignL2WorkloadBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "hashlookup":
+                RunBenchmark<Microbenchmarks.KeyHashLookupBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "memory-reference":
+                RunBenchmark<Microbenchmarks.MemoryCacheLookupReferenceBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "hitpath":
+                RunBenchmark<Microbenchmarks.PrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "generated-hitpath":
+                RunBenchmark<Microbenchmarks.GeneratedPrefixHitPathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "httppath":
+                RunBenchmark<Microbenchmarks.HttpResponsePathBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "httpcold":
+                RunBenchmark<Microbenchmarks.HttpColdMissBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
+            case "contract":
+                RunBenchmark<Comparison.GeneratedContractBenchmarks>(ReadmeConfig(quickRequested), cleanedArgs.Skip(1).ToArray());
+                break;
             case "engine":
                 RunBenchmark<Microbenchmarks.MemoryEngineBenchmarks>(
                     DefaultConfig.Instance.AddJob(Job.ShortRun.WithGcServer(true)), cleanedArgs.Skip(1).ToArray());
@@ -131,6 +161,16 @@ public static class BenchmarkCommands
         Console.WriteLine("Usage: MethodCache.Benchmarks <category>");
         Console.WriteLine("");
         Console.WriteLine("Available categories:");
+        Console.WriteLine("  design-http   - Local/native HTTP hit, miss and cookie-preserving bypass");
+        Console.WriteLine("  design-memory - Public API hits, contention, single-flight and weighted eviction");
+        Console.WriteLine("  design-l2     - Real Redis/SQL reads and writes, round-trip off/on");
+        Console.WriteLine("  hashlookup   - Ready string/span lookup versus immutable prefix-state reuse");
+        Console.WriteLine("  memory-reference - IMemoryCache ready/built keys, sync and Task results");
+        Console.WriteLine("  hitpath      - Contract-1 facade hits, buffers and listeners");
+        Console.WriteLine("  generated-hitpath - Generated short/long interfaces, int/GUID, hits/misses and listeners");
+        Console.WriteLine("  httppath     - HTTP fresh/variant hits, misses and 304, listeners off/on");
+        Console.WriteLine("  httpcold     - HTTP cold publication with a bounded resident set per iteration");
+        Console.WriteLine("  contract     - Generated sync/Task/ValueTask, complex keys and misses");
         Console.WriteLine("  engine       - Current memory engine latency compared with other caches");
         Console.WriteLine("  hitratio     - Hit ratio and read throughput on synthetic workloads");
         Console.WriteLine("  readme       - The README numbers: MethodCache vs IMemoryCache, HybridCache and FusionCache");

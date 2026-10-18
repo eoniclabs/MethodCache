@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -63,7 +64,52 @@ public class DecoratorOwnershipTests
         using (var scope = provider.CreateScope()) scope.ServiceProvider.GetRequiredService<IOwnedSync>();
         Assert.Equal(1, inner.Disposals);
     }
+
+    // The container keeps every disposable transient it creates until its scope ends, for the root scope until
+    // the application exits; a decorator of a non-disposable interface must not be one
+    [Fact]
+    public void TransientDecorator_ResolvedFromRoot_IsNotRetainedByTheContainer()
+    {
+        var services = new ServiceCollection();
+        services.AddTransient<IPlainTransient, PlainTransient>();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        var weak = ResolveWeakly(provider);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(weak.IsAlive);
+    }
+
+    [Fact]
+    public void Decorator_IsDisposableOnlyWhenTheInterfaceIs()
+    {
+        var services = new ServiceCollection();
+        services.AddTransient<IPlainTransient, PlainTransient>();
+        services.AddSingleton<IOwnedSync, OwnedSync>();
+        services.AddSingleton<IOwnedAsync>(new OwnedAsync());
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        var plain = provider.GetRequiredService<IPlainTransient>();
+        Assert.False(plain is IDisposable || plain is IAsyncDisposable);
+        Assert.True(provider.GetRequiredService<IOwnedSync>() is IDisposable);
+        Assert.True(provider.GetRequiredService<IOwnedAsync>() is IAsyncDisposable);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference ResolveWeakly(IServiceProvider provider)
+    {
+        var service = provider.GetRequiredService<IPlainTransient>();
+        Assert.Contains("Decorator", service.GetType().Name);
+        return new WeakReference(service);
+    }
 }
+
+public interface IPlainTransient { [Cache] int Get(int id); }
+public sealed class PlainTransient : IPlainTransient { public int Get(int id) => id; }
 
 public interface IOwnedSync : IDisposable { [Cache] int Get(int id); }
 public sealed class OwnedSync : IOwnedSync

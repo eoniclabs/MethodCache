@@ -10,7 +10,7 @@ using Vendor.Rates;
 var services = new ServiceCollection();
 services.AddScoped<IUserService, UserService>();
 services.AddSingleton<IRatesClient, RatesClient>();
-services.AddMethodCache();
+services.AddMethodCache(b => b.FromAssemblyOf<IPriceService>().AutoRegister(ServiceLifetime.Singleton));
 
 await using var provider = services.BuildServiceProvider();
 
@@ -27,10 +27,12 @@ await using (var scope = provider.CreateAsyncScope())
     await users.GetUserAsync(42);
 }
 
-// Registered by AddMethodCache() itself, since the application did not register it
+// Explicit auto-registration supplies the otherwise unregistered price and catalog services.
 var prices = provider.GetRequiredService<IPriceService>();
 await prices.GetPriceAsync("ABC");
 await prices.GetPriceAsync("ABC");
+await prices.GenericAsync<int>(42);
+await prices.GenericAsync<int>(42);
 
 var rates = provider.GetRequiredService<IRatesClient>();
 await rates.GetRateAsync("EUR", "SEK");
@@ -62,9 +64,9 @@ if (UserService.Calls != 1)
     failures.Add($"IUserService implementation called {UserService.Calls} times, expected 1");
 }
 
-if (PriceService.Calls != 1)
+if (PriceService.Calls != 2)
 {
-    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 1");
+    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 2");
 }
 
 if (RatesClient.RateCalls != 1)
@@ -81,6 +83,42 @@ if (CatalogService.Calls != 4)
 {
     failures.Add($"ICatalogService implementation called {CatalogService.Calls} times, expected 4");
 }
+
+// The explicitly frozen pre-release .NET 10 vendor links the reviewed KeyBuilder/AppendPart/ref lookup ABI.
+var frozenNet10Services = new ServiceCollection();
+frozenNet10Services.AddSingleton<FrozenVendor.Contract1Final.IService, FrozenVendor.Contract1Final.Service>();
+frozenNet10Services.AddSingleton<FrozenVendor.ThirdPartyFinal.IClient, FrozenVendor.ThirdPartyFinal.Client>();
+frozenNet10Services.AddScoped<FrozenVendor.Contract1Final.IRepository<string>, FrozenVendor.Contract1Final.StringRepository>();
+frozenNet10Services.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1Final.Marker>());
+await using (var frozenNet10Provider = frozenNet10Services.BuildServiceProvider())
+{
+    var frozen = frozenNet10Provider.GetRequiredService<FrozenVendor.Contract1Final.IService>();
+    if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
+        failures.Add("Frozen net10 inline return shapes did not preserve caching.");
+    if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
+        failures.Add("Frozen net10 inline ValueTask did not preserve caching.");
+    await frozen.UpdateAsync(42);
+    if (frozen.Read(42) != 4) failures.Add("Frozen net10 tag invalidation failed.");
+    if (frozen.Collection([1, 2]) != 5 || frozen.Collection([1, 2]) != 5)
+        failures.Add("Frozen collection AppendPart did not preserve caching.");
+    if (frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6 || frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6)
+        failures.Add("Frozen record AppendPart did not preserve caching.");
+    if (frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7 || frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7)
+        failures.Add("Frozen provider AppendPart did not preserve caching.");
+    var client = frozenNet10Provider.GetRequiredService<FrozenVendor.ThirdPartyFinal.IClient>();
+    if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
+        failures.Add("Frozen net10 third-party CacheInterface did not preserve caching.");
+    await using var scope = frozenNet10Provider.CreateAsyncScope();
+    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1Final.IRepository<string>>();
+    if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
+        failures.Add("Frozen net10 closed generic interface did not preserve caching.");
+}
+
+try { await MethodCache.AotSmokeTest.PrefixCases.PrefixAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("Generated prefix AOT check failed: " + error.Message); }
+
+try { await HttpAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("HTTP storage/admin AOT check failed: " + error.GetType().Name); }
 
 foreach (var failure in failures)
 {
@@ -113,6 +151,9 @@ public interface IPriceService
 {
     [Cache(Duration = "00:01:00")]
     Task<decimal> GetPriceAsync(string symbol);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> GenericAsync<T>(int id);
 }
 
 public sealed class PriceService : IPriceService
@@ -125,6 +166,12 @@ public sealed class PriceService : IPriceService
     {
         Interlocked.Increment(ref _calls);
         return Task.FromResult(42m);
+    }
+
+    public Task<int> GenericAsync<T>(int id)
+    {
+        Interlocked.Increment(ref _calls);
+        return Task.FromResult(id);
     }
 }
 
