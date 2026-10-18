@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace MethodCache.Docs.Tests;
@@ -37,6 +38,7 @@ internal sealed class DemoWebFactory : WebApplicationFactory<ProductCatalog>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.UseContentRoot(Path.Combine(RepositoryRoot, "samples", "MethodCache.WebDemo"))
             .UseEnvironment(_environment)
             .UseSetting("Demo:DataFile", DataFile)
