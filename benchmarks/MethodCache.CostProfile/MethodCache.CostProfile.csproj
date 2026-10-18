@@ -18,6 +18,8 @@
     <Compile Include="../MethodCache.Benchmarks/Comparison/GeneratedContractBenchmarks.cs" Link="Harness/GeneratedContractBenchmarks.cs" />
     <Compile Include="../MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs" Link="Harness/DesignWorkloadBenchmarks.cs" />
     <Compile Include="../MethodCache.Benchmarks/Microbenchmarks/HttpResponsePathBenchmarks.cs" Link="Harness/HttpResponsePathBenchmarks.cs" />
+    <Compile Include="../MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs" Link="Harness/GeneratedPrefixHitPathBenchmarks.cs" />
+    <Compile Include="../MethodCache.Benchmarks/Microbenchmarks/PrefixBenchmarkSetup.cs" Link="Harness/PrefixBenchmarkSetup.cs" />
   </ItemGroup>
 
   <ItemGroup>

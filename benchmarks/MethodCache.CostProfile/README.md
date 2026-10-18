@@ -1,8 +1,8 @@
 # Cost profile
 
 The performance gate in [design-spec §10](../../docs/developer/design-spec.md#10-prestandagrind). It runs the
-design harness cases (generated contract, HTTP response path, memory, L2 and HTTP workloads from
-`MethodCache.Benchmarks`) and records what each operation costs:
+design harness cases (generated contract, generated short and long key prefixes, HTTP response path, memory,
+L2 and HTTP workloads from `MethodCache.Benchmarks`) and records what each operation costs:
 
 - allocated bytes (median of seven batches),
 - Redis commands, counted by the server from `INFO commandstats`, so commands inside Lua scripts count too,

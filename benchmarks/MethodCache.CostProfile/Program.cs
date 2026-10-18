@@ -20,6 +20,7 @@ internal static class Program
     private static readonly Type[] Types =
     [
         typeof(MethodCache.Benchmarks.Comparison.GeneratedContractBenchmarks),
+        typeof(MethodCache.Benchmarks.Microbenchmarks.GeneratedPrefixHitPathBenchmarks),
         typeof(MethodCache.Benchmarks.Microbenchmarks.HttpResponsePathBenchmarks),
         typeof(MethodCache.Benchmarks.Microbenchmarks.HttpColdMissBenchmarks),
         typeof(MethodCache.Benchmarks.Microbenchmarks.DesignMemoryWorkloadBenchmarks),

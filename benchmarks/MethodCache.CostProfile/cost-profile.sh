@@ -33,7 +33,8 @@ git -C "$root" worktree add --detach "$base_tree" "$base_ref" >/dev/null
 # The base gets this revision's profile and harness, so both sides run exactly the same cases
 mkdir -p "$base_tree/benchmarks/MethodCache.CostProfile"
 cp "$here"/*.cs "$here"/*.csproj "$base_tree/benchmarks/MethodCache.CostProfile/"
-for file in Comparison/GeneratedContractBenchmarks.cs Microbenchmarks/DesignWorkloadBenchmarks.cs Microbenchmarks/HttpResponsePathBenchmarks.cs; do
+for file in Comparison/GeneratedContractBenchmarks.cs Microbenchmarks/DesignWorkloadBenchmarks.cs Microbenchmarks/HttpResponsePathBenchmarks.cs \
+  Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs Microbenchmarks/PrefixBenchmarkSetup.cs; do
   mkdir -p "$(dirname "$base_tree/benchmarks/MethodCache.Benchmarks/$file")"
   cp "$root/benchmarks/MethodCache.Benchmarks/$file" "$base_tree/benchmarks/MethodCache.Benchmarks/$file"
 done
@@ -48,8 +49,9 @@ done
 
 if [ "$pairs" -gt 0 ]; then
   rm -f "$out"/base-*.jsonl "$out"/head-*.jsonl
-  # One process per case: cases timed in one process shape each other's JIT and GC state
-  mapfile -t cases < <(dotnet "$out/head-bin/MethodCache.CostProfile.dll" "$filter" --list)
+  # One process per case: cases timed in one process shape each other's JIT and GC state. On Windows the
+  # names end in CR, which would make every --exact launch miss
+  mapfile -t cases < <(dotnet "$out/head-bin/MethodCache.CostProfile.dll" "$filter" --list | tr -d '\r')
   for i in $(seq 1 "$pairs"); do
     # Alternate which side goes first, so a trend on the machine does not favor one side
     order="base head"

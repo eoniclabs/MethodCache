@@ -3,7 +3,7 @@ import argparse,hashlib,json,re,subprocess
 from generated_build import add_build_validation
 p=argparse.ArgumentParser();p.add_argument('--runtime-root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--workloads-root',type=Path,required=True);a=p.parse_args()
 root=a.runtime_root.resolve();source=a.workloads_root.resolve();out=a.output.resolve();out.mkdir(exist_ok=True,parents=True)
-files=['Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
+files=['Microbenchmarks/PrefixBenchmarkSetup.cs','Microbenchmarks/PrefixHitPathBenchmarks.cs','Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs','Microbenchmarks/KeyHashLookupBenchmarks.cs','Microbenchmarks/MemoryCacheLookupReferenceBenchmarks.cs']
 checksums={}
 for file in files:
  data=(source/'benchmarks/MethodCache.Benchmarks'/file).read_bytes();(out/Path(file).name).write_bytes(data);checksums[file]=hashlib.sha256(data).hexdigest()
