@@ -73,9 +73,9 @@ namespace App
             var __mcKeyBuilder = new global::MethodCache.Generated.KeyBuilder(__mcCall, stackalloc char[256]);
             __mcKeyBuilder.AppendPart(__mcArgument0);
 
-            if (__mcCall.TryGetValueTask<string?>(ref __mcKeyBuilder, out var __mcCachedValue))
+            if (__mcCall.TryGetValue<string?>(ref __mcKeyBuilder, out var __mcCachedValue))
             {
-                return __mcCachedValue!;
+                return new global::System.Threading.Tasks.ValueTask<string?>(__mcCachedValue!);
             }
 
             var __mcKey = __mcKeyBuilder.ToString();

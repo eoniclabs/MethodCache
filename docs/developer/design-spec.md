@@ -93,7 +93,7 @@ och lokal generation. Samma MethodCall används för nyckelbygge, uppslag, tags,
 | GeneratedServices.InvalidateTagsAsync | Tar tags och caller-token. Samma återhämtningskontrakt som användar-API:t. |
 | CachedMethod.Capture | Returnerar MethodCall; inga oberoende läsningar av KeyPrefix/Enabled/policy får göras. |
 | new KeyBuilder(MethodCall, Span<char>) | Tar anropet och anroparens stackbuffer och skapar en KeyBuilder bunden till anropets snapshot. Runtime skriver hela det fasta prefixet och äger gränsen mot argumentdelen. En konstruktor, inte en fabriksmetod: en byggare som returneras från en metod kopieras till anroparens lokala variabel, vilket på x64 kostar cirka 12 ns per träff. |
-| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. |
+| MethodCall.TryGetTask / TryGetValueTask / TryGetValue | Tar ref KeyBuilder och out-resultat. Samma MethodCall som skapade byggaren används. Ett verkligt hit räknas en gång. False räknar inte automatiskt miss. En genererad ValueTask-metod anropar TryGetValue och skapar sin ValueTask i dekoratorn: en ValueTask som lämnas genom en out-parameter kopieras på varje träff (cirka 4 % av en träff på x64). TryGetValueTask finns kvar för redan kompilerad genererad kod. |
 | MethodCall.LoadAsync / LoadValueAsync | Tar strängnyckel, generiskt state, statisk loader, taggvärden och token. Snapshoten följer laddningen. |
 | MethodCall.Load | Verklig synkron exekveringsväg för synkrona metoder; se §4.3. |
 | MethodCall.ServiceForLoad | Återanvänder inner-instansen eller löser rätt registrering i ett nytt scope för arbete som outlever anroparen. |
