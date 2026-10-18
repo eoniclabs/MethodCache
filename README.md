@@ -43,7 +43,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 ## Why MethodCache
 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code.
-- **Fast.** A cache hit allocates nothing, is as fast as hand-written `IMemoryCache` code, and costs 4 to 6 times less than HybridCache or FusionCache ([numbers](#performance)).
+- **Fast.** A cache hit allocates nothing and on x64 is about 10 % faster than hand-written `IMemoryCache` code, faster than HybridCache and 8 to 9 times faster than FusionCache ([numbers](#performance)).
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
   Previously compiled contract-1 vendor decorators keep working without regeneration, with both inline and materialized keys.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
@@ -323,22 +323,21 @@ HTTP responses without custom key headers or `Vary` fields use direct variant se
 isolate `Authorization` and `Cookie`.
 SQL Server reuses command text for repeated generation batch shapes while reading every generation from shared storage.
 
-Warm in-memory hits on Megatron (Apple M5), .NET 10.0.3, 2026-10-18. Each library uses its native API,
-default options and the same explicitly immutable payload. Key construction is included. The ratio is
-against `IMemoryCache` by hand with the same id type (lower is faster):
+Warm in-memory hits on an AMD Ryzen 7 5800X (x64, Windows 11), .NET 10.0.13, 2026-10-18. Each library
+uses its native API, default options and the same explicitly immutable payload. Key construction is
+included. The ratio is against `IMemoryCache` by hand with the same id type (lower is faster):
 
 | Approach | `int` id | `Guid` id | Allocated per hit (`int` / `Guid`) |
 |---|---:|---:|---:|
-| IMemoryCache by hand | 29.0 ns (1.00x) | 36.4 ns (1.00x) | 112 B / 176 B |
-| MethodCache `[Cache]` | 36.0 ns (1.24x) | 44.9 ns (1.23x) | 0 B / 0 B |
-| HybridCache | 33.3 ns (1.15x) | 44.4 ns (1.22x) | 104 B / 168 B |
-| FusionCache | 127.9 ns (4.41x) | 134.9 ns (3.71x) | 344 B / 416 B |
+| IMemoryCache by hand | 54.2 ns (1.00x) | 72.1 ns (1.00x) | 112 B / 176 B |
+| **MethodCache `[Cache]`** | **49.2 ns (0.91x)** | **62.0 ns (0.86x)** | **0 B / 0 B** |
+| HybridCache | 63.5 ns (1.17x) | 77.2 ns (1.07x) | 104 B / 168 B |
+| FusionCache | 491.2 ns (9.06x) | 527.6 ns (7.32x) | 344 B / 416 B |
 
 Three independent processes per case, ten warmups and fifteen measured iterations per process,
-with 4,194,304 calls per iteration and workstation GC. MethodCache allocates no managed memory per hit;
-IMemoryCache is faster on this machine, HybridCache is close, and FusionCache costs more on these call paths.
-See [the results and methodology](docs/benchmarks.md) for versions, uncertainty, the immutable-payload fix
-and the limits of this hit-only comparison.
+with 4,194,304 calls per iteration and workstation GC. Times and ratios depend on the processor.
+See [the results and methodology](docs/benchmarks.md) for versions, uncertainty and the limits of this
+hit-only comparison.
 
 ## How it compares
 
