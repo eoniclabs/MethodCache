@@ -314,25 +314,22 @@ HTTP responses without custom key headers or `Vary` fields use direct variant se
 isolate `Authorization` and `Cookie`.
 SQL Server reuses command text for repeated generation batch shapes while reading every generation from shared storage.
 
-A cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, each library on its
-default settings. The ratio is against `IMemoryCache` by hand with the same id type:
+Warm in-memory hits on Megatron (Apple M5), .NET 10.0.3, 2026-10-18. Each library uses its native API,
+default options and the same explicitly immutable payload. Key construction is included. The ratio is
+against `IMemoryCache` by hand with the same id type (lower is faster):
 
 | Approach | `int` id | `Guid` id | Allocated per hit (`int` / `Guid`) |
 |---|---:|---:|---:|
-| `IMemoryCache` by hand | 93 ns (1.00x) | 114 ns (1.00x) | 112 B / 176 B |
-| **MethodCache `[Cache]`** | **77 ns (0.82x)** | **102 ns (0.90x)** | **0 B / 0 B** |
-| HybridCache | 551 ns (5.9x) | 597 ns (5.2x) | 272 B / 352 B |
-| FusionCache | 354 ns (3.8x) | 389 ns (3.4x) | 344 B / 416 B |
+| IMemoryCache by hand | 29.0 ns (1.00x) | 36.4 ns (1.00x) | 112 B / 176 B |
+| MethodCache `[Cache]` | 36.0 ns (1.24x) | 44.9 ns (1.23x) | 0 B / 0 B |
+| HybridCache | 33.3 ns (1.15x) | 44.4 ns (1.22x) | 104 B / 168 B |
+| FusionCache | 127.9 ns (4.41x) | 134.9 ns (3.71x) | 344 B / 416 B |
 
-The generated decorator writes the key into a stack buffer and returns the cached `Task` itself, so a hit allocates
-nothing and is at least as fast as hand-written code in the recorded .NET 10 benchmark.
-Measured with BenchmarkDotNet on .NET 10 on a shared cloud VM (Intel Xeon 2.1 GHz, 4 cores). Times and ratios
-are for that setup and will differ on other hardware and runtimes; the allocations don't.
-[docs/benchmarks.md](docs/benchmarks.md) has the full results. To measure on your own machine:
-
-```bash
-dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
-```
+Three independent processes per case, ten warmups and fifteen measured iterations per process,
+with 4,194,304 calls per iteration and workstation GC. MethodCache allocates no managed memory per hit;
+IMemoryCache is faster on this machine, HybridCache is close, and FusionCache costs more on these call paths.
+See [the results and methodology](docs/benchmarks.md) for versions, uncertainty, the immutable-payload fix
+and the limits of this hit-only comparison.
 
 ## How it compares
 

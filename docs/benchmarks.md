@@ -2,16 +2,71 @@
 
 # Benchmarks
 
-The numbers in the README come from [`ReadmeComparisonBenchmarks`](../benchmarks/MethodCache.Benchmarks/Comparison/ReadmeComparisonBenchmarks.cs):
-a cache hit on `Task<User> GetUserAsync(int id)`, and on the same method with a `Guid` id, written the way each library
-documents it, with every library on its default settings (including MethodCache's built-in counters) and workstation GC. Most
-applications key their data by `Guid`, which is a longer key for every library to build, hash and compare.
+## Megatron cache hits (2026-10-18)
 
-```bash
-dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit'
+These are warm, local hits through each library's native API, including key construction and the return
+value: `Task<BenchUser<TId>>` for MethodCache and the hand-written IMemoryCache wrapper, native
+`ValueTask<BenchUser<TId>>` for HybridCache and FusionCache. Both `int` and GUID ids are measured.
+Provider options use their defaults, including MethodCache's built-in counters; each entry has a ten-minute TTL.
+
+The shared payload is a sealed, immutable record. It now explicitly declares `[ImmutableObject(true)]`:
+without that hint HybridCache deserialized a new object on each hit, while the other providers reused theirs.
+A new identity guard failed for that old setup and passes for all eight hit paths with the hint.
+This follows [Microsoft's object-reuse guidance](https://learn.microsoft.com/aspnet/core/performance/caching/hybrid?view=aspnetcore-10.0#reuse-objects).
+The older cloud table below used the unannotated payload, so its HybridCache work differs from this comparison.
+
+| Approach | `int` ns ± error | Allocated | `Guid` ns ± error | Allocated |
+|---|---:|---:|---:|---:|
+| IMemoryCache by hand | 29.0 ± 0.1 | 112 B | 36.4 ± 0.3 | 176 B |
+| MethodCache `[Cache]` | 36.0 ± 0.6 | 0 B | 44.9 ± 1.6 | 0 B |
+| HybridCache | 33.3 ± 0.1 | 104 B | 44.4 ± 0.1 | 168 B |
+| FusionCache | 127.9 ± 0.5 | 344 B | 134.9 ± 0.4 | 416 B |
+
+Values are BenchmarkDotNet means; the error is half its 99.9% confidence interval, in nanoseconds.
+The complete matrix uses three independent processes per case, ten warmup and fifteen actual iterations
+per process, fixed at 4,194,304 invocations. All 360 actual measurements are retained and every actual
+iteration exceeds 100 ms. The reported statistics use BenchmarkDotNet's default upper-outlier handling.
+No library, process or pair is selected for a favorable result.
+
+MethodCache is roughly 23–24% slower than the hand-written IMemoryCache hit on this machine, with no
+managed allocation. It is close to HybridCache for GUIDs and slower for integers. FusionCache's measured
+call paths take about 3–3.6 times as long as MethodCache's. These numbers concern
+these native API hit paths; they are not miss, contention, L2, safety-feature or raw storage-engine comparisons.
+
+MethodCache's launch-to-launch variation was larger than the other libraries', and BenchmarkDotNet
+flagged one MethodCache distribution as bimodal. Small differences from HybridCache should be treated
+as approximate. The process ran with normal scheduling: BenchmarkDotNet could not elevate its priority;
+no forced CPU affinity was used. This is an interactive workstation, not a dedicated benchmark host.
+
+```text
+Source: 00aaef9841b608b099ea564bdd9566907e718d40 (runtime src tree unchanged from main 1ca7e277)
+BenchmarkDotNet 0.15.4; Megatron, Apple M5, 10 physical/logical cores
+macOS 27.0.1 (26A434); .NET 10.0.3, native Arm64 RyuJIT; SDK 10.0.103
+Concurrent workstation GC; LaunchCount=3; WarmupCount=10; IterationCount=15
+InvocationCount=4194304; UnrollFactor=16
+Microsoft.Extensions.Caching.Memory 9.0.9
+Microsoft.Extensions.Caching.Hybrid 9.9.0
+ZiggyCreatures.FusionCache 2.0.0
 ```
 
-## Cache hit (2026-10-15)
+These are the versions pinned by the benchmark project, not a claim to have tested the latest release
+of every library. MethodCache is compiled from source at the SHA above.
+
+```bash
+dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --filter '*Hit' \
+  --launchCount 3 --warmupCount 10 --iterationCount 15 \
+  --invocationCount 4194304 --unrollFactor 16 --exporters JSON
+```
+
+Raw reports and logs remain outside Git under
+`/Users/johan/dev/MethodCache-artifacts/postdesign-comparison-2026-10-18/readme-confirmation/`.
+The first, complete adaptive-invocation study is also preserved there under `readme-comparison/`.
+It measured MethodCache at 34.9/42.8 ns for int/GUID but produced short-iteration warnings for those
+cases; the entire eight-case matrix was rerun with fixed invocation counts for the published table.
+The two studies are not pooled. Design-series acceptance remains a separate paired baseline comparison;
+see [the verification record](developer/design-final-validation.md).
+
+## Historical cloud run (2026-10-15)
 
 | Approach | `int` id | Allocated | vs. IMemoryCache by hand | `Guid` id | Allocated | vs. IMemoryCache by hand |
 |---|---:|---:|---:|---:|---:|---:|
