@@ -200,40 +200,71 @@ internal sealed class RedisBackplane : IBackplane, IDisposable, IAsyncDisposable
     private async Task RecoverSubscriptionAsync(Subscription subscription, bool subscriptionConnection)
     {
         long generation;
+        CancellationToken cancellation;
         lock (_lifecycleLock)
         {
+            if (_disposed || subscription.Cancellation.IsCancellationRequested) return;
+            cancellation = subscription.Cancellation.Token;
             generation = subscriptionConnection ? ++_connectionGeneration : _connectionGeneration;
             if (subscriptionConnection) Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
         }
-        try
+        var delay = FirstRetryDelay;
+        while (true)
         {
-            // A restored socket is not proof that Redis acknowledged this channel subscription.
-            // SubscribeAsync adds a delegate even when it is the same instance. Replace the
-            // retained registration, serializing concurrent restored events to keep one delegate.
-            if (subscriptionConnection && subscription.Connection is { } connection && subscription.Handler is { } handler)
+            try
             {
-                await subscription.RecoveryGate.WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
-                try
+                // A restored socket is not proof that Redis acknowledged this channel subscription.
+                // SubscribeAsync adds a delegate even when it is the same instance. Replace the
+                // retained registration, serializing concurrent restored events to keep one delegate.
+                if (subscriptionConnection && subscription.Connection is { } connection && subscription.Handler is { } handler)
                 {
-                    var subscriber = connection.GetSubscriber();
-                    await subscriber.UnsubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
-                    subscription.Cancellation.Token.ThrowIfCancellationRequested();
-                    await subscriber.SubscribeAsync(_channel, handler).WaitAsync(subscription.Cancellation.Token).ConfigureAwait(false);
+                    await subscription.RecoveryGate.WaitAsync(cancellation).ConfigureAwait(false);
+                    try
+                    {
+                        lock (_lifecycleLock)
+                        {
+                            if (generation != _connectionGeneration || _disposed || cancellation.IsCancellationRequested) return;
+                            Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
+                        }
+                        var subscriber = connection.GetSubscriber();
+                        await subscriber.UnsubscribeAsync(_channel, handler).WaitAsync(cancellation).ConfigureAwait(false);
+                        cancellation.ThrowIfCancellationRequested();
+                        await subscriber.SubscribeAsync(_channel, handler).WaitAsync(cancellation).ConfigureAwait(false);
+                    }
+                    finally { subscription.RecoveryGate.Release(); }
                 }
-                finally { subscription.RecoveryGate.Release(); }
+                if (Volatile.Read(ref subscription.Callback) is { } callback)
+                    await callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+                if (subscriptionConnection) CompleteRecovery(subscription, generation);
+                return;
             }
-            if (Volatile.Read(ref subscription.Callback) is { } callback)
-                await callback(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
-            if (subscriptionConnection) CompleteRecovery(subscription, generation);
-        }
-        catch
-        {
-            lock (_lifecycleLock)
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
             {
-                if (generation == _connectionGeneration)
-                    Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+                return;
             }
-            throw;
+            catch (Exception ex) when (subscriptionConnection && (ex is RedisConnectionException or RedisTimeoutException or OperationCanceledException))
+            {
+                lock (_lifecycleLock)
+                {
+                    if (generation != _connectionGeneration || _disposed || cancellation.IsCancellationRequested) return;
+                    Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+                }
+                _logger.LogWarning("MethodCache could not restore its Redis subscription; it tries again in {Delay}. Error type: {ErrorType}.", delay, ex.GetType().FullName);
+                try { await Task.Delay(delay, _time, cancellation).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+                lock (_lifecycleLock)
+                    if (generation != _connectionGeneration || _disposed || cancellation.IsCancellationRequested) return;
+                delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, MaxRetryDelay.Ticks));
+            }
+            catch
+            {
+                lock (_lifecycleLock)
+                {
+                    if (generation == _connectionGeneration)
+                        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+                }
+                throw;
+            }
         }
     }
 

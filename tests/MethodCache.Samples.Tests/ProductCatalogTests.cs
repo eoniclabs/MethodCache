@@ -1,5 +1,6 @@
 using MethodCache.WebDemo;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -17,16 +18,25 @@ public class ProductCatalogTests : IDisposable
     public ProductCatalogTests() => Directory.CreateDirectory(_directory);
     private string DataFile => Path.Combine(_directory, "products.db");
 
+    private ProductCatalog CreateCatalog()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Demo:DataFile"] = DataFile
+        }).Build();
+        return new ProductCatalog(new ProductStore(configuration), configuration, _time);
+    }
+
     [Fact]
     public async Task ConcurrentPriceUpdates_IndependentCatalogs_PreserveEveryChange()
     {
-        var catalog = new ProductCatalog(DataFile, _time);
+        var catalog = CreateCatalog();
         await catalog.UpdatePriceAsync(1, 129m);
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var updates = Enumerable.Range(1, 4).Select(async id =>
         {
             await ready.Task;
-            await new ProductCatalog(DataFile, _time).UpdatePriceAsync(id, 1000m + id);
+            await CreateCatalog().UpdatePriceAsync(id, 1000m + id);
         }).ToArray();
         ready.SetResult();
         await Task.WhenAll(updates);
@@ -40,7 +50,7 @@ public class ProductCatalogTests : IDisposable
     [Fact]
     public async Task Catalog_QueriesAndUpdates_PreserveDecimalValues()
     {
-        var catalog = new ProductCatalog(DataFile, _time);
+        var catalog = CreateCatalog();
         await catalog.UpdatePriceAsync(2, 123.4567890123456789012345678m);
         var query = catalog.GetByCategoryAsync("keyboards");
         _time.Advance(TimeSpan.FromMilliseconds(300));

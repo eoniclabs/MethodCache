@@ -44,7 +44,17 @@ try
     await ConfigurationAsync(provider, settingsFile);
     await ManualCachingAsync(provider);
     await InsightAsync(provider);
-    Ui.Summary(chapters: 6);
+    Ui.Chapter(7, "Expiration and refresh-ahead", "Advance a demo clock: expiration, sliding windows and background refresh need no real-time waits.");
+    foreach (var check in await AdvancedExamples.ExpirationAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Chapter(8, "Keep serving during an outage", "Fail-safe serves the last good value on errors or timeouts, then recovers when the dependency does.");
+    foreach (var check in await AdvancedExamples.FailSafeAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Chapter(9, "Store only useful results", "CacheWhen skips missing products, so a product created later is visible on the next lookup.");
+    foreach (var check in await AdvancedExamples.ConditionalAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Chapter(10, "Separate tenants", "The tenant is an explicit argument in both the cache key and the invalidation tag.");
+    foreach (var check in await AdvancedExamples.TenantsAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Chapter(11, "HttpClient caching", "A local HTTP server demonstrates max-age hits, ETag/304 validation, no-store and invalidation after PUT.");
+    foreach (var check in await HttpExamples.RunAsync()) Ui.Check(check.Passed, check.Claim);
+    Ui.Summary(chapters: 11);
 }
 finally
 {

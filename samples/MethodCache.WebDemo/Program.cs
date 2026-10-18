@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MethodCache;
 using MethodCache.WebDemo;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -8,14 +9,22 @@ using OpenTelemetry.Trace;
 var builder = WebApplication.CreateBuilder(args);
 
 // Your service, registered as usual. AddMethodCache() wraps it in the generated cache decorator.
-builder.Services.AddSingleton<IProductCatalog, ProductCatalog>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<ProductStore>();
+builder.Services.AddSingleton<ProductCatalog>();
+builder.Services.AddSingleton<IProductCatalog>(sp => sp.GetRequiredService<ProductCatalog>());
 builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration)); // "MethodCache" in appsettings.json, reloaded live
 
 // Optional: share the cache between instances. Set ConnectionStrings:Redis (the "redis" launch profiles do).
 var redis = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrEmpty(redis))
 {
-    builder.Services.AddMethodCacheRedis(redis);
+    builder.Services.AddMethodCacheRedis(options =>
+    {
+        options.Configuration = redis;
+    });
+    builder.Services.Configure<DistributedCacheOptions>(options =>
+        options.KeyPrefix = builder.Configuration["Demo:CachePrefix"] ?? "methodcache-webdemo:");
 }
 
 // Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
@@ -29,9 +38,26 @@ if (!string.IsNullOrEmpty(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
 }
 
 builder.Services.AddHealthChecks().AddMethodCache();
+// The demo has no sign-in page. Outside Development, protected API routes
+// challenge with 401/403 instead of redirecting to a login page.
+builder.Services.AddAuthentication("Cookies").AddCookie("Cookies", options =>
+{
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
 builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
 
 var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Shows how long each request took, so a cache hit is easy to spot
 app.Use(async (context, next) =>
@@ -54,6 +80,8 @@ app.MapGet("/", () => Results.Text("""
       GET  /methodcache/entries         what is cached right now
       GET  /methodcache/methods         every cached method's policy and where it came from
       GET  /health                      health check
+      GET  /demo/queries                real database reads (Development only)
+      POST /demo/reset                  restore seeded products and invalidate their cache (Development only)
     """));
 
 app.MapGet("/products/{id:int}", async (int id, IProductCatalog catalog) =>
@@ -63,7 +91,9 @@ app.MapGet("/products", (string category, IProductCatalog catalog) => catalog.Ge
 
 app.MapPut("/products/{id:int}/price", async (int id, PriceChange change, IProductCatalog catalog) =>
 {
-    await catalog.UpdatePriceAsync(id, change.Price);
+    if (change.Price is not { } price || price < 0) return Results.BadRequest(new { error = "Price is required and must be non-negative." });
+    try { await catalog.UpdatePriceAsync(id, price); }
+    catch (KeyNotFoundException) { return Results.NotFound(); }
     return Results.NoContent();
 });
 
@@ -73,10 +103,16 @@ var admin = app.MapMethodCacheAdmin("CacheAdmins");
 if (app.Environment.IsDevelopment())
 {
     admin.AllowAnonymous();
+    app.MapGet("/demo/queries", (ProductCatalog catalog) => new { queries = catalog.Queries });
+    app.MapPost("/demo/reset", async (IProductCatalog catalog) =>
+    {
+        await catalog.ResetAsync();
+        return Results.NoContent();
+    });
 }
 
 app.MapHealthChecks("/health");
 
 app.Run();
 
-internal sealed record PriceChange(decimal Price);
+internal sealed record PriceChange(decimal? Price);

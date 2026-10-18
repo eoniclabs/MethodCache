@@ -59,7 +59,8 @@ public class ReadmeTests
         var client = new FxRatesClient();
         var services = new ServiceCollection();
         services.AddSingleton<IFxRatesClient>(client);
-        services.AddMethodCache();
+        // Both the console tour and this project generate a module for the vendor interface.
+        services.AddMethodCache(cache => cache.FromAssemblyOf<ReadmeTests>());
         await using var provider = services.BuildServiceProvider();
         var fx = provider.GetRequiredService<IFxRatesClient>();
 

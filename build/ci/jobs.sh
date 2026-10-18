@@ -3,7 +3,8 @@
 # build servers (inside the image from build/ci/Dockerfile), on a developer machine and in any CI host.
 #
 #   build/ci/jobs.sh build      restore and build the solution (Release)
-#   build/ci/jobs.sh demo       run the console demo; each chapter checks its own claims
+#   build/ci/jobs.sh demo       eleven-chapter console tour (including HttpClient), plus web tests without Docker
+#   build/ci/jobs.sh webdemo    all web demo tests, including two instances and Redis outage/recovery
 #   build/ci/jobs.sh tests      every test on net10.0, Redis and SQL Server required
 #   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS), on net10.0
 #   build/ci/jobs.sh cultures   the unit tests under tr-TR and sv-SE
@@ -34,7 +35,7 @@ export CI=true
 export MethodCacheEnforceAudit=true
 
 solution=MethodCache.sln
-without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests"
+without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests&Category!=RedisDemo"
 
 job_build() {
   PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
@@ -45,6 +46,14 @@ job_build() {
 
 job_demo() {
   dotnet run --project samples/MethodCache.Demo --configuration Release --no-build
+  dotnet test tests/MethodCache.Docs.Tests --configuration Release --no-build \
+    --filter "FullyQualifiedName~WebDemo&Category!=RedisDemo"
+}
+
+job_webdemo() {
+  METHODCACHE_REQUIRE_INFRA_TESTS=true \
+    dotnet test tests/MethodCache.Docs.Tests --configuration Release --no-build \
+      --filter "FullyQualifiedName~WebDemo" --logger "console;verbosity=detailed"
 }
 
 job_tests() {

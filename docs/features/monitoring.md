@@ -68,6 +68,15 @@ app.MapHealthChecks("/health");
 The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
 use [runtime overrides](configuration.md#runtime-overrides) to change them.
 
+Configure your application's authentication scheme as well as the authorization policy. The
+[web demo](../../samples/MethodCache.WebDemo/) uses cookies and returns 401 for anonymous admin requests and
+403 for signed-in callers without the `Admin` role outside Development. It has no sign-in page; its
+Development environment allows anonymous admin requests so you can try the endpoints locally.
+It also exposes Development-only `/demo/queries` and `/demo/reset` routes to count source reads and restore
+the demonstration data; those routes are not part of the MethodCache admin package.
+The sample price endpoint rejects missing, null and negative prices before writes or invalidation; rejected requests
+leave both stored products and the cache unchanged.
+
 ## Health check
 
 `AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when L2 is unavailable,

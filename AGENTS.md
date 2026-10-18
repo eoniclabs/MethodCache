@@ -10,8 +10,8 @@ Read this before changing the repository. It is written for human contributors a
   - `MethodCache.Redis`, `MethodCache.SqlServer`: distributed cache (L2) with a backplane.
   - `MethodCache.Serialization.MessagePack`, `MethodCache.AspNetCore`, `MethodCache.OpenTelemetry`, `MethodCache.HttpCaching`: optional add-ons.
 - `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and three CI-only programs: `MethodCache.AotSmokeTest` (Native AOT), `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package) and `MethodCache.PackageSmokeTest.AddOns` (installs the six add-on packages and uses each one in an app, with Redis and SQL Server from `METHODCACHE_REDIS_URL` and `METHODCACHE_SQLSERVER_CONNECTION`). Both package tests read `artifacts/packages`; run `dotnet pack MethodCache.sln -c Release -o artifacts/packages` first.
-- `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`).
-- `samples/`: `MethodCache.Demo` (a guided console tour, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
+- `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`). It also runs the console/web demo scenarios, including Docker-backed Redis tests (`Category=RedisDemo`); the `unit` CI job excludes that category.
+- `samples/`: `MethodCache.Demo` (an eleven-chapter console tour including HttpClient caching, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
 - `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.
 
 ## Build, Test, Run
@@ -21,6 +21,7 @@ Read this before changing the repository. It is written for human contributors a
 - Coverage (to `test-results/`): `dotnet test --collect:"XPlat Code Coverage" --results-directory test-results`
 - Integration tests (Docker or `METHODCACHE_REDIS_URL`; see `docs/developer/INTEGRATION_TEST_STRATEGY.md`): `dotnet test tests/MethodCache.Redis.IntegrationTests`
 - Demo: `dotnet run --project samples/MethodCache.Demo -c Release`
+- Automated demos (after a Release build): `bash build/ci/jobs.sh demo`; `bash build/ci/jobs.sh webdemo` adds the Docker-backed Redis scenarios.
 - CI: every CI job is a script in `build/ci` (see `build/ci/README.md`). `build/ci/linux.sh` runs all Linux jobs in the build image with Docker, exactly as the build server does; `build/ci/jobs.sh <job>` runs one job with your local SDKs.
 
 ## Coding Style & Naming

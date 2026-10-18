@@ -5,6 +5,10 @@
 You never write keys for `[Cache]` methods. The generated decorator builds each key from the interface, the method
 and the arguments, so two calls share an entry exactly when they call the same method with equal arguments.
 
+Chapter 10 of the [console demo](../../samples/MethodCache.Demo/) includes the tenant ID in both the key
+and the invalidation tag, keeping the same product ID separate for two tenants. Derive that tenant from an
+authorized identity in an application; cache-key separation does not authorize access.
+
 <!-- snippet: keys-arguments -->
 ```cs
 public sealed record UserQuery(string Name, int Page);

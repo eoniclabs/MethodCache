@@ -5,6 +5,10 @@
 Fail-safe keeps an expired value for a while and returns it when calling the method again fails, so a database or API
 outage shows slightly old data instead of errors. It is off by default.
 
+Chapter 8 of the [console demo](../../samples/MethodCache.Demo/) shows a failing API, retry suppression,
+recovery and a slow response that finishes after the caller receives its fallback. A fake clock controls the
+expiry, retry and timeout windows; the same scenario runs in the docs tests.
+
 ## Turning it on
 
 For every cached method at once:

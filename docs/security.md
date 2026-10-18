@@ -25,6 +25,7 @@ under the same OS user from local credential files.
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
 | A tag built from user text clears the whole distributed cache | L2 metadata preserves every UTF-16 code unit, including lone surrogates, so reading a tag cannot change its invalidation identity. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
 | `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
+| A tenant ID is missing from the cache key or invalidation scope | The console tenant example passes an explicit `Guid` tenant ID in the method arguments and tag, and `DemoTenantSecurityTests` verifies distinct results and selective invalidation. Applications must derive and authorize that tenant from the caller's identity. |
 
 ## Distributed cache (Redis, SQL Server)
 
@@ -41,6 +42,9 @@ under the same OS user from local credential files.
 | Threat | What MethodCache does |
 |---|---|
 | An endpoint reachable without authorization | `MapMethodCacheAdmin` requires an authorization policy name, and every endpoint it maps requires that policy: anonymous callers get 401, signed-in users without it 403. A test reads the app's route table and checks every mapped endpoint, so a new endpoint without the policy fails a test. |
+| The web demo is started outside Development | It requires cookie authentication and the `Admin` role, returning 401/403 for refused requests. Only Development permits anonymous admin access. `WebDemoSecurityTests` starts the actual sample and checks every admin route in both environments. The sample has no sign-in page; deployed applications must configure their own authentication. |
+| Demo data can be reset outside Development | `/demo/reset` and `/demo/queries` are mapped only in Development. The sample tests verify that Production returns 404 for both. |
+| A web demo price update omits a price or supplies null/negative input | The endpoint returns 400 before writing or invalidating. `WebDemoInputTests` verifies stored and cached products stay unchanged, and checks zero and the maximum decimal as valid boundaries. |
 | A cross-site form or `fetch` without preflight calls `invalidate` with the admin's cookie | `POST invalidate` only accepts `application/json`, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415. The `DELETE` endpoints need a preflight too. Don't add a CORS policy that allows these routes from other origins. |
 | Cached values leak through the admin API | Entries are listed with key, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
 | Bad input | A missing `key` or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys and tags are matched literally, never as patterns. |

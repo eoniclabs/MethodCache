@@ -1,6 +1,9 @@
 # Open in Rider or Visual Studio and run the requests one by one. Watch X-Elapsed-Ms in each response.
 @host = http://localhost:5080
 
+### 0. Restore seed data and invalidate earlier product/list caches (Development only)
+POST {{host}}/demo/reset
+
 ### 1. The first call queries the "database" (about 300 ms)
 GET {{host}}/products/1
 
@@ -42,3 +45,6 @@ Content-Type: application/json
 
 ### 12. Health check
 GET {{host}}/health
+
+### 13. Actual database reads on this instance
+GET {{host}}/demo/queries

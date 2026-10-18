@@ -6,6 +6,8 @@ Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses a
 as RFC 9111 describes. Freshness comes from `Cache-Control` and expiry headers; `ETag` and `Last-Modified` enable
 conditional validation, and a successful 304 is returned to the caller as the full response.
 
+Chapter 11 of the [console tour](../../samples/MethodCache.Demo/#httpclient-caching) starts a local HTTP server and checks cache hits, ETag/304 validation, `no-store` and invalidation after PUT. It needs no external API or Docker.
+
 <!-- snippet: http-basic -->
 ```cs
 builder.Services.AddMethodCache();

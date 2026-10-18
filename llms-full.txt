@@ -362,6 +362,10 @@ With C# 13 or newer, generated decorators preserve `allows ref struct` constrain
 You never write keys for `[Cache]` methods. The generated decorator builds each key from the interface, the method
 and the arguments, so two calls share an entry exactly when they call the same method with equal arguments.
 
+Chapter 10 of the [console demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo) includes the tenant ID in both the key
+and the invalidation tag, keeping the same product ID separate for two tenants. Derive that tenant from an
+authorized identity in an application; cache-key separation does not authorize access.
+
 ```cs
 public sealed record UserQuery(string Name, int Page);
 
@@ -542,6 +546,9 @@ specializations. A version-specific pattern requires the closed type arguments.
 Each cached method decides how long its entries live. The settings below can be set on `[Cache]`, in startup code, in
 `appsettings.json` or at runtime ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)).
 
+Chapter 7 of the [console demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo) runs absolute expiry, sliding windows and
+refresh-ahead with an explicitly advanced clock and checked source-call counts.
+
 ```cs
 public interface IReportService
 {
@@ -720,6 +727,10 @@ tells every instance to drop its in-memory copy. You don't need to do anything e
 Fail-safe keeps an expired value for a while and returns it when calling the method again fails, so a database or API
 outage shows slightly old data instead of errors. It is off by default.
 
+Chapter 8 of the [console demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo) shows a failing API, retry suppression,
+recovery and a slow response that finishes after the caller receives its fallback. A fake clock controls the
+expiry, retry and timeout windows; the same scenario runs in the docs tests.
+
 ## Turning it on
 
 For every cached method at once:
@@ -794,6 +805,9 @@ Caller cancellation stops the wait during an L2 read or a slow factory, includin
 
 Sometimes a result should be returned but not remembered: an empty search, a product that doesn't exist yet, a
 response that says "try again later".
+
+Chapter 9 of the [console demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo) skips missing products and proves that a
+newly created product is visible on the next lookup, while existing products are cached.
 
 ## CacheWhen
 
@@ -1283,6 +1297,8 @@ Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses a
 as RFC 9111 describes. Freshness comes from `Cache-Control` and expiry headers; `ETag` and `Last-Modified` enable
 conditional validation, and a successful 304 is returned to the caller as the full response.
 
+Chapter 11 of the [console tour](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo#httpclient-caching) starts a local HTTP server and checks cache hits, ETag/304 validation, `no-store` and invalidation after PUT. It needs no external API or Docker.
+
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
@@ -1413,6 +1429,10 @@ Background HTTP revalidation preserves the request HTTP version, version policy 
 
 # Distributed cache
 
+The [web demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.WebDemo) includes two-instance request examples and automated
+Redis outage/restart scenarios. Both hosts share a transactional SQLite database, and query counters distinguish
+Redis hits from source reads. Its tests own their Redis container and never stop a developer's Redis.
+
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
 
@@ -1427,6 +1447,8 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 ```
 
 Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
+
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
 
 ## How it works
 
@@ -1705,6 +1727,15 @@ app.MapHealthChecks("/health");
 
 The [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
 use [runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides) to change them.
+
+Configure your application's authentication scheme as well as the authorization policy. The
+[web demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.WebDemo) uses cookies and returns 401 for anonymous admin requests and
+403 for signed-in callers without the `Admin` role outside Development. It has no sign-in page; its
+Development environment allows anonymous admin requests so you can try the endpoints locally.
+It also exposes Development-only `/demo/queries` and `/demo/reset` routes to count source reads and restore
+the demonstration data; those routes are not part of the MethodCache admin package.
+The sample price endpoint rejects missing, null and negative prices before writes or invalidation; rejected requests
+leave both stored products and the cache unchanged.
 
 ## Health check
 
@@ -2035,6 +2066,7 @@ under the same OS user from local credential files.
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
 | A tag built from user text clears the whole distributed cache | L2 metadata preserves every UTF-16 code unit, including lone surrogates, so reading a tag cannot change its invalidation identity. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
 | `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
+| A tenant ID is missing from the cache key or invalidation scope | The console tenant example passes an explicit `Guid` tenant ID in the method arguments and tag, and `DemoTenantSecurityTests` verifies distinct results and selective invalidation. Applications must derive and authorize that tenant from the caller's identity. |
 
 ## Distributed cache (Redis, SQL Server)
 
@@ -2051,6 +2083,9 @@ under the same OS user from local credential files.
 | Threat | What MethodCache does |
 |---|---|
 | An endpoint reachable without authorization | `MapMethodCacheAdmin` requires an authorization policy name, and every endpoint it maps requires that policy: anonymous callers get 401, signed-in users without it 403. A test reads the app's route table and checks every mapped endpoint, so a new endpoint without the policy fails a test. |
+| The web demo is started outside Development | It requires cookie authentication and the `Admin` role, returning 401/403 for refused requests. Only Development permits anonymous admin access. `WebDemoSecurityTests` starts the actual sample and checks every admin route in both environments. The sample has no sign-in page; deployed applications must configure their own authentication. |
+| Demo data can be reset outside Development | `/demo/reset` and `/demo/queries` are mapped only in Development. The sample tests verify that Production returns 404 for both. |
+| A web demo price update omits a price or supplies null/negative input | The endpoint returns 400 before writing or invalidating. `WebDemoInputTests` verifies stored and cached products stay unchanged, and checks zero and the maximum decimal as valid boundaries. |
 | A cross-site form or `fetch` without preflight calls `invalidate` with the admin's cookie | `POST invalidate` only accepts `application/json`, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415. The `DELETE` endpoints need a preflight too. Don't add a CORS policy that allows these routes from other origins. |
 | Cached values leak through the admin API | Entries are listed with key, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
 | Bad input | A missing `key` or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys and tags are matched literally, never as patterns. |
@@ -2631,6 +2666,8 @@ full Redis with `noeviction` refuses writes, which MethodCache handles like an o
 
 ## When Redis is down
 
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
 MethodCache keeps answering from memory and your methods; Redis never fails or stalls a call. Each call is capped at
 `OperationTimeout` (1 second), Redis is skipped for `CircuitBreakerDuration` (10 seconds) after a failure, and
 invalidations are queued and retried instead of throwing. The first failure and the recovery are logged.
@@ -2983,6 +3020,9 @@ HTTP caching for `HttpClient`, the way a browser does it: responses are cached a
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
 
+Run the [console tour's HttpClient chapter](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.Demo#httpclient-caching) to see cache hits, ETag validation, `no-store`
+and PUT invalidation against a real local HTTP server with checked origin-call counters.
+
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
@@ -3198,6 +3238,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Retry transient Redis subscription-recovery failures without waiting for another socket event,
+  preserving single delivery, generation guards and cancellable shutdown.
 
 - Every package carries the MethodCache logo as its NuGet icon.
 

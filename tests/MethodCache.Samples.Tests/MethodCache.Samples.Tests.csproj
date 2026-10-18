@@ -13,7 +13,7 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../../samples/MethodCache.WebDemo/Catalog.cs" Link="Catalog.cs" />
+    <ProjectReference Include="../../samples/MethodCache.WebDemo/MethodCache.WebDemo.csproj" />
     <ProjectReference Include="../../src/MethodCache.Core/MethodCache.Core.csproj" />
   </ItemGroup>
 </Project>

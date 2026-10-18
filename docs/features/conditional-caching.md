@@ -5,6 +5,9 @@
 Sometimes a result should be returned but not remembered: an empty search, a product that doesn't exist yet, a
 response that says "try again later".
 
+Chapter 9 of the [console demo](../../samples/MethodCache.Demo/) skips missing products and proves that a
+newly created product is visible on the next lookup, while existing products are cached.
+
 ## CacheWhen
 
 `CacheWhen` stores a result only when the predicate returns true:
