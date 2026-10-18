@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Monitoring
 
 Core emits standard .NET metrics and activities. `AddMethodCache()` uses the container's `IMeterFactory`, registering

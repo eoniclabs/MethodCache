@@ -58,13 +58,21 @@ public class InMemoryCacheManagerTests
         Span<char> buffer = stackalloc char[MethodCacheKeyBuilder.StackBufferSize];
         Lookup(manager, buffer).Should().BeTrue(); // warm up
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 100; i++)
+        // The least of a few rounds: anything else the runtime allocates on this thread meanwhile (seen in the
+        // coverage run, where Core is instrumented) only adds to one round, and a hit that allocates adds to all of them
+        var allocated = long.MaxValue;
+        for (var round = 0; round < 3; round++)
         {
-            Lookup(manager, buffer);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 100; i++)
+            {
+                Lookup(manager, buffer);
+            }
+
+            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
         }
 
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        return allocated;
 
         static bool Lookup(InMemoryCacheManager manager, Span<char> buffer)
         {

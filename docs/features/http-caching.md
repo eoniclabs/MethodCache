@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # HTTP response caching
 
 Add `AddHttpCaching()` to an `HttpClient` registration to cache HTTP responses according to their response headers,

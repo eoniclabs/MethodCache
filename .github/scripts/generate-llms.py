@@ -13,6 +13,8 @@ RAW = "https://raw.githubusercontent.com/eoniclabs/MethodCache/main/"
 
 LINK = re.compile(r"\]\(([^)\s]+)\)")
 SNIPPET_MARKER = re.compile(r"^<!-- (snippet: [\w-]+|endSnippet) -->\n", re.M)
+# The "← MethodCache documentation" link above each page's title is navigation for GitHub readers only
+BACK_LINK = re.compile(r"\A\[← [^\]]+\]\([^)]+\)\n+")
 
 
 def read(path):
@@ -36,17 +38,21 @@ def pages():
     return found
 
 
+def page_text(path):
+    return BACK_LINK.sub("", SNIPPET_MARKER.sub("", read(path)))
+
+
 def strip_links(text):
     return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text).strip()
 
 
 def title_and_summary(path):
-    text = SNIPPET_MARKER.sub("", read(path))
+    text = page_text(path)
     title = re.search(r"^# (.+)$", text, re.M).group(1).strip()
     summary = ""
     for block in re.split(r"\n\s*\n", text.split("\n", 1)[1]):
         block = block.strip()
-        if block and not block.startswith(("#", "```", "<", "|", "[!", "-", "snippet:")):
+        if block and not block.startswith(("#", "```", "<", "|", "[!", ">", "-", "snippet:")):
             summary = " ".join(block.split())
             summary = strip_links(re.split(r"(?<=[.!?])\s", summary)[0]).rstrip(":")
             break
@@ -94,7 +100,7 @@ def main():
     full = ["# MethodCache documentation", "",
             "All user documentation in one file, generated from the repository. Source: " + BLOB + "docs/README.md", ""]
     for path in ["docs/ai/methodcache.md"] + [p for p in docs if p != "docs/ai/methodcache.md"]:
-        text = SNIPPET_MARKER.sub("", read(path)).strip()
+        text = page_text(path).strip()
         full += ["", "---", "", f"<!-- source: {path} -->", "", absolute_links(text, path), ""]
 
     with open(os.path.join(ROOT, "llms.txt"), "w", encoding="utf-8", newline="\n") as f:

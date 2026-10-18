@@ -1,7 +1,10 @@
+[← MethodCache documentation](README.md)
+
 # Troubleshooting
 
-To see what is actually cached, list the entries with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`,
-and the effective policy of every method with `GetMethods()` or `GET /methodcache/methods` ([Monitoring](features/monitoring.md)).
+> [!TIP]
+> To see what is actually cached, list the entries with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`,
+> and the effective policy of every method with `GetMethods()` or `GET /methodcache/methods` ([Monitoring](features/monitoring.md)).
 
 ## The method runs on every call
 
@@ -68,8 +71,9 @@ a key.
 
 ## A caller changed a cached object, and others see the change
 
-The cache hands the same instance to every caller. Return immutable types such as records, or copies
-([Memory cache](features/memory-cache.md#cached-objects-are-shared)).
+> [!WARNING]
+> The cache hands the same instance to every caller. Return immutable types such as records, or copies
+> ([Memory cache](features/memory-cache.md#cached-objects-are-shared)).
 
 ## Build errors and warnings
 
