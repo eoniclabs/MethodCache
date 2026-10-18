@@ -8,7 +8,7 @@
   <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10-FFB020?labelColor=1E1B3A" alt=".NET 10"></a>
   <a href="docs/features/native-aot.md"><img src="https://img.shields.io/badge/Native%20AOT-ready-FFB020?labelColor=1E1B3A" alt="Native AOT ready"></a>
   <a href="#performance"><img src="https://img.shields.io/badge/cache%20hit-0%20B%20allocated-FFB020?labelColor=1E1B3A" alt="A cache hit allocates 0 B"></a>
-  <a href="https://www.nuget.org/packages?q=MethodCache"><img src="https://img.shields.io/badge/NuGet-not%20yet%20published-F5F3FF?labelColor=1E1B3A" alt="NuGet: not yet published"></a>
+  <a href="https://www.nuget.org/packages/MethodCache"><img src="https://img.shields.io/nuget/vpre/MethodCache?label=NuGet&amp;color=F5F3FF&amp;labelColor=1E1B3A" alt="MethodCache on NuGet"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F5F3FF?labelColor=1E1B3A" alt="MIT license"></a>
 </p>
 
@@ -143,11 +143,11 @@ every cached method tagged with that user.
 
 ## Getting started
 
-MethodCache is not on nuget.org yet. Until it is, reference the projects from this repository (the
-[demo's project file](samples/MethodCache.Demo/MethodCache.Demo.csproj) shows how). Once published:
+MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
+the add-on packages):
 
 ```bash
-dotnet add package MethodCache
+dotnet add package MethodCache --prerelease
 ```
 
 1. Put `[Cache]` on interface methods that return data (sync, `Task<T>` or `ValueTask<T>`).

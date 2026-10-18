@@ -4,7 +4,27 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased (1.0.0)
+## 1.0.0-rc.1 (not released yet)
+
+The first public release on nuget.org, as a release candidate. Install it with `--prerelease`
+(`dotnet add package MethodCache --prerelease`). The public API can still change before 1.0.0 if the release candidate
+shows a problem; from 1.0.0 on, MethodCache follows semantic versioning.
+
+| Package | What it adds |
+|---|---|
+| `MethodCache` | `[Cache]` and `[CacheInvalidate]`, the source generator, the analyzers and the in-memory cache |
+| `MethodCache.Redis` | Redis as the distributed cache, with a pub/sub backplane that keeps every instance's memory in sync |
+| `MethodCache.SqlServer` | SQL Server as the distributed cache, with a polling backplane |
+| `MethodCache.Serialization.MessagePack` | MessagePack instead of System.Text.Json for distributed values |
+| `MethodCache.AspNetCore` | Admin endpoints and a health check |
+| `MethodCache.OpenTelemetry` | Traces and metrics for cache operations |
+| `MethodCache.HttpCaching` | HTTP caching for `HttpClient`: ETag and Last-Modified revalidation, Cache-Control and Vary |
+
+All packages require .NET 10 and the .NET 10 SDK.
+
+### Changes since the pre-release builds
+
+Only relevant if you used a build from GitHub Packages or from this repository before the first nuget.org release.
 
 - Retry transient Redis subscription-recovery failures without waiting for another socket event,
   preserving single delivery, generation guards and cancellable shutdown.
@@ -54,7 +74,7 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - **Breaking before 1.0:** all runtime packages now require .NET 10 and the .NET 10 SDK. Remove .NET 8/9 targets,
   their CI/package matrix and the allocating pre-.NET 9 lookup fallback. Generated contract 1 is refrozen before the first release.
 
-### Core telemetry and attribute diagnostics
+#### Core telemetry and attribute diagnostics
 
 - Move instrumentation into Core's container-owned Meter/ActivitySource; the OpenTelemetry package now only subscribes.
   Replace provider/wrapper APIs with `MethodCacheTelemetryOptions`, one final request outcome and seconds histograms.
@@ -70,7 +90,7 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - Drain HTTP generation recovery before disposing its transport. Retry once through an open breaker and report
   unconfirmed URL invalidations at shutdown without exposing targets.
 
-### Core-owned HTTP storage
+#### Core-owned HTTP storage
 
 - Derive local HTTP administration IDs when first inspected, avoiding the hash and ID allocation on cold publication.
   IDs, removal behavior and conservative response-budget accounting remain unchanged.
@@ -93,14 +113,14 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - Add KeepCookies for a complete response-cache bypass, static HTTP tags, resident/observed administration and
   bounded body-free L2 observations. Core telemetry and health distinguish HTTP capability from method statistics.
 
-### Owned distributed transports and stable wire contract
+#### Owned distributed transports and stable wire contract
 
 - Freeze one Core prefix and validated provider options at startup; use owned storage and serializer registrations. Application `IDistributedCache` is never a fallback. SQL connection strings can come from DI.
 - Add wire v1 and entry format 6 with absolute deadlines, format-independent logical invalidation and shared retention bounds. Malformed mandatory frames clear local entries and warn once.
 - Add native batched reads and permanent atomic epochs in Redis/SQL Server; version SQL schemas and ship an explicit legacy migration.
 - Select JSON through copied options or a source-generated context. Add `VerifyRoundTrip` and `SerializerVersion`; internalize serializer/atomic-store interfaces.
 
-### Cache API and policy isolation
+#### Cache API and policy isolation
 
 - Reduce ICacheManager to four async operations with immutable options and explicit invalidation results.
 - Retire local generations on effective policy changes, isolate runtime L2 namespaces and validate L2 lifetimes from first publication.
@@ -108,7 +128,7 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - Keep the replaced fluent root/service/group coordinators internal; startup configuration uses `MethodCacheBuilder`
   and retains its public method configuration results.
 
-### Generated contract and explicit startup registration
+#### Generated contract and explicit startup registration
 
 - Generated decorators use the versioned `MethodCache.Generated` facade. Each invocation captures one immutable
   policy/key snapshot; retired snapshots bypass caching and cannot publish into the current generation.
@@ -121,7 +141,7 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - All six add-on packages require the exact matching Core package version. Frozen vendor binaries are tested
   under the current runtime and Native AOT without rebuilding their source during ordinary tests.
 
-### Project review fixes
+#### Project review fixes
 
 - Bulk factory results invalidated during their source read are not published; concurrent individual writes still win.
 - Collection subclasses keep their public state in default, JSON and MessagePack keys. Collection subtypes needing runtime-state serialization now use hashed keys; earlier inline keys for those subtypes become cold misses.
@@ -132,14 +152,14 @@ Diagnostic migration: MC0001 stays MC0001; duration MC0004 stays MC0004; MCG001 
 - Memory benchmarks measure fresh fills and real tag invalidations; short-lived entries use the intended duration.
 - SQL Server pins patched PKCS dependency versions for [CVE-2026-84008](https://github.com/advisories/GHSA-846f-f764-76mx), restoring the high-severity dependency audit gate.
 
-### Remove retained compatibility code
+#### Remove retained compatibility code
 
 The previous memory engine benchmark baseline is removed, and current runtime-key benchmarks have descriptive
 names. SQL Server backplane initialization requires `Scope binary(32) NOT NULL`; automatic migration and cleanup
 of unscoped rows are removed. Schema errors are logged, and table initialization uses the registered
 `TimeProvider` for its startup deadline and retry interval. Benchmark `--list` commands no longer throw.
 
-### Release audit fixes
+#### Release audit fixes
 
 The release audit fixes presence-aware manual reads, caller cancellation during loads, immutable policy tags,
 HTTP response age and background request metadata, keyed registrations and OpenTelemetry ownership, generic
@@ -150,7 +170,7 @@ MessagePack keys preserve derived member data in nested base-class/interface slo
 Earlier keys for these arguments become cold misses. Overloaded generic methods include generic arity in their
 policy ids and key prefixes, keeping different overloads distinct; earlier keys become cold misses.
 
-### Third review fixes
+#### Third review fixes
 
 - **HTTP caching** no longer stores a redirect the transport followed under the original URL (the transport drops
   `Authorization`, so one caller's response could reach another), invalidates the URL a `POST` was sent to also when
@@ -261,7 +281,7 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   ended gets none. The scope factory comes from the root container. Singletons are unchanged. Generated decorators call the new `DecoratorServices.ForLoad`, so rebuild the projects
   that generate them together with the new MethodCache.Core.
 
-### If you used a pre-release build from GitHub Packages
+#### If you used a pre-release build from GitHub Packages
 
 - **Generated `Add{Interface}WithCaching` methods are gone.** Combined with `AddMethodCache()` they registered the
   service twice. Register the interface the usual way (with a factory if you need one), before `AddMethodCache()`.

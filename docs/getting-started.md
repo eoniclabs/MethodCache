@@ -2,11 +2,11 @@
 
 # Getting started
 
-MethodCache is not on nuget.org yet. Until it is, reference the projects from this repository (the
-[demo's project file](../samples/MethodCache.Demo/MethodCache.Demo.csproj) shows how). Once published:
+MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
+the add-on packages):
 
 ```bash
-dotnet add package MethodCache
+dotnet add package MethodCache --prerelease
 ```
 
 The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the .NET 10 SDK. The same minimum applies to every add-on package.
