@@ -2,7 +2,40 @@
 
 # Benchmarks
 
-## Megatron cache hits (2026-10-18)
+## x64 cache hits (2026-10-18)
+
+The README table. Warm, local hits through each library's native API, measured on baloo, a desktop
+used as the project's timing machine. The workload, payload and settings are the same as in the
+Arm64 run below; see there for what is measured and why the payload is marked immutable.
+
+| Approach | `int` ns ± error | Allocated | `Guid` ns ± error | Allocated |
+|---|---:|---:|---:|---:|
+| IMemoryCache by hand | 54.2 ± 0.1 | 112 B | 72.1 ± 1.0 | 176 B |
+| MethodCache `[Cache]` | 49.2 ± 0.2 | 0 B | 62.0 ± 0.3 | 0 B |
+| HybridCache | 63.5 ± 0.4 | 104 B | 77.2 ± 0.7 | 168 B |
+| FusionCache | 491.2 ± 7.6 | 344 B | 527.6 ± 3.3 | 416 B |
+
+Values are BenchmarkDotNet means; the error is half its 99.9% confidence interval, in nanoseconds.
+Three independent processes per case, ten warmup and fifteen actual iterations per process, fixed at
+4,194,304 invocations. The machine was otherwise idle and no build ran during the measurement.
+MethodCache is 9% faster than the hand-written IMemoryCache hit for integers and 14% for GUIDs,
+with no managed allocation.
+
+The same command on the same machine at f43854d, before the design series and the hit-path work,
+measured the `int` hit at 55.7 ns against IMemoryCache's 54.6 ns (1.02x). That commit has no GUID case,
+and its HybridCache number used the unannotated payload, so only the MethodCache/IMemoryCache pair compares.
+
+```text
+Source: 291ed9e28ea5eb254f86ba57b964e4033c26fd87
+BenchmarkDotNet 0.15.4; baloo, AMD Ryzen 7 5800X, 8 cores / 16 threads
+Windows 11 (10.0.26300); .NET 10.0.13, X64 RyuJIT x86-64-v3; SDK 10.0.402
+Workstation GC; LaunchCount=3; WarmupCount=10; IterationCount=15
+InvocationCount=4194304; UnrollFactor=16
+```
+
+The command is the one under the Arm64 run below. Raw reports remain outside Git.
+
+## Arm64 cache hits (Apple M5, 2026-10-18)
 
 These are warm, local hits through each library's native API, including key construction and the return
 value: `Task<BenchUser<TId>>` for MethodCache and the hand-written IMemoryCache wrapper, native
