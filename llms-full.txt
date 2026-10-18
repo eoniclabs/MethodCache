@@ -1448,6 +1448,8 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 
 Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
 
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
 ## How it works
 
 ```mermaid
@@ -2664,6 +2666,8 @@ full Redis with `noeviction` refuses writes, which MethodCache handles like an o
 
 ## When Redis is down
 
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
 MethodCache keeps answering from memory and your methods; Redis never fails or stalls a call. Each call is capped at
 `OperationTimeout` (1 second), Redis is skipped for `CircuitBreakerDuration` (10 seconds) after a failure, and
 invalidations are queued and retried instead of throwing. The first failure and the recovery are logged.
@@ -3234,6 +3238,9 @@ Changes that a user of the packages notices. The release steps are in
 release.
 
 ## Unreleased (1.0.0)
+
+- Retry transient Redis subscription-recovery failures without waiting for another socket event,
+  preserving single delivery, generation guards and cancellable shutdown.
 
 - Every package carries the MethodCache logo as its NuGet icon.
 

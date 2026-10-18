@@ -163,11 +163,32 @@ public class WebDemoRedisTests : IAsyncLifetime
         connectionB.ConnectionRestored += (_, args) => { if (args.ConnectionType == ConnectionType.Interactive) restoredB.TrySetResult(); };
         await _redis.StartAsync();
         await Task.WhenAll(restoredA.Task, restoredB.Task).WaitAsync(TimeSpan.FromSeconds(15));
-        // Interactive socket recovery can precede subscription acknowledgement. Do not
-        // fire the fake-clock retry while the backplane is still unable to publish.
-        await EventuallyAsync(async () => await BackplaneConnectedAsync(first) && await BackplaneConnectedAsync(second));
-        _clock.Advance(TimeSpan.FromSeconds(2));
-        await EventuallyAsync(async () => await a.GetStringAsync("/health") == "Healthy");
+        // Recovery can require another fake-clock retry after a transient subscribe failure.
+        // A real subscriber ping lets socket work progress between ticks. The one-minute
+        // budget stays below the product's two-minute TTL, so expiry cannot fake invalidation.
+        var advanceUntil = _clock.GetUtcNow() + TimeSpan.FromMinutes(1);
+        try
+        {
+            await EventuallyAsync(async () =>
+            {
+                if (await BackplaneConnectedAsync(first) && await BackplaneConnectedAsync(second) && await a.GetStringAsync("/health") == "Healthy") return true;
+                try { await Task.WhenAll(connectionA.GetSubscriber().PingAsync(), connectionB.GetSubscriber().PingAsync()).WaitAsync(TimeSpan.FromSeconds(5)); }
+                catch (Exception ex) when (ex is RedisConnectionException or RedisTimeoutException or TaskCanceledException) { return false; }
+                if (_clock.GetUtcNow() < advanceUntil) _clock.Advance(TimeSpan.FromMilliseconds(100));
+                return false;
+            });
+        }
+        catch
+        {
+            foreach (var factory in new[] { first, second })
+            {
+                var report = await factory.Services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>()
+                    .CheckHealthAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                _output.WriteLine(System.Text.Json.JsonSerializer.Serialize(report.Entries["methodcache"].Data));
+            }
+            _output.WriteLine($"Recovery clock: {(_clock.GetUtcNow() - advanceUntil + TimeSpan.FromMinutes(1)).TotalSeconds} seconds advanced.");
+            throw;
+        }
         await EventuallyAsync(async () => (await b.GetFromJsonAsync<Entry[]>("/methodcache/entries"))!
             .All(entry => !entry.Tags.Contains("product:1")));
         Assert.Equal(119m, (await b.GetFromJsonAsync<Product>("/products/1"))!.Price);

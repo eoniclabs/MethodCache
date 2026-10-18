@@ -66,6 +66,8 @@ full Redis with `noeviction` refuses writes, which MethodCache handles like an o
 
 ## When Redis is down
 
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
 MethodCache keeps answering from memory and your methods; Redis never fails or stalls a call. Each call is capped at
 `OperationTimeout` (1 second), Redis is skipped for `CircuitBreakerDuration` (10 seconds) after a failure, and
 invalidations are queued and retried instead of throwing. The first failure and the recovery are logged.

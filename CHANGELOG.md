@@ -6,6 +6,9 @@ release.
 
 ## Unreleased (1.0.0)
 
+- Retry transient Redis subscription-recovery failures without waiting for another socket event,
+  preserving single delivery, generation guards and cancellable shutdown.
+
 - Every package carries the MethodCache logo as its NuGet icon.
 
 - Keep logical-key framing consistent across storage, lookups and invalidation, including leading NUL.

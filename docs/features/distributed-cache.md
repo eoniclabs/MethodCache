@@ -25,6 +25,8 @@ builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.Sql
 
 Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
 
+Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
 ## How it works
 
 ```mermaid
