@@ -73,6 +73,21 @@ class PairedCostProfileTests(unittest.TestCase):
 
 class TimedLaunchTests(unittest.TestCase):
     def test_windows_case_list_reaches_every_exact_launch(self):
+        self.assert_timed_launches("bash")
+
+    def test_system_bash_reaches_every_exact_launch(self):
+        # macOS ships Bash 3.2, which has no mapfile builtin. Keep the default
+        # launcher usable without requiring a Homebrew Bash installation.
+        shell = "/bin/bash" if Path("/bin/bash").exists() else "bash"
+        self.assert_timed_launches(shell)
+
+    def test_timed_launcher_refuses_to_overwrite_existing_evidence(self):
+        self.assert_timed_launches("bash", reject_reuse=True)
+
+    def test_timed_launcher_preserves_an_interrupted_first_launch(self):
+        self.assert_timed_launches("bash", reject_reuse="partial")
+
+    def assert_timed_launches(self, shell, reject_reuse=False):
         benchmarks = SCRIPT.parents[1]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "repo"
@@ -93,13 +108,25 @@ class TimedLaunchTests(unittest.TestCase):
             out = Path(directory) / "out"
             env = dict(os.environ, PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}", COST_PROFILE_OUT=str(out))
             script = root / "benchmarks" / "MethodCache.CostProfile" / "cost-profile.sh"
-            result = subprocess.run(["bash", str(script), "--time", "2", "HEAD"], cwd=root, env=env,
+            result = subprocess.run([shell, str(script), "--time", "2", "HEAD"], cwd=root, env=env,
                                     text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             for launch in sorted(out.glob("*-[12].jsonl")):
                 cases = [json.loads(line)["case"] for line in launch.read_text().splitlines()]
                 self.assertEqual(["A.Hit()", "B.Hit()"], cases, launch.name)
             self.assertEqual(4, len(list(out.glob("*-[12].jsonl"))))
+            if reject_reuse:
+                if reject_reuse == "partial":
+                    # An interruption can happen after launch.jsonl is written but
+                    # before the first result is appended to a base/head file.
+                    for aggregate in list(out.glob("base-*.jsonl")) + list(out.glob("head-*.jsonl")):
+                        aggregate.unlink()
+                before = {f.name: f.read_bytes() for f in out.glob("*.jsonl")}
+                repeated = subprocess.run([shell, str(script), "--time", "2", "HEAD"], cwd=root, env=env,
+                                          text=True, capture_output=True)
+                self.assertNotEqual(0, repeated.returncode, repeated.stdout + repeated.stderr)
+                self.assertIn("already contains results", repeated.stderr)
+                self.assertEqual(before, {f.name: f.read_bytes() for f in out.glob("*.jsonl")})
 
 
 if __name__ == "__main__":

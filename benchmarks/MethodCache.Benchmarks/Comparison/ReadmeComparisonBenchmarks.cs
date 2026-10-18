@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -7,6 +8,9 @@ using ZiggyCreatures.Caching.Fusion;
 
 namespace MethodCache.Benchmarks.Comparison;
 
+// The benchmark uses int/Guid ids and a string name: both closed payload types are immutable.
+// HybridCache requires this declaration to reuse instances rather than deserialize each hit.
+[ImmutableObject(true)]
 public sealed record BenchUser<TId>(TId Id, string Name);
 
 public interface IReadmeUserService

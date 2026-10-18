@@ -22,6 +22,13 @@ root=$(git rev-parse --show-toplevel)
 here="$root/benchmarks/MethodCache.CostProfile"
 out=${COST_PROFILE_OUT:-$root/artifacts/cost-profile}
 mkdir -p "$out"
+# A rerun must use a new directory: failed/noisy studies are evidence too.
+for previous in "$out"/base-*.jsonl "$out"/head-*.jsonl "$out"/base.jsonl "$out"/head.jsonl "$out"/launch.jsonl; do
+  if [ -e "$previous" ]; then
+    echo "COST_PROFILE_OUT already contains results; choose a fresh directory: $out" >&2
+    exit 1
+  fi
+done
 
 # The physical path: on macOS mktemp returns /var/folders, a symlink to /private/var, and restore then loses the
 # base's project references
@@ -48,10 +55,12 @@ for side in base head; do
 done
 
 if [ "$pairs" -gt 0 ]; then
-  rm -f "$out"/base-*.jsonl "$out"/head-*.jsonl
   # One process per case: cases timed in one process shape each other's JIT and GC state. On Windows the
   # names end in CR, which would make every --exact launch miss
-  mapfile -t cases < <(dotnet "$out/head-bin/MethodCache.CostProfile.dll" "$filter" --list | tr -d '\r')
+  cases=()
+  while IFS= read -r case; do
+    cases+=("$case")
+  done < <(dotnet "$out/head-bin/MethodCache.CostProfile.dll" "$filter" --list | tr -d '\r')
   for i in $(seq 1 "$pairs"); do
     # Alternate which side goes first, so a trend on the machine does not favor one side
     order="base head"

@@ -21,7 +21,9 @@ Memory scenarios use a fresh invocation identity for each `CacheFillUp` run, so 
 | What hit ratio does the eviction policy reach on skewed workloads? | `HitRatioSimulation` (a simulation, not BenchmarkDotNet) | `hitratio` |
 
 Use `readme` to choose a library or to compare against the README: it calls a source-generated decorator, which is
-what an application runs. `comparison` routes every library, MethodCache included, through the same `ICacheAdapter`
+what an application runs. Its shared `BenchUser<int>` / `BenchUser<Guid>` payloads are sealed immutable records,
+explicitly marked `[ImmutableObject(true)]` so HybridCache can reuse instances too. Setup tests check object
+identity on every hit path. This measures object reuse rather than adding deserialization to only one provider. `comparison` routes every library, MethodCache included, through the same `ICacheAdapter`
 with `string` keys, so MethodCache pays for runtime key and policy handling that generated code does at compile time.
 It is useful for comparing behaviour under the same workload, not for absolute MethodCache numbers.
 [Comparison/README.md](Comparison/README.md) explains the adapters.
