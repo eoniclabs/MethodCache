@@ -6,6 +6,11 @@ using MethodCache;
 // Only public installed package APIs are used. Neither a seed nor an internal hash is read or exported.
 internal static class SeedIsolationCheck
 {
+    // The SQL Server backplane's first poll also delivers invalidations written up to a second before it subscribed.
+    // One that arrives during the worker's first load keeps that value out of memory, so a phase after an
+    // invalidation starts once this window has passed.
+    private static readonly TimeSpan SqlServerReplayWindow = TimeSpan.FromSeconds(1.5);
+
     internal static async Task<string?> RunAsync(Backend backend)
     {
         var isolation = "seeds" + Guid.NewGuid().ToString("N")[..12];
@@ -13,6 +18,8 @@ internal static class SeedIsolationCheck
         for (var index = 0; index < phases.Length; index++)
         {
             var phase = phases[index];
+            if (backend == Backend.SqlServer && index > 0 && phases[index - 1] is "key" or "tag" or "clear")
+                await Task.Delay(SqlServerReplayWindow);
             var executable = Environment.ProcessPath ?? throw new InvalidOperationException("No process executable.");
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
             if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
