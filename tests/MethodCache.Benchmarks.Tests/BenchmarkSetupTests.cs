@@ -143,6 +143,17 @@ public class BenchmarkSetupTests
         await benchmark.Setup();
         try
         {
+            // Every source call creates a new record, so reference reuse proves that
+            // each published hit case measures a resident cache hit rather than a load.
+            Assert.Same(await benchmark.MethodCacheHit(), await benchmark.MethodCacheHit());
+            Assert.Same(await benchmark.MemoryCacheHit(), await benchmark.MemoryCacheHit());
+            Assert.Same(await benchmark.HybridCacheHit(), await benchmark.HybridCacheHit());
+            Assert.Same(await benchmark.FusionCacheHit(), await benchmark.FusionCacheHit());
+            Assert.Same(await benchmark.MethodCacheGuidHit(), await benchmark.MethodCacheGuidHit());
+            Assert.Same(await benchmark.MemoryCacheGuidHit(), await benchmark.MemoryCacheGuidHit());
+            Assert.Same(await benchmark.HybridCacheGuidHit(), await benchmark.HybridCacheGuidHit());
+            Assert.Same(await benchmark.FusionCacheGuidHit(), await benchmark.FusionCacheGuidHit());
+
             var hit = (await benchmark.MethodCacheHit()).Id;
             Assert.Equal(hit, (await benchmark.MemoryCacheHit()).Id);
             Assert.Equal(hit, (await benchmark.HybridCacheHit()).Id);

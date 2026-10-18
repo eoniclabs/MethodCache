@@ -1,6 +1,7 @@
-> Reopened after PR review, 2026-10-17. The previous completion checkpoint is historical.
-> Runtime corrections, a reviewed pre-release contract freeze, a complete independent PR self-review,
-> fresh cost/time evidence and final CI are required. Johan requires the self-review before any new CI run.
+> Updated 2026-10-18: #134 is merged and main passes all fourteen CI jobs.
+> The original stacked PRs #123–#131 are closed as integrated. Historical measurements remain historical;
+> [current verification](design-final-validation.md) and [performance evidence](design-performance-results.md)
+> distinguish completed functional checks from CPU precision requirements.
 
 # Design implementation tracking
 
@@ -23,7 +24,7 @@ SHA references remain available in the separate source-point Git bundle.
 | .NET 10 | #130 | Libraries/tests require .NET 10; frozen vendor fixtures unchanged. |
 | Workloads | #135 | GUID workloads and explicit int controls. |
 | L2 correction | #137 | Merged into combined branch with its merge commit retained. |
-| PR 7 | #131, #134 | Review corrections implemented; fresh final cost/time and CI verification in progress. |
+| PR 7 | #131, #134 | Merged in #134; functional CI passes; current CPU evidence is tracked separately. |
 
 The final pre-cleanup checkpoint `a08c279acf5f2a00859bfd08e64797ac7c8e1170` passes
 all 14 CI jobs/four statuses. Its 2,639 Linux tests have zero failures and one
@@ -37,5 +38,5 @@ historical per-head overages remain preserved externally.
 
 The historical 180-launch matrix is cancelled and must not restart. Future results
 belong under ignored artifacts/ or outside the checkout. No raw logs, measurements,
-profiles or generated evidence catalogues are committed. No merge/release/PublicAPI
-promotion or PR138 integration is included in this implementation task.
+profiles or generated evidence catalogues are committed. No new merge/release/PublicAPI
+promotion is included in this follow-up. #134 and PR #138 have since been merged with Johan's approval.

@@ -1,5 +1,53 @@
 # Design performance results and external evidence
 
+## Current state (2026-10-18)
+
+The design series was merged in [PR #134](https://github.com/eoniclabs/MethodCache/pull/134).
+Main checkpoint `1ca7e2776c228c6933fa3e78ed96afb6b9cba98c` passes all fourteen CI jobs on Linux,
+macOS and Windows (2,740 Linux tests, zero failures and one intentional normal-run soak skip).
+The nine original stacked PRs #123–#131 are closed: their rewritten source commits are reachable from main.
+PRs #105 and #117 retain distinct, unmerged work and remain open.
+
+The merged runtime includes the ASCII hash (#138), the SQL startup-replay correction (#141),
+the explicitly approved time limits (#142) and the generated value-task hit correction (#143).
+The earlier GUID hit regressions below describe older source, not the merged ASCII-hash implementation.
+The value-task follow-up on Windows measured 0.974 (95% interval 0.963–0.985) against f43854d.
+
+The published Windows gate at `bbc9015e` contained 35 cases: 24 faster, one same, two slower and eight
+imprecise. Later whole-case follow-ups and approved limits address several of those results. An imprecise
+result is still not a pass, even when its whole interval is below one; neither a merge nor a green
+functional CI status replaces the unchanged 6% precision requirement. The earlier 20-pair record-hit
+interval (1.095–1.193) is also wider than 6%; its 18% time cap does not waive that precision failure.
+Targeted Megatron confirmations are recorded separately; no old pair is removed or pooled.
+The record-hit confirmation is complete: 20 alternating pairs measure 78.2 → 83.8 ns, paired ratio
+1.077 (95% interval 1.070–1.085). It passes the existing 1.18 cap and the unchanged precision check.
+All four long-prefix Task controls also pass; each final row uses every pair in that case's study.
+Three pairs were predeclared initially, extending to ten and then twenty only if the precision check failed.
+The two GUID cases needed ten pairs; their original three-pair reports remain imprecise and are preserved.
+No time limit or precision rule changed.
+
+| Megatron confirmation | Pairs | Head/base | 95% interval | Verdict |
+|---|---:|---:|---|---|
+| Record hit, non-ASCII | 20 | 1.077 | 1.070–1.085 | Existing 1.18 cap |
+| Long Task, int, listeners off | 3 | 0.706 | 0.677–0.736 | Faster |
+| Long Task, GUID, listeners off | 10 | 0.716 | 0.704–0.728 | Faster |
+| Long Task, int, listeners on | 3 | 0.724 | 0.702–0.748 | Faster |
+| Long Task, GUID, listeners on | 10 | 0.728 | 0.719–0.737 | Faster |
+
+These confirmations use main `1ca7e2776c228c6933fa3e78ed96afb6b9cba98c` against f43854d,
+Apple M5 (Megatron), .NET 10.0.3, SDK 10.0.103 and workstation/concurrent GC. They resolve the
+identified record/long-Task precision gaps without changing any historical failed report. Their source
+workloads and timing code are identical on both sides, with one independent process per case and side.
+
+The native API comparison with other libraries is separate from the before/after design acceptance gate.
+Raw launches, environment details and closure evidence for this follow-up are outside Git at
+`/Users/johan/dev/MethodCache-artifacts/postdesign-comparison-2026-10-18/`.
+
+## Historical measurements and decisions
+
+The observations in this section retain their original source versions. Statements about an open gate
+or a pending run describe that checkpoint; use the current-state section above for the merged series.
+
 The pre-review studies below remain historical. Fresh review-correction source `2534cf15` (native/cost
 checkpoint `0949cb8a`) passes all 67 cost cases against f43854d, with zero failing cases and the same six
 accepted costs. Redis and SQL native checks pass 11 and ten scenarios respectively. Receipts and provenance

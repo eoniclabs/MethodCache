@@ -7,25 +7,28 @@ The independent review against main `8402ad2f` is complete. All 27 numbered revi
 findings have code/test corrections; [the review record](design-review-fixes.md) lists them and the additional
 admin-id collision found during self-review. Review happened before any new push or full CI run.
 
-## Current verification
+## Current verification (2026-10-18)
 
-Runtime source after the complete identity audit: `2534cf15da4eac6c8495ccd7980ada8c87dec43c`.
-Frozen-fixture/native-consumer checkpoint: `6e894fb78db22069c6c3f93766922c04c5ff8679`.
-`Contract1Final` explicitly freezes 104 Generated declarations and three vendor images from `3e82c06e`;
-older unpublished checkpoints remain historical. Ordinary builds never regenerate them.
+The series is merged through #134. Current main `1ca7e2776c228c6933fa3e78ed96afb6b9cba98c`
+passes all fourteen CI jobs and all four commit statuses on Linux, macOS and Windows. The Linux
+suite has 2,740 passed tests, zero failures and one intentional opt-in soak skip. Properties, enabled
+soak, both cultures, required Redis/SQL, demo, AOT, package smoke tests and generated documentation pass.
 
-Local checks pass: solution build, 1,090 Core tests (one separately opt-in soak test), 544 generator integration
-tests, 370 HTTP tests, 120 docs tests, seven binary/API compatibility tests and Native AOT on osx-arm64.
-The complete benchmark test suite passes after charging only the exact longer-key string-size increment to
-miss budgets; no closure allowance was widened. The preceding `6e894fb7` checkpoint passed 11 Redis and ten SQL native checks, with no infrastructure skips,
-and the full 67-case cost profile (six existing accepted costs). Those results are kept separate from the later
-identity corrections. Fresh `0949cb8a` native checks pass (Redis 11, SQL ten), and the full cost profile passes all 67 cases with
-six unchanged accepted costs. The corrected functional checkpoint `f69719b4` passes all 14 CI jobs/four statuses on Linux, Windows and macOS:
-2,734 Linux tests pass, zero fail, one opt-in soak case is skipped in the normal run; the enabled soak and 99
-randomized properties pass separately. Changed-line coverage is 10603/11341 (93.5%). Required native providers,
-both cultures, demo, Native AOT (175 corpus cases plus frozen vendor), all packages and generated docs pass.
-Fresh paired CPU timing and exact post-cleanup publication CI remain pending. Historical source/CI hashes
-are preserved externally; artifact-only history cleanup does not alter the verified runtime/test/workload trees.
+`Contract1Final` freezes 104 Generated declarations and three vendor images from `3e82c06e`;
+ordinary builds never regenerate them. #143 changes newly generated value-task hits while preserving
+the public method called by the frozen images. The complete independent review predates the new CI runs.
+
+The previously recorded 67-case cost profile has six accepted costs and zero failures. #142 separately
+checks all 48 added prefix cases without failing costs. These are allocation/command checks, not CPU evidence.
+The merged ASCII-hash and value-task corrections supersede the older GUID/value-task regressions.
+Three exact additional time caps were approved on 2026-10-18; they do not waive the 6% precision requirement.
+The targeted Megatron record/long-Task confirmations now pass with unchanged rules;
+[current performance evidence](design-performance-results.md) records their exact sources, pair counts and intervals.
+
+Original source and CI hashes remain historical evidence in the external archive. The raw-artifact
+history cleanup preserves all 536 original source commits and 56 merge commits, with no source/test/build
+changes from the cleanup itself. Original #123–#131 are now closed as integrated; #105 and #117 remain open
+because they contain distinct changes.
 
 The 76 specification requirements remain grouped as follows; the external review inventory records current
 source/test hashes without rewriting historical failed or noisy studies.
@@ -61,4 +64,4 @@ six cost exceptions, two sync/int SipHash caps and 6% interval-width requirement
 Raw profiles, measurement launches, CI logs, manifests and the original source bundle stay in the
 [external archive](design-performance-results.md#external-measurement-archive). Only authored summaries,
 reproducible tooling, approved rules and intentional compatibility fixtures belong in Git.
-Merge, release, PublicAPI promotion and integration of ASCII-hash PR #138 are separate actions.
+PR #134 and ASCII-hash PR #138 have been merged. No package release or PublicAPI promotion is included in this follow-up.

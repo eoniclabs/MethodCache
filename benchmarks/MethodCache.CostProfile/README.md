@@ -90,3 +90,7 @@ the record hit (a deliberately non-ASCII key, which the ASCII key hash hashes tw
 the fallback hit (the JSON key for an object argument) at 12% and the value-task miss at 8%.
 [The measurements](../../docs/developer/design-performance-results.md) used 20 alternating pairs
 on a Ryzen 7 5800X; the precision check still applies first.
+
+The launcher works with macOS system Bash 3.2 as well as newer Bash versions. Use a fresh
+`COST_PROFILE_OUT` directory for each study: an existing base/head result causes an error before
+building, so reruns cannot silently overwrite failed or imprecise evidence.
