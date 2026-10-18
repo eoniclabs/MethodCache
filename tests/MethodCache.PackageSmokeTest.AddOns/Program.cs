@@ -7,12 +7,16 @@ using MethodCache;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
+if (args is ["--seed-isolation", ..]) return await SeedIsolationCheck.WorkerAsync(args);
+
 // Each check runs against the installed packages and returns what went wrong; the run fails if any check fails.
 var checks = new (string Name, Func<Task<string?>> Run)[]
 {
     ("Redis, two instances, JSON", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: false)),
     ("Redis, two instances, MessagePack", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: true)),
     ("SQL Server, two instances, JSON", () => DistributedCheck.RunAsync(Backend.SqlServer, messagePack: false)),
+    ("Redis across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.Redis)),
+    ("SQL Server across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.SqlServer)),
     ("ASP.NET Core admin endpoints and health check", AspNetCoreCheck.RunAsync),
     ("OpenTelemetry metrics and spans", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
@@ -120,18 +124,25 @@ public static class DistributedCheck
         return UserService.Calls == 2 ? null : "the invalidation on the first instance did not reach the second";
     }
 
-    private static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack)
+    internal static Instance CreateInstance(Backend backend, string connection, string isolation, bool messagePack, bool sameClock = false)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
+        services.AddHealthChecks().AddMethodCache();
+        services.Configure<DistributedCacheOptions>(options =>
+        {
+            options.KeyPrefix = isolation + ":";
+            // The seed-isolation workers share this host's clock. The default skew margin intentionally
+            // rejects publications loaded very shortly after an invalidation; this test concerns identities.
+            if (sameClock) options.ClockSkewTolerance = TimeSpan.Zero;
+        });
         if (backend == Backend.Redis)
         {
             services.AddMethodCacheRedis(options =>
             {
                 options.Configuration = connection;
-                options.KeyPrefix = isolation + ":";
             });
         }
         else
@@ -152,9 +163,12 @@ public static class DistributedCheck
         return new Instance(services.BuildServiceProvider());
     }
 
-    private sealed class Instance(ServiceProvider provider) : IAsyncDisposable
+    internal sealed class Instance(ServiceProvider provider) : IAsyncDisposable
     {
         private readonly AsyncServiceScope _scope = provider.CreateAsyncScope();
+        internal IServiceProvider Services => provider;
+
+        public ICacheAdministrator Administrator => provider.GetRequiredService<ICacheAdministrator>();
 
         public IUserService Users => _scope.ServiceProvider.GetRequiredService<IUserService>();
 
@@ -270,10 +284,14 @@ public static class OpenTelemetryCheck
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        meters.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
+        meters.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
-            if (instrument.Name == "methodcache.hits_total") Interlocked.Add(ref hits, value);
-            if (instrument.Name == "methodcache.misses_total") Interlocked.Add(ref misses, value);
+            if (instrument.Name != "methodcache.requests") return;
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
+                if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
+            }
         });
         meters.Start();
 
@@ -290,7 +308,6 @@ public static class OpenTelemetryCheck
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
         services.AddMethodCache();
-        services.AddMethodCacheOpenTelemetry();
         await using var provider = services.BuildServiceProvider();
         await using (var scope = provider.CreateAsyncScope())
         {
@@ -344,6 +361,7 @@ public static class HttpCachingCheck
         await origin.StartAsync();
 
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("origin", c => c.BaseAddress = new Uri(origin.Urls.First()))
             .AddHttpCaching();
         await using var provider = services.BuildServiceProvider();

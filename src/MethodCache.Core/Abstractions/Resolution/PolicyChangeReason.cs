@@ -3,7 +3,7 @@ namespace MethodCache.Policies;
 /// <summary>
 /// Why a <see cref="PolicyChange"/> was reported.
 /// </summary>
-public enum PolicyChangeReason
+internal enum PolicyChangeReason
 {
     /// <summary>
     /// The policy was read when the source first loaded.

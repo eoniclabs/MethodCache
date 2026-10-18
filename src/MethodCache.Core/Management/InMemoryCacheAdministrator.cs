@@ -1,3 +1,5 @@
+using MethodCache.Core.Runtime.Http;
+using MethodCache.Infrastructure;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Extensibility;
 using MethodCache.Policies;
@@ -15,12 +17,14 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         static (a, b) => string.CompareOrdinal(b, a));
 
     private readonly InMemoryCacheManager _cache;
+    private readonly HttpResponseStore? _http;
     private readonly IPolicyRegistry? _policies;
 
-    public InMemoryCacheAdministrator(InMemoryCacheManager cache, IPolicyRegistry? policies)
+    public InMemoryCacheAdministrator(InMemoryCacheManager cache, IPolicyRegistry? policies, HttpResponseStore? http = null)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _policies = policies;
+        _http = http;
     }
 
     public ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken = default)
@@ -70,7 +74,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             result[i] = Describe(matches.Dequeue(), now);
         }
 
-        return result;
+        return _http == null ? result : result.Concat(_http.DescribeEntries(keyPrefix, tag, limit))
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal).Take(limit).ToArray();
     }
 
     public CacheEntryInfo? GetEntry(string key)
@@ -79,35 +84,42 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         var engine = _cache.Engine;
         var now = engine.Now;
-        return engine.TryPeek(key, out var node) && IsLive(node, now) ? Describe(node, now) : null;
+        return engine.TryPeek(key, out var node) && IsLive(node, now) ? Describe(node, now)
+            : _http?.Find(key) is { } http ? _http.Describe(http) : null;
     }
 
     public async ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(key);
         cancellationToken.ThrowIfCancellationRequested();
-
-        // An expired entry still in the map is removed too, but it was not cached, so it reports false like GetEntry.
-        // With a distributed cache the key may live there or on another instance, which this one can't see; the
-        // removal reached them, so it reports true.
         var engine = _cache.Engine;
         var wasLive = engine.TryPeek(key, out var node) && IsLive(node, engine.Now);
-        var removed = await _cache.RemoveAsync(key).ConfigureAwait(false);
-        return (removed && wasLive) || _cache.HasDistributedCache;
+        // Match GetEntry's precedence when an explicit method key resembles a hashed HTTP id.
+        if (!wasLive && HttpResponseStore.IsObservationId(key) && _http != null &&
+            await _http.RemoveObservationAsync(key, cancellationToken).ConfigureAwait(false)) return true;
+
+        // With L2 an unobserved key can still live on another instance, so confirmed invalidation reports true.
+        var result = await _cache.InvalidatePreparedKeysAsync([key], cancellationToken).ConfigureAwait(false);
+        HttpResponseStore.RequireConfirmed(result);
+        return wasLive || _cache.HasDistributedCache;
     }
 
-    public Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default)
+    public async Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tags);
-        cancellationToken.ThrowIfCancellationRequested();
-        return _cache.InvalidateByTagsAsync(tags.ToArray());
+        var result = await _cache.InvalidateTagsAsync(tags, cancellationToken).ConfigureAwait(false);
+        HttpResponseStore.RequireConfirmed(result);
     }
 
-    public ValueTask ClearAsync(CancellationToken cancellationToken = default)
+    public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return _cache.ClearAsync();
+        await _cache.ClearAsync().ConfigureAwait(false);
+        if (_cache.GetInvalidationQueues().Distributed != 0)
+            throw new CacheInvalidationUnavailableException("Cache clear is queued for distributed recovery.");
     }
+
+    public InvalidationQueues GetInvalidationQueues() => _cache.GetInvalidationQueues();
 
     public IReadOnlyList<CachedMethodInfo> GetMethods()
     {
@@ -118,12 +130,18 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         return _policies.GetAllPolicies()
             .OrderBy(static result => result.MethodId, StringComparer.Ordinal)
-            .Select(static result => new CachedMethodInfo(
+            .Select(result => new CachedMethodInfo(
                 result.MethodId,
                 result.Policy.Duration,
                 result.Policy.Tags,
                 result.Policy.Version,
-                result.Contributions.Select(static c => c.SourceId).Distinct(StringComparer.Ordinal).ToArray()))
+                result.Contributions.Select(static c => c.SourceId).Distinct(StringComparer.Ordinal).ToArray())
+            {
+                Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
+                L2Namespace = PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity ? "private" : "shared",
+                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+                    new Dictionary<string, string>(result.FieldSources, StringComparer.Ordinal))
+            })
             .ToArray();
     }
 

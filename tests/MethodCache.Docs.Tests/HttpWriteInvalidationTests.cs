@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Net;
 using System.Net.Http.Headers;
 using MethodCache.HttpCaching;
@@ -15,7 +16,7 @@ public class HttpWriteInvalidationTests
     [InlineData(true)]
     public async Task SuccessfulPost_PreventsOlderGetPublishingIntoTheCurrentCache(bool distributed)
     {
-        var backend = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
+        var backend = HttpEpochTestCache.Create();
         using var origin = new RacingOrigin();
         using var first = Provider(origin, distributed ? backend : null);
         using var second = distributed ? Provider(origin, backend) : null;
@@ -31,11 +32,10 @@ public class HttpWriteInvalidationTests
     }
 
     [Fact]
-    public async Task CustomStorageExample_InvalidatesOnPostAndClear()
+    public async Task CoreStorageExample_InvalidatesOnPostAndClear()
     {
-        var storage = new global::Docs.Packages.DictionaryHttpCacheStorage(TimeProvider.System);
         var services = new ServiceCollection();
-        services.AddSingleton<IHttpCacheStorage>(storage);
+        services.AddMethodCache();
         using var origin = new VersionedOrigin();
         services.AddHttpClient("custom").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         using var provider = services.BuildServiceProvider();
@@ -48,7 +48,7 @@ public class HttpWriteInvalidationTests
         using (await client.PostAsync(url, new StringContent("update"))) { }
         Assert.Equal("v2", await client.GetStringAsync(url));
         origin.Version = "v3";
-        await storage.ClearAsync();
+        await provider.GetRequiredService<ICacheAdministrator>().ClearAsync();
         Assert.Equal("v3", await client.GetStringAsync(url));
     }
 
@@ -68,10 +68,10 @@ public class HttpWriteInvalidationTests
     private static ServiceProvider Provider(RacingOrigin origin, IDistributedCache? backend)
     {
         var services = new ServiceCollection();
+        services.AddMethodCache();
         if (backend != null)
         {
             services.AddMethodCacheDistributedCache(_ => backend);
-            services.Configure<HttpCacheStorageOptions>(options => options.UseDistributedCache = true);
         }
         services.AddHttpClient("race").ConfigurePrimaryHttpMessageHandler(() => origin).AddHttpCaching(options => options.AllowUnverifiedTransport = true);
         return services.BuildServiceProvider();

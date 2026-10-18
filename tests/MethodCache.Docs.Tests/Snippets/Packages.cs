@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using MethodCache;
 using MethodCache.HttpCaching;
-using MethodCache.OpenTelemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +31,7 @@ namespace Docs.Packages
         public static void Basic(WebApplicationBuilder builder)
         {
             // begin-snippet: http-basic
+            builder.Services.AddMethodCache();
             builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
                 .AddHttpCaching();
             // end-snippet
@@ -53,69 +53,18 @@ namespace Docs.Packages
         public static void Storage(WebApplicationBuilder builder)
         {
             // begin-snippet: http-storage-size
-            builder.Services.Configure<HttpCacheStorageOptions>(o => o.MaxCacheSize = 50 * 1024 * 1024); // default 100 MB
+            builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 * 1024 * 1024)); // default 100 MB
             // end-snippet
         }
 
         public static void Shared(WebApplicationBuilder builder)
         {
             // begin-snippet: http-distributed
-            builder.Services.AddMethodCacheRedis("localhost:6379");
-            builder.Services.Configure<HttpCacheStorageOptions>(o => o.UseDistributedCache = true);
+            builder.Services.AddMethodCache(cache => cache.UseRedis("localhost:6379"));
             // end-snippet
         }
 
-        public static void CustomStorage(WebApplicationBuilder builder)
-        {
-            // begin-snippet: http-custom-storage-registration
-            builder.Services.AddSingleton<IHttpCacheStorage>(new DictionaryHttpCacheStorage(TimeProvider.System));
-            builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
-                .AddHttpCaching();
-            // end-snippet
-        }
     }
-
-    // begin-snippet: http-custom-storage
-    public sealed class DictionaryHttpCacheStorage(TimeProvider time) : IHttpCacheStorage
-    {
-        private readonly ConcurrentDictionary<string, (HttpCacheEntry Entry, DateTimeOffset Expires)> _entries = new();
-        private readonly ConcurrentDictionary<string, string> _generations = new();
-
-        // Responses are stored per generation. A missing generation (never set, cleared or lost) starts a new
-        // unique one, never a value used before, so losing it can only cause cache misses.
-        public ValueTask<string> GetGenerationAsync(string key, CancellationToken cancellationToken = default)
-            => ValueTask.FromResult(_generations.GetOrAdd(key, _ => Guid.NewGuid().ToString("N")));
-
-        // Called after a successful POST, PUT, PATCH or DELETE: a fresh generation hides every older response.
-        public ValueTask InvalidateAsync(string key, CancellationToken cancellationToken = default)
-        {
-            _generations[key] = Guid.NewGuid().ToString("N");
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask<HttpCacheEntry?> GetAsync(string key, CancellationToken cancellationToken = default)
-            => ValueTask.FromResult(_entries.TryGetValue(key, out var stored) && stored.Expires > time.GetUtcNow() ? stored.Entry : null);
-
-        public ValueTask SetAsync(string key, HttpCacheEntry entry, TimeSpan timeToLive, CancellationToken cancellationToken = default)
-        {
-            _entries[key] = (entry, time.GetUtcNow() + timeToLive);
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
-        {
-            _entries.TryRemove(key, out _);
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask ClearAsync(CancellationToken cancellationToken = default)
-        {
-            _generations.Clear(); // in-flight requests can then only publish into orphaned generations
-            _entries.Clear();
-            return ValueTask.CompletedTask;
-        }
-    }
-    // end-snippet
 
     public static class Redis
     {
@@ -133,8 +82,9 @@ namespace Docs.Packages
             builder.Services.AddMethodCacheRedis(options =>
             {
                 options.Configuration = "redis1:6379,redis2:6379,password=...";
-                options.KeyPrefix = "orders-api:";   // the backplane channel follows: orders-api:invalidations
             });
+            builder.Services.Configure<DistributedCacheOptions>(options =>
+                options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
             // end-snippet
         }
 
@@ -207,7 +157,6 @@ namespace Docs.Packages
         {
             // begin-snippet: otel-setup
             builder.Services.AddMethodCache();
-            builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 
             builder.Services.AddOpenTelemetry()
                 .WithTracing(tracing => tracing
@@ -220,15 +169,16 @@ namespace Docs.Packages
             // end-snippet
         }
 
-        public sealed class Orders(IBaggagePropagator _baggagePropagator)
+        public static void IdentityOptions(WebApplicationBuilder builder)
         {
-            public void Start(string tenantId)
+            // begin-snippet: otel-baggage
+            builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
             {
-                // begin-snippet: otel-baggage
-                _baggagePropagator.SetCacheCorrelationId(Guid.NewGuid().ToString());
-                _baggagePropagator.SetCacheTenantId(tenantId); // exported only with ExportSensitiveData = true
-                // end-snippet
-            }
+                options.RecordCacheKeys = true; // hashes by default; raw keys can contain secrets
+                options.RecordCacheTags = false;
+            });
+            // end-snippet
         }
+
     }
 }

@@ -11,7 +11,7 @@ namespace MethodCache.Policies;
 /// <param name="AppliedAt">When the contribution was made.</param>
 /// <param name="Metadata">Optional key/value pairs the source attached.</param>
 /// <param name="Notes">An optional free-text note from the source, such as a <c>Notes</c> entry in a configuration file.</param>
-public sealed record PolicyContribution(
+internal sealed record PolicyContribution(
     string SourceId,
     CachePolicyFields Fields,
     DateTimeOffset AppliedAt,

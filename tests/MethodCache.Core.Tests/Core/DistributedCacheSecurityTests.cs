@@ -22,15 +22,16 @@ namespace MethodCache.Core.Tests.Core;
 /// </summary>
 public class DistributedCacheSecurityTests
 {
-    private const string EntryPrefix = "methodcache:e:";
+    private const string EntryPrefix = "methodcache:e6:s1:";
 
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
-    private readonly IDistributedCache _shared = new MethodCache.TestSupport.AtomicTestCache();
+    private readonly IDistributedCache _shared;
+
+    public DistributedCacheSecurityTests() => _shared = new MethodCache.TestSupport.AtomicTestCache(_time);
     private readonly Hub _hub = new();
 
     private InMemoryCacheManager CreateNode(ISerializer? serializer = null) => new(
-        new NullCacheMetricsProvider(),
-        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
         _time,
         new DistributedCacheLayer(_shared, serializer ?? new JsonCacheSerializer(), new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero }, _hub.Join(), _time));
 
@@ -38,17 +39,17 @@ public class DistributedCacheSecurityTests
         CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1), Tags = tags };
 
     [Theory]
-    [InlineData(3, 0)]
-    [InlineData(4, 1)]
-    [InlineData(4, -1)]
-    [InlineData(4, int.MaxValue)]
+    [InlineData(4, 0)]
+    [InlineData(6, 1)]
+    [InlineData(6, -1)]
+    [InlineData(6, int.MaxValue)]
     public async Task ObsoleteVersionOrInvalidUtf16Length_IsAMiss(int version, int length)
     {
         var writer = CreateNode();
         await writer.GetOrCreateFastAsync("k", "M", () => Task.FromResult("stored"), Policy("users"));
         var stored = (await _shared.GetAsync(EntryPrefix + "k"))!;
         stored[0] = (byte)version;
-        BinaryPrimitives.WriteInt32LittleEndian(stored.AsSpan(22), length);
+        BinaryPrimitives.WriteInt32LittleEndian(stored.AsSpan(44), length);
         await _shared.SetAsync(EntryPrefix + "k", stored);
         var reader = CreateNode();
         Assert.Equal("loaded", await reader.GetOrCreateFastAsync("k", "M", () => Task.FromResult("loaded"), Policy("users")));
@@ -66,7 +67,7 @@ public class DistributedCacheSecurityTests
             random.NextBytes(garbage);
             if (garbage.Length > 0 && random.Next(2) == 0)
             {
-                garbage[0] = 4; // the current format version, so the header is parsed further
+                garbage[0] = 5; // the current format version, so the header is parsed further
             }
 
             await _shared.SetAsync(EntryPrefix + "k" + i, garbage);
@@ -93,12 +94,13 @@ public class DistributedCacheSecurityTests
     [Fact]
     public async Task AHugeTagCount_IsAMiss_WithoutAllocatingIt()
     {
-        var header = new byte[1 + 1 + 8 + 8 + 4];
-        header[0] = 4;                                                       // format version
+        var header = new byte[1 + 1 + 8 + 8 + 8 + 4];
+        header[0] = 5;                                                       // format version
         header[1] = 1;                                                       // a value
         BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(2), _time.GetUtcNow().ToUnixTimeMilliseconds());
-        BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(10), _time.GetUtcNow().AddHours(1).ToUnixTimeMilliseconds());
-        BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(18), int.MaxValue); // tag count
+        BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(10), _time.GetUtcNow().ToUnixTimeMilliseconds());
+        BinaryPrimitives.WriteInt64LittleEndian(header.AsSpan(18), _time.GetUtcNow().AddHours(1).ToUnixTimeMilliseconds());
+        BinaryPrimitives.WriteInt32LittleEndian(header.AsSpan(26), int.MaxValue); // tag count
         await _shared.SetAsync(EntryPrefix + "k", header.Concat(new byte[64]).ToArray());
         var node = CreateNode();
 
@@ -169,7 +171,7 @@ public class DistributedCacheSecurityTests
 
     [Theory]
     [InlineData("e:k")]
-    [InlineData("methodcache:e:k")]
+    [InlineData("methodcache:e6:s1:k")]
     [InlineData("r:k")]
     [InlineData("k")]
     public async Task ATagNamedLikeAStorageKey_DoesNotTouchThatEntry(string tag)

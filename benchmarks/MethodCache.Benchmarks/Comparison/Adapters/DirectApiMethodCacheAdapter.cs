@@ -39,7 +39,7 @@ public class DirectApiMethodCacheAdapter : ICacheAdapter
         // Add MethodCache infrastructure (just the storage, no source generation)
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
         }); // Don't scan assembly to avoid conflicts
 
         _serviceProvider = services.BuildServiceProvider();

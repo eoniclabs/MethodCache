@@ -17,7 +17,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IUserService), "GetUser");
 
-            Assert.Equal("MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
+            Assert.Equal("[MethodCache.Core.Tests]MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
         }
 
         [Fact]
@@ -31,7 +31,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IRepository<int>), "Get");
 
-            Assert.Contains("[System.Int32]", prefix);
+            Assert.Contains("[" + Generated.KeyParts.TypeIdentity(typeof(int)) + "]", prefix);
             Assert.DoesNotContain("Version=", prefix);
             Assert.NotEqual(prefix, MethodCacheKeys.Prefix(typeof(IRepository<long>), "Get"));
         }
@@ -261,7 +261,7 @@ namespace MethodCache.Core.Tests.Core
             Assert.Equal(Key(new List<int> { 1, 2 }), Key(new List<int> { 1, 2 }));
             Assert.NotEqual(Key(1, "a"), Key(2, "a"));
             // Fixed, so keys already in a distributed cache stay valid across processes and releases
-            Assert.Equal("M:[1,\"a\"]:" + JsonTypeSuffix("System.Int32", "System.String"), Key(1, "a"));
+            Assert.Equal("M:[1,\"a\"]:" + JsonTypeSuffix("[System.Private.CoreLib]System.Int32", "[System.Private.CoreLib]System.String"), Key(1, "a"));
         }
 
         private static string JsonTypeSuffix(params string[] typeNames)

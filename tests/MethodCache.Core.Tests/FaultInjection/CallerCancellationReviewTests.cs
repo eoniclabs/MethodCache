@@ -14,7 +14,7 @@ public class CallerCancellationReviewTests
     public async Task OwnerCancellation_StopsWaitingForAnUncooperativeFactory(bool failSafe)
     {
         var time = new FakeTimeProvider();
-        using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time);
+        using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time);
         var policy = CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1) };
         if (failSafe)
         {
@@ -43,7 +43,7 @@ public class CallerCancellationReviewTests
         var time = new FakeTimeProvider();
         var backend = new ChaosDistributedCache(time: time).Inject(ChaosOperations.Get, ChaosFault.HangUntilCancelled());
         using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions { OperationTimeout = TimeSpan.FromHours(1) }, timeProvider: time);
-        using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, layer);
+        using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, layer);
         using var cancellation = new CancellationTokenSource();
         var load = manager.GetOrCreateManyAsync<int>(["key"], (_, _, _) => throw new InvalidOperationException("The cancelled read must not run a factory."), cancellationToken: cancellation.Token).AsTask();
         await backend.FirstBlockStarted.WaitAsync(TimeSpan.FromSeconds(10));
@@ -68,7 +68,7 @@ public class CallerCancellationReviewTests
         var time = new FakeTimeProvider();
         var backend = new ChaosDistributedCache(time: time).Inject(ChaosOperations.Get, ChaosFault.HangUntilCancelled());
         using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions { OperationTimeout = TimeSpan.FromHours(1) }, timeProvider: time);
-        using var manager = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, layer);
+        using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, layer);
         using var cancellation = new CancellationTokenSource();
         var load = manager.GetOrCreateFastAsync("key", "M", () =>
         {
@@ -105,7 +105,7 @@ public class CallerCancellationReviewTests
             // Metadata reads run in parallel; inject one blocked operation so its completion signal
             // proves that exact operation released its resources, independently of its siblings.
             Times = 1,
-            Keys = key => invalidationRead ? !key.StartsWith("methodcache:e:", StringComparison.Ordinal) : key.StartsWith("methodcache:e:", StringComparison.Ordinal)
+            Keys = key => invalidationRead ? !key.StartsWith("methodcache:e6:s1:", StringComparison.Ordinal) : key.StartsWith("methodcache:e6:s1:", StringComparison.Ordinal)
         });
         using var cancellation = new CancellationTokenSource();
         var read = layer.TryGetAsync<int>("key", cancellation.Token).AsTask();

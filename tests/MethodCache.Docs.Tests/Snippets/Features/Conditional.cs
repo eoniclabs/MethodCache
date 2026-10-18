@@ -23,13 +23,11 @@ namespace Docs.Conditional
             builder.Services.AddMethodCache(config =>
             {
                 // Don't remember empty search results: the next search asks the database again
-                config.ForService<IProductService>()
-                      .Method(s => s.SearchAsync(Any<string>.Value))
+                config.Method((IProductService s) => s.SearchAsync(Any<string>.Value))
                       .CacheWhen(results => results.Count > 0);
 
                 // A product that doesn't exist yet may be created any moment
-                config.ForService<IProductService>()
-                      .Method(s => s.FindAsync(Any<int>.Value))
+                config.Method((IProductService s) => s.FindAsync(Any<int>.Value))
                       .CacheWhen(product => product is not null);
             });
             // end-snippet
@@ -42,7 +40,7 @@ namespace Docs.Conditional
                 $"search:{text}",
                 async (ctx, ct) => await search(),
                 o => o.WithDuration(TimeSpan.FromMinutes(10))
-                      .When(ctx => !preview));   // preview requests skip the cache entirely
+                      .WithEnabled(!preview));   // preview requests skip the cache entirely
             // end-snippet
             return results;
         }

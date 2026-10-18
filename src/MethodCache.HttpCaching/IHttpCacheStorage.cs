@@ -3,8 +3,21 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Defines the contract for HTTP cache storage implementations.
 /// </summary>
-public interface IHttpCacheStorage
+internal interface IHttpCacheStorage
 {
+    long BodyBudget(string key, HttpCacheEntry metadata) => long.MaxValue;
+
+    IHttpCacheStorage ForClient(string client, HttpCacheOptions options) => this;
+
+    async ValueTask<bool> TrySetAsync(string key, HttpCacheEntry entry, TimeSpan lifetime, CancellationToken token)
+    {
+        await SetAsync(key, entry, lifetime, token).ConfigureAwait(false);
+        return true;
+    }
+
+    ValueTask InvalidateManyAsync(IReadOnlyList<string> keys, CancellationToken token)
+        => new(Task.WhenAll(keys.Select(key => InvalidateAsync(key, CancellationToken.None).AsTask())).WaitAsync(token));
+
     /// <summary>
     /// Reads the current publication generation for a URL key. Requests publish only within this generation.
     /// </summary>

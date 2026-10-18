@@ -11,7 +11,7 @@ internal static class ConfigFilePolicySourceBuilder
     private static readonly HashSet<string> PolicySettings = new(StringComparer.OrdinalIgnoreCase)
     {
         "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter",
-        "Tags", "Version", "Group", "Metadata", "Notes"
+        "Tags", "Version", "Group", "Metadata", "Notes", "Enabled", "Distributed"
     };
 
     private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
@@ -90,6 +90,14 @@ internal static class ConfigFilePolicySourceBuilder
 
         RejectUnknownSettings(section, settings);
 
+        foreach (var name in new[] { "Enabled", "Distributed" })
+            if (ReadValue(section, name) is { } booleanText)
+            {
+                if (!bool.TryParse(booleanText, out var value)) throw InvalidValue(section, name, booleanText, "true or false");
+                if (name == "Enabled") builder.WithEnabled(value);
+                else builder.WithDistributed(value);
+            }
+
         var duration = ReadTimeSpan(section, "Duration");
         if (duration is { } durationValue)
         {
@@ -123,7 +131,7 @@ internal static class ConfigFilePolicySourceBuilder
             builder.SetTags(tags);
         }
 
-        if (ReadValue(section, "Version") is { } versionValue)
+        if (section["Version"] is { } versionValue)
         {
             if (!int.TryParse(versionValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version) || version < 0)
             {
@@ -158,9 +166,9 @@ internal static class ConfigFilePolicySourceBuilder
                 "Set FailSafeTimeout and FailSafeRetryAfter next to it; the FailSafe block with Duration, Timeout and RetryAfter belongs at the top of the section.");
         }
 
-        if (ReadValue(section, "FailSafe") is { } failSafe)
+        if (section["FailSafe"] is { } failSafe)
         {
-            builder.WithFailSafe(string.Equals(failSafe, "off", StringComparison.OrdinalIgnoreCase)
+            builder.WithFailSafe(string.Equals(failSafe.Trim(), "off", StringComparison.OrdinalIgnoreCase)
                 ? TimeSpan.Zero
                 : ReadTimeSpan(section, "FailSafe"));
         }
@@ -235,15 +243,13 @@ internal static class ConfigFilePolicySourceBuilder
 
     private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string name)
     {
-        if (ReadValue(section, name) is not { } text)
+        if (section[name] is not { } text)
         {
             return null;
         }
 
-        // A bare number such as "300" parses as days, so a value without ':' is rejected rather than misread
-        if (!text.Contains(':', StringComparison.Ordinal) ||
-            !TimeSpan.TryParse(text, CultureInfo.InvariantCulture, out var value) ||
-            value <= TimeSpan.Zero)
+        // The same grammar is used by attributes and configuration.
+        if (!MethodCache.Internal.DurationParser.TryParse(text, false, out var value))
         {
             throw InvalidValue(section, name, text, "a positive time span such as \"00:05:00\"");
         }

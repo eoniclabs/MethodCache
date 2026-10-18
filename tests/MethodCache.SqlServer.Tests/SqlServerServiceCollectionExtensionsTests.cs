@@ -21,7 +21,7 @@ public class SqlServerServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<SqlServerDistributedCache>();
-        provider.GetRequiredService<IBackplane>().Should().BeOfType<SqlServerBackplane>();
+        provider.GetRequiredKeyedService<IBackplane>("MethodCache").Should().BeOfType<SqlServerBackplane>();
         provider.GetServices<IHostedService>().Should().ContainSingle(s => s is SqlServerTables);
     }
 
@@ -44,18 +44,16 @@ public class SqlServerServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        SqlServerOptions? captured = null;
         services.AddMethodCacheSqlServer(options =>
         {
-            captured = options;
             options.ConnectionString = ConnectionString;
             options.SchemaName = "cache";
             options.TableName = "Entries";
-            options.KeyPrefix = "app:";
         });
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
-        var cacheOptions = MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(captured!);
+        var cacheOptions = MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(provider.GetRequiredService<IOptions<SqlServerOptions>>().Value);
         cacheOptions.ConnectionString.Should().Be(ConnectionString);
         cacheOptions.SchemaName.Should().Be("cache");
         cacheOptions.TableName.Should().Be("Entries");
@@ -74,8 +72,9 @@ public class SqlServerServiceCollectionExtensionsTests
             options.EnableBackplane = false;
         });
 
-        services.Should().NotContain(d => d.ServiceType == typeof(IBackplane));
-        services.Should().NotContain(d => d.ServiceType == typeof(IHostedService));
+        using var provider = services.BuildServiceProvider();
+        provider.GetKeyedService<IBackplane>("MethodCache").Should().BeNull();
+        provider.GetServices<IHostedService>().Should().ContainSingle(service => service is SqlServerTables);
     }
 
     [Fact]
@@ -83,8 +82,9 @@ public class SqlServerServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var act = () => services.AddMethodCacheSqlServer(_ => { });
-
-        act.Should().Throw<InvalidOperationException>();
+        services.AddMethodCacheSqlServer(_ => { });
+        using var provider = services.BuildServiceProvider();
+        var act = () => provider.GetRequiredService<IOptions<SqlServerOptions>>().Value;
+        act.Should().Throw<OptionsValidationException>();
     }
 }

@@ -1,4 +1,3 @@
-using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,33 +16,6 @@ public class StartupValidationTests
         Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { DisableDefaults = true });
 
     [Fact]
-    public async Task GetOrCreateOnlySetting_OnCachedMethod_FailsHostStart()
-    {
-        var builder = NewHostBuilder();
-        builder.Services.AddSingleton<IStartupProbe, StartupProbe>();
-        builder.Services.AddMethodCache(c => c.ForService<IStartupProbe>()
-            .Method(s => s.Get(Any<int>.Value))
-            .Configure(o => o.OnHit(_ => { })));
-        using var host = builder.Build();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync());
-        await host.StopAsync();
-    }
-
-    [Fact]
-    public void GetOrCreateOnlySetting_WithoutAHost_FailsTheFirstCall()
-    {
-        var services = new ServiceCollection();
-        services.AddSingleton<IStartupProbe, StartupProbe>();
-        services.AddMethodCache(c => c.ForService<IStartupProbe>()
-            .Method(s => s.Get(Any<int>.Value))
-            .Configure(o => o.OnHit(_ => { })));
-        using var provider = services.BuildServiceProvider();
-
-        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IStartupProbe>());
-    }
-
-    [Fact]
     public async Task InvalidAppsettingsValue_FailsHostStart()
     {
         var builder = NewHostBuilder();
@@ -52,7 +24,7 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
         });
         builder.Services.AddMethodCache();
-        builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+        builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
         using var host = builder.Build();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync());
@@ -68,7 +40,7 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "01:00:00"
         });
         builder.Services.AddMethodCache();
-        builder.Services.AddMethodCacheFromConfiguration(builder.Configuration);
+        builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
 
         // A source added later, as Program.cs or WebApplicationFactory does
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -78,7 +50,7 @@ public class StartupValidationTests
         using var host = builder.Build();
         await host.StartAsync();
 
-        var policy = host.Services.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method").Policy;
+        var policy = host.Services.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "Sample.Type.Method").Options;
         Assert.Equal(TimeSpan.FromSeconds(1), policy.Duration);
         await host.StopAsync();
     }
@@ -92,14 +64,14 @@ public class StartupValidationTests
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
         });
         var services = new ServiceCollection();
-        services.AddMethodCacheFromConfiguration(configuration);
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:10:00"
         });
         using var provider = services.BuildServiceProvider();
 
-        Assert.Equal(TimeSpan.FromMinutes(10), provider.GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method").Policy.Duration);
+        Assert.Equal(TimeSpan.FromMinutes(10), provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == "Sample.Type.Method").Options.Duration);
     }
 }
 

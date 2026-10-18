@@ -8,7 +8,7 @@ namespace MethodCache.Policies;
 /// Synchronous access to the effective, merged cache policy of each method.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public interface IPolicyRegistry
+internal interface IPolicyRegistry
 {
     /// <summary>
     /// Returns the effective policy for a method; a method without any policy gets an empty one.

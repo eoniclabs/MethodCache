@@ -93,7 +93,7 @@ public class InMemoryCacheSoakTests
             DefaultExpiration = TimeSpan.FromSeconds(2),
             CleanupInterval = TimeSpan.FromSeconds(10),
         };
-        using var cache = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options));
+        using var cache = new InMemoryCacheManager(MsOptions.Create(options));
         var counters = new Counters();
         using var stop = new CancellationTokenSource();
 
@@ -134,8 +134,8 @@ public class InMemoryCacheSoakTests
         _output.WriteLine($"Ran {watch.Elapsed.TotalSeconds:F0} s with {workers.Length - 1} workers: {counters.LoadCalls:N0} loads " +
                           $"({counters.HotLoadCalls:N0} hot), {counters.FactoryCalls:N0} factory calls ({counters.FactoryFailures:N0} failed), " +
                           $"{counters.GetCalls:N0} reads, {counters.Writes:N0} writes, {counters.Invalidations:N0} invalidations");
-        _output.WriteLine($"Stats: {stats.Hits:N0} hits, {stats.Misses:N0} misses, {stats.Evictions:N0} evictions, {stats.Entries:N0} entries, " +
-                          $"weight {stats.MemoryUsage:N0} (max seen {maxWeight:N0}, bound {WeightBound:N0}), max entries seen {maxEntries:N0}");
+        _output.WriteLine($"Stats: {stats.Hits:N0} hits, {stats.Misses:N0} misses, {stats.Evictions:N0} evictions, {stats.LocalMethodEntries:N0} entries, " +
+                          $"weight {stats.TotalWeight:N0} (max seen {maxWeight:N0}, bound {WeightBound:N0}), max entries seen {maxEntries:N0}");
         _output.WriteLine($"Managed memory after full GCs (MB): {string.Join(", ", samples.Select(s => (s / (1024.0 * 1024)).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}");
 
         Assert.Empty(counters.Unexpected);

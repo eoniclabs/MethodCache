@@ -85,9 +85,9 @@ public class KeyInjectionPropertyTests
     private static ICacheManager CapturingManager()
     {
         var manager = Substitute.For<ICacheManager>();
-        manager.GetOrCreateFastAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Func<Task<string>>>(),
-            Arg.Any<CacheRuntimePolicy>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(call.ArgAt<string>(0)));
+        manager.GetOrCreateAsync(Arg.Any<string>(), Arg.Any<Func<CacheContext, CancellationToken, ValueTask<string>>>(),
+            Arg.Any<CacheEntryOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult(call.ArgAt<CacheEntryOptions>(2).GetCacheKey(call.ArgAt<string>(0))));
         return manager;
     }
 

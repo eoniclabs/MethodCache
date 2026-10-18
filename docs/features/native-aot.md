@@ -3,8 +3,11 @@
 MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
 write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
 and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
-caching (with simple, record, collection and `ICacheKeyProvider` arguments), the automatic registration and
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), explicit `AutoRegister(ServiceLifetime)` registration and
 `[assembly: CacheInterface]` work.
+
+CI also compiles the complete supported signature corpus with Native AOT. This checks generated signatures and
+ref safety across all key forms; reflection-based fallback cases retain the runtime limitations described below.
 
 ## In-memory caching
 
@@ -27,11 +30,11 @@ public sealed partial class ShopJsonContext : JsonSerializerContext;
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(ShopJsonContext.Default.Options));
+builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
 ```
 <!-- endSnippet -->
 
-`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`. MethodCache can't generate this context
+Select your context with `MethodCacheBuilder.UseJson(context)`. MethodCache cannot generate this context
 for you, because one source generator can't see another generator's output.
 
 ## Keys

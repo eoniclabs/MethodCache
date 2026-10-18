@@ -55,10 +55,10 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
         var configuration = _proxy.RequireConfiguration();
         var services = new ServiceCollection();
         services.AddMethodCache();
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = _prefix);
         services.AddMethodCacheRedis(options =>
         {
             options.Configuration = configuration;
-            options.KeyPrefix = _prefix;
             options.EnableBackplane = enableBackplane;
         });
         services.Configure<DistributedCacheOptions>(options =>

@@ -13,7 +13,7 @@ namespace MethodCache.Serialization.MessagePack;
 /// use LZ4 compression and treat stored data as untrusted.
 /// Register it with <see cref="Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.AddMethodCacheMessagePack"/>.
 /// </remarks>
-public sealed class MessagePackCacheSerializer : ISerializer
+internal sealed class MessagePackCacheSerializer : ISerializer
 {
     private readonly MessagePackSerializerOptions _options;
 

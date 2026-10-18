@@ -24,7 +24,7 @@ namespace MethodCache.Serialization.MessagePack;
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, MessagePackKeyGenerator&gt;());
 /// </code>
 /// </example>
-public sealed class MessagePackKeyGenerator : ICacheKeyGenerator
+internal sealed class MessagePackKeyGenerator : ICacheKeyGenerator
 {
     private const byte NullFrame = 0x00;
     private const byte KeyProviderFrame = 0x01;

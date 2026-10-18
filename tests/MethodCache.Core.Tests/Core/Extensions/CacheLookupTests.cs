@@ -17,7 +17,7 @@ public class CacheLookupTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time);
     }
 
     // ---------- Fluent TryGetAsync / bulk report Miss for cached entries ----------
@@ -90,13 +90,14 @@ public class CacheLookupTests
     // ---------- Default ICacheManager.TryGetFast treats a cached default(T) as a miss ----------
 
     [Fact]
-    public void TryGetFast_DefaultImplementation_ReportsACachedZeroAsFound()
+    public async Task TryGet_CustomManager_ReportsACachedZeroAsFound()
     {
         ICacheManager manager = new ZeroHoldingManager();
 
-        manager.TryGetFast<int>("present", out var value).Should().BeTrue("0 is cached under \"present\"");
-        value.Should().Be(0);
-        manager.TryGetFast<int>("absent", out _).Should().BeFalse();
+        var present = await manager.TryGetAsync<int>("present");
+        present.Found.Should().BeTrue();
+        present.Value.Should().Be(0);
+        (await manager.TryGetAsync<int>("absent")).Found.Should().BeFalse();
     }
 
     /// <summary>
@@ -105,6 +106,18 @@ public class CacheLookupTests
     /// </summary>
     private sealed class ZeroHoldingManager : ICacheManager
     {
+        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
+            return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
+        }
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(key == "present" ? CacheLookupResult<T>.Hit(default!) : CacheLookupResult<T>.Miss);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)
+        { var values = keys.Distinct().ToArray(); InvalidateByKeysAsync(values); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token)
+        { var values = tags.Distinct().ToArray(); return new(new InvalidationResult { Requested = values.Length, Local = values.Length }); }
+
         public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
             => throw new NotSupportedException();
 

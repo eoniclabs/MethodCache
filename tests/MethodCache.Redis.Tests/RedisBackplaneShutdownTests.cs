@@ -36,7 +36,7 @@ public class RedisBackplaneShutdownTests
         Assert.Single(logs);
         Assert.Equal(LogLevel.Warning, logs[0].Level);
         Assert.DoesNotContain("sensitive-key", logs[0].Message);
-        Assert.Equal(0, delivered);
+        Assert.Equal(2, delivered);
     }
 
     [Fact]

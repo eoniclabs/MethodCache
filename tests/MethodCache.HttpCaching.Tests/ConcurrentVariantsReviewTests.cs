@@ -18,8 +18,8 @@ public class ConcurrentVariantsReviewTests
     {
         var origin = new Origin();
         var backend = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
-        using var firstStore = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, distributed: distributed ? backend : null);
-        using var secondStore = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, distributed: backend);
+        using var firstStore = new TestHttpStore(distributed: distributed ? backend : null);
+        using var secondStore = new TestHttpStore(distributed: backend);
         var race = new Race();
         var storage = new RacingStorage(firstStore, race);
         using var firstClient = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage));

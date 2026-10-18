@@ -18,11 +18,11 @@ public class ShortReplacementReviewTests
         var backend = new MethodCache.TestSupport.AtomicTestCache();
         DistributedCacheLayer Layer() => new(backend, new JsonCacheSerializer(), new DistributedCacheOptions { ClockSkewTolerance = TimeSpan.Zero, TagCheckInterval = TimeSpan.Zero }, timeProvider: time);
         using var firstLayer = Layer();
-        using var first = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, firstLayer);
+        using var first = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, firstLayer);
         await first.SetAsync("key", "old", TimeSpan.FromMinutes(10));
         await first.SetAsync("key", "replacement", TimeSpan.FromTicks(ticks));
         using var secondLayer = Layer();
-        using var second = new InMemoryCacheManager(new NullCacheMetricsProvider(), Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, secondLayer);
+        using var second = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, secondLayer);
         var result = await second.GetOrCreateFastAsync("key", "M", () => Task.FromResult("fresh"), CacheRuntimePolicy.Empty("M") with { Duration = TimeSpan.FromMinutes(1) });
         Assert.Equal("fresh", result);
     }

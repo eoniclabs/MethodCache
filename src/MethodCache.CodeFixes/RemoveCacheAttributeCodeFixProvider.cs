@@ -18,7 +18,7 @@ namespace MethodCache.CodeFixes
     {
         /// <inheritdoc />
         public override ImmutableArray<string> FixableDiagnosticIds { get; } =
-            ImmutableArray.Create("MCG001", "MCG002", "MCG003", "MCG006", "MCG007", "MCG014");
+            ImmutableArray.Create("MC0003", "MC0022", "MC0005", "MC0008", "MC0009", "MC0015");
 
         /// <inheritdoc />
         public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;

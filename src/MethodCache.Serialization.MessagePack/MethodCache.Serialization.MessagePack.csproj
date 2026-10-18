@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
-    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
@@ -24,8 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
-    <Compile Include="../Shared/KeyCollectionState.cs" Link="Internal/KeyCollectionState.cs" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Docs.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Benchmarks" />
+    <InternalsVisibleTo Include="MethodCache.Benchmarks.Tests" />
+    <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack.Tests" />
   </ItemGroup>
 
 </Project>

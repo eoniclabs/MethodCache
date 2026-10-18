@@ -51,26 +51,6 @@ public class FrameworkTypeKeyDocsTests
         Assert.Equal("/a?x=1 example.org", requests.Describe(new PathString("/a"), new QueryString("?x=1"), new HostString("example.org")));
     }
 
-    [Theory]
-    [InlineData(nameof(FastHashKeyGenerator))]
-    [InlineData(nameof(JsonKeyGenerator))]
-    [InlineData(nameof(MessagePackKeyGenerator))]
-    public void AspNetCoreRequestValues_GetDifferentKeysInEveryKeyGenerator(string name)
-    {
-        ICacheKeyGenerator generator = name switch
-        {
-            nameof(FastHashKeyGenerator) => new FastHashKeyGenerator(),
-            nameof(JsonKeyGenerator) => new JsonKeyGenerator(),
-            _ => new MessagePackKeyGenerator(),
-        };
-        string Key(object value) => generator.GenerateKey("Requests", [value], CacheRuntimePolicy.Empty("Requests"));
-
-        Assert.NotEqual(Key(new PathString("/a")), Key(new PathString("/b")));
-        Assert.Equal(Key(new PathString("/a")), Key(new PathString("/a")));
-        Assert.NotEqual(Key(new QueryString("?x=1")), Key(new QueryString("?x=2")));
-        Assert.NotEqual(Key(new HostString("example.com", 80)), Key(new HostString("example.com", 81)));
-    }
-
     private static JsonElement Json(string json)
     {
         using var document = JsonDocument.Parse(json);

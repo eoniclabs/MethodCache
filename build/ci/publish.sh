@@ -6,7 +6,7 @@
 #   build/ci/publish.sh v1.3.0-beta --github
 #   build/ci/publish.sh v1.0.0 --nuget
 #
-# Run it on Megatron (or any machine with the .NET 8, 9 and 10 SDKs). GitHub Packages needs gh logged in
+# Run it on Megatron (or any machine with the .NET 10 SDK). GitHub Packages needs gh logged in
 # with write:packages; nuget.org needs BWS and a .NET SDK 10.0.300+ publishing CLI. It packs the 7 packages
 # from a fresh clone of the tag, so the
 # local checkout does not matter. Running it again is safe: versions already published are skipped.

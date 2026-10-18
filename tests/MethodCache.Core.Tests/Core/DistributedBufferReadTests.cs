@@ -17,9 +17,9 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
     [InlineData(1), InlineData(85_000), InlineData(1_048_576)]
     public async Task BufferRead_Deserialization_UsesTheBackendDestinationWithoutCopy(int payloadSize)
     {
-        var cache = new TrackingBufferCache();
-        var serializer = new BlobSerializer(payloadSize);
         var clock = new FakeTimeProvider();
+        var cache = new TrackingBufferCache(clock);
+        var serializer = new BlobSerializer(payloadSize);
         await using var layer = new DistributedCacheLayer(cache, serializer, new DistributedCacheOptions(), timeProvider: clock);
         await layer.WriteAsync("key", (byte)42, null, layer.Now, TimeSpan.FromMinutes(1));
         var read = await layer.TryGetAsync<byte>("key");
@@ -34,9 +34,9 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
     [Fact]
     public async Task ASecondRead_DoesNotOverwriteTheFirstReadsOwnedBuffer()
     {
-        var cache = new TrackingBufferCache();
-        var serializer = new BlobSerializer(1_048_576);
         var clock = new FakeTimeProvider();
+        var cache = new TrackingBufferCache(clock);
+        var serializer = new BlobSerializer(1_048_576);
         await using var layer = new DistributedCacheLayer(cache, serializer, new DistributedCacheOptions(), timeProvider: clock);
         await layer.WriteAsync("first", (byte)42, null, layer.Now, TimeSpan.FromMinutes(1));
         await layer.WriteAsync("second", (byte)7, null, layer.Now, TimeSpan.FromMinutes(1));
@@ -51,9 +51,10 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
     public async Task LargeBufferRead_AllocatesOnlyOneEntryBuffer()
     {
         const int size = 1_048_576;
-        var cache = new TrackingBufferCache();
+        var clock = new FakeTimeProvider();
+        var cache = new TrackingBufferCache(clock);
         var serializer = new BlobSerializer(size);
-        await using var layer = new DistributedCacheLayer(cache, serializer, new DistributedCacheOptions(), timeProvider: new FakeTimeProvider());
+        await using var layer = new DistributedCacheLayer(cache, serializer, new DistributedCacheOptions(), timeProvider: clock);
         await layer.WriteAsync("key", (byte)42, null, layer.Now, TimeSpan.FromMinutes(1));
         await layer.TryGetAsync<byte>("key");
 
@@ -77,9 +78,9 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
     [Fact]
     public async Task TimedOutRead_CompletingLate_DoesNotOverwriteAnotherReadsPayload()
     {
-        var cache = new TrackingBufferCache();
-        var serializer = new BlobSerializer(85_000);
         var clock = new FakeTimeProvider();
+        var cache = new TrackingBufferCache(clock);
+        var serializer = new BlobSerializer(85_000);
         var options = new DistributedCacheOptions { OperationTimeout = TimeSpan.FromSeconds(1) };
         await using var first = new DistributedCacheLayer(cache, serializer, options, timeProvider: clock);
         await first.WriteAsync("key", (byte)42, null, first.Now, TimeSpan.FromMinutes(1));
@@ -127,9 +128,9 @@ public class DistributedBufferReadTests(ITestOutputHelper output)
         }
     }
 
-    private sealed class TrackingBufferCache : IBufferDistributedCache, MethodCache.Extensibility.IAtomicInvalidationStore
+    private sealed class TrackingBufferCache(TimeProvider clock) : IBufferDistributedCache, MethodCache.Extensibility.IAtomicInvalidationStore
     {
-        private readonly IDistributedCache _inner = new MethodCache.TestSupport.AtomicTestCache();
+        private readonly IDistributedCache _inner = new MethodCache.TestSupport.AtomicTestCache(clock);
         public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => ((MethodCache.Extensibility.IAtomicInvalidationStore)_inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
         public ReadOnlyMemory<byte> LastDestination;
         public Func<Task>? BeforeComplete;

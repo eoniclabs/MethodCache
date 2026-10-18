@@ -90,10 +90,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IUserService");
@@ -121,23 +121,23 @@ namespace TestNamespace
         // Test GetByIdAsync caching
         var task1 = (Task)getByIdMethod!.Invoke(service, new object[] { 1 })!;
         var user1 = await GetTaskResult(task1, userType);
-        
+
         var task2 = (Task)getByIdMethod.Invoke(service, new object[] { 1 })!;
         var user2 = await GetTaskResult(task2, userType);
 
         // Test GetByEmailAsync caching
         var emailTask1 = (Task)getByEmailMethod!.Invoke(service, new object[] { "test@example.com" })!;
         var emailUser1 = await GetTaskResult(emailTask1, userType);
-        
+
         var emailTask2 = (Task)getByEmailMethod.Invoke(service, new object[] { "test@example.com" })!;
         var emailUser2 = await GetTaskResult(emailTask2, userType);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked
         var getByIdCallCount = (int)implType?.GetProperty("GetByIdCallCount")?.GetValue(null)!;
         var getByEmailCallCount = (int)implType?.GetProperty("GetByEmailCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, getByIdCallCount);
         Assert.Equal(1, getByEmailCallCount);
 
@@ -259,10 +259,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         // Get each interface separately to test multiple interface implementation
@@ -297,23 +297,23 @@ namespace TestNamespace
         // Test read caching (IDocumentReader)
         var readTask1 = (Task)readMethod!.Invoke(readerService, new object[] { 1 })!;
         var doc1 = await GetTaskResult(readTask1, documentType);
-        
+
         var readTask2 = (Task)readMethod.Invoke(readerService, new object[] { 1 })!;
         var doc2 = await GetTaskResult(readTask2, documentType);
 
         // Test process caching (IDocumentProcessor)
         var processTask1 = (Task)processMethod!.Invoke(processorService, new object[] { 1, "validate" })!;
         var result1 = await GetTaskResult<string>(processTask1);
-        
+
         var processTask2 = (Task)processMethod.Invoke(processorService, new object[] { 1, "validate" })!;
         var result2 = await GetTaskResult<string>(processTask2);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked independently for each interface
         var readCallCount = (int)implType?.GetProperty("ReadCallCount")?.GetValue(null)!;
         var processCallCount = (int)implType?.GetProperty("ProcessCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, readCallCount);
         Assert.Equal(1, processCallCount);
 
@@ -341,10 +341,10 @@ namespace TestNamespace
         await task;
         var property = task.GetType().GetProperty("Result");
         var result = property!.GetValue(task)!;
-        
-        Assert.True(expectedType.IsAssignableFrom(result.GetType()), 
+
+        Assert.True(expectedType.IsAssignableFrom(result.GetType()),
             $"Expected type {expectedType.Name}, but got {result.GetType().Name}");
-        
+
         return result;
     }
 }

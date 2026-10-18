@@ -20,7 +20,11 @@ internal static class PolicyRegistrationExtensions
         services.TryAddSingleton<PolicyRegistry>(provider =>
         {
             var resolver = provider.GetRequiredService<PolicyResolver>();
-            return new PolicyRegistry(resolver);
+            return new PolicyRegistry(resolver, id =>
+            {
+                var memory = provider.GetService<MethodCache.Extensibility.InMemoryCacheManager>();
+                return memory?.InvalidateMethodAsync(id) ?? Task.CompletedTask;
+            });
         });
 
         services.TryAddSingleton<IPolicyRegistry>(provider => provider.GetRequiredService<PolicyRegistry>());

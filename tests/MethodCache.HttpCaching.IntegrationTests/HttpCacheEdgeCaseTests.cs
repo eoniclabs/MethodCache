@@ -30,6 +30,7 @@ public class HttpCacheEdgeCaseTests
     {
         var origin = new CountingOrigin();
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.ConfigureHttpClientDefaults(b => b.AddHttpCaching(o => o.AllowUnverifiedTransport = true)
             .ConfigurePrimaryHttpMessageHandler(() => origin));
         services.AddHttpClient("a", c => c.DefaultRequestHeaders.Add("X-Api-Key", "tenant1"));
@@ -41,6 +42,8 @@ public class HttpCacheEdgeCaseTests
 
         Assert.Equal("1", a);
         Assert.Equal("2", b); // client b must not get tenant 1's response
+        Assert.Equal("1", await factory.CreateClient("a").GetStringAsync("https://api.example.com/x"));
+        Assert.Equal("2", await factory.CreateClient("b").GetStringAsync("https://api.example.com/x"));
     }
 
     // A shared, already used, cookie-free handler
@@ -66,6 +69,7 @@ public class HttpCacheEdgeCaseTests
 
         var shared = new SocketsHttpHandler { UseCookies = false }; // already cookie-free, shared to share a connection pool
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("plain").ConfigurePrimaryHttpMessageHandler(() => shared).SetHandlerLifetime(Timeout.InfiniteTimeSpan);
         services.AddHttpClient("cached").ConfigurePrimaryHttpMessageHandler(() => shared).SetHandlerLifetime(Timeout.InfiniteTimeSpan).AddHttpCaching();
         var factory = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>();
@@ -117,6 +121,7 @@ public class HttpCacheEdgeCaseTests
         });
 
         var services = new ServiceCollection();
+        services.AddMethodCache();
         services.AddHttpClient("cached").ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false }).AddHttpCaching();
         using var provider = services.BuildServiceProvider();
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("cached");

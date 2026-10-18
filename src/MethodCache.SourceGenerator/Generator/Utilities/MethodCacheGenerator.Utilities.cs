@@ -109,7 +109,23 @@ namespace MethodCache.SourceGenerator
             internal static string GetDecoratorHintName(INamedTypeSymbol interfaceSymbol)
             {
                 var arity = interfaceSymbol.Arity > 0 ? "`" + interfaceSymbol.Arity : string.Empty;
-                return $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                var hint = $"{GetDecoratorNamespace(interfaceSymbol).Replace("@", string.Empty)}.{GetDecoratorClassName(interfaceSymbol)}{arity}.g.cs";
+                if (Encoding.UTF8.GetByteCount(hint) <= 200)
+                {
+                    return hint;
+                }
+
+                // Roslyn writes the hint verbatim when EmitCompilerGeneratedFiles is enabled. Keep long
+                // namespace/type names inside the source, while giving their files bounded stable names.
+                using var hash = System.Security.Cryptography.SHA256.Create();
+                var digest = hash.ComputeHash(Encoding.UTF8.GetBytes(hint));
+                var result = new StringBuilder("Decorator.");
+                foreach (var value in digest)
+                {
+                    result.Append(value.ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+                }
+
+                return result.Append(".g.cs").ToString();
             }
 
             /// <summary>A parameter or member name as C# source: keywords such as <c>class</c> become <c>@class</c>.</summary>
@@ -129,7 +145,7 @@ namespace MethodCache.SourceGenerator
             internal static string GetMethodId(IMethodSymbol method)
             {
                 var definition = method.OriginalDefinition;
-                return definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
+                return MethodCache.Internal.AssemblyIdentity.PolicyPrefix(definition.ContainingAssembly.Name) + definition.ContainingType.ToDisplayString(TypeIdFormat) + "." + GetMethodName(definition);
             }
 
             /// <summary>The method's name in ids and keys: <c>Find</c>, or <c>Find(int)</c> when it is overloaded.</summary>
@@ -155,7 +171,7 @@ namespace MethodCache.SourceGenerator
 
                 var signature = GetSignatureName(method);
                 return others.Any(m => GetSignatureName(m) == signature)
-                    ? method.ContainingType.ToDisplayString(TypeIdFormat) + "." + signature
+                    ? MethodCache.Internal.AssemblyIdentity.PolicyPrefix(method.ContainingAssembly.Name) + method.ContainingType.ToDisplayString(TypeIdFormat) + "." + signature
                     : signature;
             }
 

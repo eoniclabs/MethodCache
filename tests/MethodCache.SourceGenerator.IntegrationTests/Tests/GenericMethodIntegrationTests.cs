@@ -202,40 +202,22 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
-            
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
+
             // Manually register generic interfaces since they're excluded from automatic DI generation
             var userRepoImplType = testAssembly.Assembly.GetType("TestNamespace.UserRepository")!;
-        var userRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
-        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
-                
-            var productRepoImplType = testAssembly.Assembly.GetType("TestNamespace.ProductRepository")!;
-        var productRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
-        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
-                
-            // Register with caching decorators
-            services.AddSingleton(userRepoInterfaceType, sp =>
-            {
-                var userRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
-        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
-                var userRepoImpl = Activator.CreateInstance(userRepoImplType)!;
-                return Activator.CreateInstance(userRepoDecoratorType,
-                    userRepoImpl,
-                    DecoratorServices.From(sp))!;
-            });
+            var userRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+            .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.User")!);
 
-            services.AddSingleton(productRepoInterfaceType, sp =>
-            {
-                var productRepoDecoratorType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepositoryDecorator`1")!
-        .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
-                var productRepoImpl = Activator.CreateInstance(productRepoImplType)!;
-                return Activator.CreateInstance(productRepoDecoratorType,
-                    productRepoImpl,
-                    DecoratorServices.From(sp))!;
-            });
+            var productRepoImplType = testAssembly.Assembly.GetType("TestNamespace.ProductRepository")!;
+            var productRepoInterfaceType = testAssembly.Assembly.GetType("TestNamespace.IGenericRepository`1")!
+            .MakeGenericType(testAssembly.Assembly.GetType("TestNamespace.Product")!);
+
+            services.AddSingleton(userRepoInterfaceType, userRepoImplType);
+            services.AddSingleton(productRepoInterfaceType, productRepoImplType);
         });
 
         // Test User repository (generic interface with User type)
@@ -266,7 +248,7 @@ namespace TestNamespace
         var userGetByIdMethod = userRepoType!.GetMethod("GetByIdAsync");
         var userTask1 = (Task)userGetByIdMethod!.Invoke(userService, new object[] { 1 })!;
         var user1 = await GetTaskResult(userTask1, userType);
-        
+
         var userTask2 = (Task)userGetByIdMethod.Invoke(userService, new object[] { 1 })!;
         var user2 = await GetTaskResult(userTask2, userType);
 
@@ -274,16 +256,16 @@ namespace TestNamespace
         var productGetByIdMethod = productRepoType!.GetMethod("GetByIdAsync");
         var productTask1 = (Task)productGetByIdMethod!.Invoke(productService, new object[] { 1 })!;
         var product1 = await GetTaskResult(productTask1, productType);
-        
+
         var productTask2 = (Task)productGetByIdMethod.Invoke(productService, new object[] { 1 })!;
         var product2 = await GetTaskResult(productTask2, productType);
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Verify caching worked independently for each generic type
         var userGetByIdCallCount = (int)userImplType?.GetProperty("GetByIdCallCount")?.GetValue(null)!;
         var productGetByIdCallCount = (int)productImplType?.GetProperty("GetByIdCallCount")?.GetValue(null)!;
-        
+
         Assert.Equal(1, userGetByIdCallCount);
         Assert.Equal(1, productGetByIdCallCount);
 
@@ -393,10 +375,10 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var serviceType = testAssembly.Assembly.GetType("TestNamespace.IGenericService");
@@ -411,7 +393,7 @@ namespace TestNamespace
 
         var sortableEntityType = testAssembly.Assembly.GetType("TestNamespace.SortableEntity");
         var resultClassType = testAssembly.Assembly.GetType("TestNamespace.ResultClass");
-        
+
         // Create test entities
         var entity1 = Activator.CreateInstance(sortableEntityType!)!;
         sortableEntityType!.GetProperty("Id")!.SetValue(entity1, 1);
@@ -426,32 +408,32 @@ namespace TestNamespace
         // Test generic method with constraint caching
         var processMethod = serviceType!.GetMethod("ProcessEntityAsync");
         var specificProcessMethod = processMethod!.MakeGenericMethod(sortableEntityType);
-        
+
         var processTask1 = (Task)specificProcessMethod.Invoke(service, new object[] { entity1 })!;
         await processTask1;
-        
+
         var processTask2 = (Task)specificProcessMethod.Invoke(service, new object[] { entity2 })!;
         await processTask2;
 
         // Test transform method with multiple type parameters
         var transformMethod = serviceType.GetMethod("TransformAsync");
         var specificTransformMethod = transformMethod!.MakeGenericMethod(sortableEntityType, resultClassType!);
-        
+
         var transformTask1 = (Task)specificTransformMethod.Invoke(service, new object[] { entity1 })!;
         await transformTask1;
-        
+
         var transformTask2 = (Task)specificTransformMethod.Invoke(service, new object[] { entity2 })!;
         await transformTask2;
 
         await metricsProvider.WaitForMetricsAsync(expectedHits: 2, expectedMisses: 2);
-        
+
         // Note: Generic method caching with type parameters is complex and may not work
         // exactly like regular method caching due to type instantiation at runtime.
         // This test verifies that the source generator can handle generic methods without errors.
-        
+
         var processCallCount = (int)implType?.GetProperty("ProcessEntityCallCount")?.GetValue(null)!;
         var transformCallCount = (int)implType?.GetProperty("TransformCallCount")?.GetValue(null)!;
-        
+
         // For generic methods, caching might not work the same way due to runtime type instantiation
         // The main goal is to verify that source generation doesn't break with generic methods
         Assert.True(processCallCount >= 1);
@@ -465,10 +447,10 @@ namespace TestNamespace
         await task;
         var property = task.GetType().GetProperty("Result");
         var result = property!.GetValue(task)!;
-        
-        Assert.True(expectedType.IsAssignableFrom(result.GetType()), 
+
+        Assert.True(expectedType.IsAssignableFrom(result.GetType()),
             $"Expected type {expectedType.Name}, but got {result.GetType().Name}");
-        
+
         return result;
     }
 }

@@ -23,8 +23,8 @@ public static class HitRatioSimulation
 
     private static readonly Contender[] Contenders =
     {
-        new("MethodCache (W-TinyLFU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity })))),
-        new("MethodCache (LRU)", capacity => FromManager(new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru })))),
+        new("MethodCache (W-TinyLFU)", capacity => FromManager(new InMemoryCacheManager(MsOptions.Create(new MethodCacheOptions { MaxItems = capacity })))),
+        new("MethodCache (LRU)", capacity => FromManager(new InMemoryCacheManager(MsOptions.Create(new MethodCacheOptions { MaxItems = capacity, EvictionPolicy = MemoryCacheEvictionPolicy.Lru })))),
         new("MS MemoryCache (SizeLimit)", capacity =>
         {
             var cache = new MemoryCache(new MsMemoryCacheOptions { SizeLimit = capacity });

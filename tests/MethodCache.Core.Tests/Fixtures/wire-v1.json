@@ -1,0 +1,60 @@
+[
+  {
+    "Operation": "key",
+    "Sender": "fixture",
+    "TargetUnits": [
+      117,
+      115,
+      101,
+      114,
+      58,
+      0,
+      55296
+    ],
+    "Wire": "MC1:AQEAADMAAACBDgAAAGYAaQB4AHQAdQByAGUAgg4AAAB1AHMAZQByADoAAAAA2IMIAAAAAAAAAAAAAAA="
+  },
+  {
+    "Operation": "tag",
+    "Sender": "fixture",
+    "TargetUnits": [
+      0,
+      99,
+      108,
+      101,
+      97,
+      114
+    ],
+    "Wire": "MC1:AQIAADEAAACBDgAAAGYAaQB4AHQAdQByAGUAggwAAAAAAGMAbABlAGEAcgCDCAAAAAAAAAAAAAAA"
+  },
+  {
+    "Operation": "method",
+    "Sender": "fixture",
+    "TargetUnits": [
+      65,
+      112,
+      112,
+      46,
+      73,
+      84,
+      104,
+      105,
+      110,
+      103,
+      46,
+      82,
+      101,
+      97,
+      100,
+      60,
+      84,
+      62
+    ],
+    "Wire": "MC1:AQMAAEkAAACBDgAAAGYAaQB4AHQAdQByAGUAgiQAAABBAHAAcAAuAEkAVABoAGkAbgBnAC4AUgBlAGEAZAA8AFQAPgCDCAAAAAAAAAAAAAAA"
+  },
+  {
+    "Operation": "clear",
+    "Sender": "fixture",
+    "TargetUnits": null,
+    "Wire": "MC1:AQQAACAAAACBDgAAAGYAaQB4AHQAdQByAGUAgwgAAAAAAAAAAAAAAA=="
+  }
+]

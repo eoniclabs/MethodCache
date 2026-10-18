@@ -108,7 +108,7 @@ public interface ICacheProviderTestService
     Task ClearCacheAsync();
 }
 
-public class CacheProviderTestService : ICacheProviderTestService
+internal class CacheProviderTestService : ICacheProviderTestService
 {
     private readonly ICacheManager _cacheManager;
     private readonly ICacheKeyGenerator _keyGenerator;

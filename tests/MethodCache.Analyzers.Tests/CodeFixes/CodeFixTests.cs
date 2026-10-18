@@ -112,9 +112,9 @@ public class Users
         }
 
         [Theory]
-        [InlineData("MCG001", "void Save(int id);")]
-        [InlineData("MCG002", "Task SaveAsync(int id);")]
-        [InlineData("MCG014", "IEnumerable<int> All();")]
+        [InlineData("MC0003", "void Save(int id);")]
+        [InlineData("MC0022", "Task SaveAsync(int id);")]
+        [InlineData("MC0015", "IEnumerable<int> All();")]
         public async Task UncacheableMethod_RemoveCache(string id, string member)
         {
             var source = $@"using System.Collections.Generic;
@@ -141,7 +141,7 @@ public interface IStore
         }
 
         [Fact]
-        public async Task MCG009_ReplacesTheUnknownParameterWithTheClosestName()
+        public async Task MC0010_ReplacesTheUnknownParameterWithTheClosestName()
         {
             var source = @"using System.Threading.Tasks;
 using MethodCache;
@@ -152,7 +152,7 @@ public interface IUserService
     Task<string> GetAsync(int userId, string tenant);
 }";
 
-            var (title, fixedSources) = await FixAsync(new FixTagParameterCodeFixProvider(), "MCG009", source);
+            var (title, fixedSources) = await FixAsync(new FixTagParameterCodeFixProvider(), "MC0010", source);
 
             Assert.Equal("Use parameter 'userId' in the tag", title);
             Assert.Contains(@"new[] { ""users"", ""user:{userId}"", ""tenant:{tenant}:user:{userId}"" }", fixedSources[0]);
