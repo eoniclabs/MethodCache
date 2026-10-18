@@ -13,6 +13,8 @@ plain script in this folder, so a job runs the same way on a build server, on yo
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
+| `storage_gc.py` | macOS, Linux, Windows | collects idle generated build output and explicitly configured disposable CI archives |
+| `install-storage-gc.sh`, `install-storage-gc.ps1` | build hosts and workstations | install independent collection every 15 minutes |
 | `publish.sh <tag> [--github]` | Megatron | publishes a release tag the build servers passed; nuget.org via BWS by default, GitHub Packages with `--github` |
 
 Run all Linux jobs locally, the way the build server does:
@@ -170,7 +172,8 @@ after the platform finishes; failed checkouts remain for 24 hours for diagnosis.
 
 Remaining eligible idle checkouts expire after three days. A 10 GiB budget removes the oldest completed
 eligible checkouts sooner. Active/protected checkouts and failures within their diagnostic window may exceed
-the budget rather than being deleted. Linux/Windows checkout age retention is unchanged. Result logs live
+the budget rather than being deleted. The independent host collector below also bounds Linux/Windows
+checkouts; the coordinator's old age sweep remains a fallback. Result logs live
 separately under `runs/<run>/<platform>` and survive source-clone removal; they expire 14 days after the last
 report-directory update.
 Successful macOS output is collected immediately when that platform returns. Full retention/budget scans
@@ -191,6 +194,82 @@ Preview collection and run the regression tests (no GitHub/build-server access):
 python3 build/ci/coordinator-state.py gc --state "$HOME/.cache/methodcache-ci" --dry-run
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
 ```
+
+### Automatic host and local build collection
+
+The coordinator's age sweep alone cannot prevent a busy server filling its disk in a few days.
+`storage_gc.py` runs independently every 15 minutes, including when there are no new CI jobs. Linux
+also collects ignored generated output immediately after a successful `linux.sh` run. Failed jobs
+keep their generated output for 24 hours. Workstations use a 24-hour idle window for local output.
+Immediate collection defaults to the full Linux suite. Explicit subsets such as `linux.sh build`
+preserve outputs for a later `--no-build` test/demo invocation; opt in with
+`METHODCACHE_CI_COLLECT_BUILD_OUTPUT=true`, or set it to `false` to keep full-suite output for inspection.
+
+Install a separate private JSON configuration on each host. Paths must be absolute and must not
+contain symlinks/junctions. Do not configure a whole home directory as a disposable archive root.
+`build_roots` are **source discovery roots**: source directories are never removed there. The collector
+discovers Git checkouts up to five directory levels below them and recognizes ignored/untracked .NET
+`bin`/`obj`, Flutter/Gradle `build`, `.dart_tool/flutter_build`, Next.js `.next`, Node `dist`/`out`/`build`
+when a build script is present, Swift `.build`, and Rust
+`target` beside their project files. Source changes, locked worktrees, tracked output, database/key
+files, recent writes and active processes protect output. Shared dependency caches are preserved.
+Mac configurations can also list `xcode_roots` pointing to `~/Library/Developer/Xcode/DerivedData`.
+Only `Build`, `Index.noindex` and `Logs` under entries with `info.plist` are removed after seven idle days
+(`xcode_idle_days`). Simulator devices, signed Xcode Archives and application databases are preserved.
+
+`archives` are **explicitly disposable CI roots**, one entry per run-directory parent. Supported kinds:
+
+| Kind | Required ownership evidence |
+|---|---|
+| `methodcache` | timestamp/full-SHA prefix, clean local Git clone from configured `mirror`; `platform` is `linux`, `macos` or `windows` |
+| `skribera-source` | PR/staging timestamp/SHA run name and Skribera solution file; matching metadata when present |
+| `skribera-log` | PR timestamp/SHA run name and `external-ci.log` |
+| `skribera-workspace` | clean `pr-<number>` Git checkout; metadata HEAD must match |
+| `skribera-windows-workspace` | `v<number>-pr-<number>` snapshot with solution and matching last-run PR/SHA metadata |
+| `skribera-media`, `skribera-upload` | PR timestamp/SHA run name and result/source ISO or source archive |
+
+Each archive entry requires `root`, `kind` and `retained` (a separate log destination). MethodCache
+also requires `mirror`; macOS clones use `reports` for their external results. Configure `leases`
+with the workers' existing lock paths on macOS/Linux. Nimbus uses both `artifact-gc.lock` and
+`ci-build-capacity.lock` for Skribera, and the capacity lock for MethodCache. Collection defers when
+a worker holds a lease. Windows runs administratively and defers all roots while a build tool runs,
+since its process inspection does not expose working directories.
+
+Configuration defaults: `build_idle_hours: 24`, `failed_hours: 24`, `ci_keep_hours: 72`,
+`max_ci_gib: 10` **per eligible archive root**, `log_keep_days: 14`, `max_seconds: 600`.
+Pre-metadata archives get seven days unless the eligible size budget requires earlier collection.
+Failed/incomplete runs get their full diagnostic window even over budget. Active, changed and
+data-protected entries can exceed the budget. Internal CI archive links are removed without following
+them; shared ISO/VM targets survive. VM disks, Docker volumes/images and package caches are outside
+this collector. Root-level job logs and `artifacts/ci`, `ci-results` and media diagnostics are copied
+to `retained` **before** a source archive is retired, then expire 14 days after collection. The collector's
+own log rotates at 10 MiB with five backups. The first scan root rotates between passes, persisted in
+`config.progress.json`, so a large archive cannot repeatedly consume the time budget before local or
+later CI roots get their turn. The progress file is updated atomically only on apply.
+
+Preview before installing (the default is dry-run):
+
+```bash
+python3 build/ci/storage_gc.py --config /absolute/path/host-storage-gc.json
+bash build/ci/install-storage-gc.sh /absolute/path/host-storage-gc.json
+```
+
+On Windows, from an administrative PowerShell session:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File build/ci/install-storage-gc.ps1 -Config C:\path\host-storage-gc.json
+```
+
+The Windows installer downloads an isolated Python runtime from python.org and verifies its published
+SHA-256. The task runs as SYSTEM; only administrators/SYSTEM can modify its installation/configuration.
+The Unix installation is `~/.local/share/build-storage-gc`, with a macOS LaunchAgent
+`com.eoniclabs.build-storage-gc` or Linux systemd `build-storage-gc.timer`. Windows uses
+`C:\mc\storage-gc` and Scheduled Task `BuildStorageGc`. Check `collector.log` and the scheduler's last
+exit code after installation. A failed open-file/process inspection prevents collection.
+
+The Linux exit regression `test_successful_linux_runner_collects_output_at_exit` failed before the fix:
+the old EXIT trap removed containers while leaving all generated output. Collector regressions also cover
+diagnostic retention, preserved logs/data/source, tracked output, active processes, and linked shared media.
 
 ### Installing or updating
 
