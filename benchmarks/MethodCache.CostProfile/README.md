@@ -84,3 +84,9 @@ miss at 6%, listening 304 cases at 6%/8%, and cold misses after invalidation at 
 retain the original failed studies, apply the unchanged precision check first, and
 use separate complete Nimbus confirmations for two previously imprecise Mac cases.
 These time limits cannot accept bytes, commands, other cases or missing measurements.
+
+The three exact generated-contract time limits record Johan's 2026-10-18 decision. They cap
+the record hit (a deliberately non-ASCII key, which the ASCII key hash hashes twice) at 18%,
+the fallback hit (the JSON key for an object argument) at 12% and the value-task miss at 8%.
+[The measurements](../../docs/developer/design-performance-results.md) used 20 alternating pairs
+on a Ryzen 7 5800X; the precision check still applies first.
