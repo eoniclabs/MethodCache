@@ -1,4 +1,10 @@
-# MethodCache documentation
+<p align="center">
+  <img src="../assets/branding/icon.svg" alt="MethodCache logo" width="72" height="72">
+</p>
+
+<h1 align="center">MethodCache documentation</h1>
+
+<p align="center"><a href="../README.md">README</a> · <a href="getting-started.md">Getting started</a> · <a href="troubleshooting.md">Troubleshooting</a> · <a href="user-guide/DIAGNOSTICS.md">Build diagnostics</a></p>
 
 Start with [Getting started](getting-started.md). Each page below covers one feature, and every C# example on these
 pages is compiled and tested in CI.
@@ -22,7 +28,7 @@ pages is compiled and tested in CI.
 
 ## Running in production
 
-- [Distributed cache](features/distributed-cache.md): Redis, SQL Server or any `IDistributedCache`.
+- [Distributed cache](features/distributed-cache.md): owned Redis and SQL Server providers.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
@@ -37,13 +43,17 @@ pages is compiled and tested in CI.
 ## When something is wrong
 
 - [Troubleshooting](troubleshooting.md): a method that isn't cached, stale data, keys you didn't expect.
-- [Build diagnostics](user-guide/DIAGNOSTICS.md): every `MC` and `MCG` warning and error.
+- [Build diagnostics](user-guide/DIAGNOSTICS.md): every `MC` warning and error.
 - [Migrating from IMemoryCache](migration-from-imemorycache.md): replace hand-written cache-aside code.
 
 ## Packages
 
 [Redis](../src/MethodCache.Redis/README.md), [SQL Server](../src/MethodCache.SqlServer/README.md),
 [ASP.NET Core](../src/MethodCache.AspNetCore/README.md), [OpenTelemetry](../src/MethodCache.OpenTelemetry/README.md),
-[HTTP caching](../src/MethodCache.HttpCaching/README.md). [Benchmarks](benchmarks.md) has the measured performance.
+[HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md).
+[Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
+between releases.
 
-- [Release compatibility notes](developer/RELEASE_NOTES.md): cache key and distributed invalidation formats.
+Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](features/configuration.md) and [keys](features/keys.md).
+
+- [Distributed wire contract 1](developer/distributed-wire-v1.md): provider framing, entry formats, permanent epochs and schema migration.

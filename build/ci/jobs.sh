@@ -5,18 +5,18 @@
 #   build/ci/jobs.sh build      restore and build the solution (Release)
 #   build/ci/jobs.sh demo       eleven-chapter console tour (including HttpClient), plus web tests without Docker
 #   build/ci/jobs.sh webdemo    all web demo tests, including two instances and Redis outage/recovery
-#   build/ci/jobs.sh tests      every test on net8.0, net9.0 and net10.0, Redis and SQL Server required
-#   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS); FRAMEWORK=net10.0 picks one
+#   build/ci/jobs.sh tests      every test on net10.0, Redis and SQL Server required
+#   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS), on net10.0
 #   build/ci/jobs.sh cultures   the unit tests under tr-TR and sv-SE
 #   build/ci/jobs.sh aot        publish and run tests/MethodCache.AotSmokeTest with Native AOT
 #   build/ci/jobs.sh packages   pack all 7 packages, install them in apps (needs METHODCACHE_REDIS_URL and
-#                               METHODCACHE_SQLSERVER_CONNECTION), and build the Quick Start with the .NET 8 SDK
+#                               METHODCACHE_SQLSERVER_CONNECTION)
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
 #   build/ci/jobs.sh diffcoverage  at least 80% of the lines a change adds under src/ are covered by tests
-#
-# Longer checks, not in the default linux.sh list (build/ci/README.md gives their run time):
 #   build/ci/jobs.sh properties  the CsCheck properties from random seeds, PROPERTY_SECONDS (5) each
 #   build/ci/jobs.sh soak        the soak tests for METHODCACHE_SOAK_SECONDS (30)
+#
+# Not in the default linux.sh list, because it takes about an hour (build/ci/README.md gives run times):
 #   build/ci/jobs.sh mutation    Stryker.NET on MethodCache.Core, a report in artifacts/mutation; never fails on
 #                                the score
 #
@@ -38,6 +38,8 @@ solution=MethodCache.sln
 without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests&Category!=RedisDemo"
 
 job_build() {
+  PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
+  PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s benchmarks/MethodCache.Benchmarks/validation -v
   dotnet restore "$solution"
   dotnet build "$solution" --configuration Release --no-restore
 }
@@ -81,6 +83,10 @@ job_cultures() {
 job_aot() {
   dotnet publish tests/MethodCache.AotSmokeTest --configuration Release --runtime linux-x64 --output artifacts/aot-smoke
   artifacts/aot-smoke/MethodCache.AotSmokeTest
+  rm -rf artifacts/aot-corpus
+  dotnet run --project tests/MethodCache.SignatureCorpus.Export --configuration Release -- artifacts/aot-corpus
+  dotnet publish artifacts/aot-corpus/Corpus.csproj --configuration Release --runtime linux-x64 --output artifacts/aot-corpus-native
+  artifacts/aot-corpus-native/Corpus
 }
 
 job_packages() {
@@ -88,6 +94,8 @@ job_packages() {
   : "${METHODCACHE_SQLSERVER_CONNECTION:?set METHODCACHE_SQLSERVER_CONNECTION to a SQL Server the add-on apps can use}"
   rm -rf artifacts/packages
   dotnet pack "$solution" --configuration Release --output artifacts/packages
+  python3 build/ci/check_package_contracts.py artifacts/packages
+  python3 build/ci/check_package_restore.py artifacts/packages
 
   echo "== All 7 packages were packed"
   for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack \
@@ -107,20 +115,8 @@ job_packages() {
   echo "== Install the package and run the Quick Start"
   dotnet run --project tests/MethodCache.PackageSmokeTest --configuration Release
 
-  echo "== The Quick Start again with the .NET 8 SDK (the oldest compiler the generator supports)"
-  (
-    cd tests/MethodCache.PackageSmokeTest
-    rm -rf bin obj
-    trap 'rm -f global.json' EXIT
-    echo '{ "sdk": { "version": "8.0.100", "rollForward": "latestFeature" } }' > global.json
-    dotnet --version
-    dotnet run --configuration Release
-  )
-
-  for framework in net8.0 net10.0; do
-    echo "== Install the add-on packages and use them in an app ($framework)"
-    dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release --framework "$framework"
-  done
+  echo "== Install the add-on packages and use them in a .NET 10 app"
+  dotnet run --project tests/MethodCache.PackageSmokeTest.AddOns --configuration Release
 }
 
 job_docs() {
@@ -162,7 +158,7 @@ job_properties() {
   # the seed of a failure (CsCheck_Seed = "..."); it is repeated at the end with the command that replays it.
   local seconds="${PROPERTY_SECONDS:-5}" framework log status failed=0
   mkdir -p artifacts/properties
-  for framework in ${PROPERTY_FRAMEWORKS:-net10.0 net8.0}; do
+  for framework in ${PROPERTY_FRAMEWORKS:-net10.0}; do
     echo "== Properties on $framework from random seeds, $seconds s each"
     log="artifacts/properties/$framework.log"
     set +e

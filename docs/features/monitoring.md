@@ -1,40 +1,53 @@
+[← MethodCache documentation](../README.md)
+
 # Monitoring
 
-MethodCache shows what it is doing in code, over HTTP, in health checks and through OpenTelemetry.
+Core emits standard .NET metrics and activities. `AddMethodCache()` uses the container's `IMeterFactory`, registering
+one when needed, and owns an `ActivitySource` with the same `MethodCacheTelemetry.Name` (`MethodCache`). Both use the
+assembly version. Separate containers keep their observation callbacks separate.
 
-## In code
+## Administration and statistics
 
-`ICacheAdministrator`, registered by `AddMethodCache()`, reads statistics, lists methods and entries, and invalidates:
+`ICacheAdministrator`, registered for the built-in manager, exposes local statistics, methods and entries:
 
 <!-- snippet: monitoring-administrator -->
 ```cs
 var stats = await admin.GetStatsAsync();
-Console.WriteLine($"Hit ratio {stats.HitRatio:P0}, {stats.Entries} entries");
+var ratio = stats.Hits + stats.Misses == 0 ? 0 : (double)stats.Hits / (stats.Hits + stats.Misses);
+Console.WriteLine($"Hit ratio {ratio:P0}, {stats.LocalMethodEntries} local method entries");
+Console.WriteLine($"HTTP: {stats.LocalHttpEntries} local responses, {stats.LocalHttpBytes} stored bytes");
+Console.WriteLine($"Method weight: {stats.TotalWeight} (configured weight units)");
 
 foreach (var method in admin.GetMethods())
-{
     Console.WriteLine($"{method.MethodId}: {method.Duration}");
-}
 
 var entries = admin.ListEntries(tag: "user:42");
 await admin.InvalidateTagsAsync(["user:42"]);
 ```
 <!-- endSnippet -->
 
-- `GetStatsAsync()`: hits, misses, hit ratio, evictions, entries and estimated memory.
-- `GetMethods()`: every cached method with its method id and effective policy.
-- `ListEntries(keyPrefix, tag, limit)` and `GetEntry(key)`: live entries, without their values.
-- `InvalidateTagsAsync(tags)`, `RemoveEntryAsync(key)` and `ClearAsync()`.
+`Hits`, `Misses` and `Evictions` are local counters. Compute a hit ratio in the app or dashboard. Storage fields have
+explicit scopes:
 
-`ListEntries` scans the live cache to find the first keys in ordinal order, but keeps at most `limit`
-candidates in memory. A small page does not allocate a snapshot or sort every matching entry. Entries
-can change during this diagnostic scan; it is not a transaction.
+| Field | Meaning |
+|---|---|
+| `LocalMethodEntries` | Method results resident in this instance |
+| `LocalHttpEntries` | HTTP representations resident in this instance |
+| `LocalHttpBytes` | HTTP storage cost in bytes; separate from method weight |
+| `ObservedDistributedEntries` | Bounded HTTP observations, never a global L2 count |
+| `TotalWeight` | Resident method weight in the configured weigher's units; one per entry without a weigher |
 
-It works with the default in-memory cache manager; a custom `ICacheManager` has no administrator.
+Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
+remain zero until the separate HTTP store is registered.
+
+`GetMethods()` returns immutable effective options, sources and L2 namespace kind. `ListEntries(keyPrefix, tag, limit)`
+and `GetEntry(key)` inspect live local entries without values; listing is a diagnostic scan, not a transaction.
+`GetInvalidationQueues()` distinguishes storage recovery from pending backplane publication. A custom or NoOp manager
+has no built-in method administrator or fabricated storage statistics.
 
 ## Admin endpoints
 
-The `MethodCache.AspNetCore` package exposes the same operations over HTTP, behind an authorization policy you choose:
+The `MethodCache.AspNetCore` package exposes administration behind an explicit authorization policy:
 
 <!-- snippet: aspnetcore-setup -->
 ```cs
@@ -52,9 +65,8 @@ app.MapHealthChecks("/health");
 ```
 <!-- endSnippet -->
 
-`GET /methodcache/stats`, `/methods`, `/entries` and `/entry`, `POST /methodcache/invalidate` and `DELETE` for entries.
-The [package README](../../src/MethodCache.AspNetCore/README.md) lists every endpoint. They don't change policies;
-use [runtime overrides](configuration.md#runtime-overrides) for that.
+The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
+use [runtime overrides](configuration.md#runtime-overrides) to change them.
 
 Configure your application's authentication scheme as well as the authorization policy. The
 [web demo](../../samples/MethodCache.WebDemo/) uses cookies and returns 401 for anonymous admin requests and
@@ -67,19 +79,29 @@ leave both stored products and the cache unchanged.
 
 ## Health check
 
-`AddHealthChecks().AddMethodCache()` reports Healthy when the cache answers, with `entries`, `hitRatio`, `evictions`
-and `memoryUsageBytes` in the report data. With Redis or SQL Server it reports Degraded while that cache is
-unreachable and MethodCache serves from memory only.
+`AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when L2 is unavailable,
+either recovery queue has work, or a configured backplane is unknown, connecting or disconnected. A successful L2
+probe does not prove that invalidation subscription is established. Reports include `managerCapability`,
+`statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `invalidationQueued` and
+`publicationQueued`, plus local storage statistics for the built-in manager. Backend exception text is omitted.
+
+An incompatible distributed schema or retention contract reports `Unhealthy` with an actionable safe reason,
+uses local memory only, and retains invalidations. A safe established retention differing from the configured
+value reports `Degraded`. Admin mutations return 503 when distributed storage has not confirmed invalidation;
+the cache continues owning retries.
+
+An empty queue and a connected subscription do not acknowledge delivery to every node; backplane delivery remains
+best effort.
 
 ## OpenTelemetry
 
-The `MethodCache.OpenTelemetry` package records metrics for every call (hits, misses, errors and load time per
-method, and the size of the in-memory cache) and spans for misses and invalidations:
+The optional `MethodCache.OpenTelemetry` package provides `AddMethodCacheInstrumentation()` on meter and tracer
+builders. These extensions only subscribe to Core's instruments; they do not wrap, replace or take ownership of your
+manager. SDK setup may precede or follow `AddMethodCache()`, and repeated subscriptions do not multiply events.
 
 <!-- snippet: otel-setup -->
 ```cs
 builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheOpenTelemetry(); // after AddMethodCache, which registers the cache it instruments
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
@@ -92,15 +114,52 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Hits have no span and the metric producer allocates nothing for its normal method tag, with or without a listener.
-It skips tag construction for instruments without listeners. Custom metric tag lists with at most eight total
-tags also stay within the producer's inline storage; larger lists can allocate. SDK processors and exporters
-have their own costs. Hits are still counted. Cache keys and tags are left off spans unless
-you turn on `RecordCacheKeys` or `RecordCacheTags`, because they can contain argument values. See the
-[package README](../../src/MethodCache.OpenTelemetry/README.md) and [Security](../security.md).
+Each completed cache call has one `methodcache.requests` outcome: `hit`, `miss`, `stale`, `revalidated`, `bypass` or
+`error`, with `kind=method/http` and a static method id/client name. A failed fast probe is not a separate miss.
+Refreshes record their actual origin duration without another user request. Flight joiners and L2 hits do not record
+origin loads. A bulk call has one outcome and measures its actual batch factory, rather than the per-key publication
+of the already produced values.
 
-## Behavior and compatibility
+Histograms use seconds. Local entry/HTTP byte instruments are observable up-down counters. Invalidation counters count
+distinct targets at each stage, not operation totals; do not add stages together. See the
+[full instrument table](../../src/MethodCache.OpenTelemetry/README.md#metrics).
 
-Tracing counts cached `null` values as hits, including nullable value types.
+Spans cover actual origin loads, individual distributed operations and invalidation. Pure hits have no spans. Keys
+and tags require explicit Core options; keys are hashed by default when enabled. Metrics never include keys, tags,
+URLs, user ids or tenant ids. The library adds no baggage and copies no request HTTP/URL attributes. Normal ambient
+.NET activity context and application-owned baggage continue to flow; configure their export in the app.
 
-Tracing uses `ICacheManager.LookupAsync` to distinguish a cached null from a miss in one memory lookup, including disabled fast paths and refresh-ahead windows. Like `TryGetAsync`, it does not load from L2 or start a factory.
+## Standard .NET listeners
+
+OpenTelemetry is optional. A `MeterListener` can subscribe directly; retain it for the measurement lifetime:
+
+<!-- snippet: monitoring-console-metrics -->
+```cs
+builder.Services.AddMethodCache();
+using var listener = new MeterListener();
+listener.InstrumentPublished = (instrument, active) =>
+{
+    if (instrument.Meter.Name == MethodCacheTelemetry.Name)
+        active.EnableMeasurementEvents(instrument);
+};
+listener.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
+    Console.WriteLine($"{instrument.Name}: {value}"));
+listener.Start(); // keep the listener alive for as long as measurements are needed
+```
+<!-- endSnippet -->
+
+Identity options belong to Core and do not depend on an exporter:
+
+<!-- snippet: monitoring-metrics-provider-registration -->
+```cs
+builder.Services.AddMethodCache(); // Core emits standard Meter and ActivitySource instruments
+builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+{
+    options.RecordCacheKeys = false;
+    options.RecordCacheTags = false;
+});
+```
+<!-- endSnippet -->
+
+For generated calls through a custom manager, Core can observe whether its supplied factory ran. Standalone calls to
+an application-owned manager must be instrumented by that implementation; its storage capabilities are not assumed.

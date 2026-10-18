@@ -3,6 +3,7 @@
 #
 #   build/ci/install-coordinator.sh            check the servers, install, start
 #   build/ci/install-coordinator.sh --check    only check that this Mac, Nimbus and baloo have what CI needs
+#   build/ci/install-coordinator.sh --update-only  update an installed coordinator without restarting active jobs
 #   build/ci/install-coordinator.sh --remove   stop and remove the LaunchAgent (results and caches stay)
 #
 # Install from an up-to-date checkout of main: the coordinator is copied, so pull requests cannot change it.
@@ -19,11 +20,38 @@ config_dir="$HOME/.config/methodcache-ci"
 state="$HOME/.cache/methodcache-ci"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+install_scripts() {
+  mkdir -p "$install_dir"
+  # Version the helper with the coordinator. Atomic rename leaves an active shell on its original script.
+  local revision temporary
+  revision=$(shasum -a 256 "$here/coordinator-state.py" | cut -d ' ' -f1)
+  install -m 755 "$here/coordinator-state.py" "$install_dir/coordinator-state-$revision.py"
+  temporary=$(mktemp "$install_dir/.coordinator.XXXXXX")
+  sed "s/coordinator-state.py/coordinator-state-$revision.py/g" "$here/coordinator.sh" > "$temporary"
+  chmod 755 "$temporary"
+  mv -f "$temporary" "$install_dir/coordinator.sh"
+  git -C "$here" rev-parse HEAD > "$install_dir/installed-from" 2> /dev/null || true
+}
+
+if [ "${1:-}" = --update-only ]; then
+  [ -f "$plist" ] && [ -f "$install_dir/coordinator.sh" ] || { echo "No installed coordinator to update" >&2; exit 1; }
+  command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
+  /bin/bash -n "$here/coordinator.sh"
+  install_scripts
+  echo "Updated $label; the active pass is untouched and the next launch uses the new scripts."
+  exit 0
+fi
+
 if [ "${1:-}" = --remove ]; then
   launchctl bootout "gui/$(id -u)/$label" 2> /dev/null || true
   rm -f "$plist"
   echo "Removed $label"
   exit 0
+fi
+
+if [ -f "$state/coordinator.lock/pid" ] && kill -0 "$(cat "$state/coordinator.lock/pid")" 2>/dev/null; then
+  echo "A CI pass is active; use --update-only to install without interrupting it." >&2
+  [ "${1:-}" = --check ] || exit 1
 fi
 
 mkdir -p "$config_dir"
@@ -46,16 +74,17 @@ problems=0
 check() { # description command...
   if "${@:2}" > /dev/null 2>&1; then echo "  ok    $1"; else echo "  MISSING $1"; problems=1; fi
 }
-sdks_ok() { # the `dotnet --list-sdks` output on stdin has 8, 9 and 10
+sdks_ok() { # the `dotnet --list-sdks` output on stdin has a .NET 10 SDK
   local sdks; sdks=$(tr -d '\r')
-  for major in 8 9 10; do grep -q "^$major\." <<< "$sdks" || return 1; done
+  grep -q '^10\.' <<< "$sdks"
 }
 local_sdks() { dotnet --list-sdks | sdks_ok; }
 
 echo "This Mac ($(hostname -s))"
 check "gh is signed in" gh auth status
 check "git" git --version
-check ".NET SDKs 8, 9 and 10" local_sdks
+check "python3 for checkout collection and result validation" python3 --version
+check ".NET 10 SDK" local_sdks
 echo "Nimbus ($nimbus)"
 check "SSH" ssh -o BatchMode=yes -o ConnectTimeout=15 "$nimbus" true
 check "Docker" ssh -o BatchMode=yes "$nimbus" docker info
@@ -73,8 +102,7 @@ if [ "$problems" -ne 0 ]; then
 fi
 
 mkdir -p "$install_dir" "$state" "$HOME/Library/LaunchAgents"
-install -m 755 "$here/coordinator.sh" "$install_dir/coordinator.sh"
-git -C "$here" rev-parse HEAD > "$install_dir/installed-from" 2> /dev/null || true
+install_scripts
 
 # launchd starts with a minimal PATH; the coordinator adds Homebrew and .NET itself, this keeps the rest
 cat > "$plist" <<PLIST

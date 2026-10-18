@@ -14,6 +14,6 @@ public static class MethodCacheHealthChecksBuilderExtensions
         IEnumerable<string>? tags = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        return builder.AddCheck<MethodCacheHealthCheck>(name, failureStatus, tags ?? Array.Empty<string>());
+        return builder.AddCheck<MethodCacheHealthCheck>(name, failureStatus ?? HealthStatus.Degraded, tags ?? Array.Empty<string>());
     }
 }

@@ -31,7 +31,7 @@ namespace MethodCache.Extensibility;
 /// services.Replace(ServiceDescriptor.Singleton&lt;ICacheKeyGenerator, FastHashKeyGenerator&gt;());
 /// </code>
 /// </example>
-public class FastHashKeyGenerator : ICacheKeyGenerator
+internal class FastHashKeyGenerator : ICacheKeyGenerator
 {
     [ThreadStatic]
     private static ArrayBufferWriter<byte>? t_writer;
@@ -68,7 +68,27 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKey(methodName, args, policy.Version);
 
-    private static string GenerateKey(string methodName, object?[] args, int? version)
+    internal sealed class PreparedPrefix(string methodName, int? version, string logicalPrefix, byte[] bytes)
+    {
+        internal string MethodName { get; } = methodName;
+        internal int? Version { get; } = version;
+        internal string LogicalPrefix { get; } = logicalPrefix;
+        internal ReadOnlySpan<byte> Bytes => bytes;
+    }
+
+    internal static PreparedPrefix PreparePrefix(string methodName, int? version)
+    {
+        var writer = new ArrayBufferWriter<byte>();
+        WriteString(writer, methodName);
+        WriteInt32(writer, version ?? -1);
+        var prefix = version.HasValue ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture)) : methodName;
+        return new PreparedPrefix(methodName, version, prefix, writer.WrittenSpan.ToArray());
+    }
+
+    internal string GenerateKey(PreparedPrefix prefix, object?[] args)
+        => GenerateKey(prefix.MethodName, args, prefix.Version, prefix);
+
+    private static string GenerateKey(string methodName, object?[] args, int? version, PreparedPrefix? prepared = null)
     {
         var writer = t_writer ?? new ArrayBufferWriter<byte>(256);
         // Key providers and JSON getters may call GenerateKey recursively. The active writer belongs to this
@@ -77,8 +97,16 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         writer.ResetWrittenCount();
         try
         {
-            WriteString(writer, methodName);
-            WriteInt32(writer, version ?? -1);
+            if (prepared == null)
+            {
+                WriteString(writer, methodName);
+                WriteInt32(writer, version ?? -1);
+            }
+            else
+            {
+                prepared.Bytes.CopyTo(writer.GetSpan(prepared.Bytes.Length));
+                writer.Advance(prepared.Bytes.Length);
+            }
             WriteInt32(writer, args.Length);
             foreach (var arg in args)
             {
@@ -86,10 +114,15 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
             }
 
             var hash = XxHash128.HashToUInt128(writer.WrittenSpan);
-            var prefix = version.HasValue
+            var prefix = prepared?.LogicalPrefix ?? (version.HasValue
                 ? string.Concat(methodName, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
-                : methodName;
-            return string.Concat(prefix, ":", ToHexString(hash));
+                : methodName);
+            return string.Create(prefix.Length + 33, (Prefix: prefix, Hash: hash), static (text, state) =>
+            {
+                state.Prefix.AsSpan().CopyTo(text);
+                text[state.Prefix.Length] = ':';
+                _ = state.Hash.TryFormat(text[(state.Prefix.Length + 1)..], out _, "x32", CultureInfo.InvariantCulture);
+            });
         }
         finally
         {
@@ -167,11 +200,12 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 break;
             case float f:
                 WriteTag(writer, Tag.Single);
-                WriteInt32(writer, BitConverter.SingleToInt32Bits(f == 0 ? 0f : f)); // -0 and 0 are one key
+                // -0 and 0 are different inputs (1 / x tells them apart), as on the inline key path; every NaN is one key
+                WriteInt32(writer, BitConverter.SingleToInt32Bits(float.IsNaN(f) ? float.NaN : f));
                 break;
             case double d:
                 WriteTag(writer, Tag.Double);
-                WriteInt64(writer, BitConverter.DoubleToInt64Bits(d == 0 ? 0d : d));
+                WriteInt64(writer, BitConverter.DoubleToInt64Bits(double.IsNaN(d) ? double.NaN : d));
                 break;
             case decimal dec:
                 // The string keeps the scale, so 1.0m and 1.00m are different keys, as decimal.ToString shows them
@@ -207,7 +241,7 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
                 break;
             default:
                 WriteTag(writer, Tag.Object);
-                WriteString(writer, TypeName(arg.GetType()));
+                WriteString(writer, TypeName(KeyArguments.KeyType(arg)));
                 WriteBytes(writer, KeyArguments.Serialize(arg));
                 break;
         }
@@ -283,15 +317,4 @@ public class FastHashKeyGenerator : ICacheKeyGenerator
         writer.Advance(value.Length);
     }
 
-    private static string ToHexString(UInt128 hash)
-    {
-        Span<char> chars = stackalloc char[32];
-        for (var i = 31; i >= 0; i--)
-        {
-            chars[i] = "0123456789abcdef"[(int)(hash & 0xF)];
-            hash >>= 4;
-        }
-
-        return new string(chars);
-    }
 }

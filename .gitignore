@@ -20,6 +20,7 @@ packages/
 *.nupkg
 *.snupkg
 *.dll
+!tests/MethodCache.CompatTests/Baselines/Contract1/*.dll
 *.exe
 
 # Rider
@@ -57,12 +58,18 @@ artifacts/
 # Local benchmark tracking
 .benchmark-results/
 
-# Performance data (should be generated)
-.performance-data/results/
-.performance-data/charts/
-
 # Other generated files
 *.Generated.cs
 
 # Verify snapshot mismatches
 *.received.*
+
+# Python CI regression tests
+__pycache__/
+
+# Raw design/benchmark evidence belongs in external artifacts, never in Git
+/plans/design-benchmarks/
+
+# Historical raw design measurements are kept in the external evidence archive.
+/docs/developer/design-pr1-benchmarks.json
+/docs/developer/design-pr2-benchmarks.json

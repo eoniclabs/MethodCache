@@ -18,7 +18,7 @@ public sealed class ProductStore
 
     public ProductStore(IConfiguration configuration)
     {
-        var file = Path.GetFullPath(configuration["Demo:DataFile"] ?? Path.Combine(Path.GetTempPath(), "methodcache-webdemo", "products.sqlite"));
+        var file = Path.GetFullPath(configuration["Demo:DataFile"] ?? Path.Combine(Path.GetTempPath(), "methodcache-webdemo-products.db"));
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         _connectionString = new SqliteConnectionStringBuilder { DataSource = file, Pooling = false }.ToString();
         _initialize = new Lazy<Task>(InitializeAsync);

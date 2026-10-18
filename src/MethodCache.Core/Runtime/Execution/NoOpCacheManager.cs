@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using MethodCache.Infrastructure;
 
 namespace MethodCache.Extensibility
@@ -7,101 +6,83 @@ namespace MethodCache.Extensibility
     /// A cache manager that never caches: every call runs the factory and every lookup misses. Useful in tests, and
     /// for code that uses <c>GetOrCreateAsync</c> directly.
     /// </summary>
-    public class NoOpCacheManager : ICacheManager
+    public partial class NoOpCacheManager : ICacheRuntime
     {
-        private readonly ICacheMetricsProvider? _metricsProvider;
 
         /// <summary>Creates a cache manager that never caches.</summary>
         public NoOpCacheManager()
         {
         }
 
-        /// <summary>Creates a cache manager that never caches and reports every call as a miss.</summary>
-        public NoOpCacheManager(ICacheMetricsProvider? metricsProvider)
-        {
-            _metricsProvider = metricsProvider;
-        }
+        Task<T> ICacheRuntime.GetOrCreateAsync<T>(string name, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator generator) => GetOrCreateAsync(name, args, factory, policy, generator);
+        ValueTask<T?> ICacheRuntime.TryGetAsync<T>(string name, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator generator) where T : default => TryGetAsync<T>(name, args, policy, generator);
+        ValueTask<CacheLookupResult<T>> ICacheRuntime.LookupAsync<T>(string name, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator generator) => LookupAsync<T>(name, args, policy, generator);
+        ValueTask<T?> ICacheRuntime.TryGetFastAsync<T>(string key) where T : default => TryGetFastAsync<T>(key);
+        Task<T> ICacheRuntime.GetOrCreateFastAsync<T>(string key, string name, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken token) => GetOrCreateFastAsync(key, name, factory, policy, token);
+        Task ICacheRuntime.InvalidateByKeysAsync(params string[] keys) => InvalidateByKeysAsync(keys);
+        Task ICacheRuntime.InvalidateByTagsAsync(params string[] tags) => InvalidateByTagsAsync(tags);
+        Task ICacheRuntime.InvalidateByTagPatternAsync(string pattern) => InvalidateByTagPatternAsync(pattern);
 
         // ============= New CacheRuntimePolicy-based methods (primary implementation) =============
 
         /// <inheritdoc />
-        public Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        internal Task<T> GetOrCreateAsync<T>(string methodName, object[] args, Func<Task<T>> factory, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always execute the factory, effectively disabling caching
             return RunAsync(methodName, factory);
         }
 
         /// <inheritdoc />
-        public ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        internal ValueTask<CacheLookupResult<T>> LookupAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
             => new(CacheLookupResult<T>.Miss);
 
         /// <inheritdoc />
-        public ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
+        internal ValueTask<T?> TryGetAsync<T>(string methodName, object[] args, CacheRuntimePolicy policy, ICacheKeyGenerator keyGenerator)
         {
             // Always return cache miss for no-op cache
             return new ValueTask<T?>(default(T));
         }
 
         /// <inheritdoc />
-        public ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
+        internal ValueTask<T?> TryGetFastAsync<T>(string cacheKey)
         {
             // Always return cache miss for no-op cache
             return new ValueTask<T?>(default(T));
         }
 
         /// <inheritdoc />
-        public bool TryGetFast<T>(string cacheKey, out T? value)
+        internal bool TryGetFast<T>(string cacheKey, out T? value)
         {
             value = default;
             return false;
         }
 
         /// <inheritdoc />
-        public Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
+        internal Task<T> GetOrCreateFastAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken cancellationToken = default)
         {
             // Always execute the factory, effectively disabling caching
             return RunAsync(methodName, factory);
         }
 
-        private async Task<T> RunAsync<T>(string methodName, Func<Task<T>> factory)
-        {
-            if (_metricsProvider == null)
-            {
-                return await factory().ConfigureAwait(false);
-            }
-
-            _metricsProvider.CacheMiss(methodName);
-            var start = Stopwatch.GetTimestamp();
-            try
-            {
-                var result = await factory().ConfigureAwait(false);
-                _metricsProvider.CacheLatency(methodName, (long)Stopwatch.GetElapsedTime(start).TotalMilliseconds);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _metricsProvider.CacheError(methodName, ex.Message);
-                throw;
-            }
-        }
+        private static Task<T> RunAsync<T>(string methodName, Func<Task<T>> factory) => factory();
 
         // ============= Invalidation methods =============
 
         /// <inheritdoc />
-        public Task InvalidateByTagsAsync(params string[] tags)
+        internal Task InvalidateByTagsAsync(params string[] tags)
         {
             // No operation for invalidation
             return Task.CompletedTask;
         }
 
         /// <inheritdoc />
-        public Task InvalidateByKeysAsync(params string[] keys)
+        internal Task InvalidateByKeysAsync(params string[] keys)
         {
             return Task.CompletedTask;
         }
 
         /// <inheritdoc />
-        public Task InvalidateByTagPatternAsync(string pattern)
+        internal Task InvalidateByTagPatternAsync(string pattern)
         {
             return Task.CompletedTask;
         }

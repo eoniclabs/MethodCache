@@ -461,6 +461,9 @@ namespace MethodCache.Core.Tests.Core
 
             foreach (var generator in generators)
             {
+                // Time a warm call: the first one pays for JIT and serializer metadata, which on a busy machine
+                // running the rest of the suite in parallel can take over a second by itself
+                generator.GenerateKey("LargeObjectMethod", new object[] { largeOrder }, descriptor);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var key1 = generator.GenerateKey("LargeObjectMethod", new object[] { largeOrder }, descriptor);
                 stopwatch.Stop();
@@ -748,9 +751,9 @@ namespace MethodCache.Core.Tests.Core
         public void FastHashKeyGenerator_TypeNamesLeaveOutAssemblyVersions()
         {
             // A runtime update changes the versions in Type.FullName of a generic type; keys must not change with it
-            FastHashKeyGenerator.TypeName(typeof(List<int>)).Should().Be("System.Collections.Generic.List`1[System.Int32]");
+            FastHashKeyGenerator.TypeName(typeof(List<int>)).Should().Be("[System.Private.CoreLib]System.Collections.Generic.List`1[[System.Private.CoreLib]System.Int32]");
             FastHashKeyGenerator.TypeName(typeof(Dictionary<string, int[]>[]))
-                .Should().Be("System.Collections.Generic.Dictionary`2[System.String,System.Int32[]][]");
+                .Should().Be("[System.Private.CoreLib]System.Collections.Generic.Dictionary`2[[System.Private.CoreLib]System.String,[System.Private.CoreLib]System.Int32[]][]");
         }
     }
 }

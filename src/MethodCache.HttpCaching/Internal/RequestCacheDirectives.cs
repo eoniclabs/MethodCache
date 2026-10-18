@@ -14,7 +14,8 @@ internal readonly struct RequestCacheDirectives
 
     public static RequestCacheDirectives Parse(HttpRequestMessage request)
     {
-        if (request.Headers.CacheControl is not { } cacheControl)
+        // The typed accessor allocates the general header view even when the request has no Cache-Control
+        if (!request.Headers.NonValidated.Contains("Cache-Control") || request.Headers.CacheControl is not { } cacheControl)
         {
             return default;
         }
@@ -54,4 +55,10 @@ internal readonly struct RequestCacheDirectives
 
         return staleAllowed && MaxStale is { } maxStale && remaining.Negate() <= maxStale;
     }
+
+    /// <summary>The server's stale extensions cannot override the caller's explicit freshness limits.</summary>
+    public bool AcceptsStale(TimeSpan currentAge, TimeSpan freshnessLifetime)
+        => !NoCache && (MaxAge == null || currentAge <= MaxAge) &&
+           (MinFresh == null || freshnessLifetime - currentAge >= MinFresh) &&
+           (MaxStale == null || currentAge - freshnessLifetime <= MaxStale);
 }

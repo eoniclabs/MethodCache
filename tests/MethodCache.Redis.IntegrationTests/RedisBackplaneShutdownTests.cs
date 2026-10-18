@@ -8,6 +8,55 @@ namespace MethodCache.Redis.IntegrationTests;
 public class RedisBackplaneShutdownTests(RedisFixture redis)
 {
     [SkippableFact]
+    public async Task RepeatedSubscriptionReconnect_DeliversOnceAndPreservesBorrowedConnection()
+    {
+        var name = "methodcache-reconnect-test-" + Guid.NewGuid().ToString("N");
+        var options = ConfigurationOptions.Parse(redis.RequireConfiguration());
+        options.ClientName = name;
+        options.AllowAdmin = true;
+        using var connection = await ConnectionMultiplexer.ConnectAsync(options);
+        var channel = RedisChannel.Literal(name);
+        var deliveries = 0;
+        var valueReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var barrier = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var backplane = new RedisBackplane(() => Task.FromResult<IConnectionMultiplexer>(connection), name);
+        await backplane.SubscribeAsync(message =>
+        {
+            if (message.Key == "value") { Interlocked.Increment(ref deliveries); valueReceived.TrySetResult(); }
+            if (message.Key == "barrier") barrier.TrySetResult();
+            return Task.CompletedTask;
+        });
+        var server = connection.GetServer(connection.GetEndPoints()[0]);
+        for (var cycle = 0; cycle < 2; cycle++)
+        {
+            var restored = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            void OnRestored(object? _, ConnectionFailedEventArgs args)
+            { if (args.ConnectionType == ConnectionType.Subscription) restored.TrySetResult(); }
+            connection.ConnectionRestored += OnRestored;
+            try
+            {
+                var client = Assert.Single(await server.ClientListAsync(), info => info.Name?.StartsWith(name, StringComparison.Ordinal) == true && info.ClientType == ClientType.PubSub);
+                // Kill only this test's unique pub/sub connection; every other client remains untouched.
+                Assert.Equal(1, await server.ClientKillAsync(id: client.Id));
+                await restored.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                await backplane.RecoveryCompletion.WaitAsync(TimeSpan.FromSeconds(30));
+                Assert.Equal(BackplaneState.Connected, backplane.ConnectionState);
+            }
+            finally { connection.ConnectionRestored -= OnRestored; }
+        }
+        var subscriber = connection.GetSubscriber();
+        await subscriber.PublishAsync(channel, RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "remote", "value"));
+        await subscriber.PublishAsync(channel, RedisBackplane.Format(BackplaneMessageType.KeyInvalidation, "remote", "barrier"));
+        // Pub/sub callbacks can run concurrently: seeing the barrier does not mean the value callback has run.
+        await valueReceived.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        await barrier.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.Equal(1, Volatile.Read(ref deliveries));
+        await backplane.DisposeAsync();
+        Assert.True(connection.IsConnected);
+        await connection.GetDatabase().PingAsync();
+    }
+
+    [SkippableFact]
     public async Task DisposeAsync_BorrowedConnection_PreservesOtherSubscribersAndTheConnection()
     {
         using var connection = await ConnectionMultiplexer.ConnectAsync(redis.RequireConfiguration());

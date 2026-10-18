@@ -3,7 +3,7 @@ using MethodCache.HttpCaching.Internal;
 
 namespace MethodCache.HttpCaching.Tests;
 
-public static class HttpCacheTestFactory
+internal static class HttpCacheTestFactory
 {
     public static DelegatingHandler CreateHandler(
         HttpCacheOptions options,
@@ -52,11 +52,8 @@ public static class HttpCacheTestFactory
         return (new HttpClient(handler), inner);
     }
 
-    public static IHttpCacheStorage CreateInMemoryStorage(HttpCacheStorageOptions? storageOptions = null, TimeProvider? timeProvider = null)
-        => new HttpCacheStore(
-            Microsoft.Extensions.Options.Options.Create(storageOptions ?? new HttpCacheStorageOptions()),
-            NullLogger<HttpCacheStore>.Instance,
-            timeProvider);
+    internal static TestHttpStore CreateInMemoryStorage(long maximumBytes = 100 * 1024 * 1024, TimeProvider? timeProvider = null)
+        => new(timeProvider, maximumBytes: maximumBytes);
 
     /// <summary>Waits for background work, such as a revalidation, without guessing how long it takes.</summary>
     public static async Task WaitUntilAsync(Func<bool> condition, string because)
@@ -75,11 +72,7 @@ public static class HttpCacheTestFactory
 }
 
 /// <summary>A clock the test moves by hand.</summary>
-public sealed class ManualTimeProvider : TimeProvider
+public sealed class ManualTimeProvider : Microsoft.Extensions.Time.Testing.FakeTimeProvider
 {
-    private DateTimeOffset _now = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
-
-    public override DateTimeOffset GetUtcNow() => _now;
-
-    public void Advance(TimeSpan by) => _now += by;
+    public ManualTimeProvider() : base(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)) { }
 }

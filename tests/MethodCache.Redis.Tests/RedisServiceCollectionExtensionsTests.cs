@@ -21,7 +21,7 @@ public class RedisServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<RedisDistributedCache>();
-        provider.GetRequiredService<IBackplane>().Should().BeOfType<RedisBackplane>();
+        provider.GetRequiredKeyedService<IBackplane>("MethodCache").Should().BeOfType<RedisBackplane>();
         provider.GetService<IDistributedCache>().Should().BeNull();
         provider.GetService<IConnectionMultiplexer>().Should().BeNull();
     }
@@ -48,7 +48,8 @@ public class RedisServiceCollectionExtensionsTests
 
         services.AddMethodCacheRedis(options => options.EnableBackplane = false);
 
-        services.Should().NotContain(d => d.ServiceType == typeof(IBackplane));
+        using var provider = services.BuildServiceProvider();
+        provider.GetKeyedService<IBackplane>("MethodCache").Should().BeNull();
     }
 
     [Fact]
@@ -81,21 +82,13 @@ public class RedisServiceCollectionExtensionsTests
         multiplexer.Received(1).Dispose();
     }
 
-    [Theory]
-    [InlineData("app:", null, "app:invalidations")]
-    [InlineData("methodcache:", null, "methodcache:invalidations")]
-    [InlineData("app:", "custom", "custom")]
-    public void BackplaneChannel_DefaultsToTheKeyPrefix(string prefix, string? channel, string expected)
-    {
-        new RedisOptions { KeyPrefix = prefix, BackplaneChannel = channel }.EffectiveBackplaneChannel.Should().Be(expected);
-    }
-
     [Fact]
     public void AddMethodCacheRedis_AppliesKeyPrefix()
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCacheRedis(options => options.KeyPrefix = "app:");
+        services.AddMethodCacheRedis("localhost:6379");
+        services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredService<IOptions<MethodCache.DistributedCacheOptions>>().Value.KeyPrefix.Should().Be("app:");

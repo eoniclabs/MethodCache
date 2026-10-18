@@ -9,7 +9,7 @@ namespace MethodCache.Policies;
 /// A place cache policies come from, such as attributes, startup code, configuration files or runtime overrides.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public interface IPolicySource
+internal interface IPolicySource
 {
     /// <summary>
     /// A stable identifier for the source, such as <c>attributes</c> or <c>configuration-files</c>.

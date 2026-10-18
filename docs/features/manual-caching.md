@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Manual caching
 
 When an attribute doesn't fit, such as a call in the middle of a method or a client without an interface, use the same
@@ -40,18 +42,26 @@ var list = await cache.GetOrCreateAsync(
           .RefreshAhead(TimeSpan.FromMinutes(5))
           .WithTags("orders", $"customer:{customerId}")
           .WithVersion(2)
-          .OnHit(ctx => logger.LogDebug("Cache hit: {Key}", ctx.Key))
-          .OnMiss(ctx => logger.LogDebug("Cache miss: {Key}", ctx.Key))
-          .When(ctx => customerId > 0));   // skip the cache when false
+          .WithEnabled(customerId > 0));   // skip the cache when false
 ```
 <!-- endSnippet -->
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](expiration.md) and
   [Invalidation](invalidation.md).
-- `When` skips the cache for this call when it returns false ([Conditional caching](conditional-caching.md)).
-- `OnHit`, `OnMiss` and `WithMetrics` observe this call. The `CacheContext` they get carries the key and an `Items`
-  dictionary scoped to the call.
-- These policies live in code: `appsettings.json` and runtime overrides apply to `[Cache]` methods only.
+- `WithEnabled(false)` runs the factory for each call and bypasses reads, joins, stale values and publication.
+- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before caching and after L2 reads.
+- `CacheContext` carries the logical key and an `Items` dictionary for the factory invocation.
+- Configuration files and runtime overrides apply to declared cached methods. Explicit-key calls use their own options.
+- `Build()` copies mutable collections. Later builder changes cannot change published options.
+
+`ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
+`InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
+A custom manager uses `options.GetCacheKey(key)` to apply versions once and `options.CanCache(value)` to evaluate the
+result predicate. Its lookup and key-invalidation methods normalize their logical keys with
+`CacheManagerExtensions.GetCacheKey(key, version)`, using the optional version unchanged when forwarding calls.
+Generated calls already carry complete keys; the same helper handles them without adding another version.
+Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
+synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
 
 ## Reading without loading
 
@@ -67,7 +77,18 @@ if (lookup.Found)
 
 `TryGetAsync` takes the same `version` an entry was stored with.
 
+## Versions and the stored key
+
+An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
+shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `CacheContext.Key`
+always holds the key you passed. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
+version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
+`ICacheAdministrator` accepts the physical stored key from `CacheManagerExtensions.GetCacheKey(key, version)`;
+do not construct that internal format yourself.
+
 ## Many keys at once
+
+Key, tag and clear invalidation also guard the batch factory while it reads its source. Its caller can receive the in-flight result, but invalidated candidates are not published into memory or the distributed cache. Individual callers can still load and publish these keys during the batch; a fresh concurrent value wins.
 
 `GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
 and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
@@ -94,16 +115,12 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 - Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
   cancels a run others joined, they run the factory again rather than fail.
+- A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
+  itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
-- `GetOrCreateAsync` is an extension method, so mocking libraries can't intercept it. In tests, pass a
-  `NoOpCacheManager` ([Testing](testing.md)).
+- The four operations on `ICacheManager` can be mocked directly. The options-builder convenience overload
+  delegates to that interface. You can also pass a `NoOpCacheManager` ([Testing](testing.md)).
 
-## Behavior and compatibility
+Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
 
-Fluent versions use a separate key namespace, so `entry` at version 1 cannot share a value with the unversioned key `entry::v1`. Use the fluent read API with the same version; unversioned keys beginning with NUL are escaped internally.
-
-`CacheEntryOptions.Builder.Build()` snapshots tags and callbacks; reusing the builder does not change previously built options.
-
-Versioned fluent entries occupy a reserved namespace. Use `CacheManagerExtensions.GetCacheKey(logicalKey, version)` when directly invalidating or administering one; do not construct its internal control-character frame by hand. `CacheContext.Key` keeps the logical key for callbacks and factories.
-
-Unversioned fluent keys that begin with NUL are escaped too. Use `CacheManagerExtensions.GetCacheKey(logicalKey)` for direct invalidation or administration of those entries, just as you use the overload with a version for versioned entries.
+Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.

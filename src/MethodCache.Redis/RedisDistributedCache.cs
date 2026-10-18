@@ -13,15 +13,21 @@ namespace MethodCache.Redis;
 /// MethodCache's own Redis cache. Not disposable on purpose: disposing <see cref="RedisCache"/> closes its
 /// connection, which may be the app's; <see cref="RedisConnection"/> disposes the connection when MethodCache owns it.
 /// </summary>
-internal sealed class RedisDistributedCache(RedisConnection connection) : IBufferDistributedCache, IAtomicInvalidationStore
+internal sealed partial class RedisDistributedCache(RedisConnection connection) : IBufferDistributedCache, IAtomicInvalidationStore, IBatchedDistributedStore, IDistributedEpochStore
 {
+    private readonly RedisConnection _connection = connection;
+
     // Compare signed 64-bit little-endian bytes directly. Lua numbers cannot represent every long exactly.
     private const string StampScript = """
         local previous = redis.call('HGET', KEYS[1], 'data')
         local ttl = redis.call('PTTL', KEYS[1])
         local incoming = ARGV[1]
-        local replace = not previous or string.len(previous) < 8
-        if not replace then
+        local marked = previous and string.len(previous) >= 33 and string.byte(previous, 9) == 1
+        if previous and string.len(previous) ~= 8 and not marked then
+            return redis.error_reply('MethodCache invalidation schema mismatch')
+        end
+        local replace = not previous
+        if previous then
             for i = 8, 1, -1 do
                 local old = string.byte(previous, i)
                 local new = string.byte(incoming, i)
@@ -29,9 +35,20 @@ internal sealed class RedisDistributedCache(RedisConnection connection) : IBuffe
                 if old ~= new then replace = new > old; break end
             end
         end
-        redis.call('HSET', KEYS[1], 'data', replace and incoming or string.sub(previous, 1, 8))
-        redis.call('HSET', KEYS[1], 'absexp', '-1', 'sldexp', '-1')
-        if ttl ~= -1 and ttl < tonumber(ARGV[2]) then redis.call('PEXPIRE', KEYS[1], ARGV[2]) end
+        local data = replace and incoming or string.sub(previous, 1, 8)
+        if marked then
+            local revision = {string.byte(previous, 26, 33)}
+            local carry = true
+            for i = 8, 1, -1 do
+                if revision[i] < 255 then revision[i] = revision[i] + 1; carry = false; break end
+                revision[i] = 0
+            end
+            local id = carry and ARGV[3] or string.sub(previous, 10, 25)
+            data = data .. string.char(1) .. id .. string.char(unpack(revision)) .. string.sub(previous, 34)
+        end
+        redis.call('HSET', KEYS[1], 'data', data, 'absexp', '-1', 'sldexp', '-1')
+        if marked then redis.call('PERSIST', KEYS[1])
+        elseif ttl ~= -1 and ttl < tonumber(ARGV[2]) then redis.call('PEXPIRE', KEYS[1], ARGV[2]) end
         return 1
         """;
 
@@ -87,8 +104,8 @@ internal sealed class RedisDistributedCache(RedisConnection connection) : IBuffe
         cancellationToken.ThrowIfCancellationRequested();
         var stamp = new byte[8];
         BinaryPrimitives.WriteInt64LittleEndian(stamp, timestamp);
-        var multiplexer = await connection.GetAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+        var multiplexer = await _connection.GetAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
         await multiplexer.GetDatabase().ScriptEvaluateAsync(StampScript, new RedisKey[] { GetPhysicalKey(key) },
-            new RedisValue[] { stamp, (long)Math.Ceiling(retention.TotalMilliseconds) }).WaitAsync(cancellationToken).ConfigureAwait(false);
+            new RedisValue[] { stamp, (long)Math.Ceiling(retention.TotalMilliseconds), Guid.NewGuid().ToByteArray() }).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 }

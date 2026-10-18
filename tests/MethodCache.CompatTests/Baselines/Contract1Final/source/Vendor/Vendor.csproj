@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks />
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>FrozenVendor.Contract1Final</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../../../../src/MethodCache.Core/MethodCache.Core.csproj" />
+    <ProjectReference Include="../../../../../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../ThirdParty/ThirdParty.csproj" />
+  </ItemGroup>
+</Project>

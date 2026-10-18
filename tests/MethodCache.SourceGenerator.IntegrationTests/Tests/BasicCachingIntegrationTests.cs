@@ -109,7 +109,7 @@ namespace TestNamespace
 
         // Act: Compile with source generator
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        
+
         // Debug: Output generated sources
         _output.WriteLine("=== GENERATED SOURCES ===");
         foreach (var (fileName, source) in testAssembly.GeneratedSources)
@@ -120,22 +120,22 @@ namespace TestNamespace
         _output.WriteLine($"Total generated sources: {testAssembly.GeneratedSources.Count}");
 
         // Setup DI container with test metrics
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
             // Replace the default metrics provider with our test one
-            var existingService = services.FirstOrDefault(s => s.ServiceType == typeof(ICacheMetricsProvider));
+            var existingService = services.FirstOrDefault(s => s.ServiceType == typeof(TestCacheProbe));
             if (existingService != null)
             {
                 services.Remove(existingService);
             }
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         }, _output.WriteLine);
 
         // Get the generated cached service
         var userServiceType = testAssembly.Assembly.GetType("TestNamespace.IUserService");
         Assert.NotNull(userServiceType);
-        
+
         var userService = serviceProvider.GetService(userServiceType);
         Assert.NotNull(userService);
         // Reset counters
@@ -165,7 +165,7 @@ namespace TestNamespace
         var user2Id = testUserType.GetProperty("Id")!.GetValue(user2);
         var user1Name = testUserType.GetProperty("Name")!.GetValue(user1);
         var user2Name = testUserType.GetProperty("Name")!.GetValue(user2);
-        
+
         Assert.Equal(user1Id, user2Id);
         Assert.Equal(user1Name, user2Name);
 
@@ -289,16 +289,16 @@ namespace TestNamespace
 }";
 
         var testAssembly = await _engine.CompileWithSourceGeneratorAsync(sourceCode);
-        var metricsProvider = new TestCacheMetricsProvider();
+        var metricsProvider = new TestCacheProbe();
         var serviceProvider = _engine.CreateTestServiceProvider(testAssembly, services =>
         {
-            services.AddSingleton<ICacheMetricsProvider>(metricsProvider);
+            services.AddSingleton<TestCacheProbe>(metricsProvider);
         });
 
         var productServiceType = testAssembly.Assembly.GetType("TestNamespace.IProductService");
         Assert.NotNull(productServiceType);
         var productService = serviceProvider.GetService(productServiceType);
-        
+
         // Reset state
         var implType = testAssembly.Assembly.GetType("TestNamespace.ProductService");
         implType?.GetMethod("ResetCallCounts")?.Invoke(null, null);
@@ -316,7 +316,7 @@ namespace TestNamespace
         // Cache some data
         var product1Task = (Task)getProductMethod!.Invoke(productService, new object[] { 1 })!;
         var product1 = await GetTaskResult(product1Task, testProductType);
-        
+
         var categoryCountTask = (Task)getCategoryCountMethod!.Invoke(productService, new object[] { "Electronics" })!;
         var categoryCount = await GetTaskResult<int>(categoryCountTask);
         Assert.Equal(15, categoryCount);
@@ -327,7 +327,7 @@ namespace TestNamespace
         // Verify data is cached (second calls should be hits)
         var product1AgainTask = (Task)getProductMethod.Invoke(productService, new object[] { 1 })!;
         await GetTaskResult(product1AgainTask, testProductType);
-        
+
         var categoryCountAgainTask = (Task)getCategoryCountMethod.Invoke(productService, new object[] { "Electronics" })!;
         var categoryCountAgain = await GetTaskResult<int>(categoryCountAgainTask);
         Assert.Equal(15, categoryCountAgain);
@@ -345,7 +345,7 @@ namespace TestNamespace
         // Calls after invalidation should be cache misses
         var product1AfterUpdateTask = (Task)getProductMethod.Invoke(productService, new object[] { 1 })!;
         await GetTaskResult(product1AfterUpdateTask, testProductType);
-        
+
         var categoryCountAfterUpdateTask = (Task)getCategoryCountMethod.Invoke(productService, new object[] { "Electronics" })!;
         await GetTaskResult<int>(categoryCountAfterUpdateTask);
 
@@ -368,11 +368,11 @@ namespace TestNamespace
         await task;
         var property = task.GetType().GetProperty("Result");
         var result = property!.GetValue(task)!;
-        
+
         // Verify the result is of the expected type
-        Assert.True(expectedType.IsAssignableFrom(result.GetType()), 
+        Assert.True(expectedType.IsAssignableFrom(result.GetType()),
             $"Expected type {expectedType.Name}, but got {result.GetType().Name}");
-        
+
         return result;
     }
 

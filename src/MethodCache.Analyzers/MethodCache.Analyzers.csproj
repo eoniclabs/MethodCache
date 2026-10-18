@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -31,4 +31,7 @@
 
 
 
+  <ItemGroup>
+    <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
+  </ItemGroup>
 </Project>

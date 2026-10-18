@@ -11,4 +11,12 @@ public sealed record CachedMethodInfo(
     TimeSpan? Duration,
     IReadOnlyList<string> Tags,
     int? Version,
-    IReadOnlyList<string> Sources);
+    IReadOnlyList<string> Sources)
+{
+    /// <summary>The effective immutable method options.</summary>
+    public CacheEntryOptions Options { get; init; } = new CacheEntryOptions.Builder().Build();
+    /// <summary>Whether the distributed namespace is shared or private to this container.</summary>
+    public string L2Namespace { get; init; } = "shared";
+    /// <summary>The source providing each effective setting.</summary>
+    public IReadOnlyDictionary<string, string> SettingSources { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+}

@@ -22,15 +22,14 @@ namespace MethodCache.Core.Tests.Properties;
 /// <list type="bullet">
 /// <item>a <see cref="DateTimeKind.Local"/> <see cref="DateTime"/> and the same instant in UTC (keys convert local
 /// times to UTC); an Unspecified and a UTC time with the same ticks stay different;</item>
-/// <item><c>0.0</c> and <c>-0.0</c> for the hash generator (one key); the inline keys format doubles with "R", which
-/// writes "-0", so there they are two keys, which only costs a cache miss;</item>
 /// <item><c>0.00m</c> and <c>-0.00m</c> (decimal prints both as "0.00"). Decimals otherwise keep their scale:
 /// <c>1.0m</c> and <c>1.00m</c> are two keys, as <see cref="decimal.ToString()"/> shows them.</item>
 /// </list>
 /// <para>Everything else is kept apart: the argument's type (<c>1</c>, <c>1L</c>, <c>(nint)1</c>, <c>"1"</c> and an enum
 /// with value 1 are five keys, also as elements of an <c>object[]</c> or <c>List&lt;object&gt;</c> or in an <c>object</c>
 /// property), the enum type, position and count of arguments, the method name and the version, a
-/// <see cref="DateTimeOffset"/>'s offset, and string content compared ordinally.</para>
+/// <see cref="DateTimeOffset"/>'s offset, <c>0.0</c> and <c>-0.0</c> (which <c>1 / x</c> tells apart), and string
+/// content compared ordinally.</para>
 /// <para>Seeds and replay: see <see cref="PropertySettings"/>.</para>
 /// </remarks>
 [Collection(nameof(CpuIntensiveCollection))]
@@ -48,6 +47,9 @@ public class CacheKeyPropertyTests
 
     /// <summary>A record with an <c>object</c> property, so its value's runtime type is not its declared type.</summary>
     public sealed record Holder(object? Value);
+
+    /// <summary>A record with a list, so it goes through the key generator; <see cref="double.PositiveInfinity"/> means no limit.</summary>
+    public sealed record PriceFilter(double Max, List<string> Brands);
 
     public sealed class Dto
     {
@@ -89,8 +91,8 @@ public class CacheKeyPropertyTests
 
     /// <summary>
     /// A value held in an <c>object</c> slot (an element of <c>object[]</c> or <c>List&lt;object&gt;</c>, or
-    /// <see cref="Holder.Value"/>), where values of different types can write the same JSON. Inside JSON, 0.0 and -0.0,
-    /// NaN and local times aren't merged the way top-level arguments are, so those are left out.
+    /// <see cref="Holder.Value"/>), where values of different types can write the same JSON. Inside JSON, NaN and local
+    /// times aren't merged the way top-level arguments are, so those are left out.
     /// </summary>
     private static readonly Gen<object?> GenNestedScalar = Gen.OneOf<object?>(
         Gen.Bool.Select(_ => (object?)null),
@@ -157,8 +159,27 @@ public class CacheKeyPropertyTests
         {
             var keys = PropertySettings.InCulture(PropertySettings.Cultures[cultureIndex], () =>
                 calls.Select(c => generator.GenerateKey(c.Method, c.Args, Policy(c.Version))).ToArray());
-            AssertKeysMatchCanon(keys, calls.Select(c => CanonCall(c.Method, c.Version, c.Args, mergeSignedZero: true)).ToArray());
+            AssertKeysMatchCanon(keys, calls.Select(c => CanonCall(c.Method, c.Version, c.Args)).ToArray());
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations / 4, print: t => Print(t.Item1) + ", culture " + PropertySettings.Cultures[t.Item2].Name);
+    }
+
+    [Fact]
+    public void Sequences_ShareAKeyExactlyWhenTheElementsAndTheNextArgumentAreTheSame()
+    {
+        // A collection followed by a string argument: an element's text must not run into the next element or the next
+        // argument, whether the formatter escapes (as generated code does) or writes ':' and ']' as they are
+        var genList = GenText.List[0, 3].Null(0.2);
+        Gen.Select(genList, GenNullableText, genList, GenNullableText).Sample((l1, t1, l2, t2) =>
+        {
+            var same = (l1 is null ? l2 is null : l2 is not null && l1.SequenceEqual(l2, StringComparer.Ordinal)) &&
+                       string.Equals(t1, t2, StringComparison.Ordinal);
+
+            Assert.Equal(same, Key(l1, t1, static s => MethodCacheKeys.Part(s)) == Key(l2, t2, static s => MethodCacheKeys.Part(s)));
+            Assert.Equal(same, Key(l1, t1, static s => s) == Key(l2, t2, static s => s));
+        }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
+
+        static string Key(List<string>? list, string? tail, Func<string, string> part)
+            => MethodCacheKeys.For(typeof(CacheKeyPropertyTests), "M", MethodCacheKeys.Sequence(list, part), MethodCacheKeys.Part(tail));
     }
 
     [Fact]
@@ -183,6 +204,44 @@ public class CacheKeyPropertyTests
     [Theory]
     [InlineData(typeof(FastHashKeyGenerator))]
     [InlineData(typeof(JsonKeyGenerator))]
+    public void HashedKeys_NonFiniteDoublesInsideAnArgument_GetDistinctKeys(Type generatorType)
+    {
+        var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+        var limits = new[] { double.PositiveInfinity, double.NegativeInfinity, double.NaN, 0.0 };
+
+        var keys = limits.Select(max => generator.GenerateKey("Price", new object?[] { new PriceFilter(max, []) }, NoVersion)).ToList();
+
+        Assert.Equal(limits.Length, keys.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Theory]
+    [InlineData(typeof(FastHashKeyGenerator))]
+    [InlineData(typeof(JsonKeyGenerator))]
+    public void HashedKeys_NonFiniteTopLevelDoubles_GetDistinctKeys(Type generatorType)
+    {
+        var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+        var values = new object?[] { double.PositiveInfinity, double.NegativeInfinity, double.NaN, float.PositiveInfinity, float.NaN, "NaN" };
+
+        var keys = values.Select(value => generator.GenerateKey("Price", new[] { value }, NoVersion)).ToList();
+
+        Assert.Equal(values.Length, keys.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Theory]
+    [InlineData(typeof(FastHashKeyGenerator))]
+    [InlineData(typeof(JsonKeyGenerator))]
+    public void HashedKeys_NegativeZero_IsNotZero_AsInInlineKeys(Type generatorType)
+    {
+        var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
+
+        Assert.NotEqual(generator.GenerateKey("Zero", new object?[] { -0.0 }, NoVersion), generator.GenerateKey("Zero", new object?[] { 0.0 }, NoVersion));
+        Assert.NotEqual(generator.GenerateKey("Zero", new object?[] { -0f }, NoVersion), generator.GenerateKey("Zero", new object?[] { 0f }, NoVersion));
+        Assert.NotEqual(MethodCacheKeys.Part(-0.0), MethodCacheKeys.Part(0.0));
+    }
+
+    [Theory]
+    [InlineData(typeof(FastHashKeyGenerator))]
+    [InlineData(typeof(JsonKeyGenerator))]
     public void HashedKeys_GiveNestedValuesOfDifferentTypesDistinctKeys(Type generatorType)
     {
         // Values in object slots alone, so that 1, 1L, 1.0 and "1" in the same place come up often: JSON writes
@@ -198,7 +257,7 @@ public class CacheKeyPropertyTests
             var k1 = generator.GenerateKey("M", new[] { a1 }, NoVersion);
             var k2 = generator.GenerateKey("M", new[] { a2 }, NoVersion);
 
-            Assert.Equal(Canon(a1, mergeSignedZero: false) == Canon(a2, mergeSignedZero: false), k1 == k2);
+            Assert.Equal(Canon(a1) == Canon(a2), k1 == k2);
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations, print: t => Describe(t.Item1) + " and " + Describe(t.Item2));
     }
 
@@ -255,7 +314,7 @@ public class CacheKeyPropertyTests
             var built = PropertySettings.InCulture(culture, () => c.Calls.Select(args => BuiltKey(c.Signature, args)).ToArray());
 
             Assert.Equal(keys, built);
-            AssertKeysMatchCanon(keys, c.Calls.Select(args => string.Join(",", args.Select(a => Canon(a, mergeSignedZero: false)))).ToArray());
+            AssertKeysMatchCanon(keys, c.Calls.Select(args => string.Join(",", args.Select(a => Canon(a)))).ToArray());
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations / 4, print: c => $"signature ({string.Join(", ", c.Signature)}), culture {PropertySettings.Cultures[c.Culture].Name}: " +
                                                                    string.Join(" | ", c.Calls.Select(a => string.Join(", ", a.Select(Describe)))));
     }
@@ -344,33 +403,33 @@ public class CacheKeyPropertyTests
         return builder.ToString();
     }
 
-    private static string CanonCall(string method, int? version, object?[] args, bool mergeSignedZero)
-        => $"{Text(method)} v{version?.ToString(CultureInfo.InvariantCulture) ?? "-"} ({string.Join(",", args.Select(a => Canon(a, mergeSignedZero)))})";
+    private static string CanonCall(string method, int? version, object?[] args)
+        => $"{Text(method)} v{version?.ToString(CultureInfo.InvariantCulture) ?? "-"} ({string.Join(",", args.Select(a => Canon(a)))})";
 
     /// <summary>
     /// A text that identifies an argument by its type and value, merging only the values listed in the remarks of
     /// this class. Built with invariant formatting and length-prefixed strings, so it is unambiguous.
     /// </summary>
-    private static string Canon(object? value, bool mergeSignedZero)
+    private static string Canon(object? value)
     {
         var invariant = CultureInfo.InvariantCulture;
         return value switch
         {
             null => "null",
             string s => Text(s),
-            double d => "double " + (double.IsNaN(d) ? "NaN" : BitConverter.DoubleToInt64Bits(mergeSignedZero && d == 0 ? 0d : d).ToString(invariant)),
-            float f => "float " + (float.IsNaN(f) ? "NaN" : BitConverter.SingleToInt32Bits(mergeSignedZero && f == 0 ? 0f : f).ToString(invariant)),
+            double d => "double " + (double.IsNaN(d) ? "NaN" : BitConverter.DoubleToInt64Bits(d).ToString(invariant)),
+            float f => "float " + (float.IsNaN(f) ? "NaN" : BitConverter.SingleToInt32Bits(f).ToString(invariant)),
             decimal m => "decimal " + Scale(m) + " " + (m == 0 ? "0" : m.ToString(invariant)),
             DateTime dt => "DateTime " + Normalize(dt).Ticks.ToString(invariant) + " " + Normalize(dt).Kind,
             DateTimeOffset dto => "DateTimeOffset " + dto.UtcTicks.ToString(invariant) + " " + dto.Offset.Ticks.ToString(invariant),
             Enum e => "enum " + e.GetType().Name + " " + (Type.GetTypeCode(e.GetType()) == TypeCode.UInt64
                 ? Convert.ToUInt64(e, invariant).ToString(invariant)
                 : Convert.ToInt64(e, invariant).ToString(invariant)),
-            Point p => $"Point({Canon(p.X, mergeSignedZero)},{Canon(p.Name, mergeSignedZero)})",
-            Order o => $"Order({Canon(o.Id, mergeSignedZero)},{Canon(o.At, mergeSignedZero)},{Canon(o.Lines, mergeSignedZero)},{Canon(o.Color, mergeSignedZero)})",
-            Dto dto => $"Dto({Canon(dto.Text, mergeSignedZero)},{Canon(dto.Number, mergeSignedZero)})",
-            Holder h => $"Holder({Canon(h.Value, mergeSignedZero)})",
-            System.Collections.IEnumerable items => value.GetType().ToString() + "[" + string.Join(",", items.Cast<object?>().Select(i => Canon(i, mergeSignedZero))) + "]",
+            Point p => $"Point({Canon(p.X)},{Canon(p.Name)})",
+            Order o => $"Order({Canon(o.Id)},{Canon(o.At)},{Canon(o.Lines)},{Canon(o.Color)})",
+            Dto dto => $"Dto({Canon(dto.Text)},{Canon(dto.Number)})",
+            Holder h => $"Holder({Canon(h.Value)})",
+            System.Collections.IEnumerable items => value.GetType().ToString() + "[" + string.Join(",", items.Cast<object?>().Select(i => Canon(i))) + "]",
             IFormattable f => value.GetType().Name + " " + f.ToString(null, invariant),
             _ => value.GetType().Name + " " + value,
         };
@@ -390,7 +449,7 @@ public class CacheKeyPropertyTests
         DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture) + " (" + dt.Kind + ")",
         decimal m => m.ToString(CultureInfo.InvariantCulture) + "m",
         double d => BitConverter.DoubleToInt64Bits(d) == BitConverter.DoubleToInt64Bits(-0.0) ? "-0.0" : d.ToString("R", CultureInfo.InvariantCulture),
-        _ => value.GetType().Name + " " + Canon(value, mergeSignedZero: false),
+        _ => value.GetType().Name + " " + Canon(value),
     };
 
     private static string Print((string Method, int? Version, object?[] Args)[] calls)

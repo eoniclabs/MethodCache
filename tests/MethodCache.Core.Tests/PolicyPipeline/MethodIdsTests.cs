@@ -8,13 +8,13 @@ public class MethodIdsTests
     [Fact]
     public void For_NestedType_UsesDotsLikeTheGenerator()
     {
-        Assert.Equal("MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IOrders.Get", MethodIds.For(typeof(IOrders), "Get"));
+        Assert.Equal("[MethodCache.Core.Tests]MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IOrders.Get", MethodIds.For(typeof(IOrders), "Get"));
     }
 
     [Fact]
     public void For_GenericType_NamesTheDefinitionLikeTheGenerator()
     {
-        const string expected = "MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IRepository<TKey, TValue>.Get";
+        const string expected = "[MethodCache.Core.Tests]MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IRepository<TKey, TValue>.Get";
 
         Assert.Equal(expected, MethodIds.For(typeof(IRepository<,>), "Get"));
         Assert.Equal(expected, MethodIds.For(typeof(IRepository<int, string>), "Get"));
@@ -26,20 +26,20 @@ public class MethodIdsTests
         // Configured through a derived, closed interface, the id is still the declaring definition's
         var get = typeof(IUserRepository).GetInterface("IRepository`2")!.GetMethod("Get")!;
 
-        Assert.Equal("MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IRepository<TKey, TValue>.Get", MethodIds.For(get));
+        Assert.Equal("[MethodCache.Core.Tests]MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IRepository<TKey, TValue>.Get", MethodIds.For(get));
     }
 
     [Fact]
     public void For_OverloadedMethod_AddsParameterTypesLikeTheGenerator()
     {
-        const string prefix = "MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IOrders.";
+        const string prefix = "[MethodCache.Core.Tests]MethodCache.Core.Tests.PolicyPipeline.MethodIdsTests.IOrders.";
         var finds = typeof(IOrders).GetMethods().Where(m => m.Name == "Find").Select(m => MethodIds.For(m).Substring(prefix.Length)).OrderBy(id => id, StringComparer.Ordinal).ToList();
 
         Assert.Equal(new[]
         {
             "Find(int)",
-            "Find(int?, string[], System.Collections.Generic.List<System.Guid>, T)",
             "Find(string, System.Threading.CancellationToken)",
+            "Find``1(int?, string[], System.Collections.Generic.List<System.Guid>, T)",
         }, finds);
         Assert.Equal(prefix + "Get", MethodIds.For(typeof(IOrders).GetMethod("Get")!));
     }

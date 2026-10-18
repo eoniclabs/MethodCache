@@ -90,15 +90,6 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
         public bool ShouldCache() => false;
     }
 
-    // Custom cache key generator
-    public class CustomKeyGenerator : ICacheKeyGenerator
-    {
-        public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
-        {
-            return $""CUSTOM_{methodName}_{string.Join(""_"", args)}"";
-        }
-    }
-
     // Test exceptions
     public class TestException : Exception
     {

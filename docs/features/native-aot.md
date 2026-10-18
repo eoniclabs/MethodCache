@@ -1,9 +1,15 @@
+[← MethodCache documentation](../README.md)
+
 # Native AOT
 
-MethodCache works in Native AOT and trimmed applications. The source generator writes the decorators, their
-registration and the cache keys at build time, so nothing is found or built with reflection at runtime. CI publishes a
-test application with Native AOT on every change and checks that caching, the automatic registration and
+MethodCache works in Native AOT and trimmed applications when your cached methods take arguments the decorator can
+write into the key itself (see [Keys](#keys) below). The source generator writes the decorators, their registration
+and those keys at build time. CI publishes a test application with Native AOT on every change and checks that
+caching (with simple, record, collection and `ICacheKeyProvider` arguments), explicit `AutoRegister(ServiceLifetime)` registration and
 `[assembly: CacheInterface]` work.
+
+CI also compiles the complete supported signature corpus with Native AOT. This checks generated signatures and
+ref safety across all key forms; reflection-based fallback cases retain the runtime limitations described below.
 
 ## In-memory caching
 
@@ -26,14 +32,28 @@ public sealed partial class ShopJsonContext : JsonSerializerContext;
 ```cs
 builder.Services.AddMethodCache();
 builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddSingleton<ISerializer>(new JsonCacheSerializer(ShopJsonContext.Default.Options));
+builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
 ```
 <!-- endSnippet -->
 
-`ISerializer` and `JsonCacheSerializer` are in `MethodCache.Extensibility`. MethodCache can't generate this context
+Select your context with `MethodCacheBuilder.UseJson(context)`. MethodCache cannot generate this context
 for you, because one source generator can't see another generator's output.
 
 ## Keys
 
-Keys built by the decorator (simple values, records, `ICacheKeyProvider`) need no reflection. Arguments that go
-through the key generator, such as collections, are hashed by `FastHashKeyGenerator`. See [Cache keys](keys.md).
+Under Native AOT, give cached methods arguments that the decorator writes into the key itself:
+
+- simple values (strings, numbers, `bool`, `Guid`, dates, enums),
+- records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
+  type (a sealed type is safest: an instance of a derived class goes through the key generator),
+- types that implement `ICacheKeyProvider`,
+- arrays, lists and sets of those (records and classes in them must be sealed), and dictionaries whose keys and values
+  are simple values.
+
+Collection subclasses with their own public state also use the key generator; implement `ICacheKeyProvider` on
+these types when using Native AOT. Plain lists, arrays and sets keep their inline keys.
+
+Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
+serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
+IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
+implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](keys.md#types-whose-state-is-private).

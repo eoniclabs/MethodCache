@@ -10,10 +10,15 @@ namespace Docs.ThirdPartyPage
         public static void PerMethod(WebApplicationBuilder builder)
         {
             // begin-snippet: third-party-per-method
-            builder.Services.AddMethodCache(config => config
-                .ForService<IFxRatesClient>()
-                .Method(c => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
+            builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.GetRateAsync(Any<string>.Value, Any<string>.Value))
                 .Configure(o => o.WithDuration(TimeSpan.FromSeconds(30))));
+            // end-snippet
+        }
+
+        public static void SelectModule(WebApplicationBuilder builder)
+        {
+            // begin-snippet: third-party-module-selection
+            builder.Services.AddMethodCache(cache => cache.FromAssemblyOf<Rates>());
             // end-snippet
         }
 

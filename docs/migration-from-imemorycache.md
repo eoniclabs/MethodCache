@@ -1,3 +1,5 @@
+[← MethodCache documentation](README.md)
+
 # Migrating from IMemoryCache
 
 With `IMemoryCache`, every cached method holds the same pattern: build a key, try the cache, load, store, and remember
@@ -66,8 +68,8 @@ Migrate one service at a time; both caches can run side by side.
 | `TryGetValue` + `Set` | `[Cache]`, or `GetOrCreateAsync` with your key |
 | `SetAbsoluteExpiration` | `Duration` |
 | `SetSlidingExpiration` | `SlidingExpiration`, capped by `Duration` |
-| `Remove(key)` | `[CacheInvalidate]` with tags, or `InvalidateByKeysAsync` |
-| `Size` and `SizeLimit` | `Weigher` and `MaxMemoryBytes` ([Memory cache](features/memory-cache.md)) |
+| `Remove(key)` | `[CacheInvalidate]` with tags, or `InvalidateKeysAsync` |
+| `Size` and `SizeLimit` | `Weigher` and `SizeLimit` ([Memory cache](features/memory-cache.md)) |
 | `Priority` | Not needed: W-TinyLFU keeps the entries that are read often |
 | `GetOrCreateAsync`, which may run the factory several times at once | Concurrent misses share one call |
 | A separate `IDistributedCache` | `AddMethodCacheRedis(...)`, with the memory cache kept in sync ([Distributed cache](features/distributed-cache.md)) |
@@ -76,5 +78,5 @@ Migrate one service at a time; both caches can run side by side.
 
 - **Keys are generated** from the method and its arguments ([Cache keys](features/keys.md)). Check that every argument
   that changes the result is a parameter, not a field of the class.
-- **`null` is cached** by default. Set `CacheNullValues = false` if your old code skipped `null`.
+- **`null` is cached** by default. Set `MethodCacheMemoryOptions.CacheNullValues = false` ([Memory cache](features/memory-cache.md#null-values)) if your old code skipped `null`.
 - **Exceptions are never cached**, as before.

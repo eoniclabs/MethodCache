@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text;
 
 namespace MethodCache.Infrastructure
@@ -9,7 +10,7 @@ namespace MethodCache.Infrastructure
     /// </summary>
     /// <remarks>Called by generated decorators on a cache miss; not intended for application code.</remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public static class CacheTagTemplates
+    internal static class CacheTagTemplates
     {
         /// <summary>
         /// Returns <paramref name="policy"/> with every <c>{name}</c> in its tags replaced by the matching value.
@@ -28,7 +29,7 @@ namespace MethodCache.Infrastructure
 
             if (parameterNames.Length != values.Length)
             {
-                throw new ArgumentException("Every parameter name needs exactly one value.", nameof(values));
+                throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
             }
 
             if (!policy.Tags.Any(tag => tag.Contains('{')))
@@ -39,10 +40,31 @@ namespace MethodCache.Infrastructure
             var tags = new List<string>(policy.Tags.Count);
             foreach (var tag in policy.Tags)
             {
-                tags.Add(tag.Contains('{') ? ExpandTag(tag, parameterNames, values) : tag);
+                tags.Add(tag.Contains('{') ? ExpandTag(tag, parameterNames, index => values[index]) : tag);
             }
 
             return policy with { Tags = tags };
+        }
+
+        /// <summary>Expands tag templates, formatting only the argument values their placeholders actually reference.</summary>
+        /// <param name="policy">The policy whose tags to expand.</param>
+        /// <param name="parameterNames">The method's parameter names.</param>
+        /// <param name="values">Argument values in the same order as the names.</param>
+        /// <returns>The original policy for static tags, or a copy with the expanded tags.</returns>
+        public static CacheRuntimePolicy Expand(CacheRuntimePolicy policy, string[] parameterNames, object?[] values)
+        {
+            ArgumentNullException.ThrowIfNull(policy);
+            ArgumentNullException.ThrowIfNull(parameterNames);
+            ArgumentNullException.ThrowIfNull(values);
+            if (parameterNames.Length != values.Length)
+                throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
+            if (!policy.Tags.Any(tag => tag.Contains('{'))) return policy;
+
+            var formatted = new string?[values.Length];
+            string Format(int index) => formatted[index] ??= (!policy.CanonicalTagParts
+                ? Convert.ToString(values[index], CultureInfo.InvariantCulture) ?? "null"
+                : CanonicalTagPart.Format(values[index]));
+            return policy with { Tags = policy.Tags.Select(tag => tag.Contains('{') ? ExpandTag(tag, parameterNames, Format) : tag).ToArray() };
         }
 
         /// <summary>
@@ -50,7 +72,7 @@ namespace MethodCache.Infrastructure
         /// <see cref="CacheInvalidateAttribute"/> uses does, so an argument whose text looks like a placeholder
         /// (such as <c>"{orgId}"</c>) is kept as it is and the entry gets the tag the invalidation removes.
         /// </summary>
-        private static string ExpandTag(string tag, string[] parameterNames, string[] values)
+        private static string ExpandTag(string tag, string[] parameterNames, Func<int, string> value)
         {
             var result = new StringBuilder(tag.Length + 16);
             var position = 0;
@@ -72,7 +94,7 @@ namespace MethodCache.Infrastructure
                     continue;
                 }
 
-                result.Append(tag, position, open - position).Append(values[index]);
+                result.Append(tag, position, open - position).Append(value(index));
                 position = close + 1;
             }
 

@@ -60,7 +60,8 @@ internal sealed class FreshnessCalculator
     public TimeSpan GetCurrentAge(HttpCacheEntry entry)
     {
         var residentTime = _timeProvider.GetUtcNow() - entry.StoredAt;
-        return entry.InitialAge + (residentTime > TimeSpan.Zero ? residentTime : TimeSpan.Zero);
+        residentTime = residentTime > TimeSpan.Zero ? residentTime : TimeSpan.Zero;
+        return residentTime > TimeSpan.MaxValue - entry.InitialAge ? TimeSpan.MaxValue : entry.InitialAge + residentTime;
     }
 
     /// <summary>How long the entry has been stale; zero while it is still fresh.</summary>

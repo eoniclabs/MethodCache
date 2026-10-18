@@ -19,7 +19,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using MethodCache;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
 {
@@ -53,7 +52,8 @@ namespace QuickStart
         {
             services.AddMethodCache(config =>
             {
-                config.DefaultPolicy(policy => policy.WithDuration(TimeSpan.FromMinutes(10)));
+                config.FromAssemblyOf<IUserService>().AutoRegister(ServiceLifetime.Singleton);
+                config.Defaults(policy => policy.WithDuration(TimeSpan.FromMinutes(10)));
             });
         }
 
@@ -62,18 +62,148 @@ namespace QuickStart
             services.AddMethodCache();
         }
 
+        public static void WithAutoRegister(IServiceCollection services)
+        {
+            services.AddMethodCache(b => b.FromAssemblyOf<IUserService>().AutoRegister(ServiceLifetime.Singleton));
+        }
+
         public static void WithExplicitAssembly(IServiceCollection services)
         {
-            services.AddMethodCache(configure: null, typeof(IUserService).Assembly);
+            services.AddMethodCache(b => b.FromAssemblyOf<IUserService>().AutoRegister(ServiceLifetime.Singleton));
         }
     }
 }";
 
     private readonly SourceGeneratorTestEngine _engine = new();
 
+    [Fact]
+    public async Task AddMethodCache_NoAutoRegister_DoesNotChooseImplementation()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(QuickStartSource, "ExplicitAutoRegistrationContract");
+        var services = new ServiceCollection();
+        compiled.Assembly.GetType("QuickStart.Startup")!.GetMethod("WithoutConfiguration")!.Invoke(null, [services]);
+
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == compiled.Assembly.GetType("QuickStart.IUserService"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task AutoRegister_ZeroOrMultipleCandidates_ReportsNamedError(int candidates)
+    {
+        var source = candidates == 0
+            ? QuickStartSource.Replace("public class UserService : IUserService", "public class UserService")
+            : QuickStartSource.Replace("public static class Startup", "public class OtherUserService : UserService { }\n    public static class Startup");
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(
+            source.Replace("ServiceLifetime.Singleton", "ServiceLifetime.Scoped"), "AutoCandidates" + candidates);
+        var invocation = Assert.Throws<TargetInvocationException>(() => InvokeStartup(compiled.Assembly, "WithExplicitAssembly", new ServiceCollection()));
+        var error = Assert.IsType<InvalidOperationException>(invocation.InnerException);
+        Assert.Contains("IUserService", error.Message);
+        Assert.Contains($"found {candidates}", error.Message);
+        Assert.Contains("AutoCandidates" + candidates, error.Message);
+    }
+
+    [Fact]
+    public async Task AutoRegister_OneCandidate_PreservesExplicitScopedLifetime()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(
+            QuickStartSource.Replace("ServiceLifetime.Singleton", "ServiceLifetime.Scoped"), "ScopedAutoCandidate");
+        var services = new ServiceCollection();
+        InvokeStartup(compiled.Assembly, "WithExplicitAssembly", services);
+        var type = compiled.Assembly.GetType("QuickStart.IUserService")!;
+        Assert.Equal(ServiceLifetime.Scoped, services.Last(d => d.ServiceType == type && !d.IsKeyedService).Lifetime);
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using var first = provider.CreateAsyncScope();
+        await using var second = provider.CreateAsyncScope();
+        Assert.Same(first.ServiceProvider.GetRequiredService(type), first.ServiceProvider.GetRequiredService(type));
+        Assert.NotSame(first.ServiceProvider.GetRequiredService(type), second.ServiceProvider.GetRequiredService(type));
+    }
+
+    [Fact]
+    public async Task AutoRegister_MultipleCandidates_PreservesExplicitInstance()
+    {
+        var source = QuickStartSource.Replace("public static class Startup",
+            "public class OtherUserService : UserService { }\n    public static class Startup");
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "ExplicitInstanceWithTwoCandidates");
+        var type = compiled.Assembly.GetType("QuickStart.IUserService")!;
+        var inner = Activator.CreateInstance(compiled.Assembly.GetType("QuickStart.OtherUserService")!)!;
+        var services = new ServiceCollection();
+        services.AddSingleton(type, inner);
+        InvokeStartup(compiled.Assembly, "WithAutoRegister", services);
+        await using var provider = services.BuildServiceProvider();
+        var decorator = provider.GetRequiredService(type);
+        Assert.Same(inner, decorator.GetType().GetField("_decorated", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(decorator));
+        var get = type.GetMethod("GetUserAsync")!;
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(decorator, [7])!);
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(decorator, [7])!);
+        Assert.Equal(1, inner.GetType().GetProperty("Calls")!.GetValue(inner));
+    }
+
+    [Fact]
+    public async Task Binding_CacheableRegistrationAddedAfterStartup_ReportsOrderError()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(QuickStartSource, "LateCacheRegistration");
+        var type = compiled.Assembly.GetType("QuickStart.IUserService")!;
+        var implementation = compiled.Assembly.GetType("QuickStart.UserService")!;
+        var services = new ServiceCollection();
+        services.AddSingleton(type, implementation);
+        services.AddMethodCache();
+        services.AddSingleton("late-non-cacheable");
+        await using (var valid = services.BuildServiceProvider())
+        {
+            Assert.Equal("late-non-cacheable", valid.GetRequiredService<string>());
+            Assert.Contains("Decorator", valid.GetRequiredService(type).GetType().Name);
+        }
+        services.AddSingleton(type, implementation);
+        await using var provider = services.BuildServiceProvider();
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetServices(type).ToArray());
+        Assert.Contains("registered after AddMethodCache", error.Message);
+    }
+
+    [Theory]
+    [InlineData("Singleton", ServiceLifetime.Singleton)]
+    [InlineData("Scoped", ServiceLifetime.Scoped)]
+    [InlineData("Transient", ServiceLifetime.Transient)]
+    public async Task FactoryRegistration_ExplicitLifetime_IsPreserved(string suffix, ServiceLifetime lifetime)
+    {
+        var source = QuickStartSource.Replace(
+            "public static class Startup",
+            $$"""
+            public static class ExplicitRegistration
+            {
+                public static void Register(IServiceCollection services)
+                {
+                    services.Add{{suffix}}<IUserService>(_ => new UserService());
+                    services.AddMethodCache();
+                }
+            }
+            public static class Startup
+            """);
+        var testAssembly = await _engine.CompileWithSourceGeneratorAsync(source, $"ExplicitRegistration_{suffix}");
+        var assembly = testAssembly.Assembly;
+        var interfaceType = assembly.GetType("QuickStart.IUserService")!;
+        var services = new ServiceCollection();
+        assembly.GetType("QuickStart.ExplicitRegistration")!.GetMethod("Register")!.Invoke(null, new object[] { services });
+        Assert.Equal(lifetime, services.Last(d => d.ServiceType == interfaceType).Lifetime);
+
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var firstScope = provider.CreateScope();
+        using var secondScope = provider.CreateScope();
+        var first = firstScope.ServiceProvider.GetRequiredService(interfaceType);
+        var repeated = firstScope.ServiceProvider.GetRequiredService(interfaceType);
+        var otherScope = secondScope.ServiceProvider.GetRequiredService(interfaceType);
+        Assert.Equal(lifetime != ServiceLifetime.Transient, ReferenceEquals(first, repeated));
+        Assert.Equal(lifetime == ServiceLifetime.Singleton, ReferenceEquals(first, otherScope));
+
+        Assert.Null(assembly.GetType("Microsoft.Extensions.DependencyInjection.GeneratedCachingServiceCollectionExtensions"));
+        var get = interfaceType.GetMethod("GetUserAsync")!;
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);
+        Assert.Equal("user-7", await (Task<string>)get.Invoke(first, new object[] { 7 })!);
+    }
+
     [Theory]
     [InlineData("WithConfiguration")]
-    [InlineData("WithoutConfiguration")]
+    [InlineData("WithAutoRegister")]
     [InlineData("WithExplicitAssembly")]
     public async Task AddMethodCache_FromApplicationAssembly_RegistersCachedDecorators(string startupMethod)
     {
@@ -100,7 +230,7 @@ namespace QuickStart
         Assert.Equal("user-42", first);
         Assert.Equal(first, second);
 
-        var implementation = provider.GetRequiredService(implementationType);
+        var implementation = service.GetType().GetField("_decorated", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(service)!;
         var calls = (int)implementationType.GetProperty("Calls")!.GetValue(implementation)!;
         Assert.Equal(1, calls);
     }
@@ -111,7 +241,6 @@ namespace QuickStart
         const string source = @"
 using System.Threading.Tasks;
 using MethodCache;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
@@ -124,7 +253,7 @@ namespace QuickStart
 
     public static class Startup
     {
-        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+        public static void Configure(IServiceCollection services) => services.AddMethodCache(b => b.FromAssembly(typeof(Startup).Assembly));
     }
 }";
 
@@ -139,12 +268,11 @@ namespace QuickStart
     }
 
     [Fact]
-    public async Task AddMethodCache_WithSeveralCachedInterfaces_RegistersGeneratedPolicySourceOnce()
+    public async Task AddMethodCache_WithSeveralCachedInterfaces_RegistersOnePolicySourcePerBoundService()
     {
         const string source = @"
 using System.Threading.Tasks;
 using MethodCache;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
@@ -173,7 +301,7 @@ namespace QuickStart
 
     public static class Startup
     {
-        public static void Configure(IServiceCollection services) => services.AddMethodCache();
+        public static void Configure(IServiceCollection services) => services.AddMethodCache(b => b.FromAssembly(typeof(Startup).Assembly).AutoRegister(ServiceLifetime.Singleton));
     }
 }";
 
@@ -185,8 +313,8 @@ namespace QuickStart
 
         await using var provider = services.BuildServiceProvider();
         var generatedSources = provider.GetServices<PolicySourceRegistration>()
-            .Where(r => r.Source.GetType().Name == "GeneratedAttributePolicySource");
-        Assert.Single(generatedSources);
+            .Where(r => r.Source.SourceId == "attributes");
+        Assert.Equal(2, generatedSources.Count());
     }
 
     [Fact]
@@ -257,7 +385,6 @@ using System;
 using System.Threading.Tasks;
 using MethodCache;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace QuickStart
 {
@@ -308,13 +435,12 @@ namespace QuickStart
     {
         var (_, interfaceType, implementationType) = await CompileQuickStartAsync("QuickStartApp_Registry");
 
-        // Nothing in the compiled assembly has run yet; TryGet runs its module initializer
-        Assert.True(MethodCacheDecorators.TryGet(interfaceType, out var registration));
-        Assert.Equal(interfaceType, registration.ServiceType);
-        Assert.Equal(implementationType, registration.ImplementationType);
-        Assert.NotNull(registration.AddPolicies);
-
-        Assert.False(MethodCacheDecorators.TryGet(typeof(IDisposable), out _));
+        var services = new ServiceCollection();
+        services.AddSingleton(interfaceType, implementationType);
+        services.AddMethodCache(b => b.FromAssembly(interfaceType.Assembly));
+        await using var provider = services.BuildServiceProvider();
+        Assert.EndsWith("Decorator", provider.GetRequiredService(interfaceType).GetType().Name);
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IDisposable));
     }
 
     private async Task<(Assembly Assembly, Type InterfaceType, Type ImplementationType)> CompileQuickStartAsync(string assemblyName)

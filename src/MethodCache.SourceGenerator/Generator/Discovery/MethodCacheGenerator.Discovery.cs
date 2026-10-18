@@ -21,8 +21,31 @@ namespace MethodCache.SourceGenerator
             if (interfaceSymbol?.TypeKind != TypeKind.Interface)
                 return null;
 
+            // This transform runs for every attributed method on every edit. The decorator covers the whole interface,
+            // so only its first attributed method builds it, not each of them again.
+            if (!SymbolEqualityComparer.Default.Equals(methodSymbol, FirstAttributedMethod(interfaceSymbol)))
+                return null;
+
             return GetGeneratedInterface(interfaceSymbol);
         }
+
+        /// <summary>The interface's first own method with [Cache] or [CacheInvalidate], if any.</summary>
+        private static IMethodSymbol? FirstAttributedMethod(INamedTypeSymbol interfaceSymbol)
+            => interfaceSymbol.GetMembers().OfType<IMethodSymbol>().FirstOrDefault(HasCacheAttribute);
+
+        private static bool HasCacheAttribute(IMethodSymbol method)
+            => method.GetAttributes().Any(a => IsCacheAttribute(a.AttributeClass) || IsCacheInvalidateAttribute(a.AttributeClass));
+
+        /// <summary>
+        /// The decorator of an interface that declares no attributed method itself but inherits some, such as
+        /// IUserRepository : IRepository&lt;User&gt;. One with attributed methods of its own is built from them.
+        /// </summary>
+        private static GeneratedInterface? GetDerivedInterface(INamedTypeSymbol interfaceSymbol)
+            => interfaceSymbol.TypeKind == TypeKind.Interface &&
+               FirstAttributedMethod(interfaceSymbol) == null &&
+               interfaceSymbol.AllInterfaces.Any(i => i.GetMembers().OfType<IMethodSymbol>().Any(m => HasCacheAttribute(m.OriginalDefinition)))
+                ? GetGeneratedInterface(interfaceSymbol)
+                : null;
 
         private static GeneratedInterface? GetGeneratedInterface(INamedTypeSymbol interfaceSymbol)
             => GetInterfaceInfo(interfaceSymbol) is { } info ? ToGeneratedInterface(info) : null;
@@ -39,6 +62,7 @@ namespace MethodCache.SourceGenerator
                 GetAssemblyIdentity(symbol),
                 Utils.GetFullyQualifiedName(symbol),
                 Utils.GetFullyQualifiedName(symbol.OriginalDefinition),
+                Utils.GetFullyQualifiedName(symbol.IsGenericType ? symbol.ConstructUnboundGenericType() : symbol),
                 Utils.GetDecoratorFullName(symbol),
                 symbol.IsGenericType,
                 info.CachedMethods.Length > 0,
@@ -119,6 +143,19 @@ namespace MethodCache.SourceGenerator
 
                 if (cacheAttr == null && invalidateAttr == null) continue;
 
+                // The decorator implements only the members a class can implement; anything else would keep its
+                // attribute and silently never be cached or invalidate
+                if (!Utils.IsInterceptable(method))
+                {
+                    diagnostics.Add(DiagnosticInfo.Create(
+                        Diagnostics.NotInterceptableMember,
+                        method.Locations.FirstOrDefault(),
+                        cacheAttr != null ? "Cache" : "CacheInvalidate",
+                        method.ToDisplayString(),
+                        method.IsStatic ? "static" : method.DeclaredAccessibility != Accessibility.Public ? "not public" : "sealed"));
+                    continue;
+                }
+
                 // Check for conflicts
                 if (cacheAttr != null && invalidateAttr != null)
                 {
@@ -131,6 +168,9 @@ namespace MethodCache.SourceGenerator
 
                 if (cacheAttr != null)
                 {
+                    var attributeErrors = ValidateCacheAttribute(cacheAttr, method.Locations.FirstOrDefault());
+                    diagnostics.AddRange(attributeErrors);
+                    if (attributeErrors.Count != 0) continue;
                     var validation = ValidateCacheMethod(method);
                     if (validation.diagnostic != null)
                     {

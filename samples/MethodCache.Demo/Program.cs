@@ -31,8 +31,8 @@ try
     services.AddSingleton<IUserProfiles, UserProfiles>();
     services.AddSingleton<IProductCatalog, ProductCatalog>();
 
-    services.AddMethodCache(config => config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-    services.AddMethodCacheFromConfiguration(configuration);
+    services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10)))
+        .FromConfiguration(configuration));
     // ─────────────────────────────────────────────────────────────────────────
 
     await using var provider = services.BuildServiceProvider();
@@ -159,8 +159,8 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 {
     Ui.Chapter(4, "Change policies without touching code", "Durations can come from the attribute, a global default, appsettings.json (reloaded live) or a runtime override.");
     Ui.Code("""
-        services.AddMethodCache(config => config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-        services.AddMethodCacheFromConfiguration(configuration);   // the "MethodCache" section
+        services.AddMethodCache(config => config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));   // the "MethodCache" section
         """);
 
     var admin = provider.GetRequiredService<ICacheAdministrator>();
@@ -177,10 +177,8 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
     Ui.Check(reloaded, "appsettings.json was reloaded while the app was running");
 
     // An operator shortens the duration during an incident.
-    await runtime.ApplyAsync(config => config
-        .ForService<IProductCatalog>()
-        .Method(c => c.GetProductAsync(default!))
-        .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1))));
+    await runtime.UpsertAsync<IProductCatalog, Product>(c => c.GetProductAsync(default!),
+        o => o.WithDuration(TimeSpan.FromMinutes(1)));
 
     var catalog = provider.GetRequiredService<IProductCatalog>();
     await catalog.GetProductAsync("KB-1");
@@ -227,8 +225,8 @@ static async Task InsightAsync(IServiceProvider provider)
     var admin = provider.GetRequiredService<ICacheAdministrator>();
     var stats = await admin.GetStatsAsync();
 
-    Ui.Step("Hits / misses", $"{stats.Hits:N0} / {stats.Misses:N0}  (hit ratio {stats.HitRatio:P1})");
-    Ui.Step("Entries", $"{stats.Entries:N0}");
+    Ui.Step("Hits / misses", $"{stats.Hits:N0} / {stats.Misses:N0}  (hit ratio {(stats.Hits + stats.Misses == 0 ? 0 : (double)stats.Hits / (stats.Hits + stats.Misses)):P1})");
+    Ui.Step("Entries", $"{stats.LocalMethodEntries:N0}");
     Ui.WriteEntries(admin.ListEntries(limit: 10));
 
     var before = admin.ListEntries(tag: "weather").Count;

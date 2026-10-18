@@ -1,4 +1,7 @@
 using System.Net.Http.Headers;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Text;
 using MethodCache.HttpCaching.Internal;
 using Xunit;
 
@@ -23,11 +26,59 @@ public class HttpCacheKeysTests
     }
 
     [Fact]
-    public void ForRequest_IsDeterministic_AndPrefixedWithTheClient()
+    public void UriTarget_RetainsItsFrozenEncoding_WhenHeaderFramingChanges()
+    {
+        Assert.Equal("D567348E39536CD7EA18F8D42522E6E9D1A2E9C6012DD7631F50B792FB475655:M7L6sA55szvnlkwqPQsgxuvRO/0ltkY3OZ+gNQIPscs=:m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, new Uri("https://example.test/a?x=1")));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(400)]
+    [InlineData(500)]
+    [InlineData(600)]
+    [InlineData(4096)]
+    public void UriFrame_StackAndPooledPathsMatchTheFrozenIncrementalEncoding(int queryLength)
+    {
+        var uri = new Uri("https://example.test/å?query=" + new string('x', queryLength));
+        var address = uri.GetComponents(UriComponents.HttpRequestUrl | UriComponents.UserInfo, UriFormat.UriEscaped);
+        using var reference = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var bytes = Encoding.UTF8.GetBytes(address);
+        Span<byte> length = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
+        reference.AppendData(length); reference.AppendData(bytes);
+        var client = Convert.ToHexString(SHA256.HashData(Encoding.Unicode.GetBytes("api")));
+        Assert.Equal(client + ":" + Convert.ToBase64String(reference.GetHashAndReset()) + ":m:GET", HttpCacheKeys.ForUri("api", HttpMethod.Get, uri));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    [InlineData(300)]
+    [InlineData(4096)]
+    public void VariantFrame_StackAndStreamingMatchTheExactUtf16IncrementalEncoding(int valueLength)
+    {
+        using var request = Get();
+        var value = new string('é', valueLength) + "\ud800";
+        request.Headers.TryAddWithoutValidation("X-Tenant", new[] { value, "two" });
+        using var reference = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var part in new[] { "schema", "x-tenant", "1", "2", value, "two" })
+        {
+            var bytes = new byte[part.Length * 2];
+            for (var i = 0; i < part.Length; i++) BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(i * 2), part[i]);
+            var length = new byte[4];
+            BinaryPrimitives.WriteInt32LittleEndian(length, bytes.Length);
+            reference.AppendData(length); reference.AppendData(bytes);
+        }
+        Assert.Equal("base|" + Convert.ToBase64String(reference.GetHashAndReset()), HttpCacheKeys.ForVariant("base", "schema", request, ["X-Tenant"]));
+    }
+
+    [Fact]
+    public void ForRequest_IsDeterministic_AndSeparatesHashedClients()
     {
         var key = HttpCacheKeys.ForRequest("api", Get());
 
-        Assert.StartsWith("api:", key);
+        Assert.DoesNotContain("api", key, StringComparison.Ordinal);
+        Assert.NotEqual(key, HttpCacheKeys.ForRequest("other", Get()));
         Assert.Equal(key, HttpCacheKeys.ForRequest("api", Get()));
     }
 

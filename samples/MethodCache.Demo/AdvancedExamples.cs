@@ -22,9 +22,9 @@ public static class AdvancedExamples
         services.AddSingleton<ITenantCatalog>(sp => sp.GetRequiredService<TenantCatalog>());
         services.AddMethodCache(config =>
         {
-            config.ForService<IAvailableProducts>().Method(s => s.FindAsync(Any<int>.Value))
+            config.Method((IAvailableProducts s) => s.FindAsync(Any<int>.Value))
                 .CacheWhen(product => product is not null);
-            config.ForService<IResilientRates>().Method(s => s.GetAsync(Any<string>.Value))
+            config.Method((IResilientRates s) => s.GetAsync(Any<string>.Value))
                 .Configure(options => options.FailSafe(TimeSpan.FromMinutes(1), retryAfter: TimeSpan.FromSeconds(5)));
         });
         return services.BuildServiceProvider();

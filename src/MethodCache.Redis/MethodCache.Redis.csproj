@@ -2,12 +2,13 @@
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
-    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>MethodCache.Redis</PackageId>
     <Description>Redis as MethodCache's distributed cache, with a pub/sub backplane that keeps every instance's in-memory cache in sync</Description>
+    <PackageTags>cache;methodcache;redis;distributed-cache;backplane;pubsub</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,11 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../MethodCache.Core/Runtime/Distributed/LosslessWireText.cs" Link="Internal/LosslessWireText.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
   </ItemGroup>
 
 </Project>

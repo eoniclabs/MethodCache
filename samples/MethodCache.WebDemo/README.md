@@ -27,10 +27,11 @@ read attempts for this instance, so the proof does not depend on response timing
 ## Repeatable data
 
 [ProductStore.cs](ProductStore.cs) uses SQLite with transactions, so two processes share data without losing
-each other's price updates. By default the database is `methodcache-webdemo/products.sqlite` in the system
+each other's price updates. By default the database is `methodcache-webdemo-products.db` in the system
 temp directory. Both Redis profiles use that same file. Set `Demo__DataFile` to an absolute path to choose
 another database, `Demo__QueryDelayMs` to change the simulated latency, and `Demo__CachePrefix` to isolate
-another run's Redis cache. Instances sharing data must also use the same cache prefix.
+another run's Redis cache. Instances sharing data must also use the same cache prefix. Decimal prices retain
+full precision; the earlier temporary JSON file is left untouched.
 
 `POST /demo/reset` restores all four seed products, resets this instance's query counter, and invalidates
 product/list caches everywhere. Reset and query-counter endpoints exist only in Development. A missing, null or
@@ -48,15 +49,11 @@ dotnet run --project samples/MethodCache.WebDemo --launch-profile redis-b  # htt
 1. `GET :5081/products/3` runs the query and stores the result in memory and in Redis.
 2. `GET :5082/products/3` is answered from Redis, without querying the database.
 3. `PUT :5081/products/3/price` invalidates the product everywhere: instance B drops its in-memory copy too.
-4. Open the dashboard at http://localhost:18888 to see a trace for every request, with MethodCache's hits and
-   misses inside it, and the cache metrics.
+4. Open the dashboard at http://localhost:18888 to see a trace for every request, with MethodCache's misses and
+   Redis reads inside it, and the cache metrics. Hits served from memory have no span; the metrics count them.
 
 [MethodCache.Redis.http](MethodCache.Redis.http) walks through both instances, including a cached product
 that survives another product's price change and per-instance database counters.
-
-The default clock-skew tolerance is two seconds: entries loaded within that window after a tag invalidation
-can be rejected by another instance. For a fresh shared-cache demonstration, reset and wait at least three
-seconds **before** the first product GET. This is a conservative freshness check, not a loss of updated data.
 
 ## Redis outage and recovery
 

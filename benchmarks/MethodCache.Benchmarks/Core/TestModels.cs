@@ -9,11 +9,11 @@ namespace MethodCache.Benchmarks.Core;
 public class SmallModel
 {
     public int Id { get; set; }
-    
+
     public string Name { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
-    
+
     public static SmallModel Create(int id) => new()
     {
         Id = id,
@@ -28,21 +28,21 @@ public class SmallModel
 public class MediumModel
 {
     public int Id { get; set; }
-    
+
     public string Name { get; set; } = string.Empty;
-    
+
     public string Description { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
-    
+
     public DateTime UpdatedAt { get; set; }
-    
+
     public List<string> Tags { get; set; } = new();
-    
+
     public Dictionary<string, object> Properties { get; set; } = new();
-    
+
     public decimal Price { get; set; }
-    
+
     public bool IsActive { get; set; }
 
     public static MediumModel Create(int id) => new()
@@ -68,28 +68,28 @@ public class MediumModel
 public class LargeModel
 {
     public int Id { get; set; }
-    
+
     public string Name { get; set; } = string.Empty;
-    
+
     public string Description { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
-    
+
     public DateTime UpdatedAt { get; set; }
-    
+
     public List<string> Tags { get; set; } = new();
-    
+
     public Dictionary<string, object> Properties { get; set; } = new();
-    
+
     public List<MediumModel> RelatedItems { get; set; } = new();
-    
+
     public byte[] BinaryData { get; set; } = Array.Empty<byte>();
-    
+
     public List<Dictionary<string, string>> NestedData { get; set; } = new();
-    
+
     [Key(10)]
     public decimal Price { get; set; }
-    
+
     [Key(11)]
     public bool IsActive { get; set; }
 
@@ -125,19 +125,19 @@ public class LargeModel
 public class User
 {
     public int Id { get; set; }
-    
+
     public string FirstName { get; set; } = string.Empty;
-    
+
     public string LastName { get; set; } = string.Empty;
-    
+
     public string Email { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
-    
+
     public DateTime LastLoginAt { get; set; }
-    
+
     public List<string> Roles { get; set; } = new();
-    
+
     public UserPreferences Preferences { get; set; } = new();
 
     public static User Create(int id) => new()
@@ -158,11 +158,11 @@ public class User
 public class UserPreferences
 {
     public string Theme { get; set; } = "Light";
-    
+
     public string Language { get; set; } = "en-US";
-    
+
     public Dictionary<string, bool> Features { get; set; } = new();
-    
+
     public NotificationSettings Notifications { get; set; } = new();
 
     public static UserPreferences Create() => new()
@@ -182,9 +182,9 @@ public class UserPreferences
 public class NotificationSettings
 {
     public bool EmailEnabled { get; set; }
-    
+
     public bool PushEnabled { get; set; }
-    
+
     public bool SmsEnabled { get; set; }
 
     public static NotificationSettings Create() => new()
@@ -201,19 +201,19 @@ public class NotificationSettings
 public class Product
 {
     public int Id { get; set; }
-    
+
     public string Name { get; set; } = string.Empty;
-    
+
     public string Description { get; set; } = string.Empty;
-    
+
     public decimal Price { get; set; }
-    
+
     public string Category { get; set; } = string.Empty;
-    
+
     public List<string> Tags { get; set; } = new();
-    
+
     public ProductInventory Inventory { get; set; } = new();
-    
+
     public List<ProductReview> Reviews { get; set; } = new();
 
     public static Product Create(int id) => new()
@@ -236,9 +236,9 @@ public class Product
 public class ProductInventory
 {
     public int Quantity { get; set; }
-    
+
     public int ReservedQuantity { get; set; }
-    
+
     public DateTime LastUpdated { get; set; }
 
     public static ProductInventory Create() => new()
@@ -252,11 +252,11 @@ public class ProductInventory
 public class ProductReview
 {
     public int Id { get; set; }
-    
+
     public int Rating { get; set; }
-    
+
     public string Comment { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
 
     public static ProductReview Create(int id) => new()

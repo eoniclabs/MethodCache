@@ -26,7 +26,7 @@ public enum BackplaneChaos
 /// dropped (all, or every Nth), delayed on a <see cref="TimeProvider"/>, duplicated, held and reordered, and a member
 /// can be disconnected, so its publishes fail and nothing reaches it.
 /// </summary>
-public sealed class ChaosBackplaneHub(TimeProvider? time = null)
+internal sealed class ChaosBackplaneHub(TimeProvider? time = null)
 {
     private readonly object _lock = new();
     private readonly List<Member> _members = new();
@@ -186,6 +186,12 @@ public sealed class ChaosBackplaneHub(TimeProvider? time = null)
 
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) =>
             hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = tag, InstanceId = InstanceId });
+
+        public Task PublishClearAsync(CancellationToken cancellationToken = default) =>
+            hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.ClearAll, InstanceId = InstanceId });
+
+        public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default) =>
+            hub.PublishAsync(this, new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = methodId, InstanceId = InstanceId });
 
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
         {

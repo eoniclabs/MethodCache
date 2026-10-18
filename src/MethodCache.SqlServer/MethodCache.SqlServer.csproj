@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
-    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -13,7 +13,7 @@
     <PackageId>MethodCache.SqlServer</PackageId>
     <Title>MethodCache SQL Server Provider</Title>
     <Description>SQL Server as MethodCache's distributed cache, with a polling backplane that keeps every instance's in-memory cache in sync</Description>
-    <PackageTags>cache;sql-server;database;dotnet;performance;infrastructure</PackageTags>
+    <PackageTags>cache;methodcache;sql-server;distributed-cache;backplane</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <!-- Patched PKCS dependency of SqlClient: https://github.com/advisories/GHSA-846f-f764-76mx -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
@@ -31,14 +33,16 @@
   <ItemGroup>
     <InternalsVisibleTo Include="MethodCache.SqlServer.Tests" />
     <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../MethodCache.Core/Runtime/Distributed/LosslessWireText.cs" Link="Internal/LosslessWireText.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Shared/LosslessUtf16.cs" Link="Internal/LosslessUtf16.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="migrations/*.sql" Pack="true" PackagePath="migrations/" />
+  </ItemGroup>
 </Project>

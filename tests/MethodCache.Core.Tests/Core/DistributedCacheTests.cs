@@ -1,5 +1,7 @@
 using FluentAssertions;
+using System.Threading.Channels;
 using MethodCache.Core.Runtime.Distributed;
+using MethodCache.Core.Tests.FaultInjection;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.Serialization.MessagePack;
@@ -39,8 +41,7 @@ public class DistributedCacheTests
             time ?? _time);
 
         return new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
             time ?? _time,
             layer);
     }
@@ -128,24 +129,48 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public void BlockingOnAMiss_NeverNeedsTheCallersSynchronizationContext()
+    public async Task BlockingOnAMiss_NeverNeedsTheCallersSynchronizationContext()
     {
-        // Generated decorators for synchronous methods block on the load. On a UI or classic ASP.NET thread that
-        // only deadlocks if a continuation needs the blocked thread's context, so none may post to it.
-        var node = CreateNode(backplane: false, cache: new SlowDistributedCache(_shared));
+        // A caller blocks on the async API. Keep that caller on its own context/thread,
+        // while the async test controls every transport completion without sleeps.
+        using var cache = new ControlledDistributedCache(_shared);
+        using var node = CreateNode(backplane: false, cache: cache);
         var context = new RecordingSynchronizationContext();
-        string? result = null;
-
-        var thread = new Thread(() =>
+        var returned = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completed = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using (ExecutionContext.SuppressFlow())
         {
-            SynchronizationContext.SetSynchronizationContext(context);
-            result = Get(node, "key", () => "loaded").GetAwaiter().GetResult();
-        });
-        thread.Start();
+            new Thread(() =>
+            {
+                try
+                {
+                    SynchronizationContext.SetSynchronizationContext(context);
+                    var pending = Get(node, "key", () => "loaded");
+                    returned.TrySetResult(pending.IsCompleted);
+                    completed.TrySetResult(pending.GetAwaiter().GetResult());
+                }
+                catch (Exception error)
+                {
+                    returned.TrySetException(error);
+                    completed.TrySetException(error);
+                }
+                finally { SynchronizationContext.SetSynchronizationContext(null); }
+            })
+            { IsBackground = true }.Start();
+        }
 
-        thread.Join(TimeSpan.FromSeconds(10)).Should().BeTrue();
-        result.Should().Be("loaded");
-        context.Posts.Should().Be(0);
+        try
+        {
+            // The outer API must have returned an incomplete task before its first I/O is released.
+            Assert.False(await returned.Task.WaitAsync(deadline.Token));
+            await cache.DrainUntilAsync(completed.Task, deadline.Token);
+            Assert.Equal("loaded", await completed.Task.WaitAsync(deadline.Token));
+            Assert.True(cache.CompletedReads > 0);
+            Assert.True(cache.CompletedWrites > 0);
+            Assert.Equal(0, context.Posts);
+        }
+        finally { cache.Dispose(); }
     }
 
     [Fact]
@@ -352,13 +377,13 @@ public class DistributedCacheTests
         var services = new ServiceCollection();
         services.AddSingleton<IDistributedCache>(new MethodCache.TestSupport.AtomicTestCache());
         services.AddMethodCache();
-        services.AddMethodCacheDistributedCache(options => options.KeyPrefix = "app:");
+        services.AddMethodCacheDistributedCache(sp => sp.GetRequiredService<IDistributedCache>(), options => options.KeyPrefix = "app:");
 
         await using var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
         await manager.GetOrCreateFastAsync("key", "M", () => Task.FromResult("value"), Policy());
 
-        var stored = await provider.GetRequiredService<IDistributedCache>().GetAsync("app:e:key");
+        var stored = await provider.GetRequiredService<IDistributedCache>().GetAsync("app:e6:s1:key");
         stored.Should().NotBeNull();
     }
 
@@ -548,27 +573,47 @@ public class DistributedCacheTests
         var release = new TaskCompletionSource<string>();
 
         var load = first.GetOrCreateFastAsync("key", "M", () => release.Task, Policy());
-        _time.Advance(DistributedCacheLayer.RemovalLifetime);
+        _time.Advance(TimeSpan.FromDays(1));
         release.SetResult("slow");
         (await load).Should().Be("slow");
 
         (await Get(second, "key", () => "fresh")).Should().Be("fresh");
     }
 
-    [Fact]
-    public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys(bool asynchronousCache)
     {
-        var layer = new DistributedCacheLayer(_shared, new JsonCacheSerializer(), new DistributedCacheOptions(), new HangingBackplane(), _time);
-        var node = new InMemoryCacheManager(
-            new NullCacheMetricsProvider(),
-            MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
-            _time,
+        // Each publish has a cancellation timer and a WaitAsync timer. Cache-operation timers are disposed
+        // before publishing starts; the held stamp below has only two, so it cannot signal this barrier.
+        var time = new TimerRegistrationTimeProvider(expectedTimers: 100);
+        var cache = new ToggleDistributedCache(_shared);
+        var releaseStamp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (asynchronousCache)
+        {
+            cache.BeforeSet = _ =>
+            {
+                cache.BeforeSet = null;
+                return releaseStamp.Task;
+            };
+        }
+        var backplane = new HangingBackplane();
+        using var layer = new DistributedCacheLayer(cache, new JsonCacheSerializer(), new DistributedCacheOptions(), backplane, time);
+        using var node = new InMemoryCacheManager(
+                        MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }),
+            time,
             layer);
 
         var invalidation = node.InvalidateByKeysAsync(Enumerable.Range(0, 50).Select(i => $"key{i}").ToArray());
-        _time.Advance(TimeSpan.FromSeconds(1));
+        releaseStamp.SetResult();
+        // Wall-time waits are deadlock guards only; fake time controls the timeout being tested.
+        await time.TimersRegistered.WaitAsync(TimeSpan.FromSeconds(30));
+        backplane.PublishedKeys.Should().Be(50);
+        invalidation.IsCompleted.Should().BeFalse();
+        time.Advance(TimeSpan.FromSeconds(1));
 
-        await invalidation.WaitAsync(TimeSpan.FromSeconds(5));
+        await invalidation.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -642,7 +687,7 @@ public class DistributedCacheTests
 
     [Theory]
     [InlineData(2, "fresh")]
-    [InlineData(0, "stale")]
+    [InlineData(0, "fresh")]
     public async Task ClockSkewTolerance_CoversAServerWhoseClockRunsAhead(int toleranceSeconds, string expected)
     {
         void Configure(DistributedCacheOptions o)
@@ -710,6 +755,12 @@ public class DistributedCacheTests
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) =>
             hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, Tag = tag, InstanceId = InstanceId });
 
+        public Task PublishClearAsync(CancellationToken cancellationToken = default) =>
+            hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.ClearAll, InstanceId = InstanceId });
+
+        public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default) =>
+            hub.SendAsync(new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, Key = methodId, InstanceId = InstanceId });
+
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
         {
             Handler = onMessage;
@@ -776,8 +827,14 @@ public class DistributedCacheTests
     /// <summary>A backplane whose publishes never complete and ignore cancellation.</summary>
     private sealed class HangingBackplane : IBackplane
     {
+        private int _publishedKeys;
+        public int PublishedKeys => Volatile.Read(ref _publishedKeys);
         public string InstanceId { get; } = Guid.NewGuid().ToString("N");
-        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
+        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _publishedKeys);
+            return new TaskCompletionSource().Task;
+        }
         public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) => new TaskCompletionSource().Task;
         public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UnsubscribeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -857,38 +914,94 @@ public class DistributedCacheTests
         }
     }
 
-    /// <summary>Completes every call asynchronously, like a real network cache.</summary>
-    private sealed class SlowDistributedCache(IDistributedCache inner) : IAtomicInvalidationStore
+    /// <summary>Returns pending I/O that only the async test controller can complete.</summary>
+    private sealed class ControlledDistributedCache(IDistributedCache inner) : IAtomicInvalidationStore, IDisposable
     {
-        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) => Task.Run(() => ((IAtomicInvalidationStore)inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken), cancellationToken);
+        private readonly Channel<Func<Task>> _requests = Channel.CreateUnbounded<Func<Task>>();
+        private readonly CancellationTokenSource _stop = new();
+        private int _disposed;
+        public int CompletedReads { get; private set; }
+        public int CompletedWrites { get; private set; }
+
+        private Task<T> Enqueue<T>(Func<Task<T>> operation)
+        {
+            var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var registration = _stop.Token.Register(() => completion.TrySetCanceled());
+            _requests.Writer.TryWrite(async () =>
+            {
+                try { completion.TrySetResult(await operation().ConfigureAwait(false)); }
+                catch (Exception error) { completion.TrySetException(error); }
+                finally { registration.Dispose(); }
+            });
+            return completion.Task;
+        }
+
+        public async Task DrainUntilAsync(Task caller, CancellationToken token)
+        {
+            while (!caller.IsCompleted || CompletedWrites == 0)
+            {
+                using var nextCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+                var next = _requests.Reader.ReadAsync(nextCancellation.Token).AsTask();
+                if (!caller.IsCompleted)
+                    await Task.WhenAny(caller, next).WaitAsync(token);
+                if (caller.IsCompleted)
+                {
+                    await caller;
+                    if (CompletedWrites > 0)
+                    {
+                        nextCancellation.Cancel();
+                        try { await next; } catch (OperationCanceledException) { }
+                        break;
+                    }
+                }
+                await (await next.WaitAsync(token))();
+            }
+        }
+
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default) =>
+            Enqueue(async () =>
+            {
+                await ((IAtomicInvalidationStore)inner).WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken).ConfigureAwait(false);
+                return true;
+            });
 
         public byte[]? Get(string key) => inner.Get(key);
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => inner.Set(key, value, options);
         public void Refresh(string key) => inner.Refresh(key);
         public void Remove(string key) => inner.Remove(key);
 
-        public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Enqueue(() =>
         {
-            await Task.Delay(10, token).ConfigureAwait(false);
-            return inner.Get(key);
-        }
+            var value = inner.Get(key);
+            CompletedReads++;
+            return Task.FromResult(value);
+        });
 
-        public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => Enqueue(() =>
         {
-            await Task.Delay(10, token).ConfigureAwait(false);
             inner.Set(key, value, options);
-        }
+            CompletedWrites++;
+            return Task.FromResult(true);
+        });
 
-        public async Task RefreshAsync(string key, CancellationToken token = default)
+        public Task RefreshAsync(string key, CancellationToken token = default) => Enqueue(() =>
         {
-            await Task.Delay(10, token).ConfigureAwait(false);
             inner.Refresh(key);
-        }
+            return Task.FromResult(true);
+        });
 
-        public async Task RemoveAsync(string key, CancellationToken token = default)
+        public Task RemoveAsync(string key, CancellationToken token = default) => Enqueue(() =>
         {
-            await Task.Delay(10, token).ConfigureAwait(false);
             inner.Remove(key);
+            return Task.FromResult(true);
+        });
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            _stop.Cancel();
+            _requests.Writer.TryComplete();
+            _stop.Dispose();
         }
     }
 

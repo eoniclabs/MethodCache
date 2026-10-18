@@ -25,7 +25,7 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
     protected override void ConfigureBenchmarkServices(IServiceCollection services)
     {
         services.AddSingleton<BasicCacheService>();
-        services.AddIBasicCacheServiceWithCaching(sp => sp.GetRequiredService<BasicCacheService>());
+        services.AddSingleton<IBasicCacheService>(sp => sp.GetRequiredService<BasicCacheService>());
     }
 
     protected override void OnSetupComplete()
@@ -92,23 +92,25 @@ public class BasicCachingBenchmarks : SimpleBenchmarkBase
     public async Task<List<object>> MultipleCacheHits()
     {
         var results = new List<object>();
-        
+
         // Warm up cache for all items
         for (int i = 0; i < 10; i++)
         {
             await _cacheService.GetDataAsync(i, ModelType);
         }
-        
+
         // Measure multiple hits
         for (int i = 0; i < 10; i++)
         {
             results.Add(await _cacheService.GetDataAsync(i, ModelType));
         }
-        
+
         return results;
     }
 }
 
+// The benchmarks cache in memory only, and return lists of different models
+#pragma warning disable MC0020
 public interface IBasicCacheService
 {
     [Cache(Duration = "00:10:00", Tags = new[] { "data" })]
@@ -120,6 +122,7 @@ public interface IBasicCacheService
     [CacheInvalidate(Tags = new[] { "data" })]
     Task InvalidateDataAsync(int size, string modelType);
 }
+#pragma warning restore MC0020
 
 public class BasicCacheService : IBasicCacheService
 {

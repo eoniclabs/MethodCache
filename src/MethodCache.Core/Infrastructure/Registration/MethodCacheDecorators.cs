@@ -1,77 +1,12 @@
-using System.Collections.Concurrent;
-using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace MethodCache.Infrastructure
 {
     /// <summary>
-    /// The generated decorators of every loaded assembly. The source generator registers each assembly's
-    /// decorators from a module initializer, so <c>AddMethodCache()</c> finds them without scanning types,
-    /// which keeps registration working under trimming and Native AOT.
-    /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static class MethodCacheDecorators
-    {
-        private static readonly ConcurrentDictionary<Type, DecoratorRegistration> Registrations = new();
-
-        /// <summary>
-        /// Registers a generated decorator. Called by generated code; a later registration for the same
-        /// service type replaces the earlier one.
-        /// </summary>
-        public static void Register(DecoratorRegistration registration)
-        {
-            ArgumentNullException.ThrowIfNull(registration);
-            Registrations[registration.ServiceType] = registration;
-        }
-
-        /// <summary>
-        /// Returns the generated decorator for <paramref name="serviceType"/>, running the module initializer
-        /// of the assembly that declares it first, so its decorators are registered even if nothing in that
-        /// assembly has run yet.
-        /// </summary>
-        public static bool TryGet(Type serviceType, [NotNullWhen(true)] out DecoratorRegistration? registration)
-        {
-            ArgumentNullException.ThrowIfNull(serviceType);
-
-            if (Registrations.TryGetValue(serviceType, out registration))
-            {
-                return true;
-            }
-
-            RuntimeHelpers.RunModuleConstructor(serviceType.Module.ModuleHandle);
-            return Registrations.TryGetValue(serviceType, out registration);
-        }
-
-        /// <summary>
-        /// Returns the generated decorators declared in <paramref name="assembly"/>.
-        /// </summary>
-        public static IReadOnlyList<DecoratorRegistration> For(Assembly assembly)
-        {
-            ArgumentNullException.ThrowIfNull(assembly);
-
-            RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
-            return Registrations.Values
-                .Where(r => r.ServiceType.Assembly == assembly)
-                .OrderBy(r => r.ServiceType.FullName, StringComparer.Ordinal)
-                .ToList();
-        }
-
-        /// <summary>
-        /// Returns every registered decorator. Under Native AOT all module initializers run at startup, so this
-        /// covers the whole application.
-        /// </summary>
-        public static IReadOnlyList<DecoratorRegistration> All()
-            => Registrations.Values.OrderBy(r => r.ServiceType.FullName, StringComparer.Ordinal).ToList();
-    }
-
-    /// <summary>
     /// How to wrap one service interface in its generated caching decorator.
     /// </summary>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class DecoratorRegistration
+    internal sealed class DecoratorRegistration
     {
         /// <param name="serviceType">The interface with cache attributes.</param>
         /// <param name="decorate">Creates the decorator around the inner service.</param>
@@ -88,6 +23,7 @@ namespace MethodCache.Infrastructure
         {
             ServiceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
             Decorate = decorate ?? throw new ArgumentNullException(nameof(decorate));
+            GeneratedIn = decorate.Method.Module.Assembly;
             AddPolicies = addPolicies;
             ImplementationType = implementationType;
         }
@@ -112,5 +48,9 @@ namespace MethodCache.Infrastructure
         /// </summary>
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         public Type? ImplementationType { get; }
+
+        /// <summary>The assembly whose generated code created this registration.</summary>
+        internal IReadOnlyList<(string Id, string Key)> MethodKeys { get; init; } = [];
+        internal Assembly GeneratedIn { get; set; } = null!;
     }
 }

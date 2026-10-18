@@ -82,7 +82,7 @@ public class RuntimeCacheConfiguratorTests
         var snapshots = store.GetSnapshots();
         Assert.Equal(2, snapshots.Count);
 
-        var typeName = (typeof(IRuntimeDocService).FullName ?? nameof(IRuntimeDocService)).Replace('+', '.');
+        var typeName = "[MethodCache.Core.Tests]" + (typeof(IRuntimeDocService).FullName ?? nameof(IRuntimeDocService)).Replace('+', '.');
         var getMethodId = $"{typeName}.{nameof(IRuntimeDocService.GetAsync)}";
         var searchMethodId = $"{typeName}.{nameof(IRuntimeDocService.SearchAsync)}";
 
@@ -262,7 +262,7 @@ public class RuntimeCacheConfiguratorTests
         var store = new RuntimePolicyStore();
         IRuntimeCacheConfigurator configurator = new RuntimeCacheConfigurator(store);
 
-        var typeName = (typeof(IRuntimeDocService).FullName ?? nameof(IRuntimeDocService)).Replace('+', '.');
+        var typeName = "[MethodCache.Core.Tests]" + (typeof(IRuntimeDocService).FullName ?? nameof(IRuntimeDocService)).Replace('+', '.');
         var methodId = $"{typeName}.{nameof(IRuntimeDocService.GetAsync)}";
 
         await configurator.UpsertAsync(methodId, (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromMinutes(1)));

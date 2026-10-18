@@ -40,19 +40,19 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
     public async Task<List<User>> GenericRepository_Users_CacheHits()
     {
         var results = new List<User>();
-        
+
         // Warm up cache
         for (int i = 0; i < ItemCount; i++)
         {
             await _userRepository.GetByIdAsync(i);
         }
-        
+
         // Measure cache hits
         for (int i = 0; i < ItemCount; i++)
         {
             results.Add(await _userRepository.GetByIdAsync(i));
         }
-        
+
         return results;
     }
 
@@ -60,19 +60,19 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
     public async Task<List<Product>> GenericRepository_Products_CacheHits()
     {
         var results = new List<Product>();
-        
+
         // Warm up cache
         for (int i = 0; i < ItemCount; i++)
         {
             await _productRepository.GetByIdAsync(i);
         }
-        
+
         // Measure cache hits
         for (int i = 0; i < ItemCount; i++)
         {
             results.Add(await _productRepository.GetByIdAsync(i));
         }
-        
+
         return results;
     }
 
@@ -80,13 +80,13 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
     public async Task<List<object>> GenericRepository_Mixed_Operations()
     {
         var results = new List<object>();
-        
+
         for (int i = 0; i < ItemCount / 2; i++)
         {
             // Interleave user and product operations
             results.Add(await _userRepository.GetByIdAsync(i));
             results.Add(await _productRepository.GetByIdAsync(i));
-            
+
             if (i % 10 == 0)
             {
                 // Occasional list operations
@@ -96,7 +96,7 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
                 results.AddRange(products.Cast<object>());
             }
         }
-        
+
         return results;
     }
 
@@ -109,7 +109,7 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
             await _userRepository.GetByIdAsync(i);
             await _productRepository.GetByIdAsync(i);
         }
-        
+
         // Test independent invalidation
         for (int i = 0; i < 10; i++)
         {
@@ -122,25 +122,25 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
     public async Task<List<object>> GenericMethods_WithConstraints()
     {
         var results = new List<object>();
-        
+
         // Create test entities
         var users = Enumerable.Range(0, ItemCount).Select(i => User.Create(i)).ToList();
         var products = Enumerable.Range(0, ItemCount).Select(i => Product.Create(i)).ToList();
-        
+
         // Test generic methods with constraints
         for (int i = 0; i < ItemCount / 10; i++)
         {
             var userBatch = users.Skip(i * 10).Take(10).ToList();
             var productBatch = products.Skip(i * 10).Take(10).ToList();
-            
+
             // These will use generic method caching
             var processedUsers = await _genericService.ProcessEntitiesAsync(userBatch);
             var processedProducts = await _genericService.ProcessEntitiesAsync(productBatch);
-            
+
             results.AddRange(processedUsers.Cast<object>());
             results.AddRange(processedProducts.Cast<object>());
         }
-        
+
         return results;
     }
 
@@ -148,7 +148,7 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
     public async Task ConcurrentGenericAccess()
     {
         var tasks = new List<Task>();
-        
+
         for (int thread = 0; thread < 4; thread++)
         {
             int threadId = thread;
@@ -157,14 +157,14 @@ public class GenericInterfaceBenchmarks : BenchmarkBase
                 for (int i = 0; i < ItemCount / 4; i++)
                 {
                     int id = threadId * (ItemCount / 4) + i;
-                    
+
                     // Concurrent access to different generic instances
                     await _userRepository.GetByIdAsync(id);
                     await _productRepository.GetByIdAsync(id);
                 }
             }));
         }
-        
+
         await Task.WhenAll(tasks);
     }
 }
@@ -179,7 +179,7 @@ public interface IGenericRepository<T> where T : class
 }
 
 // Generic repository implementation
-public class GenericRepository<T> : IGenericRepository<T> where T : class
+internal class GenericRepository<T> : IGenericRepository<T> where T : class
 {
     private readonly ICacheManager _cacheManager;
     private readonly IPolicyRegistry _policyRegistry;
@@ -199,7 +199,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdAsync));
         var args = new object[] { id };
-        
+
         return await _cacheManager.GetOrCreateAsync<T>(
             $"GenericRepository<{typeof(T).Name}>.GetByIdAsync",
             args,
@@ -212,7 +212,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetAllAsync));
         var args = Array.Empty<object>();
-        
+
         return await _cacheManager.GetOrCreateAsync<List<T>>(
             $"GenericRepository<{typeof(T).Name}>.GetAllAsync",
             args,
@@ -225,7 +225,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         var settings = _policyRegistry.GetSettingsFor<GenericRepository<T>>(nameof(GetByIdsAsync));
         var args = new object[] { ids };
-        
+
         return await _cacheManager.GetOrCreateAsync<List<T>>(
             $"GenericRepository<{typeof(T).Name}>.GetByIdsAsync",
             args,
@@ -242,19 +242,19 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     private async Task<T> CreateEntityAsync(int id)
     {
         await Task.Delay(Random.Shared.Next(5, 15));
-        
+
         if (typeof(T) == typeof(User))
             return (T)(object)User.Create(id);
         if (typeof(T) == typeof(Product))
             return (T)(object)Product.Create(id);
-            
+
         throw new NotSupportedException($"Type {typeof(T).Name} not supported");
     }
 
     private async Task<List<T>> CreateAllEntitiesAsync()
     {
         await Task.Delay(Random.Shared.Next(20, 50));
-        
+
         return Enumerable.Range(1, 10)
             .Select(i => CreateEntityAsync(i).Result)
             .ToList();
@@ -263,7 +263,7 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     private async Task<List<T>> CreateEntitiesByIdsAsync(int[] ids)
     {
         await Task.Delay(Random.Shared.Next(10, 30));
-        
+
         return ids.Select(id => CreateEntityAsync(id).Result).ToList();
     }
 }
@@ -276,7 +276,7 @@ public interface IGenericService
 }
 
 // Generic service implementation
-public class GenericService : IGenericService
+internal class GenericService : IGenericService
 {
     private readonly ICacheManager _cacheManager;
     private readonly IPolicyRegistry _policyRegistry;
@@ -296,7 +296,7 @@ public class GenericService : IGenericService
     {
         var settings = _policyRegistry.GetSettingsFor<GenericService>(nameof(ProcessEntitiesAsync));
         var args = new object[] { entities };
-        
+
         return await _cacheManager.GetOrCreateAsync<List<T>>(
             $"GenericService.ProcessEntitiesAsync<{typeof(T).Name}>",
             args,
@@ -305,13 +305,13 @@ public class GenericService : IGenericService
             _keyGenerator);
     }
 
-    public virtual async Task<TResult> TransformAsync<TInput, TResult>(TInput input) 
-        where TInput : class 
+    public virtual async Task<TResult> TransformAsync<TInput, TResult>(TInput input)
+        where TInput : class
         where TResult : class, new()
     {
         var settings = _policyRegistry.GetSettingsFor<GenericService>(nameof(TransformAsync));
         var args = new object[] { input };
-        
+
         return await _cacheManager.GetOrCreateAsync<TResult>(
             $"GenericService.TransformAsync<{typeof(TInput).Name},{typeof(TResult).Name}>",
             args,
@@ -326,8 +326,8 @@ public class GenericService : IGenericService
         return entities; // Return processed entities
     }
 
-    private async Task<TResult> DoTransformAsync<TInput, TResult>(TInput input) 
-        where TInput : class 
+    private async Task<TResult> DoTransformAsync<TInput, TResult>(TInput input)
+        where TInput : class
         where TResult : class, new()
     {
         await Task.Delay(50); // Simulate transformation time

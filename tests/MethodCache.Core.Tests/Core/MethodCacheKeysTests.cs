@@ -17,7 +17,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IUserService), "GetUser");
 
-            Assert.Equal("MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
+            Assert.Equal("[MethodCache.Core.Tests]MethodCache.Core.Tests.Core.MethodCacheKeysTests+IUserService.GetUser", prefix);
         }
 
         [Fact]
@@ -31,7 +31,7 @@ namespace MethodCache.Core.Tests.Core
         {
             var prefix = MethodCacheKeys.Prefix(typeof(IRepository<int>), "Get");
 
-            Assert.Contains("[System.Int32]", prefix);
+            Assert.Contains("[" + Generated.KeyParts.TypeIdentity(typeof(int)) + "]", prefix);
             Assert.DoesNotContain("Version=", prefix);
             Assert.NotEqual(prefix, MethodCacheKeys.Prefix(typeof(IRepository<long>), "Get"));
         }
@@ -261,11 +261,38 @@ namespace MethodCache.Core.Tests.Core
             Assert.Equal(Key(new List<int> { 1, 2 }), Key(new List<int> { 1, 2 }));
             Assert.NotEqual(Key(1, "a"), Key(2, "a"));
             // Fixed, so keys already in a distributed cache stay valid across processes and releases
-            Assert.Equal("M:[1,\"a\"]:" + JsonTypeSuffix("System.Int32", "System.String"), Key(1, "a"));
+            Assert.Equal("M:[1,\"a\"]:" + JsonTypeSuffix("[System.Private.CoreLib]System.Int32", "[System.Private.CoreLib]System.String"), Key(1, "a"));
         }
 
         private static string JsonTypeSuffix(params string[] typeNames)
             => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join("\n", typeNames))), 0, 8).ToLowerInvariant();
+
+        [Fact]
+        public void Sequence_WritesTheCountAndEachElement()
+        {
+            Assert.Equal("[3:1:2:3]", MethodCacheKeys.Sequence(new[] { 1, 2, 3 }, static id => MethodCacheKeys.Part(id)));
+            // Each element's text is escaped again, so even a formatter that writes ':' can't split an element in two
+            Assert.Equal("[2:a\\\\\\:b:\\\\0]", MethodCacheKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
+            Assert.NotEqual(
+                MethodCacheKeys.Sequence(new[] { "a", "b:c" }, static s => s),
+                MethodCacheKeys.Sequence(new[] { "a:b", "c" }, static s => s));
+            Assert.Equal("[0]", MethodCacheKeys.Sequence(Array.Empty<int>(), static id => MethodCacheKeys.Part(id)));
+            Assert.Equal(MethodCacheKeys.Null, MethodCacheKeys.Sequence<int>(null, static id => MethodCacheKeys.Part(id)));
+        }
+
+        [Fact]
+        public void Sequence_KeepsLookAlikeArgumentListsApart()
+        {
+            static string Strings(params string?[]? values) => MethodCacheKeys.Sequence(values, static s => MethodCacheKeys.Part(s));
+
+            // An empty list and a list holding one empty string
+            Assert.NotEqual(Strings(), Strings(""));
+            // An element ending in "]" followed by another argument, and a shorter list followed by that text
+            Assert.NotEqual(
+                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a]", "b")),
+                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a"), MethodCacheKeys.Part("b]")));
+            Assert.NotEqual(Strings((string?)null), Strings("\\0"));
+        }
 
         [Fact]
         public void JsonKeyGenerator_HashesLongArgumentLists()
@@ -292,5 +319,26 @@ namespace MethodCache.Core.Tests.Core
                 generator.GenerateKey("At", new object[] { utc }, policy),
                 generator.GenerateKey("At", new object[] { utc.ToLocalTime() }, policy));
         }
+
+        [Fact]
+        public void KeyedMethodName_GivesEveryServiceKeyItsOwnName()
+        {
+            // Strings that look like another type's form, and enums of the same name, must not share a registration's entries
+            var guid = Guid.NewGuid();
+            var keys = new object[]
+            {
+                "ecb", "\"ecb\"", "Int32(7)", 7, 7L, (byte)7, "7", "Region.Eu", RegionA.Region.Eu, RegionB.Region.Eu,
+                "Boolean(true)", true, "x", 'x', "Char(x)", guid, $"Guid({guid:N})", "a.b", "a(b", "a\"b", "", ":", "\\",
+            };
+
+            var names = keys.Select(key => MethodCacheKeys.KeyedMethodName("Get", key)).ToList();
+
+            Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+            Assert.Equal("Get@ecb", MethodCacheKeys.KeyedMethodName("Get", "ecb"));
+        }
+
+        private static class RegionA { public enum Region { Eu } }
+
+        private static class RegionB { public enum Region { Eu } }
     }
 }

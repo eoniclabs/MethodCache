@@ -6,7 +6,7 @@ namespace MethodCache.Policies;
 /// Flags naming the fields of a <see cref="CachePolicy"/>, used to record which fields a source set or cleared.
 /// </summary>
 [Flags]
-public enum CachePolicyFields
+internal enum CachePolicyFields
 {
     /// <summary>
     /// No fields.
@@ -51,5 +51,14 @@ public enum CachePolicyFields
     /// <summary>
     /// The <see cref="CachePolicy.FailSafeRetryAfter"/> field.
     /// </summary>
-    FailSafeRetryAfter = 1 << 9
+    FailSafeRetryAfter = 1 << 9,
+    /// <summary>
+    /// This layer's <see cref="CachePolicy.Tags"/> replace the tags of the layers below it (the <c>[Cache]</c>
+    /// attribute, other sources and the defaults). Without this flag, the tags of every layer are combined.
+    /// </summary>
+    ClearTags = 1 << 10,
+    /// <summary>Whether method caching is enabled.</summary>
+    Enabled = 1 << 11,
+    /// <summary>Whether the distributed layer is enabled.</summary>
+    Distributed = 1 << 12
 }

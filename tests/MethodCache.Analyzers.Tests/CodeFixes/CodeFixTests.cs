@@ -112,9 +112,9 @@ public class Users
         }
 
         [Theory]
-        [InlineData("MCG001", "void Save(int id);")]
-        [InlineData("MCG002", "Task SaveAsync(int id);")]
-        [InlineData("MCG014", "IEnumerable<int> All();")]
+        [InlineData("MC0003", "void Save(int id);")]
+        [InlineData("MC0022", "Task SaveAsync(int id);")]
+        [InlineData("MC0015", "IEnumerable<int> All();")]
         public async Task UncacheableMethod_RemoveCache(string id, string member)
         {
             var source = $@"using System.Collections.Generic;
@@ -141,7 +141,7 @@ public interface IStore
         }
 
         [Fact]
-        public async Task MCG009_ReplacesTheUnknownParameterWithTheClosestName()
+        public async Task MC0010_ReplacesTheUnknownParameterWithTheClosestName()
         {
             var source = @"using System.Threading.Tasks;
 using MethodCache;
@@ -152,7 +152,7 @@ public interface IUserService
     Task<string> GetAsync(int userId, string tenant);
 }";
 
-            var (title, fixedSources) = await FixAsync(new FixTagParameterCodeFixProvider(), "MCG009", source);
+            var (title, fixedSources) = await FixAsync(new FixTagParameterCodeFixProvider(), "MC0010", source);
 
             Assert.Equal("Use parameter 'userId' in the tag", title);
             Assert.Contains(@"new[] { ""users"", ""user:{userId}"", ""tenant:{tenant}:user:{userId}"" }", fixedSources[0]);
@@ -189,6 +189,22 @@ public interface IUserService
             }
 
             return directory?.FullName ?? throw new InvalidOperationException("MethodCache.sln not found");
+        }
+
+        [Theory]
+        [InlineData("using Cached = MethodCache.CacheAttribute;", "[Cached]", false)]
+        [InlineData("using MethodCache;", "[Cache(Duration = Duration)]", false)]
+        [InlineData("using MethodCache; using Text = System.String;", "[Cache(Tags = new Text[] { Duration })]", false)]
+        [InlineData("using Cached = MethodCache.CacheAttribute;", "[Cached]", true)]
+        [InlineData("using MethodCache;", "[Cache(Duration = Duration)]", true)]
+        [InlineData("using MethodCache; using Text = System.String;", "[Cache(Tags = new Text[] { Duration })]", true)]
+        public async Task MoveAttributeReview_PreservesBindingAcrossDocuments(string usings, string attribute, bool sameDocument)
+        {
+            var service = usings + " public class Svc : ISvc { private const string Duration = \"00:01:00\"; " + attribute + " public int Get(int id) => id; }";
+            var contract = "public interface ISvc { int Get(int id); }";
+            var (_, changed) = await FixAsync(new MoveAttributeToInterfaceCodeFixProvider(), "MC0001", sameDocument ? [service + contract] : [service, contract]);
+            var compilation = CSharpCompilation.Create("Fixed", changed.Select(text => CSharpSyntaxTree.ParseText(text)), References(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
         }
 
         /// <summary>Finds the diagnostic, applies the provider's first fix and returns every document's new text.</summary>

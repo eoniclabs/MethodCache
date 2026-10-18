@@ -10,7 +10,7 @@ using Vendor.Rates;
 var services = new ServiceCollection();
 services.AddScoped<IUserService, UserService>();
 services.AddSingleton<IRatesClient, RatesClient>();
-services.AddMethodCache();
+services.AddMethodCache(b => b.FromAssemblyOf<IPriceService>().AutoRegister(ServiceLifetime.Singleton));
 
 await using var provider = services.BuildServiceProvider();
 
@@ -27,16 +27,31 @@ await using (var scope = provider.CreateAsyncScope())
     await users.GetUserAsync(42);
 }
 
-// Registered by AddMethodCache() itself, since the application did not register it
+// Explicit auto-registration supplies the otherwise unregistered price and catalog services.
 var prices = provider.GetRequiredService<IPriceService>();
 await prices.GetPriceAsync("ABC");
 await prices.GetPriceAsync("ABC");
+await prices.GenericAsync<int>(42);
+await prices.GenericAsync<int>(42);
 
 var rates = provider.GetRequiredService<IRatesClient>();
 await rates.GetRateAsync("EUR", "SEK");
 await rates.GetRateAsync("EUR", "SEK");
 await rates.PlaceOrderAsync("book");
 await rates.PlaceOrderAsync("book");
+
+// Records of simple values, ICacheKeyProvider arguments, and arrays, lists and dictionaries of them are written into
+// the key by the decorator. Other arguments go through the key generator, which uses reflection-based JSON and fails
+// under Native AOT, so they are not used here (see docs/features/native-aot.md).
+var catalog = provider.GetRequiredService<ICatalogService>();
+await catalog.SearchAsync(new CatalogQuery("books", 2));
+await catalog.SearchAsync(new CatalogQuery("books", 2));
+await catalog.ByIdsAsync(new IdList(1, 2, 3));
+await catalog.ByIdsAsync(new IdList(1, 2, 3));
+await catalog.ManyAsync([1, 2, 3], [new CatalogQuery("books", 2)]);
+await catalog.ManyAsync([1, 2, 3], [new CatalogQuery("books", 2)]);
+await catalog.FilteredAsync(new Dictionary<string, int> { ["page"] = 2 });
+await catalog.FilteredAsync(new Dictionary<string, int> { ["page"] = 2 });
 
 var failures = new List<string>();
 if (provider.GetRequiredService<IUserService>().GetType().Name != "IUserServiceDecorator")
@@ -49,9 +64,9 @@ if (UserService.Calls != 1)
     failures.Add($"IUserService implementation called {UserService.Calls} times, expected 1");
 }
 
-if (PriceService.Calls != 1)
+if (PriceService.Calls != 2)
 {
-    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 1");
+    failures.Add($"IPriceService implementation called {PriceService.Calls} times, expected 2");
 }
 
 if (RatesClient.RateCalls != 1)
@@ -63,6 +78,47 @@ if (RatesClient.OrderCalls != 2)
 {
     failures.Add($"IRatesClient.PlaceOrderAsync called {RatesClient.OrderCalls} times, expected 2 (it is not listed, so never cached)");
 }
+
+if (CatalogService.Calls != 4)
+{
+    failures.Add($"ICatalogService implementation called {CatalogService.Calls} times, expected 4");
+}
+
+// The explicitly frozen pre-release .NET 10 vendor links the reviewed KeyBuilder/AppendPart/ref lookup ABI.
+var frozenNet10Services = new ServiceCollection();
+frozenNet10Services.AddSingleton<FrozenVendor.Contract1Final.IService, FrozenVendor.Contract1Final.Service>();
+frozenNet10Services.AddSingleton<FrozenVendor.ThirdPartyFinal.IClient, FrozenVendor.ThirdPartyFinal.Client>();
+frozenNet10Services.AddScoped<FrozenVendor.Contract1Final.IRepository<string>, FrozenVendor.Contract1Final.StringRepository>();
+frozenNet10Services.AddMethodCache(b => b.FromAssemblyOf<FrozenVendor.Contract1Final.Marker>());
+await using (var frozenNet10Provider = frozenNet10Services.BuildServiceProvider())
+{
+    var frozen = frozenNet10Provider.GetRequiredService<FrozenVendor.Contract1Final.IService>();
+    if (frozen.Read(42) != 1 || frozen.Read(42) != 1 || await frozen.ReadAsync(42) != 2 || await frozen.ReadAsync(42) != 2)
+        failures.Add("Frozen net10 inline return shapes did not preserve caching.");
+    if (await frozen.ReadValueAsync(42) != 3 || await frozen.ReadValueAsync(42) != 3)
+        failures.Add("Frozen net10 inline ValueTask did not preserve caching.");
+    await frozen.UpdateAsync(42);
+    if (frozen.Read(42) != 4) failures.Add("Frozen net10 tag invalidation failed.");
+    if (frozen.Collection([1, 2]) != 5 || frozen.Collection([1, 2]) != 5)
+        failures.Add("Frozen collection AppendPart did not preserve caching.");
+    if (frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6 || frozen.Record(new FrozenVendor.Contract1Final.Point(1, "a:b")) != 6)
+        failures.Add("Frozen record AppendPart did not preserve caching.");
+    if (frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7 || frozen.Provider(new FrozenVendor.Contract1Final.Token("a:b")) != 7)
+        failures.Add("Frozen provider AppendPart did not preserve caching.");
+    var client = frozenNet10Provider.GetRequiredService<FrozenVendor.ThirdPartyFinal.IClient>();
+    if (await client.ReadAsync(42) != 1 || await client.ReadAsync(42) != 1)
+        failures.Add("Frozen net10 third-party CacheInterface did not preserve caching.");
+    await using var scope = frozenNet10Provider.CreateAsyncScope();
+    var repository = scope.ServiceProvider.GetRequiredService<FrozenVendor.Contract1Final.IRepository<string>>();
+    if (await repository.ReadAsync(42) != "1" || await repository.ReadAsync(42) != "1")
+        failures.Add("Frozen net10 closed generic interface did not preserve caching.");
+}
+
+try { await MethodCache.AotSmokeTest.PrefixCases.PrefixAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("Generated prefix AOT check failed: " + error.Message); }
+
+try { await HttpAotChecks.RunAsync(); }
+catch (Exception error) { failures.Add("HTTP storage/admin AOT check failed: " + error.GetType().Name); }
 
 foreach (var failure in failures)
 {
@@ -95,6 +151,9 @@ public interface IPriceService
 {
     [Cache(Duration = "00:01:00")]
     Task<decimal> GetPriceAsync(string symbol);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> GenericAsync<T>(int id);
 }
 
 public sealed class PriceService : IPriceService
@@ -107,5 +166,56 @@ public sealed class PriceService : IPriceService
     {
         Interlocked.Increment(ref _calls);
         return Task.FromResult(42m);
+    }
+
+    public Task<int> GenericAsync<T>(int id)
+    {
+        Interlocked.Increment(ref _calls);
+        return Task.FromResult(id);
+    }
+}
+
+public sealed record CatalogQuery(string Term, int Page);
+
+public sealed class IdList(params int[] ids) : ICacheKeyProvider
+{
+    public int Count => ids.Length;
+
+    public string CacheKeyPart => string.Join(',', ids);
+}
+
+public interface ICatalogService
+{
+    [Cache(Duration = "00:01:00")]
+    Task<int> SearchAsync(CatalogQuery query);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> ByIdsAsync(IdList ids);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> ManyAsync(int[] ids, List<CatalogQuery> queries);
+
+    [Cache(Duration = "00:01:00")]
+    Task<int> FilteredAsync(Dictionary<string, int> filters);
+}
+
+public sealed class CatalogService : ICatalogService
+{
+    private static int _calls;
+
+    public static int Calls => _calls;
+
+    public Task<int> SearchAsync(CatalogQuery query) => Count(query.Page);
+
+    public Task<int> ByIdsAsync(IdList ids) => Count(ids.Count);
+
+    public Task<int> ManyAsync(int[] ids, List<CatalogQuery> queries) => Count(ids.Length + queries.Count);
+
+    public Task<int> FilteredAsync(Dictionary<string, int> filters) => Count(filters.Count);
+
+    private static Task<int> Count(int value)
+    {
+        Interlocked.Increment(ref _calls);
+        return Task.FromResult(value);
     }
 }

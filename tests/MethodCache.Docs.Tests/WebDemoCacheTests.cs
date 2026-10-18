@@ -118,6 +118,8 @@ public class WebDemoCacheTests
         text = text.Replace("\r\n", "\n", StringComparison.Ordinal);
         if (windowsLineEndings) text = text.Replace("\n", "\r\n", StringComparison.Ordinal);
         var requests = 0;
+        var priceChanged = false;
+        var unaffectedProductChecked = false;
         foreach (var block in Regex.Split(text, "^### ", RegexOptions.Multiline).Skip(1))
         {
             var match = Regex.Match(block, "^(GET|POST|PUT|DELETE) \\{\\{host\\}\\}([^\\r\\n]+)", RegexOptions.Multiline);
@@ -128,10 +130,16 @@ public class WebDemoCacheTests
             if (json.Success) request.Content = new StringContent(json.Value.Trim(), System.Text.Encoding.UTF8, "application/json");
             using var response = await client.SendAsync(request);
             Assert.True(response.IsSuccessStatusCode, $"{block.Split('\n')[0]}: {response.StatusCode}");
-            if (block.StartsWith("6.", StringComparison.Ordinal)) Assert.Equal(before, factory.Services.GetRequiredService<ProductCatalog>().Queries);
+            if (priceChanged && request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath == "/products/2")
+            {
+                Assert.Equal(before, factory.Services.GetRequiredService<ProductCatalog>().Queries);
+                unaffectedProductChecked = true;
+            }
+            if (request.Method == HttpMethod.Put && request.RequestUri!.AbsolutePath == "/products/1/price") priceChanged = true;
             requests++;
         }
         Assert.True(requests >= 12);
+        Assert.True(unaffectedProductChecked, "The request file must check product 2 after updating product 1.");
     }
 
     private sealed record Stats(long Hits, long Misses);

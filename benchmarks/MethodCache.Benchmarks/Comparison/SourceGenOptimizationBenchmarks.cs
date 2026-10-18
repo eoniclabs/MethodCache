@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Comparison;
 
-[SimpleJob(RuntimeMoniker.Net90, invocationCount: 1000, iterationCount: 5)]
+[SimpleJob(RuntimeMoniker.Net10_0, invocationCount: 1000, iterationCount: 5)]
 [MemoryDiagnoser]
 [DisassemblyDiagnoser(maxDepth: 0, exportDiff: true)]
 public class SourceGenOptimizationBenchmarks
@@ -24,15 +24,13 @@ public class SourceGenOptimizationBenchmarks
         var services = new ServiceCollection();
         services.AddLogging();
 
-        // Configure MethodCache with the generated decorator
+        // AddMethodCache wraps this registration in the generated decorator
+        services.AddSingleton<IMethodCacheBenchmarkService>(_ => new MethodCacheBenchmarkService(_testPayload));
         services.AddMethodCache(config =>
         {
-            config.DefaultPolicy(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
-        }, typeof(SourceGenOptimizationBenchmarks).Assembly);
-
-        // Register the benchmark service with caching using the generated extension method
-        services.AddIMethodCacheBenchmarkServiceWithCachingSingleton(sp =>
-            new MethodCacheBenchmarkService(_testPayload));
+            config.FromAssembly(typeof(SourceGenOptimizationBenchmarks).Assembly);
+            config.Defaults(builder => builder.WithDuration(TimeSpan.FromMinutes(10)));
+        });
 
         // Also setup raw MemoryCache for comparison
         services.AddMemoryCache(options =>

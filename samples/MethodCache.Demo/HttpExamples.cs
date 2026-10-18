@@ -60,6 +60,7 @@ public static class HttpExamples
 
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(clock);
+        services.AddMethodCache();
         // Cache-visible identity must not be changed by an automatic transport cookie jar.
         services.AddHttpClient<ProductApiClient>(http => http.BaseAddress = new Uri(origin.Urls.Single()))
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false })

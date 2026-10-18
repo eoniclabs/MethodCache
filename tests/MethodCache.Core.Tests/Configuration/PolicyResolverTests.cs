@@ -34,8 +34,8 @@ public class PolicyResolverTests
 
         var result = await resolver.ResolveAsync(MethodId);
         Assert.Equal(TimeSpan.FromMinutes(1), result.Policy.Duration);
-        Assert.Contains("override", result.Policy.Tags);
-        Assert.DoesNotContain("attr", result.Policy.Tags);
+        // Tags combine: the override adds its tags to the attribute's, so [CacheInvalidate] on "attr" still applies
+        Assert.Equal(new[] { "attr", "override" }, result.Policy.Tags);
 
         await resolver.DisposeAsync();
     }

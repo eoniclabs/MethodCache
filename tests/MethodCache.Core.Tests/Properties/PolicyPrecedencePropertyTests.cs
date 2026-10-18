@@ -15,7 +15,8 @@ namespace MethodCache.Core.Tests.Properties;
 /// Four layers (attributes 10, startup code 40, configuration 50, runtime overrides 100) may each configure the
 /// method itself, its group and all methods, each setting a random subset of fields. For every field, the documented
 /// winner is: the method's own setting from the highest layer that sets it; failing that, the group's from the
-/// highest layer; failing that, the defaults' from the highest layer; else unset. Seeds and replay: see
+/// highest layer; failing that, the defaults' from the highest layer; else unset. Tags instead combine across all
+/// of them (see <see cref="ExpectedTags"/>). Seeds and replay: see
 /// <see cref="PropertySettings"/>.
 /// </remarks>
 [Collection(nameof(CpuIntensiveCollection))]
@@ -38,7 +39,7 @@ public class PolicyPrecedencePropertyTests
     private static readonly CachePolicyFields[] Fields =
     {
         CachePolicyFields.Duration, CachePolicyFields.Version, CachePolicyFields.SlidingExpiration,
-        CachePolicyFields.FailSafe, CachePolicyFields.Tags,
+        CachePolicyFields.FailSafe, CachePolicyFields.Tags, CachePolicyFields.ClearTags,
     };
 
     /// <summary>For each layer and scope, which of <see cref="Fields"/> it sets (a bit mask), and whether the method is in the group.</summary>
@@ -60,7 +61,7 @@ public class PolicyPrecedencePropertyTests
                 Assert.Equal(Expected(CachePolicyFields.Version, masks, inGroup), policy.Version);
                 Assert.Equal(Expected(CachePolicyFields.SlidingExpiration, masks, inGroup) is { } s ? TimeSpan.FromSeconds(s) : null, policy.SlidingExpiration);
                 Assert.Equal(Expected(CachePolicyFields.FailSafe, masks, inGroup) is { } f ? TimeSpan.FromHours(f) : null, policy.FailSafe);
-                Assert.Equal(Expected(CachePolicyFields.Tags, masks, inGroup) is { } t ? new[] { "tag" + t } : Array.Empty<string>(), policy.Tags);
+                Assert.Equal(ExpectedTags(masks, inGroup), policy.Tags);
             }
             finally
             {
@@ -94,6 +95,42 @@ public class PolicyPrecedencePropertyTests
         return null;
     }
 
+    /// <summary>
+    /// Tags combine: every layer and scope that sets them adds its tag, from the lowest to the highest, until one
+    /// that clears them (<see cref="CachePolicyFields.ClearTags"/>), whose tags replace those below it.
+    /// </summary>
+    private static string[] ExpectedTags(int[] masks, bool inGroup)
+    {
+        var tagsBit = 1 << Array.IndexOf(Fields, CachePolicyFields.Tags);
+        var clearBit = 1 << Array.IndexOf(Fields, CachePolicyFields.ClearTags);
+        var highestFirst = new List<string>();
+        foreach (var scope in new[] { Scope.Method, Scope.Group, Scope.AllMethods })
+        {
+            if (scope == Scope.Group && !inGroup)
+            {
+                continue;
+            }
+
+            for (var layer = Layers.Length - 1; layer >= 0; layer--)
+            {
+                var mask = Mask(masks, layer, scope);
+                if ((mask & tagsBit) != 0)
+                {
+                    highestFirst.Add("tag" + ValueOf(layer, scope));
+                }
+
+                if ((mask & clearBit) != 0)
+                {
+                    highestFirst.Reverse();
+                    return highestFirst.ToArray();
+                }
+            }
+        }
+
+        highestFirst.Reverse();
+        return highestFirst.ToArray();
+    }
+
     private static int Mask(int[] masks, int layer, Scope scope) => masks[(layer * 3) + (int)scope];
 
     private static List<PolicySnapshot> Snapshots(int layer, int[] masks, bool inGroup)
@@ -103,7 +140,7 @@ public class PolicyPrecedencePropertyTests
         {
             var mask = Mask(masks, layer, scope);
 
-            // Every cached method is listed by the attribute layer; the group comes from its [Cache("g")]
+            // Every cached method is listed by the attribute layer; the group comes from its [Cache(Group = "g")]
             var listsMethod = scope == Scope.Method && layer == 0;
             if (mask == 0 && !listsMethod)
             {

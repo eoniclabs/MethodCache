@@ -13,7 +13,7 @@ public class HttpCacheStoreTests
     [Fact]
     public async Task SetAsync_WithSizeLimitedMemoryCache_StoresEntrySuccessfully()
     {
-        using var storage = CreateStore(new HttpCacheStorageOptions { MaxCacheSize = 1024 });
+        using var storage = CreateStore(2048);
 
         await storage.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
 
@@ -55,20 +55,21 @@ public class HttpCacheStoreTests
     public async Task KeyPrefix_KeepsApplicationsSharingADistributedCacheApart()
     {
         var distributed = new MemoryDistributedCache(Microsoft.Extensions.Options.Options.Create(new MemoryDistributedCacheOptions()));
-        using var orders = CreateStore(new HttpCacheStorageOptions { KeyPrefix = "orders:" }, distributed);
-        using var billing = CreateStore(new HttpCacheStorageOptions { KeyPrefix = "billing:" }, distributed);
+        using var orders = CreateStore(distributed: distributed, prefix: "orders:");
+        using var billing = CreateStore(distributed: distributed, prefix: "billing:");
 
         await orders.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
 
         Assert.Null(await billing.GetAsync("k"));
-        Assert.NotNull(distributed.Get("orders:k"));
+        Assert.NotNull(distributed.Get("orders:http:e2:k"));
     }
 
     [Fact]
-    public async Task FailingDistributedCache_DoesNotFailTheRequest()
+    public async Task FailingDistributedCache_ReportsWritesAndIgnoresReadsAndRemovals()
     {
         using var store = CreateStore(distributed: new ThrowingDistributedCache());
 
+        // The handler decides what a failed write means (log it, or remove the entry it would have replaced)
         await store.SetAsync("k", CreateEntry(), TimeSpan.FromMinutes(1));
         await store.RemoveAsync("k");
 
@@ -113,8 +114,8 @@ public class HttpCacheStoreTests
     public void Serializer_IgnoresUnknownFormat()
         => Assert.Null(HttpCacheEntrySerializer.Deserialize([99, 1, 2, 3]));
 
-    private static HttpCacheStore CreateStore(HttpCacheStorageOptions? options = null, IDistributedCache? distributed = null)
-        => new(Microsoft.Extensions.Options.Options.Create(options ?? new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, distributed: distributed);
+    private static TestHttpStore CreateStore(long maximumBytes = 100 * 1024 * 1024, IDistributedCache? distributed = null, string prefix = "methodcache:")
+        => new(distributed: distributed, maximumBytes: maximumBytes, prefix: prefix);
 
     private static HttpCacheEntry CreateEntry() => new()
     {

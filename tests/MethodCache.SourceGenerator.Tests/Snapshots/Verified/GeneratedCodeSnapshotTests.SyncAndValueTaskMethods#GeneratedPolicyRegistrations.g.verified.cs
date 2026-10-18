@@ -6,89 +6,25 @@ using global::System.Collections.Generic;
 using global::System.Globalization;
 using global::System.Threading;
 using global::System.Threading.Tasks;
-using global::MethodCache;
-using global::MethodCache.Infrastructure;
-using global::MethodCache.Policies;
-using global::Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Generated
 {
-    internal static class GeneratedPolicyRegistrations
+    internal static partial class MethodCacheDecoratorRegistrations
     {
-        public static void AddPolicies(global::System.Collections.Generic.ICollection<global::MethodCache.Policies.PolicySourceRegistration> registrations)
+        [global::System.CodeDom.Compiler.GeneratedCode("MethodCacheGenerator", "<generator-version>")]
+        private static class GeneratedPolicyRegistrations
         {
-            if (registrations == null)
+            public static void Describe(global::MethodCache.Generated.GeneratedModuleBuilder builder)
             {
-                throw new global::System.ArgumentNullException(nameof(registrations));
-            }
-            registrations.Add(new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
-        }
-
-        public static void AddPolicies(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
-        {
-            if (services == null)
-            {
-                throw new global::System.ArgumentNullException(nameof(services));
-            }
-
-            // Every generated Add...WithCaching method calls this, so register the source only once per collection
-            foreach (var descriptor in services)
-            {
-                if (descriptor.ServiceType == typeof(RegistrationMarker))
+                builder.Method("[SnapshotApp]App.IPricing.Price", new string[] { "sku", "quantity" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
-                    return;
-                }
+                    CanonicalTagParts = true,
+                });
+                builder.Method("[SnapshotApp]App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
+                {
+                    CanonicalTagParts = true,
+                });
             }
-
-            services.AddSingleton(new RegistrationMarker());
-            services.AddSingleton<global::MethodCache.Policies.PolicySourceRegistration>(_ => new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));
         }
-
-        private sealed class RegistrationMarker
-        {
-        }
-
-        private sealed class GeneratedAttributePolicySource : global::MethodCache.Policies.IPolicySource
-        {
-            public string SourceId => "attributes";
-
-            public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>> GetSnapshotAsync(global::System.Threading.CancellationToken cancellationToken = default)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var timestamp = global::System.DateTimeOffset.UtcNow;
-                var snapshots = new global::System.Collections.Generic.List<global::MethodCache.Policies.PolicySnapshot>(2);
-                snapshots.Add(BuildSnapshot_0(timestamp));
-                snapshots.Add(BuildSnapshot_1(timestamp));
-                return global::System.Threading.Tasks.Task.FromResult<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>>(snapshots);
-            }
-
-            public global::System.Collections.Generic.IAsyncEnumerable<global::MethodCache.Policies.PolicyChange> WatchAsync(global::System.Threading.CancellationToken cancellationToken = default)
-                => global::MethodCache.Infrastructure.PolicySourceAsyncEnumerable.Empty(cancellationToken);
-        }
-
-        private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_0(global::System.DateTimeOffset timestamp)
-        {
-            var policy = global::MethodCache.Policies.CachePolicy.Empty;
-            var fields = global::MethodCache.Policies.CachePolicyFields.None;
-            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
-            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
-            {
-                ["priority"] = "10"
-            };
-            return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.IPricing.Price", policy, timestamp, metadata);
-        }
-
-        private static global::MethodCache.Policies.PolicySnapshot BuildSnapshot_1(global::System.DateTimeOffset timestamp)
-        {
-            var policy = global::MethodCache.Policies.CachePolicy.Empty;
-            var fields = global::MethodCache.Policies.CachePolicyFields.None;
-            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
-            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)
-            {
-                ["priority"] = "10"
-            };
-            return new global::MethodCache.Policies.PolicySnapshot("attributes", "App.IPricing.FindAsync", policy, timestamp, metadata);
-        }
-
     }
 }

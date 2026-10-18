@@ -78,9 +78,12 @@ public class WebDemoRedisTests : IAsyncLifetime
         services.AddMethodCacheRedis(options =>
         {
             options.ConnectionMultiplexerFactory = _ => connection;
-            options.KeyPrefix = _prefix;
         });
-        services.Configure<DistributedCacheOptions>(options => options.CircuitBreakerDuration = TimeSpan.FromSeconds(1));
+        services.Configure<DistributedCacheOptions>(options =>
+        {
+            options.KeyPrefix = _prefix;
+            options.CircuitBreakerDuration = TimeSpan.FromSeconds(1);
+        });
     });
 
     [SkippableFact]
@@ -92,6 +95,7 @@ public class WebDemoRedisTests : IAsyncLifetime
         await using var second = CreateFactory(connectionB, first.DataFile);
         using var a = first.CreateClient();
         using var b = second.CreateClient();
+        await EventuallyAsync(async () => await BackplaneConnectedAsync(first) && await BackplaneConnectedAsync(second));
         var original = await a.GetFromJsonAsync<Product>("/products/1");
         Assert.Equal(original, await b.GetFromJsonAsync<Product>("/products/1"));
         var other = await a.GetFromJsonAsync<Product>("/products/2");
@@ -128,6 +132,7 @@ public class WebDemoRedisTests : IAsyncLifetime
         await using var second = CreateFactory(connectionB, first.DataFile);
         using var a = first.CreateClient();
         using var b = second.CreateClient();
+        await EventuallyAsync(async () => await BackplaneConnectedAsync(first) && await BackplaneConnectedAsync(second));
         var original = await a.GetFromJsonAsync<Product>("/products/1");
         Assert.Equal(original, await b.GetFromJsonAsync<Product>("/products/1"));
         await a.GetFromJsonAsync<Product>("/products/2");
@@ -158,13 +163,21 @@ public class WebDemoRedisTests : IAsyncLifetime
         connectionB.ConnectionRestored += (_, args) => { if (args.ConnectionType == ConnectionType.Interactive) restoredB.TrySetResult(); };
         await _redis.StartAsync();
         await Task.WhenAll(restoredA.Task, restoredB.Task).WaitAsync(TimeSpan.FromSeconds(15));
+        // Interactive socket recovery can precede subscription acknowledgement. Do not
+        // fire the fake-clock retry while the backplane is still unable to publish.
+        await EventuallyAsync(async () => await BackplaneConnectedAsync(first) && await BackplaneConnectedAsync(second));
         _clock.Advance(TimeSpan.FromSeconds(2));
         await EventuallyAsync(async () => await a.GetStringAsync("/health") == "Healthy");
         await EventuallyAsync(async () => (await b.GetFromJsonAsync<Entry[]>("/methodcache/entries"))!
             .All(entry => !entry.Tags.Contains("product:1")));
-        Assert.True(await connectionA.GetDatabase().KeyExistsAsync(_prefix + "t:product:1"));
         Assert.Equal(119m, (await b.GetFromJsonAsync<Product>("/products/1"))!.Price);
         _output.WriteLine("Redis restarted: the fake clock advanced the retry window, health recovered, B sees 119.");
+    }
+
+    private static async Task<bool> BackplaneConnectedAsync(DemoWebFactory factory)
+    {
+        var report = await factory.Services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>().CheckHealthAsync();
+        return report.Entries["methodcache"].Data.TryGetValue("backplaneStatus", out var state) && Equals(state, "connected");
     }
 
     private static async Task EventuallyAsync(Func<Task<bool>> condition)

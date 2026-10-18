@@ -25,7 +25,7 @@ public class ExpiryBoundaryTests
     {
         var options = new MethodCacheMemoryOptions { EnableBackgroundCleanup = false };
         configure?.Invoke(options);
-        return new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(options), _time, distributed);
+        return new InMemoryCacheManager(MsOptions.Create(options), _time, distributed);
     }
 
     private DistributedCacheLayer CreateLayer(IDistributedCache cache, Action<DistributedCacheOptions>? configure = null)
@@ -202,7 +202,7 @@ public class ExpiryBoundaryTests
     [Fact]
     public async Task DistributedEntry_KeepsItsOriginalExpiry_WhenAnotherInstanceReadsItLater()
     {
-        var shared = new MethodCache.TestSupport.AtomicTestCache();
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
         var first = CreateManager(distributed: CreateLayer(shared));
         var second = CreateManager(distributed: CreateLayer(shared));
         var policy = Policy(TimeSpan.FromSeconds(10));

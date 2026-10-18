@@ -1,3 +1,4 @@
+using MethodCache.Core.Runtime.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MethodCache;
@@ -10,6 +11,7 @@ using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
+using MethodCache.Generated;
 using MethodCache.Policies;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
@@ -25,75 +27,46 @@ namespace Microsoft.Extensions.DependencyInjection
     /// </summary>
     public static class MethodCacheServiceCollectionExtensions
     {
-        /// <summary>
-        /// Adds MethodCache services and wraps every service with cache attributes in its generated decorator.
-        /// Services you registered before this call keep their lifetime and are decorated in place; interfaces
-        /// in the calling assembly that are not registered yet get their implementation registered for you.
-        /// Use the overload that takes assemblies when unregistered interfaces live elsewhere.
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <param name="configure">Optional configuration action</param>
-        /// <returns>The service collection for chaining</returns>
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null)
+        /// <summary>Adds MethodCache and decorates explicitly registered services with their generated modules.</summary>
+        public static IServiceCollection AddMethodCache(this IServiceCollection services)
+            => AddMethodCache(services, static _ => { });
+
+        /// <summary>Configures startup policy and generated modules, then decorates existing registrations.</summary>
+        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<MethodCacheBuilder> configureBuilder)
         {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            return AddMethodCacheCore(services, configure, CallingAssemblies(RuntimeFeature.IsDynamicCodeSupported ? Assembly.GetCallingAssembly() : null));
-        }
-
-        /// <summary>
-        /// Adds MethodCache services, decorates registered services with cache attributes, and registers the
-        /// implementations of unregistered ones declared in the specified assemblies.
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <param name="configure">Optional configuration action</param>
-        /// <param name="assemblies">Assemblies whose unregistered interfaces to register. If none, the calling assembly.</param>
-        /// <returns>The service collection for chaining</returns>
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static IServiceCollection AddMethodCache(this IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure = null, params Assembly[]? assemblies)
-        {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            var targetAssemblies = assemblies is { Length: > 0 }
-                ? assemblies
-                : CallingAssemblies(RuntimeFeature.IsDynamicCodeSupported ? Assembly.GetCallingAssembly() : null);
-
-            return AddMethodCacheCore(services, configure, targetAssemblies);
-        }
-
-        private static IServiceCollection AddMethodCacheCore(IServiceCollection services, Action<IFluentMethodCacheConfiguration>? configure, Assembly[]? targetAssemblies)
-        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(configureBuilder);
+            services.TryAddSingleton<ExplicitCoreRegistration>();
+            var builder = new MethodCacheBuilder(services);
+            configureBuilder(builder);
+            var modules = GeneratedCode.Describe(builder.Assemblies, services.Select(static d => d.ServiceType));
+            var catalog = new ModuleCatalog(modules, builder.Assemblies.ToArray());
+            var parameters = services.FirstOrDefault(d => d.ServiceType == typeof(GeneratedParameters))?.ImplementationInstance as GeneratedParameters;
+            if (parameters == null) services.AddSingleton(parameters = new GeneratedParameters());
             EnsureCoreServices(services);
-
-            // Attribute policies come from the source the generator emits, registered with each decorator
-            DecorateExistingRegistrations(services);
-            RegisterUnregisteredServices(services, targetAssemblies);
-
-            if (configure != null)
-            {
-                RegisterFluentPolicySource(services, configure);
-            }
-
+            if (builder.AutoLifetime is { } lifetime) RegisterUnregisteredServices(services, catalog, lifetime);
+            DecorateExistingRegistrations(services, catalog);
+            // Compile each container's startup policy when its sources load, preserving host-start validation.
+            services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(
+                new FluentPolicySource(builder.Configuration.BuildMethodPolicies()), PolicySourcePriority.StartupFluent));
+            var validation = GetRegistrationValidation(services);
+            validation.CachedTypes.UnionWith(modules.SelectMany(static m => m.DeclaredServices));
+            validation.Accepted.UnionWith(GetDecoratedRegistrations(services));
             return services;
         }
 
         /// <summary>
         /// Reads cache policies for <c>[Cache]</c> methods from a configuration section, such as <c>"MethodCache"</c> in
         /// <c>appsettings.json</c>. These win over attributes and startup code, and changes apply when the configuration
-        /// reloads. An invalid value throws at startup; an invalid reload is logged and the previous policies stay.
+        /// reloads. The section is read when the host starts (without a generic host, on first use), so configuration
+        /// sources added after this call count too. An invalid value fails startup; an invalid reload is logged and the
+        /// previous policies stay.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="configuration">The application's configuration</param>
         /// <param name="sectionName">The section to read policies from</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
+        internal static IServiceCollection AddMethodCacheFromConfiguration(this IServiceCollection services, IConfiguration configuration, string sectionName = "MethodCache")
         {
             if (services == null)
             {
@@ -107,14 +80,14 @@ namespace Microsoft.Extensions.DependencyInjection
 
             EnsureCoreServices(services);
 
-            // Parsed here so invalid values fail at startup; reloads are applied while the application runs
-            var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
+            // Read when the policies load, so sources added to the configuration after this call are included
             services.AddSingleton<PolicySourceRegistration>(sp =>
             {
+                var source = ConfigFilePolicySourceBuilder.FromConfiguration(configuration, sectionName);
                 var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
                 if (logger != null)
                 {
-                    source.ReloadFailed += ex => logger.LogError(ex, "Ignored reloaded MethodCache configuration; the previous cache policies stay in effect.");
+                    source.ReloadFailed += ex => logger.LogError("Ignored reloaded MethodCache configuration; the previous cache policies stay in effect. Error type: {ErrorType}.", ex.GetType().FullName);
                 }
 
                 return new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles);
@@ -125,14 +98,26 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static void EnsureCoreServices(IServiceCollection services)
         {
+            services.AddMetrics();
+            services.AddOptions<MethodCacheTelemetryOptions>();
+            services.TryAddSingleton(static sp => new MethodCache.Core.Telemetry.CoreTelemetry(
+                sp.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
+                sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>()));
+            services.TryAddSingleton(new GeneratedParameters());
+            services.TryAddSingleton(static provider => new RegistrationValidationState(provider.GetService<RegistrationValidation>()));
             AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
-            services.TryAddSingleton<ICacheMetricsProvider, NullCacheMetricsProvider>();
             services.TryAddSingleton(static sp => new DecoratorServices(
                 sp.GetRequiredService<ICacheManager>(),
                 sp.GetRequiredService<IPolicyRegistry>(),
                 sp.GetRequiredService<ICacheKeyGenerator>(),
-                sp.GetService<ICacheMetricsProvider>()));
+                sp.GetService<MethodCache.Core.Telemetry.CoreTelemetry>())
+            {
+                Diagnostics = new GeneratedDiagnostics(sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Generated")),
+                ParameterNames = new Dictionary<string, string[]>(sp.GetRequiredService<GeneratedParameters>().Names, StringComparer.Ordinal)
+            });
+
+            services.TryAddSingleton(static sp => new GeneratedServices(sp.GetRequiredService<DecoratorServices>()));
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
@@ -147,6 +132,11 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+
+            // A generic host loads the policies when it starts, so misconfiguration fails startup instead of the
+            // first call; without one, the first cached call loads them and fails the same way
+            services.AddOptions<PolicyStartupValidation>().ValidateOnStart();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<PolicyStartupValidation>, PolicyStartupValidation.Validator>());
         }
 
         /// <summary>
@@ -157,26 +147,37 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         internal static void AddDefaultCacheManager(IServiceCollection services)
         {
-            if (services.Any(sd => sd.ServiceType == typeof(ICacheManager)))
+            if (services.Any(sd => !sd.IsKeyedService && sd.ServiceType == typeof(ICacheManager)))
             {
                 return;
             }
 
             services.TryAddSingleton(static sp => new InMemoryCacheManager(
-                sp.GetRequiredService<ICacheMetricsProvider>(),
                 sp.GetService<IOptions<MethodCacheMemoryOptions>>(),
                 sp.GetService<TimeProvider>(),
-                sp.GetService<DistributedCacheLayer>()));
+                sp.GetService<DistributedCacheLayer>(),
+                methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
+                sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
+                sp.GetService<HttpResponseStore>(),
+                sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>())));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
-            services.TryAddSingleton<ICacheAdministrator>(static sp => new InMemoryCacheAdministrator(
-                sp.GetRequiredService<InMemoryCacheManager>(),
-                sp.GetService<IPolicyRegistry>()));
+            services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);
+        }
+
+        internal sealed class ExplicitCoreRegistration;
+
+        internal static ICacheAdministrator CreateAdministrator(IServiceProvider services)
+        {
+            var method = services.GetService<InMemoryCacheManager>();
+            var http = services.GetService<HttpResponseStore>();
+            if (method != null) return new InMemoryCacheAdministrator(method, services.GetService<IPolicyRegistry>(), http);
+            return http != null ? new HttpCacheAdministrator(http) : null!;
         }
 
         // Shared service key contract: MethodCache.HttpCaching resolves this owned cache before the app's cache.
-        // Keep this key stable so the HTTP add-on can remain independent of a Core package reference.
-        private const string OwnDistributedCacheKey = "MethodCache";
+        // Keep this key stable for the HTTP add-on's owned-storage lookup.
+        private const string OwnDistributedCacheKey = MethodCache.Infrastructure.OwnedServices.Key;
 
         /// <summary>
         /// Keeps cached results in a distributed cache that only MethodCache uses, created by
@@ -188,7 +189,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="cacheFactory">Creates the distributed cache, once</param>
         /// <param name="configure">Optional distributed cache options</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Func<IServiceProvider, IDistributedCache> cacheFactory, Action<DistributedCacheOptions>? configure = null)
+        internal static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Func<IServiceProvider, IDistributedCache> cacheFactory, Action<DistributedCacheOptions>? configure = null)
         {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(cacheFactory);
@@ -208,13 +209,14 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="services">The service collection</param>
         /// <param name="configure">Optional distributed cache options</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Action<DistributedCacheOptions>? configure = null)
+        internal static IServiceCollection AddMethodCacheDistributedCache(this IServiceCollection services, Action<DistributedCacheOptions>? configure = null)
         {
             if (services == null)
             {
                 throw new ArgumentNullException(nameof(services));
             }
 
+            MethodCache.Infrastructure.OwnedServices.AddOptions(services);
             var options = services.AddOptions<DistributedCacheOptions>()
                 .Validate(o => o.HasEffectiveTagRetention, "TagRetention must exceed ClockSkewTolerance after truncation to whole milliseconds.")
                 .ValidateOnStart();
@@ -223,14 +225,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Configure(configure);
             }
 
-            services.TryAddSingleton<ISerializer, JsonCacheSerializer>();
+            services.TryAddKeyedSingleton<ISerializer>(OwnDistributedCacheKey, static (_, _) => new JsonCacheSerializer());
             services.TryAddSingleton(static sp => new DistributedCacheLayer(
-                sp.GetKeyedService<IDistributedCache>(OwnDistributedCacheKey) ?? sp.GetRequiredService<IDistributedCache>(),
-                sp.GetRequiredService<ISerializer>(),
-                sp.GetRequiredService<IOptions<DistributedCacheOptions>>().Value,
-                sp.GetService<IBackplane>(),
+                sp.GetRequiredKeyedService<IDistributedCache>(OwnDistributedCacheKey),
+                sp.GetRequiredKeyedService<ISerializer>(OwnDistributedCacheKey),
+                sp.GetRequiredKeyedService<DistributedCacheOptions>(OwnDistributedCacheKey),
+                sp.GetKeyedService<IBackplane>(OwnDistributedCacheKey),
                 sp.GetService<TimeProvider>(),
-                sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>()));
+                sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>(), telemetry: sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
 
             // A generic host checks the cache when it starts; without one, the layer above rejects it on first use
             services.AddOptions<DistributedCacheStoreValidation>().ValidateOnStart();
@@ -241,25 +243,13 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
 
-        private static void RegisterFluentPolicySource(IServiceCollection services, Action<IFluentMethodCacheConfiguration> configure)
-        {
-            services.AddSingleton<PolicySourceRegistration>(_ =>
-                new PolicySourceRegistration(new FluentPolicySource(configure), PolicySourcePriority.StartupFluent));
-        }
-
         /// <summary>
-        /// Native AOT cannot tell which assembly called, so there every generated decorator counts; all module
-        /// initializers have run at startup, so that is every decorator in the application.
+        /// Wraps services the application registered itself, keyed ones included, in their generated decorators.
+        /// The original registration moves to a private key so the container still creates and disposes the
+        /// implementation with its own lifetime, factory or instance, and the decorator takes its place under the
+        /// interface and its service key.
         /// </summary>
-        private static Assembly[]? CallingAssemblies(Assembly? callingAssembly)
-            => callingAssembly == null ? null : new[] { callingAssembly };
-
-        /// <summary>
-        /// Wraps services the application registered itself in their generated decorators. The original
-        /// registration moves to a private key so the container still creates and disposes the implementation
-        /// with its own lifetime, factory or instance, and the decorator takes its place under the interface.
-        /// </summary>
-        private static void DecorateExistingRegistrations(IServiceCollection services)
+        private static void DecorateExistingRegistrations(IServiceCollection services, ModuleCatalog catalog)
         {
             var decorated = GetDecoratedRegistrations(services);
 
@@ -268,22 +258,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 var descriptor = services[index];
                 var serviceType = descriptor.ServiceType;
 
-                if (descriptor.IsKeyedService ||
+                // Private inner registrations and already decorated descriptors are not wrapped again.
+                if (descriptor.ServiceKey is DecoratedServiceKey ||
                     !serviceType.IsInterface ||
-                    serviceType.ContainsGenericParameters ||
                     decorated.Contains(descriptor) ||
-                    !MethodCacheDecorators.TryGet(serviceType, out var registration))
+                    !catalog.TryGet(serviceType, out var registration))
                 {
                     continue;
                 }
 
-                var innerKey = new DecoratedServiceKey(serviceType);
+                if (serviceType.ContainsGenericParameters || ReferenceEquals(descriptor.ServiceKey, KeyedService.AnyKey))
+                    throw new InvalidOperationException($"MethodCache cannot bind the open generic or AnyKey registration of {serviceType}. Register concrete closed types with explicit keys.");
+                var innerKey = new DecoratedServiceKey(serviceType, descriptor.ServiceKey);
+                var decorator = DescribeDecorator(services, descriptor, registration, innerKey);
                 services.Add(CreateKeyedCopy(descriptor, innerKey));
-
-                var decorator = ServiceDescriptor.Describe(
-                    serviceType,
-                    provider => registration.Decorate(provider, provider.GetRequiredKeyedService(serviceType, innerKey)),
-                    descriptor.Lifetime);
 
                 // Replacing the original slot keeps registration order, and therefore IEnumerable<T> order
                 services[index] = decorator;
@@ -293,45 +281,76 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
-        /// Registers interfaces with cache attributes that the application has not registered, using the
-        /// implementation the generator found next to each one, as a singleton.
+        /// The decorator registration that takes the place of <paramref name="descriptor"/>. An unkeyed singleton
+        /// uses the container's decorator services. A keyed registration puts its service key in its cache keys, so
+        /// two registrations of one interface never share entries, and a scoped or transient one lets background
+        /// loads create a new instance in a new scope; those get decorator services of their own, created once per
+        /// container from the root provider.
         /// </summary>
-        private static void RegisterUnregisteredServices(IServiceCollection services, Assembly[]? assemblies)
+        private static ServiceDescriptor DescribeDecorator(IServiceCollection services, ServiceDescriptor descriptor, DecoratorRegistration registration, DecoratedServiceKey innerKey)
         {
-            var registrations = assemblies == null
-                ? MethodCacheDecorators.All()
-                : assemblies.Distinct().SelectMany(MethodCacheDecorators.For).ToList();
-
-            var decorated = GetDecoratedRegistrations(services);
-
-            foreach (var registration in registrations)
+            var serviceType = descriptor.ServiceType;
+            string? keySuffix = null;
+            if (descriptor.IsKeyedService)
             {
-                // Respect registrations the application made itself (lifetime, factory, test double)
-                if (services.Any(descriptor => descriptor.ServiceType == registration.ServiceType && !descriptor.IsKeyedService))
-                {
-                    continue;
-                }
+                keySuffix = "@" + (MethodCacheKeys.ServiceKeyPart(descriptor.ServiceKey!) ?? throw new InvalidOperationException(
+                    $"The keyed registration of {serviceType} has a service key of type {descriptor.ServiceKey!.GetType()}. MethodCache puts the " +
+                    "service key in the cache keys, so each registration caches its own results, and needs a key with a stable string form: " +
+                    "a string, enum, bool, char, integer or Guid. Use a key with a supported stable representation."));
+            }
 
-                var implementationType = registration.ImplementationType;
-                if (implementationType == null)
-                {
-                    // Nothing to register; resolving the interface fails with the usual DI error naming it
-                    continue;
-                }
+            var bindings = services.First(d => d.ServiceType == typeof(GeneratedParameters)).ImplementationInstance as GeneratedParameters;
+            foreach (var method in registration.MethodKeys)
+                bindings!.KeyBindings.Add((MethodCacheKeys.Prefix(serviceType, method.Key), keySuffix ?? string.Empty, method.Id));
+            var background = descriptor.Lifetime != ServiceLifetime.Singleton;
+            var slot = new RegistrationServicesKey();
+            Func<IServiceProvider, object> decorate = provider => registration.Decorate(
+                new RegistrationServiceProvider(provider, provider.GetRequiredKeyedService<GeneratedServices>(slot)),
+                provider.GetRequiredKeyedService(serviceType, innerKey));
+            services.AddKeyedSingleton(slot, (root, _) => new GeneratedServices(DecoratorServices.From(root).ForRegistration(
+                keySuffix,
+                background ? new BackgroundLoadTarget(root.GetRequiredService<IServiceScopeFactory>(), serviceType, innerKey) : null)));
 
-                services.TryAdd(ServiceDescriptor.Singleton(implementationType, implementationType));
+            return descriptor.IsKeyedService
+                ? ServiceDescriptor.DescribeKeyed(serviceType, descriptor.ServiceKey, (provider, _) => decorate(provider), descriptor.Lifetime)
+                : ServiceDescriptor.Describe(serviceType, decorate, descriptor.Lifetime);
+        }
 
-                var decorator = ServiceDescriptor.Singleton(
-                    registration.ServiceType,
-                    provider => registration.Decorate(provider, provider.GetRequiredService(implementationType)));
-                services.Add(decorator);
-                decorated.Add(decorator);
-                registration.AddPolicies?.Invoke(services);
+        /// <summary>
+        /// Registers missing interfaces only when exactly one generated candidate exists, using the explicit lifetime.
+        /// </summary>
+        private static void RegisterUnregisteredServices(IServiceCollection services, ModuleCatalog catalog, ServiceLifetime lifetime)
+        {
+            foreach (var registration in catalog.AutoRegistrations())
+            {
+                if (services.Any(d => d.ServiceType == registration.ServiceType)) continue;
+                var candidates = catalog.Candidates(registration).DistinctBy(static c => c.ImplementationType).ToArray();
+                if (candidates.Length != 1)
+                    throw new InvalidOperationException($"MethodCache AutoRegister for {registration.ServiceType} in {registration.GeneratedIn.GetName().Name} needs exactly one accessible implementation; found {candidates.Length}: {string.Join(", ", candidates.Select(static t => t.ImplementationType.FullName))}.");
+                services.Add(ServiceDescriptor.Describe(registration.ServiceType, candidates[0].ImplementationType, lifetime));
             }
         }
 
         private static ServiceDescriptor CreateKeyedCopy(ServiceDescriptor descriptor, object key)
         {
+            if (descriptor.IsKeyedService)
+            {
+                if (descriptor.KeyedImplementationInstance != null)
+                {
+                    return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationInstance);
+                }
+
+                if (descriptor.KeyedImplementationFactory != null)
+                {
+                    // The factory sees the key the application registered, not the private one
+                    var keyedFactory = descriptor.KeyedImplementationFactory;
+                    var serviceKey = descriptor.ServiceKey;
+                    return new ServiceDescriptor(descriptor.ServiceType, key, (provider, _) => keyedFactory(provider, serviceKey), descriptor.Lifetime);
+                }
+
+                return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationType!, descriptor.Lifetime);
+            }
+
             if (descriptor.ImplementationInstance != null)
             {
                 return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationInstance);
@@ -360,19 +379,142 @@ namespace Microsoft.Extensions.DependencyInjection
             return created.Descriptors;
         }
 
+        private sealed class ModuleCatalog(GeneratedModuleBuilder[] modules, Assembly[] selected)
+        {
+            internal bool TryGet(Type serviceType, out DecoratorRegistration registration)
+            {
+                var candidates = modules.SelectMany(static m => m.Decorators)
+                    .Where(d => d.ServiceType == serviceType || serviceType.IsGenericTypeDefinition && d.ServiceType.IsConstructedGenericType && d.ServiceType.GetGenericTypeDefinition() == serviceType).ToArray();
+                var chosen = candidates.Where(d => selected.Contains(d.GeneratedIn)).ToArray();
+                if (chosen.Length == 1) { registration = chosen[0]; return true; }
+                if (chosen.Length == 0 && candidates.Length == 1) { registration = candidates[0]; return true; }
+                if (candidates.Length != 0)
+                    throw new InvalidOperationException($"MethodCache has ambiguous modules for {serviceType}: {string.Join(", ", candidates.Select(static c => c.GeneratedIn.GetName().Name))}. Select exactly one with FromAssemblyOf<T>().");
+                var definition = serviceType.IsConstructedGenericType ? serviceType.GetGenericTypeDefinition() : serviceType;
+                if (modules.Any(m => m.DeclaredServices.Contains(definition)))
+                    throw new InvalidOperationException($"MethodCache has no supported generated binding for {serviceType}. Register a concrete closed service with an implementation visible to its generated module; open generic and AnyKey registrations are unsupported.");
+                registration = null!;
+                return false;
+            }
+            internal IEnumerable<DecoratorRegistration> AutoRegistrations()
+            {
+                var types = modules.Where(m => selected.Length == 0 || selected.Contains(m.Module.GetType().Assembly))
+                    .SelectMany(static m => m.Decorators).Select(static d => d.ServiceType).Distinct();
+                foreach (var type in types) if (TryGet(type, out var registration)) yield return registration;
+            }
+            internal IEnumerable<CandidateRegistration> Candidates(DecoratorRegistration registration)
+                => modules.Where(m => m.Module.GetType().Assembly == registration.GeneratedIn)
+                    .SelectMany(m => m.Candidates.GetValueOrDefault(registration.ServiceType) ?? []);
+        }
+
+        internal sealed class GeneratedParameters
+        {
+            internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+            internal List<(string Prefix, string Suffix, string Method)> KeyBindings { get; } = [];
+            internal Func<string, CacheRuntimePolicy?> CreateLookup(Func<IPolicyRegistry> registry)
+            {
+                var bindings = KeyBindings.OrderByDescending(static item => item.Prefix.Length).ThenByDescending(static item => item.Suffix.Length).ToArray();
+                return key => Resolve(key, registry(), bindings);
+            }
+            private static CacheRuntimePolicy? Resolve(string key, IPolicyRegistry registry, (string Prefix, string Suffix, string Method)[] bindings)
+            {
+                foreach (var binding in bindings)
+                {
+                    if (!key.StartsWith(binding.Prefix, StringComparison.Ordinal)) continue;
+                    var rest = key.AsSpan(binding.Prefix.Length);
+                    if (!rest.IsEmpty && rest[0] is not ':' and not '<' and not '@') continue;
+                    if (!rest.IsEmpty && rest[0] == '<')
+                    {
+                        var end = rest.IndexOf('>');
+                        if (end < 0) continue;
+                        rest = rest[(end + 1)..];
+                    }
+                    if (!rest.StartsWith(binding.Suffix, StringComparison.Ordinal)) continue;
+                    rest = rest[binding.Suffix.Length..];
+                    var policy = PolicyHandle.For(registry, binding.Method).Current;
+                    var version = policy.Version is { } number ? ":v" + number.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+                    if (!rest.StartsWith(version, StringComparison.Ordinal)) continue;
+                    var tail = rest[version.Length..];
+                    if (tail.IsEmpty || tail[0] == ':') return policy;
+                }
+                return null;
+            }
+        }
+
+        internal sealed class RegistrationValidation(IServiceCollection services)
+        {
+            internal HashSet<Type> CachedTypes { get; } = [];
+            internal HashSet<ServiceDescriptor> Accepted { get; } = [];
+            internal void Validate()
+            {
+                foreach (var descriptor in services)
+                    if (descriptor.ServiceKey is not DecoratedServiceKey &&
+                        (CachedTypes.Contains(descriptor.ServiceType) || descriptor.ServiceType.IsConstructedGenericType && CachedTypes.Contains(descriptor.ServiceType.GetGenericTypeDefinition())) &&
+                        !Accepted.Contains(descriptor))
+                        throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache.");
+            }
+        }
+        internal sealed class RegistrationValidationState(RegistrationValidation? specification)
+        {
+            private readonly object _gate = new();
+            private bool _validated;
+            internal void Validate()
+            {
+                lock (_gate)
+                {
+                    if (_validated) return;
+                    specification?.Validate();
+                    _validated = true;
+                }
+            }
+        }
+
+        private static RegistrationValidation GetRegistrationValidation(IServiceCollection services)
+        {
+            var existing = services.FirstOrDefault(d => d.ServiceType == typeof(RegistrationValidation))?.ImplementationInstance as RegistrationValidation;
+            if (existing != null) return existing;
+            var created = new RegistrationValidation(services);
+            services.AddSingleton(created);
+            return created;
+        }
+
         private sealed class DecoratedRegistrations
         {
             public HashSet<ServiceDescriptor> Descriptors { get; } = new();
         }
 
-        // Compared by reference, so two registrations of the same interface each keep their own inner service
+        // Compared by reference, so two registrations of the same interface each keep their own inner service.
+        // Holds the application's own service key, if any, for diagnostics.
+        /// <summary>The private key of one registration's <see cref="DecoratorServices"/>.</summary>
+        private sealed class RegistrationServicesKey
+        {
+        }
+
+        /// <summary>
+        /// The provider a generated decorator is created with: the requesting one, except that it returns the
+        /// registration's own <see cref="DecoratorServices"/>.
+        /// </summary>
+        private sealed class RegistrationServiceProvider(IServiceProvider provider, GeneratedServices services) : IServiceProvider
+        {
+            public object? GetService(Type serviceType)
+                => serviceType == typeof(GeneratedServices) ? services : provider.GetService(serviceType);
+        }
+
         private sealed class DecoratedServiceKey
         {
-            public DecoratedServiceKey(Type serviceType) => ServiceType = serviceType;
+            public DecoratedServiceKey(Type serviceType, object? serviceKey)
+            {
+                ServiceType = serviceType;
+                ServiceKey = serviceKey;
+            }
 
             public Type ServiceType { get; }
 
-            public override string ToString() => $"MethodCache inner {ServiceType.Name}";
+            public object? ServiceKey { get; }
+
+            public override string ToString() => ServiceKey == null
+                ? $"MethodCache inner {ServiceType.Name}"
+                : $"MethodCache inner {ServiceType.Name} ({ServiceKey})";
         }
     }
 }

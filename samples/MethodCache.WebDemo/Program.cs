@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MethodCache;
 using MethodCache.WebDemo;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -12,8 +13,7 @@ builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ProductStore>();
 builder.Services.AddSingleton<ProductCatalog>();
 builder.Services.AddSingleton<IProductCatalog>(sp => sp.GetRequiredService<ProductCatalog>());
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheFromConfiguration(builder.Configuration); // "MethodCache" in appsettings.json, reloaded live
+builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration)); // "MethodCache" in appsettings.json, reloaded live
 
 // Optional: share the cache between instances. Set ConnectionStrings:Redis (the "redis" launch profiles do).
 var redis = builder.Configuration.GetConnectionString("Redis");
@@ -22,12 +22,12 @@ if (!string.IsNullOrEmpty(redis))
     builder.Services.AddMethodCacheRedis(options =>
     {
         options.Configuration = redis;
-        options.KeyPrefix = builder.Configuration["Demo:CachePrefix"] ?? "methodcache-webdemo:";
     });
+    builder.Services.Configure<DistributedCacheOptions>(options =>
+        options.KeyPrefix = builder.Configuration["Demo:CachePrefix"] ?? "methodcache-webdemo:");
 }
 
 // Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.
-builder.Services.AddMethodCacheOpenTelemetry();
 var telemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? "MethodCache.WebDemo"))
     .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddMethodCacheInstrumentation())

@@ -5,7 +5,7 @@ namespace MethodCache.Extensibility;
 /// <summary>
 /// Turns cached values into bytes for the distributed cache and back.
 /// </summary>
-public interface ISerializer
+internal interface ISerializer
 {
     /// <summary>
     /// Writes <paramref name="value"/> to <paramref name="destination"/>. Write at least one byte: an entry with an

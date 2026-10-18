@@ -1,8 +1,5 @@
-using System.Collections.Concurrent;
+using MethodCache.TestSupport;
 using MethodCache.HttpCaching.Internal;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -11,206 +8,129 @@ namespace MethodCache.HttpCaching.Tests.Storage;
 public class GenerationStorageTests
 {
     [Fact]
-    public async Task Generation_SurvivesBackendDefaultExpiry_AndIsSharedAcrossInstances()
+    public async Task Generation_SharedAcrossInstances_RemainsPermanentAcrossClockAdvance()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var first = Store(time, backend);
-        using var second = Store(time, backend);
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var first = new TestHttpStore(time, backend); using var second = new TestHttpStore(time, backend);
         await first.InvalidateAsync("url");
         var generation = await second.GetGenerationAsync("url");
         time.Advance(TimeSpan.FromDays(365));
         Assert.Equal(generation, await second.GetGenerationAsync("url"));
-        Assert.Equal(DateTimeOffset.MaxValue, Assert.Single(backend.Expirations.Values));
+        Assert.Equal(3, backend.MetadataCount);
     }
 
     [Fact]
-    public async Task Invalidation_CompletedOutOfOrder_NeverRestoresAnObservedGeneration()
+    public async Task Invalidation_CompletedOutOfOrder_NeverRestoresObservedGeneration()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time) { HoldNextWrite = true };
-        using var first = Store(time, backend);
-        using var second = Store(time, backend);
-        var older = first.InvalidateAsync("url").AsTask();
-        await backend.Started.Task;
-        await second.InvalidateAsync("url");
-        var newer = await second.GetGenerationAsync("url");
-        backend.Release.TrySetResult();
-        await older;
-        var final = await second.GetGenerationAsync("url");
-        Assert.NotEmpty(final);
-        Assert.NotEqual(newer, final);
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time); backend.HoldNextAdvance = true;
+        using var first = new TestHttpStore(time, backend); using var second = new TestHttpStore(time, backend);
+        var older = first.InvalidateAsync("url").AsTask(); await backend.Started.Task;
+        await second.InvalidateAsync("url"); var newer = await second.GetGenerationAsync("url");
+        backend.Release.TrySetResult(); await older;
+        Assert.NotEqual(newer, await second.GetGenerationAsync("url"));
+        Assert.Equal(2, backend.Advances);
     }
 
     [Fact]
-    public async Task Invalidation_IgnoredProviderWrite_RetriesWithAFreshGeneration()
+    public async Task Invalidation_AdvanceFailure_ReportsUnconfirmedAndOwnsRecovery()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var storage = Store(time, backend);
-        await storage.InvalidateAsync("url");
-        var previous = await storage.GetGenerationAsync("url");
-        backend.IgnoreNextWrite = true;
-        await storage.InvalidateAsync("url");
-        var current = await storage.GetGenerationAsync("url");
-        Assert.NotEqual(previous, current);
-        Assert.Equal(3, backend.WrittenGenerations.Count);
-        Assert.NotEqual(backend.WrittenGenerations[1], backend.WrittenGenerations[2]);
-    }
-
-    [Fact]
-    public async Task Invalidation_ConcurrentInvalidatorWinsTheWrite_Succeeds()
-    {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var storage = Store(time, backend);
-        await storage.InvalidateAsync("url");
-        var before = await storage.GetGenerationAsync("url");
-        // Another instance (or a URL sharing the slot) invalidates right after each of our writes
-        backend.ConcurrentInvalidator = true;
-        await storage.InvalidateAsync("url");
-        backend.ConcurrentInvalidator = false;
-        var after = await storage.GetGenerationAsync("url");
-        Assert.NotEqual(before, after);
-    }
-
-    [Fact]
-    public async Task Post_ConcurrentInvalidationOfTheSameSlot_ReturnsTheOriginResponse()
-    {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time) { ConcurrentInvalidator = true };
-        using var storage = Store(time, backend);
-        using var origin = new VersionedOrigin();
-        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, time));
-        using var response = await client.PostAsync("https://api.example.com/write", new StringContent("update"));
-        Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Invalidation_ProviderNeverConfirmsWrite_ReportsFailureAfterBoundedRetries()
-    {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time) { IgnoreEveryWrite = true };
-        using var storage = Store(time, backend);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.InvalidateAsync("url").AsTask());
-        Assert.Equal(3, backend.WrittenGenerations.Count);
-        Assert.Equal(3, backend.WrittenGenerations.Distinct().Count());
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend);
+        var before = await storage.GetGenerationAsync("url"); backend.FailAdvance = true;
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => storage.InvalidateAsync("url").AsTask());
+        Assert.Equal(1, storage.Core.PendingRecoveries);
+        Assert.StartsWith("unavailable:", await storage.GetGenerationAsync("url"));
+        backend.FailAdvance = false; time.Advance(TimeSpan.FromSeconds(11));
+        await storage.Core.FlushRecoveryAsync();
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+        Assert.NotEqual(before, await storage.GetGenerationAsync("url"));
     }
 
     [Fact]
     public async Task Invalidation_ManyDistinctUrls_BoundsPermanentMetadata()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var storage = Store(time, backend);
-        for (var i = 0; i < 20_000; i++)
-        {
-            await storage.InvalidateAsync("url:" + i);
-        }
-        Assert.InRange(backend.Expirations.Count, 1, 4096);
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend);
+        for (var i = 0; i < 20000; i++) await storage.InvalidateAsync("url:" + i);
+        Assert.InRange(backend.MetadataCount, 1, 4096);
     }
 
     [Fact]
-    public async Task Generation_ReadFailureOrCorruption_NeverReusesTheInitialNamespace()
+    public async Task Generation_ReadFailure_NeverReusesPreviousNamespace()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time) { ReadResult = [1, 2, 3] };
-        using var storage = Store(time, backend);
-        var corrupted = await storage.GetGenerationAsync("url");
-        Assert.NotEmpty(corrupted);
-        Assert.NotEqual(corrupted, await storage.GetGenerationAsync("url"));
-        backend.ThrowOnRead = true;
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend);
+        var before = await storage.GetGenerationAsync("url"); backend.FailRead = true;
         var failed = await storage.GetGenerationAsync("url");
-        Assert.NotEmpty(failed);
-        Assert.NotEqual(failed, await storage.GetGenerationAsync("url"));
+        Assert.StartsWith("unavailable:", failed);
+        Assert.NotEqual(before, failed); Assert.NotEqual(failed, await storage.GetGenerationAsync("url"));
     }
 
     [Fact]
-    public async Task Generation_RecordLostAfterInvalidation_NeverServesResponsesFromBeforeThePost()
+    public async Task Generation_MetadataLostAfterMutation_NeverRestoresOldResponse()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var storage = Store(time, backend);
-        using var origin = new VersionedOrigin();
-        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, time));
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend); using var origin = new VersionedOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, storage, time));
         const string url = "https://api.example.com/resource";
-
-        using (var first = await client.GetAsync(url)) Assert.Equal("old", await first.Content.ReadAsStringAsync());
-        origin.Version = "new";
+        Assert.Equal("old", await client.GetStringAsync(url)); origin.Version = "new";
         using (await client.PostAsync(url, new StringContent("update"))) { }
-        using (var second = await client.GetAsync(url)) Assert.Equal("new", await second.Content.ReadAsStringAsync());
-
-        backend.RemoveGenerationRecords(); // Redis eviction or a compaction of the generation keys
-
-        using var third = await client.GetAsync(url);
-        Assert.Equal("new", await third.Content.ReadAsStringAsync());
+        Assert.Equal("new", await client.GetStringAsync(url)); backend.LoseMetadata();
+        Assert.Equal("new", await client.GetStringAsync(url));
     }
 
     [Fact]
-    public async Task Generation_MissingRecord_IsReplacedByAFreshStoredGeneration()
+    public async Task Generation_MissingMetadata_InitializesFreshIdentity()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var first = Store(time, backend);
-        using var second = Store(time, backend);
-        var created = await first.GetGenerationAsync("url");
-        Assert.NotEmpty(created);
-        Assert.Equal(created, await second.GetGenerationAsync("url"));
-        Assert.Equal(DateTimeOffset.MaxValue, Assert.Single(backend.Expirations.Values));
-        backend.RemoveGenerationRecords();
-        var recreated = await second.GetGenerationAsync("url");
-        Assert.NotEmpty(recreated);
-        Assert.NotEqual(created, recreated);
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var first = new TestHttpStore(time, backend); using var second = new TestHttpStore(time, backend);
+        var before = await first.GetGenerationAsync("url"); Assert.Equal(before, await second.GetGenerationAsync("url"));
+        backend.LoseMetadata(); Assert.NotEqual(before, await second.GetGenerationAsync("url"));
     }
 
     [Fact]
-    public async Task ClearMemory_ChangesGenerations_EvenForUrlsNeverInvalidated()
+    public async Task ClearMemory_RetiresNeverPreviouslyInvalidatedUrls()
     {
-        using var storage = Store(new FakeTimeProvider());
-        var old = await storage.GetGenerationAsync("url");
-        await storage.ClearAsync();
-        Assert.NotEqual(old, await storage.GetGenerationAsync("url"));
+        using var storage = new TestHttpStore(new FakeTimeProvider());
+        var before = await storage.GetGenerationAsync("url"); await storage.ClearAsync();
+        Assert.NotEqual(before, await storage.GetGenerationAsync("url"));
     }
 
     [Fact]
-    public async Task InvalidationWriteFailure_Propagates_AndDisposesTheOriginResponse()
+    public async Task UnconfirmedMutation_ThrowsTypedError_DisposesOriginResponse_AndNeverRetriesOrigin()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time) { IgnoreEveryWrite = true };
-        using var storage = Store(time, backend);
-        using var origin = new SuccessfulWriteOrigin();
-        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions(), origin, storage, time));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => client.PostAsync("https://api.example.com/write", new StringContent("update")));
-        Assert.True(origin.Written);
-        Assert.True(origin.ResponseDisposed);
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time); backend.FailAdvance = true;
+        using var storage = new TestHttpStore(time, backend); using var origin = new SuccessfulWriteOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, storage, time));
+        await Assert.ThrowsAsync<HttpCacheInvalidationException>(() => client.PostAsync("https://api.example.com/write", new StringContent("update")));
+        Assert.True(origin.Written); Assert.True(origin.ResponseDisposed);
+        backend.FailAdvance = false; time.Advance(TimeSpan.FromSeconds(11)); await storage.Core.FlushRecoveryAsync();
+        Assert.Equal(0, storage.Core.PendingRecoveries);
     }
 
     [Fact]
-    public async Task Generations_DifferentStoragePrefixes_RemainIsolated()
+    public async Task Generations_DifferentCorePrefixes_RemainIsolated()
     {
-        var time = new FakeTimeProvider();
-        var backend = new EpochBackend(time);
-        using var first = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions { KeyPrefix = "first:" }), NullLogger<HttpCacheStore>.Instance, time, backend);
-        using var second = new HttpCacheStore(Options.Create(new HttpCacheStorageOptions { KeyPrefix = "second:" }), NullLogger<HttpCacheStore>.Instance, time, backend);
-        var untouched = await second.GetGenerationAsync("url");
-        await first.InvalidateAsync("url");
-        Assert.NotEqual(untouched, await first.GetGenerationAsync("url"));
-        Assert.Equal(untouched, await second.GetGenerationAsync("url"));
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var first = new TestHttpStore(time, backend, prefix: "first:"); using var second = new TestHttpStore(time, backend, prefix: "second:");
+        var untouched = await second.GetGenerationAsync("url"); await first.InvalidateAsync("url");
+        Assert.NotEqual(untouched, await first.GetGenerationAsync("url")); Assert.Equal(untouched, await second.GetGenerationAsync("url"));
     }
 
     [Fact]
-    public async Task GenerationOperations_Cancelled_DoNotReadOrMutateMemory()
+    public async Task Cancellation_DuringOwnedAdvance_StopsOnlyCallerWait()
     {
-        using var storage = Store(new FakeTimeProvider());
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => storage.GetGenerationAsync("url", cancellation.Token).AsTask());
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => storage.InvalidateAsync("url", cancellation.Token).AsTask());
-        Assert.Empty(await storage.GetGenerationAsync("url"));
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend); using var observer = new TestHttpStore(time, backend);
+        var before = await observer.GetGenerationAsync("url"); backend.HoldNextAdvance = true;
+        using var caller = new CancellationTokenSource(); var pending = storage.InvalidateAsync("url", caller.Token).AsTask();
+        await backend.Started.Task; caller.Cancel(); await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        Assert.StartsWith("unavailable:", await storage.GetGenerationAsync("url"));
+        backend.Release.TrySetResult();
+        // A second independent advance is serialized after the released one by the backend gate.
+        await observer.InvalidateAsync("url");
+        Assert.NotEqual(before, await observer.GetGenerationAsync("url")); Assert.Equal(2, backend.Advances);
     }
-
-    private static HttpCacheStore Store(TimeProvider time, IDistributedCache? distributed = null)
-        => new(Options.Create(new HttpCacheStorageOptions()), NullLogger<HttpCacheStore>.Instance, time, distributed);
 
     private sealed class VersionedOrigin : HttpMessageHandler
     {
@@ -248,59 +168,4 @@ public class GenerationStorageTests
         }
     }
 
-    private sealed class EpochBackend(TimeProvider time) : IDistributedCache
-    {
-        private readonly ConcurrentDictionary<string, byte[]> _values = new();
-        public ConcurrentDictionary<string, DateTimeOffset> Expirations { get; } = new();
-        public bool HoldNextWrite { get; set; }
-        public bool IgnoreNextWrite { get; set; }
-        public bool IgnoreEveryWrite { get; set; }
-        /// <summary>After each generation write, another invalidator stores its own fresh generation.</summary>
-        public bool ConcurrentInvalidator { get; set; }
-        public List<string> WrittenGenerations { get; } = new();
-        public bool ThrowOnRead { get; set; }
-        public byte[]? ReadResult { get; set; }
-        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public byte[]? Get(string key)
-        {
-            if (ThrowOnRead) throw new InvalidOperationException("Backend unavailable");
-            if (ReadResult != null) return ReadResult;
-            return Expirations.TryGetValue(key, out var expires) && time.GetUtcNow() < expires ? _values[key] : null;
-        }
-        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromResult(Get(key));
-        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
-        {
-            WrittenGenerations.Add(Convert.ToHexString(value));
-            if (IgnoreEveryWrite || IgnoreNextWrite)
-            {
-                IgnoreNextWrite = false;
-                return;
-            }
-            _values[key] = value;
-            Expirations[key] = options.AbsoluteExpiration ?? time.GetUtcNow() + (options.AbsoluteExpirationRelativeToNow ?? TimeSpan.FromMinutes(20));
-            if (ConcurrentInvalidator && key.Contains("$generation:", StringComparison.Ordinal))
-            {
-                _values[key] = Guid.NewGuid().ToByteArray();
-            }
-        }
-        public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
-        {
-            if (HoldNextWrite)
-            {
-                HoldNextWrite = false;
-                Started.TrySetResult();
-                await Release.Task.WaitAsync(token);
-            }
-            Set(key, value, options);
-        }
-        public void RemoveGenerationRecords()
-        {
-            foreach (var key in _values.Keys.Where(k => k.Contains("$generation:", StringComparison.Ordinal)).ToList()) Remove(key);
-        }
-        public void Remove(string key) { _values.TryRemove(key, out _); Expirations.TryRemove(key, out _); }
-        public Task RemoveAsync(string key, CancellationToken token = default) { Remove(key); return Task.CompletedTask; }
-        public void Refresh(string key) { }
-        public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
-    }
 }

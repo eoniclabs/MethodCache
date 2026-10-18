@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BitFaster.Caching;
 using BitFaster.Caching.Lfu;
-using MethodCache.Benchmarks.Microbenchmarks.Legacy;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -17,7 +16,7 @@ using MsOptions = Microsoft.Extensions.Options.Options;
 namespace MethodCache.Benchmarks.Microbenchmarks;
 
 /// <summary>
-/// Head-to-head latency of the in-memory engine against the previous engine and other .NET caches.
+/// Head-to-head latency of the in-memory engine against other .NET caches.
 /// Each benchmark performs <see cref="Operations"/> operations over distinct keys.
 /// </summary>
 [MemoryDiagnoser]
@@ -38,7 +37,6 @@ public class MemoryEngineBenchmarks
     private int _missOffset;
 
     private InMemoryCacheManager _engine = null!;
-    private LegacyInMemoryCacheManager _legacy = null!;
     private MemoryCache _memoryCache = null!;
     private ICache<string, string> _bitFaster = null!;
     private IAsyncCache<string, string> _bitFasterAsync = null!;
@@ -52,8 +50,7 @@ public class MemoryEngineBenchmarks
         _hitKeys = Enumerable.Range(0, Operations).Select(i => $"user:{i}:profile").ToArray();
         _missKeys = Enumerable.Range(0, 2_000_000).Select(i => $"miss:{i}").ToArray();
 
-        _engine = new InMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity }));
-        _legacy = new LegacyInMemoryCacheManager(new NullCacheMetricsProvider(), MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity, EvictionPolicy = global::MethodCache.MemoryCacheEvictionPolicy.Lru }));
+        _engine = new InMemoryCacheManager(MsOptions.Create(new MethodCacheOptions { MaxItems = Capacity }));
         _memoryCache = new MemoryCache(new MsMemoryCacheOptions { SizeLimit = Capacity });
         _bitFaster = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).Build();
         _bitFasterAsync = new ConcurrentLfuBuilder<string, string>().WithCapacity(Capacity).WithExpireAfterWrite(Ttl).AsAsyncCache().Build();
@@ -67,7 +64,6 @@ public class MemoryEngineBenchmarks
         {
             var key = i < Operations ? _hitKeys[i] : $"fill:{i}";
             _engine.SetAsync(key, "value", Ttl).GetAwaiter().GetResult();
-            _legacy.SetAsync(key, "value", Ttl).GetAwaiter().GetResult();
             _memoryCache.Set(key, "value", new MemoryCacheEntryOptions { Size = 1, AbsoluteExpirationRelativeToNow = Ttl });
             _bitFaster.AddOrUpdate(key, "value");
             _bitFasterAsync.AddOrUpdate(key, "value");
@@ -83,7 +79,6 @@ public class MemoryEngineBenchmarks
     public void Cleanup()
     {
         _engine.Dispose();
-        _legacy.Dispose();
         _memoryCache.Dispose();
         _fusion.Dispose();
         _services.Dispose();
@@ -98,18 +93,6 @@ public class MemoryEngineBenchmarks
         foreach (var key in _hitKeys)
         {
             if (_engine.TryGetFast<string>(key, out _)) found++;
-        }
-
-        return found;
-    }
-
-    [Benchmark(OperationsPerInvoke = Operations), BenchmarkCategory("1 Hit (sync)")]
-    public int Legacy_TryGetFast()
-    {
-        var found = 0;
-        foreach (var key in _hitKeys)
-        {
-            if (_legacy.TryGetFast<string>(key, out _)) found++;
         }
 
         return found;
@@ -160,18 +143,6 @@ public class MemoryEngineBenchmarks
         foreach (var key in _hitKeys)
         {
             length += (await _engine.GetOrCreateFastAsync(key, "Bench", _factory, _policy)).Length;
-        }
-
-        return length;
-    }
-
-    [Benchmark(OperationsPerInvoke = Operations), BenchmarkCategory("2 GetOrCreate hit (async)")]
-    public async Task<int> Legacy_GetOrCreate()
-    {
-        var length = 0;
-        foreach (var key in _hitKeys)
-        {
-            length += (await _legacy.GetOrCreateFastAsync(key, "Bench", _factory, _policy)).Length;
         }
 
         return length;
@@ -244,15 +215,6 @@ public class MemoryEngineBenchmarks
         foreach (var key in NextMissKeys())
         {
             await _engine.SetAsync(key, "value", Ttl);
-        }
-    }
-
-    [Benchmark(OperationsPerInvoke = Operations), BenchmarkCategory("3 Insert with eviction")]
-    public async Task Legacy_Set()
-    {
-        foreach (var key in NextMissKeys())
-        {
-            await _legacy.SetAsync(key, "value", Ttl);
         }
     }
 

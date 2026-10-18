@@ -3,6 +3,8 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Settings for HTTP caching on one HttpClient. Set them in <c>AddHttpCaching(options => ...)</c>.
 /// </summary>
+/// <remarks>Size and freshness/retention values must be non-negative. Background revalidation timeout must be
+/// positive and no greater than 4,294,967,294 milliseconds. Named settings are validated when the host starts.</remarks>
 public sealed class HttpCacheOptions
 {
     /// <summary>
@@ -11,6 +13,15 @@ public sealed class HttpCacheOptions
     /// and add no caller identity below the cache handler. Known transports with automatic cookies always bypass.
     /// </summary>
     public bool AllowUnverifiedTransport { get; set; }
+
+    /// <summary>Preserves transport cookie configuration and bypasses response caching completely.
+    /// Default false disables automatic cookies on known transports after all handler configuration.</summary>
+    public bool KeepCookies { get; set; }
+
+    /// <summary>Static application tags for this client, in addition to its escaped http:client tag.
+    /// They participate in shared generations and administration; do not derive them from individual requests.
+    /// At most 125 nonblank custom tags are supported, each at most 1024 UTF-16 code units.</summary>
+    public ISet<string> Tags { get; } = new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>
     /// <c>false</c> (default): a private cache, as in a browser. Responses marked <c>private</c> are cached and the

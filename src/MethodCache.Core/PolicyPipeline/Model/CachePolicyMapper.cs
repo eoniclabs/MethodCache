@@ -7,7 +7,7 @@ namespace MethodCache.Infrastructure;
 /// Helpers for policy sources and generated code; not meant to be called directly.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public static class CachePolicyMapper
+internal static class CachePolicyMapper
 {
     /// <summary>
     /// Returns a copy of the policy with a contribution from the given source added to its <see cref="CachePolicy.Provenance"/>.
@@ -95,6 +95,8 @@ public static class CachePolicyMapper
             fields |= CachePolicyFields.Metadata;
         }
 
+        if (policy.Enabled.HasValue) fields |= CachePolicyFields.Enabled;
+        if (policy.Distributed.HasValue) fields |= CachePolicyFields.Distributed;
         return fields;
     }
 }

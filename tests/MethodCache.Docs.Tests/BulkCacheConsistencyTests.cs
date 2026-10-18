@@ -11,8 +11,8 @@ public class BulkCacheConsistencyTests
     [Fact]
     public async Task BulkRead_WithDistributedHit_ReturnsTheSameValueAsAnIndividualRead()
     {
-        var shared = new MethodCache.TestSupport.AtomicTestCache();
         var time = new FakeTimeProvider();
+        var shared = new MethodCache.TestSupport.AtomicTestCache(time);
         ServiceProvider Node()
         {
             var services = new ServiceCollection();

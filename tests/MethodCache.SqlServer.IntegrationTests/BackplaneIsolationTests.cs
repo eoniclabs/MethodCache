@@ -1,6 +1,7 @@
 using MethodCache.Extensibility;
 using MethodCache.SqlServer;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace MethodCache.SqlServer.IntegrationTests;
@@ -14,14 +15,14 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     [InlineData("tenant-İ:", "tenant-i:")]
     public async Task SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(string prefix, string otherPrefix)
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = prefix };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = otherPrefix };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName };
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var publisher = new SqlServerBackplane(options);
-            await using var subscriber = new SqlServerBackplane(options);
-            await using var other = new SqlServerBackplane(otherOptions);
+            await using var publisher = new SqlServerBackplane(options, prefix: prefix);
+            await using var subscriber = new SqlServerBackplane(options, prefix: prefix);
+            await using var other = new SqlServerBackplane(otherOptions, prefix: otherPrefix);
             var ownMessages = new List<BackplaneMessage>();
             var otherMessages = new List<BackplaneMessage>();
             Task Own(BackplaneMessage message) { ownMessages.Add(message); return Task.CompletedTask; }
@@ -66,15 +67,15 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     [SkippableFact]
     public async Task SharedTable_OtherPrefixesRows_AreNotTrackedAsGaps_AndALateOwnRowStillArrives()
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "app-b:" };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = "app-a:" };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName };
         var clock = new FakeTimeProvider();
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var receiver = new SqlServerBackplane(options, timeProvider: clock);
-            await using var publisher = new SqlServerBackplane(options);
-            await using var otherApp = new SqlServerBackplane(otherOptions);
+            await using var receiver = new SqlServerBackplane(options, timeProvider: clock, prefix: "app-b:");
+            await using var publisher = new SqlServerBackplane(options, prefix: "app-b:");
+            await using var otherApp = new SqlServerBackplane(otherOptions, prefix: "app-a:");
             var delivered = new List<string>();
             Task Handle(BackplaneMessage message) { delivered.Add(message.Key!); return Task.CompletedTask; }
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
@@ -96,9 +97,9 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var transaction = connection.BeginTransaction();
-            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 4, '4:bABhAHQAZQA=');", connection, transaction))
+            await using (var insert = new SqlCommand($"INSERT INTO {options.QualifiedInvalidationsTableName} (Scope, InstanceId, MessageType, Target) VALUES (@scope, 'other', 1, '{SqlWireFixture.Key("late")}');", connection, transaction))
             {
-                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope(options.KeyPrefix));
+                insert.Parameters.AddWithValue("@scope", SqlServerBackplane.GetScope("app-b:"));
                 await insert.ExecuteNonQueryAsync();
             }
             for (var i = 0; i < 5; i++)
@@ -124,20 +125,20 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
     {
         await using var connection = new SqlConnection(options.ConnectionString);
         await connection.OpenAsync();
-        await using var command = new SqlCommand($"DROP TABLE IF EXISTS {options.QualifiedInvalidationsTableName}; DROP TABLE IF EXISTS {options.QualifiedTableName}; DROP SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection);
+        await using var command = new SqlCommand($"DROP TABLE IF EXISTS {options.QualifiedInvalidationsTableName}; DROP TABLE IF EXISTS {options.QualifiedTableName}; DROP TABLE IF EXISTS {options.QualifiedVersionTableName}; DROP SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection);
         await command.ExecuteNonQueryAsync();
     }
 
     [SkippableFact]
     public async Task Cleanup_OnlyRemovesExpiredRowsForItsOwnPrefix()
     {
-        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), KeyPrefix = "short:", BackplaneRetention = TimeSpan.FromMinutes(1) };
-        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, KeyPrefix = "long:", BackplaneRetention = TimeSpan.FromHours(1) };
+        var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N"), BackplaneRetention = TimeSpan.FromMinutes(1) };
+        var otherOptions = new SqlServerOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, BackplaneRetention = TimeSpan.FromHours(1) };
         try
         {
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var own = new SqlServerBackplane(options);
-            await using var other = new SqlServerBackplane(otherOptions);
+            await using var own = new SqlServerBackplane(options, prefix: "short:");
+            await using var other = new SqlServerBackplane(otherOptions, prefix: "long:");
             await own.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
             await own.PublishInvalidationAsync("own");
             await other.PublishInvalidationAsync("other");
@@ -151,69 +152,75 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
             await using var reader = await remaining.ExecuteReaderAsync();
             Assert.True(await reader.ReadAsync());
-            Assert.Equal("4:bwB0AGgAZQByAA==", reader.GetString(0));
+            Assert.True(MethodCache.Infrastructure.BackplaneWire.TryDecode(reader.GetString(0), out var remainingMessage));
+            Assert.Equal("other", remainingMessage.Key);
             Assert.False(await reader.ReadAsync());
         }
         finally { await DropSchemaAsync(options); }
     }
 
-    [SkippableFact]
-    public async Task Cleanup_RemovesExpiredLegacyRowsWithoutAScope()
+    [SkippableTheory]
+    [InlineData("")]
+    [InlineData("Scope binary(32) NULL,")]
+    [InlineData("Scope varbinary(32) NOT NULL,")]
+    [InlineData("Scope binary(16) NOT NULL,")]
+    public async Task ExistingTable_IncompatibleScope_IsRejectedWithoutChangingRows(string scopeColumn)
     {
         var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
         try
         {
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
-            await using (var legacy = new SqlCommand($"CREATE SCHEMA {SqlServerOptions.Quote(options.SchemaName)};", connection))
-            {
-                await legacy.ExecuteNonQueryAsync();
-                legacy.CommandText = $"""
-                    CREATE TABLE {options.QualifiedInvalidationsTableName} (
-                        Id bigint IDENTITY PRIMARY KEY, InstanceId varchar(32) NOT NULL,
-                        MessageType tinyint NOT NULL, Target nvarchar(max) NOT NULL,
-                        CreatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
-                    INSERT INTO {options.QualifiedInvalidationsTableName} (InstanceId, MessageType, Target, CreatedAt)
-                    VALUES ('legacy', 0, 'expired', DATEADD(hour, -2, SYSUTCDATETIME())), ('legacy', 0, 'recent', SYSUTCDATETIME());
-                    """;
-                await legacy.ExecuteNonQueryAsync();
-            }
-            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
-            await using var backplane = new SqlServerBackplane(options);
+            await using var create = new SqlCommand($"""
+                CREATE SCHEMA {SqlServerOptions.Quote(options.SchemaName)};
+                """, connection);
+            await create.ExecuteNonQueryAsync();
+            create.CommandText = $"""
+                CREATE TABLE {options.QualifiedVersionTableName} (Id tinyint PRIMARY KEY, Version int NOT NULL);
+                INSERT INTO {options.QualifiedVersionTableName} VALUES (1, 1);
+                CREATE TABLE {options.QualifiedInvalidationsTableName} (
+                    Id bigint IDENTITY PRIMARY KEY, {scopeColumn} InstanceId varchar(32) NOT NULL,
+                    MessageType tinyint NOT NULL, Target nvarchar(max) NOT NULL,
+                    CreatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
+                INSERT INTO {options.QualifiedInvalidationsTableName} ({(scopeColumn.Length == 0 ? "" : "Scope,")} InstanceId, MessageType, Target)
+                VALUES ({(scopeColumn.Length == 0 ? "" : "0x01,")} 'instance', 0, 'preserved');
+                """;
+            await create.ExecuteNonQueryAsync();
 
-            await backplane.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
-            await backplane.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            var error = await Assert.ThrowsAsync<SqlException>(() => SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None));
+            Assert.Equal(50001, error.Number);
+            Assert.Contains("non-nullable binary(32) Scope", error.Message);
 
-            await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
-            Assert.Equal("recent", await remaining.ExecuteScalarAsync());
+            // A schema error must also fail startup instead of entering the database-outage retry loop.
+            var logger = new SchemaErrorLogger();
+            using var tables = new SqlServerTables(options, logger);
+            var startupError = await Assert.ThrowsAsync<SqlException>(() => tables.StartAsync(CancellationToken.None));
+            Assert.Equal(50001, startupError.Number);
+            var log = Assert.Single(logger.Entries);
+            Assert.Equal(LogLevel.Error, log.Level);
+            Assert.Null(log.Error);
+            Assert.Contains("SqlException", log.Message);
+            Assert.Contains("table initialization stopped", log.Message);
+
+            await using var rows = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
+            Assert.Equal("preserved", await rows.ExecuteScalarAsync());
+            await using var columns = new SqlCommand("SELECT COL_LENGTH(@table, 'Scope');", connection);
+            columns.Parameters.AddWithValue("@table", options.QualifiedInvalidationsTableName);
+            var length = await columns.ExecuteScalarAsync();
+            if (scopeColumn.Length == 0)
+                Assert.Equal(DBNull.Value, length);
+            else
+                Assert.Equal(scopeColumn.Contains("16", StringComparison.Ordinal) ? 16 : 32, Convert.ToInt32(length));
         }
         finally { await DropSchemaAsync(options); }
     }
 
     [SkippableFact]
-    public async Task ExistingUnscopedTable_IsUpgradedIdempotentlyAndLegacyMessagesAreIgnored()
+    public async Task CurrentSchema_RepeatedInitialization_PreservesMessagesAndIndexes()
     {
         var options = new SqlServerOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = "scope_" + Guid.NewGuid().ToString("N") };
         try
         {
-            await using (var connection = new SqlConnection(options.ConnectionString))
-            {
-                await connection.OpenAsync();
-                await using var legacy = new SqlCommand($"""
-                    CREATE SCHEMA {SqlServerOptions.Quote(options.SchemaName)};
-                    """, connection);
-                await legacy.ExecuteNonQueryAsync();
-                legacy.CommandText = $"""
-                    CREATE TABLE {options.QualifiedInvalidationsTableName} (
-                        Id bigint IDENTITY PRIMARY KEY, InstanceId varchar(32) NOT NULL,
-                        MessageType tinyint NOT NULL, Target nvarchar(max) NOT NULL,
-                        CreatedAt datetime2 NOT NULL DEFAULT SYSUTCDATETIME());
-                    INSERT INTO {options.QualifiedInvalidationsTableName} (InstanceId, MessageType, Target)
-                    VALUES ('legacy', 0, 'ambiguous');
-                    """;
-                await legacy.ExecuteNonQueryAsync();
-            }
-            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
             await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
             await using var receiver = new SqlServerBackplane(options);
             await using var publisher = new SqlServerBackplane(options);
@@ -221,9 +228,27 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             Task Handle(BackplaneMessage message) { messages.Add(message); return Task.CompletedTask; }
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
             await publisher.PublishInvalidationAsync("scoped");
+
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
             Assert.Equal("scoped", Assert.Single(messages).Key);
+
+            await using var connection = new SqlConnection(options.ConnectionString);
+            await connection.OpenAsync();
+            await using var indexes = new SqlCommand("SELECT COUNT(*) FROM sys.indexes WHERE object_id = OBJECT_ID(@table) AND name IN ('Index_Scope_Id', 'Index_Scope_CreatedAt');", connection);
+            indexes.Parameters.AddWithValue("@table", options.QualifiedInvalidationsTableName);
+            Assert.Equal(2, await indexes.ExecuteScalarAsync());
         }
         finally { await DropSchemaAsync(options); }
     }
+
+    private sealed class SchemaErrorLogger : ILogger<SqlServerTables>
+    {
+        public List<(LogLevel Level, string Message, Exception? Error)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception), exception));
+    }
+
 }

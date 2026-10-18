@@ -45,7 +45,7 @@ namespace LivePolicy
     }
 }";
 
-    private const string MethodId = "LivePolicy.IPrices.GetAsync";
+    private const string MethodId = "[LivePolicyApp]LivePolicy.IPrices.GetAsync";
 
     private readonly SourceGeneratorTestEngine _engine = new();
 
@@ -63,14 +63,6 @@ namespace LivePolicy
         // A new version means new keys, so the next call on the same decorator loads again
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
         await configurator.UpsertAsync(MethodId, b => b.WithVersion(2));
-
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while ((int)calls.GetValue(null)! == 1)
-        {
-            Assert.True(DateTime.UtcNow < deadline, "The override did not reach the decorator.");
-            await GetAsync(prices, 1);
-            await Task.Delay(10);
-        }
 
         Assert.Equal(2, await GetAsync(prices, 1));
         Assert.Equal(2, (int)calls.GetValue(null)!);

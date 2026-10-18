@@ -1,5 +1,5 @@
 # Start the redis-a and redis-b profiles. Use the same Demo__DataFile and Demo__CachePrefix on both.
-# For a fresh run, POST /demo/reset and wait at least 3 seconds BEFORE the first GET (clock-skew tolerance).
+# For a fresh run, POST /demo/reset before the first GET.
 @a = http://localhost:5081
 @b = http://localhost:5082
 

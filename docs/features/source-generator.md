@@ -1,3 +1,5 @@
+[← MethodCache documentation](../README.md)
+
 # Generated decorators
 
 Put cache attributes on interface methods. The generator builds a decorator around the registered implementation
@@ -5,14 +7,23 @@ and routes cached calls through MethodCache. Your implementation stays ordinary 
 
 The generator supports synchronous result methods, `Task<T>` and `ValueTask<T>`, overloaded methods, generic
 interfaces and generic methods, including interfaces nested in generic containing types. Constraints on both
-the containing type and the interface, including `unmanaged`, are preserved. Overloaded methods
-include namespace-qualified parameter types in their identities so equally named types remain separate.
+the containing type and the interface, including `unmanaged` and base class constraints, are preserved, and so are
+`scoped` parameters on forwarded members. Each overload has its own
+[method id](configuration.md#appsettingsjson) and its own cache entries.
+
+Memory-only `Task<T>` and `ValueTask<T>` misses avoid allocating closures for inactive fail-safe and
+distributed-write branches. Enabling those features retains their origin and invalidation behavior.
 
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
-Non-public default helpers stay on the interface and are not emitted as decorator implementations. Non-public abstract contracts are rejected with `MCG013` because the decorator cannot call those members on the decorated instance.
-Names that are C# keywords are escaped in the generated code, including namespaces, generic type parameters, constraints, property/event names and indexer
-parameters. Parameters, generic parameters and overload names that resemble generator internals do not collide;
-named calls through the interface keep its original parameter names. Property getters/setters and event add/remove accessors reach the original implementation.
+Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
+implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
+[MC0018](../user-guide/DIAGNOSTICS.md#mc0018). An interface with non-public abstract members is rejected with
+[MC0014](../user-guide/DIAGNOSTICS.md#mc0014), because the decorator can't call those members on the implementation.
+
+Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
+don't clash with the generated code. You don't need to rename anything.
+Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generator gives those files
+short, stable names while preserving the declared types and cache identities.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
@@ -20,21 +31,49 @@ results are rejected before cached code is emitted. Those methods are forwarded 
 interface is cacheable. See [keys](keys.md) for argument identity and
 [configuration](configuration.md) for generated policy identifiers.
 
+## Registration
+
+Generated runtime calls use the versioned `MethodCache.Generated` facade. Module initializers record descriptors
+only; `AddMethodCache` validates contract versions before executing descriptors or factories. Each invocation
+captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
+binding. A retired invocation may finish its origin call but cannot publish into the current generation.
+
+The reviewed contract-1 surface is frozen before the first release. Generated inline keys use the bound
+`KeyBuilder` constructor and `AppendPart` with ref lookups, including records, collections and key providers.
+`StartKey`, `BindKey`, `KeyPrefix` and `TextKey` are internal. Compatibility checks execute the explicit
+.NET 10 `Contract1Final` vendor images; earlier unpublished development checkpoints remain historical.
+After release, precompiled contract-1 decorators must run on newer 1.x Core versions without regeneration.
+
+`AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
+ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
+yourself open. Factory registrations are wrapped the same way ([Getting started](../getting-started.md#registering-with-a-factory)).
+
+A factory registration for the README's `IUserService`, once `IUserDatabase` is registered:
+
+<!-- snippet: explicit-factory-registration -->
+```cs
+builder.Services.AddScoped<IUserService>(sp =>
+    new UserService(sp.GetRequiredService<IUserDatabase>()));
+builder.Services.AddMethodCache();
+```
+<!-- endSnippet -->
+
 The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
 with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
+It checks semantic runtime references as well. Frozen vendor binaries exercise contract compatibility without
+regenerating source during ordinary tests, including under Native AOT.
 
-## Behavior and compatibility
+`AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
+with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` when multiple
+modules offer the same interface. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
 
-Automatic decoration preserves DI ownership: the container disposes type/factory registrations once and leaves application-supplied instances open. Generated `Add...WithCaching` factory helpers own the instances their factories return; create a new instance in those factories.
+Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
+async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses
+synchronous caching and emits a diagnostic once per method/container. Current distributed adapters do not expose
+bounded native synchronous operations through this path, so these calls use L1/origin and report unavailable L2;
+use async methods to share results through L2. Synchronous distributed tag mutations report unsupported invalidation
+after the origin/local mutation; use async mutation methods for distributed invalidation.
 
-Invalidation methods preserve synchronous `ref` and `ref readonly` returns. `Task` and `ValueTask` invalidation methods may use `ref`, `out` or `in` parameters: tags are captured after the underlying call returns, and invalidation runs only after its asynchronous operation succeeds.
+The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 
-Factory registration helpers dispose owned implementations even when their service interface does not declare disposal. Asynchronous disposal prefers `IAsyncDisposable`, then falls back to `IDisposable`. Automatically discovered DI services retain container ownership.
-
-Sealed default interface helpers retain their interface bodies and are never reimplemented by a decorator.
-
-Generated decorators qualify framework and cache infrastructure type names globally, so application types such as `Task`, `List` or `CachedMethod` cannot shadow them.
-
-Cached interfaces may declare nested helper interfaces and abstract types. These declarations do not trigger MCG013.
-
-Generated runtime type checks use the same generic-parameter aliases as decorator signatures, including unsealed generic argument types whose simple members form inline cache keys.
+With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.

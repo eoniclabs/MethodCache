@@ -11,7 +11,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task TryGetFastTask_ReturnsTheSameCompletedTask_ForEveryHit()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodTask") with { Duration = TimeSpan.FromMinutes(1) };
 
         manager.TryGetFastTask<string>("key", out _).Should().BeFalse();
@@ -28,7 +28,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task SpanLookups_FindTheEntryStoredUnderTheSameKey()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
         await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
         manager.TryGetFastTask<string>("Svc.Get:42", out var stringHit).Should().BeTrue();
@@ -46,16 +46,11 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task SpanLookup_DoesNotAllocateOnAHit()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodSpan") with { Duration = TimeSpan.FromMinutes(1) };
         await manager.GetOrCreateFastAsync("Svc.Get:42", "MethodSpan", () => Task.FromResult("value"), policy);
 
-#if NET9_0_OR_GREATER
         MeasureHits(manager).Should().Be(0);
-#else
-        // .NET 8 has no span lookup on ConcurrentDictionary, so a hit allocates the key string and nothing else
-        MeasureHits(manager).Should().BeLessThanOrEqualTo(100 * 64);
-#endif
     }
 
     private static long MeasureHits(InMemoryCacheManager manager)
@@ -63,13 +58,21 @@ public class InMemoryCacheManagerTests
         Span<char> buffer = stackalloc char[MethodCacheKeyBuilder.StackBufferSize];
         Lookup(manager, buffer).Should().BeTrue(); // warm up
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 100; i++)
+        // The least of a few rounds: anything else the runtime allocates on this thread meanwhile (seen in the
+        // coverage run, where Core is instrumented) only adds to one round, and a hit that allocates adds to all of them
+        var allocated = long.MaxValue;
+        for (var round = 0; round < 3; round++)
         {
-            Lookup(manager, buffer);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 100; i++)
+            {
+                Lookup(manager, buffer);
+            }
+
+            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
         }
 
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        return allocated;
 
         static bool Lookup(InMemoryCacheManager manager, Span<char> buffer)
         {
@@ -83,7 +86,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task GetOrCreateAsync_WithDefaultValueTypeResult_ExecutesFactoryOnMiss()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodA") with { Duration = TimeSpan.FromMinutes(1) };
         var keyGenerator = new FastHashKeyGenerator();
         var calls = 0;
@@ -105,7 +108,7 @@ public class InMemoryCacheManagerTests
     [Fact]
     public async Task ClearAsync_RemovesEntriesAndAllowsReload()
     {
-        var manager = new InMemoryCacheManager(new NullCacheMetricsProvider());
+        var manager = new InMemoryCacheManager();
         var policy = CacheRuntimePolicy.Empty("MethodB") with
         {
             Duration = TimeSpan.FromMinutes(1)
@@ -119,7 +122,7 @@ public class InMemoryCacheManagerTests
 
         await manager.ClearAsync();
 
-        (await manager.GetStatsAsync()).Entries.Should().Be(0);
+        (await manager.GetStatsAsync()).LocalMethodEntries.Should().Be(0);
         (await manager.GetOrCreateAsync("MethodB", Array.Empty<object>(), Factory, policy, keyGenerator)).Should().Be("value2");
     }
 }

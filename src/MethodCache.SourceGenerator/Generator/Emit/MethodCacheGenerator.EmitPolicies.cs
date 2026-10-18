@@ -24,9 +24,22 @@ namespace MethodCache.SourceGenerator
                     return string.Empty;
                 }
 
+                var policies = new StringBuilder();
+                AppendGeneratedClass(policies, definitions);
+
+                // Nested in the registrations class, which is the only code that uses it. A namespace-level type would
+                // clash (CS0436) with the one of an assembly whose internals this one can see through InternalsVisibleTo.
                 var sb = new StringBuilder();
                 AppendHeader(sb);
-                AppendGeneratedClass(sb, definitions);
+                sb.AppendLine("    internal static partial class MethodCacheDecoratorRegistrations");
+                sb.AppendLine("    {");
+                foreach (var line in policies.ToString().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
+                {
+                    sb.AppendLine(line.Length == 0 ? line : "    " + line);
+                }
+
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
                 return sb.ToString();
             }
 
@@ -39,10 +52,6 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("using global::System.Globalization;");
                 sb.AppendLine("using global::System.Threading;");
                 sb.AppendLine("using global::System.Threading.Tasks;");
-                sb.AppendLine("using global::MethodCache;");
-                sb.AppendLine("using global::MethodCache.Infrastructure;");
-                sb.AppendLine("using global::MethodCache.Policies;");
-                sb.AppendLine("using global::Microsoft.Extensions.DependencyInjection;");
                 sb.AppendLine();
                 sb.AppendLine("namespace MethodCache.Generated");
                 sb.AppendLine("{");
@@ -50,88 +59,28 @@ namespace MethodCache.SourceGenerator
 
             private static void AppendGeneratedClass(StringBuilder sb, List<PolicyDefinition> definitions)
             {
-                sb.AppendLine("    internal static class GeneratedPolicyRegistrations");
+                sb.AppendLine($"    [global::System.CodeDom.Compiler.GeneratedCode(\"MethodCacheGenerator\", {Utils.Literal(ThisAssembly.AssemblyInformationalVersion)})]");
+                sb.AppendLine("    private static class GeneratedPolicyRegistrations");
                 sb.AppendLine("    {");
-                sb.AppendLine("        public static void AddPolicies(global::System.Collections.Generic.ICollection<global::MethodCache.Policies.PolicySourceRegistration> registrations)");
+                sb.AppendLine("        public static void Describe(global::MethodCache.Generated.GeneratedModuleBuilder builder)");
                 sb.AppendLine("        {");
-                sb.AppendLine("            if (registrations == null)");
-                sb.AppendLine("            {");
-                sb.AppendLine("                throw new global::System.ArgumentNullException(nameof(registrations));");
-                sb.AppendLine("            }");
-                sb.AppendLine("            registrations.Add(new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-                sb.AppendLine("        public static void AddPolicies(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
-                sb.AppendLine("        {");
-                sb.AppendLine("            if (services == null)");
-                sb.AppendLine("            {");
-                sb.AppendLine("                throw new global::System.ArgumentNullException(nameof(services));");
-                sb.AppendLine("            }");
-                sb.AppendLine();
-                sb.AppendLine("            // Every generated Add...WithCaching method calls this, so register the source only once per collection");
-                sb.AppendLine("            foreach (var descriptor in services)");
-                sb.AppendLine("            {");
-                sb.AppendLine("                if (descriptor.ServiceType == typeof(RegistrationMarker))");
-                sb.AppendLine("                {");
-                sb.AppendLine("                    return;");
-                sb.AppendLine("                }");
-                sb.AppendLine("            }");
-                sb.AppendLine();
-                sb.AppendLine("            services.AddSingleton(new RegistrationMarker());");
-                sb.AppendLine("            services.AddSingleton<global::MethodCache.Policies.PolicySourceRegistration>(_ => new global::MethodCache.Policies.PolicySourceRegistration(new GeneratedAttributePolicySource(), 10 /* Attributes */));");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-                sb.AppendLine("        private sealed class RegistrationMarker");
-                sb.AppendLine("        {");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-                sb.AppendLine("        private sealed class GeneratedAttributePolicySource : global::MethodCache.Policies.IPolicySource");
-                sb.AppendLine("        {");
-                sb.AppendLine("            public string SourceId => \"attributes\";");
-                sb.AppendLine();
-                sb.AppendLine("            public global::System.Threading.Tasks.Task<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>> GetSnapshotAsync(global::System.Threading.CancellationToken cancellationToken = default)");
-                sb.AppendLine("            {");
-                sb.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
-                sb.AppendLine("                var timestamp = global::System.DateTimeOffset.UtcNow;");
-                sb.AppendLine($"                var snapshots = new global::System.Collections.Generic.List<global::MethodCache.Policies.PolicySnapshot>({definitions.Count});");
                 foreach (var definition in definitions)
                 {
-                    sb.AppendLine($"                snapshots.Add({definition.SnapshotMethodName}(timestamp));");
-                }
-                sb.AppendLine("                return global::System.Threading.Tasks.Task.FromResult<global::System.Collections.Generic.IReadOnlyCollection<global::MethodCache.Policies.PolicySnapshot>>(snapshots);");
-                sb.AppendLine("            }");
-                sb.AppendLine();
-                sb.AppendLine("            public global::System.Collections.Generic.IAsyncEnumerable<global::MethodCache.Policies.PolicyChange> WatchAsync(global::System.Threading.CancellationToken cancellationToken = default)");
-                sb.AppendLine("                => global::MethodCache.Infrastructure.PolicySourceAsyncEnumerable.Empty(cancellationToken);");
-                sb.AppendLine("        }");
-                sb.AppendLine();
-
-                foreach (var definition in definitions)
-                {
-                    sb.AppendLine($"        private static global::MethodCache.Policies.PolicySnapshot {definition.SnapshotMethodName}(global::System.DateTimeOffset timestamp)");
-                    sb.AppendLine("        {");
-                    sb.AppendLine("            var policy = global::MethodCache.Policies.CachePolicy.Empty;");
-                    sb.AppendLine("            var fields = global::MethodCache.Policies.CachePolicyFields.None;");
+                    var groupStatement = definition.MetadataStatements.FirstOrDefault();
+                    var group = groupStatement == null ? "null" : groupStatement.Substring(groupStatement.IndexOf(" = ", StringComparison.Ordinal) + 3).TrimEnd(';');
+                    sb.AppendLine($"            builder.Method({ToLiteral(definition.MethodId)}, new string[] {{ {string.Join(", ", definition.ParameterNames.Select(ToLiteral))} }}, {group}, new global::MethodCache.Generated.GeneratedMethodOptions");
+                    sb.AppendLine("            {");
+                    sb.AppendLine("                CanonicalTagParts = true,");
                     foreach (var statement in definition.PolicyStatements)
                     {
-                        sb.AppendLine("            " + statement);
+                        const string prefix = "policy = policy with { ";
+                        if (statement.StartsWith(prefix, StringComparison.Ordinal) && !statement.Contains("Metadata"))
+                            sb.AppendLine("                " + statement.Substring(prefix.Length, statement.Length - prefix.Length - 3) + ",");
                     }
-                    sb.AppendLine("            policy = global::MethodCache.Infrastructure.CachePolicyMapper.AttachContribution(policy, \"attributes\", fields, timestamp);");
-                    sb.AppendLine("            var metadata = new global::System.Collections.Generic.Dictionary<string, string?>(global::System.StringComparer.Ordinal)");
-                    sb.AppendLine("            {");
-                    sb.AppendLine("                [\"priority\"] = \"10\"");
-                    sb.AppendLine("            };");
-                    foreach (var metadataStatement in definition.MetadataStatements)
-                    {
-                        sb.AppendLine("            " + metadataStatement);
-                    }
-                    sb.AppendLine($"            return new global::MethodCache.Policies.PolicySnapshot(\"attributes\", {ToLiteral(definition.MethodId)}, policy, timestamp, metadata);");
-                    sb.AppendLine("        }");
-                    sb.AppendLine();
+                    sb.AppendLine("            });");
                 }
-
-                sb.AppendLine("    }");
-                sb.AppendLine("}");
+                sb.AppendLine("        }");
+                sb.Append("    }");
             }
 
             private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces)
@@ -148,6 +97,7 @@ namespace MethodCache.SourceGenerator
                     }
 
                     var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}");
+                    definition.ParameterNames.AddRange(entry.ParameterNames);
                     definition.PolicyStatements.AddRange(entry.PolicyStatements);
                     definition.MetadataStatements.AddRange(entry.MetadataStatements);
                     definitions.Add(definition);
@@ -171,6 +121,8 @@ namespace MethodCache.SourceGenerator
                     PopulateFromCacheAttribute(definition, method.CacheAttr);
                     entries.Add(new PolicyEntry(
                         definition.MethodId,
+                        Utils.GetKeyMethodName(method.Method, info.Symbol),
+                        new EquatableArray<string>(method.Method.Parameters.Select(p => p.Name)),
                         new EquatableArray<string>(definition.PolicyStatements),
                         new EquatableArray<string>(definition.MetadataStatements)));
                 }
@@ -180,12 +132,7 @@ namespace MethodCache.SourceGenerator
 
             private static void PopulateFromCacheAttribute(PolicyDefinition definition, AttributeData cacheAttr)
             {
-                // [Cache("group")] names it in the constructor, [assembly: CacheInterface(..., Group = "group")] by name
-                var groupName = cacheAttr.ConstructorArguments.Length > 0 ? cacheAttr.ConstructorArguments[0].Value as string : null;
-                if (groupName is null && TryGetNamedArgument(cacheAttr, "Group", out var groupArg))
-                {
-                    groupName = groupArg.Value as string;
-                }
+                var groupName = TryGetNamedArgument(cacheAttr, "Group", out var groupArg) ? groupArg.Value as string : null;
 
                 if (!string.IsNullOrWhiteSpace(groupName))
                 {
@@ -200,10 +147,14 @@ namespace MethodCache.SourceGenerator
                 AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
                 AddTimeSpan(definition, cacheAttr, "RefreshAhead");
                 AddTimeSpan(definition, cacheAttr, "FailSafeTimeout");
+                AddTimeSpan(definition, cacheAttr, "RetryAfter", "FailSafeRetryAfter");
+                foreach (var name in new[] { "Enabled", "Distributed" })
+                    if (TryGetNamedArgument(cacheAttr, name, out var flag) && flag.Value is bool enabled)
+                        definition.PolicyStatements.Add($"policy = policy with {{ {name} = {(enabled ? "true" : "false")} }};");
 
                 if (TryGetNamedArgument(cacheAttr, "FailSafe", out var failSafeArg) && failSafeArg.Value is string failSafeText)
                 {
-                    if (string.Equals(failSafeText, "off", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(failSafeText.Trim(), "off", StringComparison.OrdinalIgnoreCase))
                     {
                         definition.PolicyStatements.Add("policy = policy with { FailSafe = global::System.TimeSpan.Zero };");
                         definition.PolicyStatements.Add("fields |= global::MethodCache.Policies.CachePolicyFields.FailSafe;");
@@ -236,16 +187,16 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
-            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name)
+            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name, string? property = null)
             {
-                // The analyzer reports values that do not parse (MC0004); skipping them here keeps the build going
+                property ??= name;
+                // Discovery rejects invalid explicit values before a policy is generated.
                 if (TryGetNamedArgument(cacheAttr, name, out var argument) &&
                     argument.Value is string text &&
-                    TimeSpan.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var value) &&
-                    value > TimeSpan.Zero)
+                    MethodCache.Internal.DurationParser.TryParse(text, false, out var value))
                 {
-                    definition.PolicyStatements.Add($"policy = policy with {{ {name} = global::System.TimeSpan.FromTicks({value.Ticks}L) }};");
-                    definition.PolicyStatements.Add($"fields |= global::MethodCache.Policies.CachePolicyFields.{name};");
+                    definition.PolicyStatements.Add($"policy = policy with {{ {property} = global::System.TimeSpan.FromTicks({value.Ticks}L) }};");
+                    definition.PolicyStatements.Add($"fields |= global::MethodCache.Policies.CachePolicyFields.{property};");
                 }
             }
 
@@ -264,51 +215,8 @@ namespace MethodCache.SourceGenerator
                 return false;
             }
 
-            private static string ToLiteral(string? value)
-            {
-                if (value == null)
-                {
-                    return "null";
-                }
-
-                var builder = new StringBuilder(value.Length + 2);
-                builder.Append('"');
-
-                foreach (var ch in value)
-                {
-                    switch (ch)
-                    {
-                        case '\\':
-                            builder.Append("\\\\");
-                            break;
-                        case '"':
-                            builder.Append("\\\"");
-                            break;
-                        case '\n':
-                            builder.Append("\\n");
-                            break;
-                        case '\r':
-                            builder.Append("\\r");
-                            break;
-                        case '\t':
-                            builder.Append("\\t");
-                            break;
-                        default:
-                            if (char.IsControl(ch))
-                            {
-                                builder.AppendFormat("\\u{0:x4}", (int)ch);
-                            }
-                            else
-                            {
-                                builder.Append(ch);
-                            }
-                            break;
-                    }
-                }
-
-                builder.Append('"');
-                return builder.ToString();
-            }
+            // Escapes line terminators such as U+2028 too, which would end a C# string literal
+            private static string ToLiteral(string? value) => value == null ? "null" : Utils.Literal(value);
 
             private sealed class PolicyDefinition
             {
@@ -320,6 +228,7 @@ namespace MethodCache.SourceGenerator
 
                 public string MethodId { get; }
                 public string SnapshotMethodName { get; }
+                public List<string> ParameterNames { get; } = new();
                 public List<string> PolicyStatements { get; } = new();
                 public List<string> MetadataStatements { get; } = new();
             }
