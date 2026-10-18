@@ -138,9 +138,7 @@ public readonly struct MethodCall
     [MethodImpl(MethodImplOptions.NoInlining)]
     public bool TryGetValueTask<T>(ref KeyBuilder key, out ValueTask<T> value)
     {
-        // The same lookup as TryGetValue, without a second call on the hit path
-        if (CanRead(ref key) && _snapshot.Services.FastMemory is { } memory &&
-            memory.TryGetGeneratedValue(ref key, _snapshot.Generation!, _snapshot.Policy.MethodId, out T? found))
+        if (TryGetValue<T>(ref key, out var found))
         {
             value = new ValueTask<T>(found!);
             return true;
