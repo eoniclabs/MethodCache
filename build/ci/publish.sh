@@ -76,7 +76,9 @@ else
   esac
 fi
 
-work=$(mktemp -d)
+# The physical path: macOS mktemp gives /var/folders/..., a symlink to /private/var/..., and MSBuild then
+# evaluates every project under both paths (a Debug-only generator build, "nuget.g.props already exists")
+work=$(cd "$(mktemp -d)" && pwd -P)
 trap 'rm -rf "$work"' EXIT
 # Full history: Nerdbank.GitVersioning computes the version from it
 git clone --quiet "https://github.com/$repo.git" "$work/src"
@@ -84,9 +86,7 @@ git -C "$work/src" checkout --quiet --detach "$sha"
 
 export CI=true DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 # PublicRelease: a version without the -g<commit> suffix, as the tag is not checked out as a branch
-# One project at a time: parallel restore and pack of the solution have failed on Megatron
-# ("nuget.g.props already exists", a missing SourceGenerator output)
-dotnet pack "$work/src/MethodCache.sln" --configuration Release -p:PublicRelease=true --output "$work/packages" -maxcpucount:1
+dotnet pack "$work/src/MethodCache.sln" --configuration Release -p:PublicRelease=true --output "$work/packages"
 
 packages=()
 for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack \
