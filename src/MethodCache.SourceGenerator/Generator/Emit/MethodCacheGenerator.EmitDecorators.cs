@@ -248,8 +248,9 @@ namespace MethodCache.SourceGenerator
                 // Constructor name should NOT include generic parameters - that's invalid C# syntax
                 sb.AppendLine($"        public {className}({interfaceFqn} decorated, global::MethodCache.Generated.GeneratedServices services)");
                 sb.AppendLine("        {");
-                sb.AppendLine("            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));");
                 sb.AppendLine("            if (services == null) throw new global::System.ArgumentNullException(nameof(services));");
+                // Null only for a decorator that records keys for IMethodCacheKeys; any other null still throws
+                sb.AppendLine("            _decorated = services.Decorated(decorated);");
                 sb.AppendLine("            _services = services;");
                 if (interfaceSymbol.GetMembers().OfType<IMethodSymbol>().Concat(interfaceSymbol.AllInterfaces.SelectMany(static type => type.GetMembers().OfType<IMethodSymbol>()))
                     .Any(static method => method.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() == "MethodCache.CacheInvalidateAttribute" && ExtractTags(attribute).Count > 0) &&

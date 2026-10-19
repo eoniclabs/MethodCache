@@ -38,7 +38,7 @@ maps them under `/ops/cache` instead.
 | `GET` | `stats` | Local hits/misses/evictions, method/HTTP entries, HTTP bytes, observed L2 entries and configured method weight |
 | `GET` | `methods` | The effective policy of every cached method and where it came from |
 | `GET` | `entries?prefix=&tag=&limit=` | Live entries in the memory of the instance that answers, ordered by key (default limit 100, max 1000). Values are not returned |
-| `GET` | `entry?key=` | One entry in the memory of the instance that answers, or 404 |
+| `GET` | `entry?key=` | One entry, by the `storedKey` that `entries` lists, in the memory of the instance that answers, or 404 |
 | `DELETE` | `entry?key=` | Removes one entry, also from Redis or SQL Server and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `DELETE` | `entries` | Removes every entry |

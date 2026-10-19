@@ -421,3 +421,6 @@ MethodCache.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnu
 MethodCache.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 MethodCache.CacheInvalidationQueuedException
 MethodCache.CacheInvalidationQueuedException.CacheInvalidationQueuedException(string! message) -> void
+MethodCache.IMethodCacheKeys
+MethodCache.IMethodCacheKeys.For<TService>(System.Func<TService!, object?>! call, object? serviceKey = null) -> string!
+MethodCache.Generated.GeneratedServices.Decorated<T>(T? decorated) -> T!

@@ -54,7 +54,7 @@ removes it when the member implements no interface. To cache an interface you do
 
 `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` or `FailSafeTimeout` on `[Cache]` or
 `[assembly: CacheInterface]` is not a positive time span. Use the `TimeSpan` format: `"00:05:00"` (five minutes),
-`"01:00:00"` (an hour) or `"1.00:00:00"` (a day). `FailSafe` also accepts `"off"`.
+`"01:00:00"` (an hour) or `"1.00:00:00"` (a day). `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`.
 
 ## MC0003
 

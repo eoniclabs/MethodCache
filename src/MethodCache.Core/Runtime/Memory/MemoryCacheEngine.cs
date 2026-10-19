@@ -102,9 +102,8 @@ internal sealed class MemoryCacheEngine
     // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
     private long _pendingAdds;
 
-    /// <param name="maximum">The most total weight kept.</param>
-    /// <param name="maximumEntries">The most entries kept, whatever their weight. When every entry weighs one, leave it
-    /// unbounded: <paramref name="maximum"/> already counts entries.</param>
+    // maximum bounds the total weight and maximumEntries the entry count, whatever their weight. When every entry
+    // weighs one, leave maximumEntries unbounded: maximum already counts entries.
     public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null,
         bool useRuntimeStringComparer = false, long maximumEntries = long.MaxValue)
     {

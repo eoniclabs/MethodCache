@@ -32,10 +32,10 @@ namespace Docs.Invalidation
             // end-snippet
         }
 
-        public static async Task Keys(ICacheManager cache)
+        public static async Task Keys(ICacheManager cache, IMethodCacheKeys keys)
         {
             // begin-snippet: invalidation-by-key
-            var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
+            var key = keys.For<IOrderService>(orders => orders.GetAsync(42));
             await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
             // end-snippet
         }

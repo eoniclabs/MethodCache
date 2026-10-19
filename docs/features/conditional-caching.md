@@ -30,6 +30,9 @@ builder.Services.AddMethodCache(config =>
 - A rejected result is still returned to the caller, and the next call runs the method again.
 - The entry it would have replaced, including a fail-safe value, stays.
 - The predicate runs once per load, never on a cache hit. If it throws, the result is returned and not stored.
+- `config.Method(...).CacheWhen` gets the method's result type. A `CacheWhen<T>` set elsewhere for a type the method
+  can't return, such as `CacheWhen<string>` on a method that returns `int`, makes the call throw an
+  `InvalidOperationException` instead of silently caching nothing.
 - It is set in startup code only, so it can't come from `appsettings.json`. `Any<T>.Value` stands for any argument.
 
 > [!TIP]

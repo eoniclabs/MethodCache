@@ -91,11 +91,12 @@ public class FeatureTests(ITestOutputHelper output)
         await invoices.FindAsync("INV-7");
 
         var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(storedKeyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.StoredKey).ToList();
-        var (versioned, overload) = KeyExamples.Build();
+        var (versioned, overload) = KeyExamples.Build(provider.GetRequiredService<IMethodCacheKeys>());
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.GetAsync:v2:42", versioned);
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
         Assert.Contains(versioned, keys);
         Assert.Contains(overload, keys);
+        Assert.Equal((versioned, overload), KeyExamples.BuildByHand());
     }
 
     private sealed class Documents : IDocumentStore
@@ -198,7 +199,7 @@ public class FeatureTests(ITestOutputHelper output)
         await WarmAsync(service);
         Assert.Equal(5, orders.Loads);
 
-        await global::Docs.Invalidation.FromCode.Keys(cache);
+        await global::Docs.Invalidation.FromCode.Keys(cache, provider.GetRequiredService<IMethodCacheKeys>());
         await WarmAsync(service);
         Assert.Equal(6, orders.Loads);
 

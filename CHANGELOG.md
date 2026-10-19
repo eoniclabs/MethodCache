@@ -24,6 +24,21 @@ Options and attributes
   other builder method.
 - `[Cache(RetryAfter = ...)]` and `[CacheInterface(RetryAfter = ...)]` are now `FailSafeRetryAfter`, the name used in
   code and in `appsettings.json`.
+- `CacheEntryOptions.Builder.WithTags` is now `AddTags`, since it adds to the tags instead of replacing them.
+- `SlidingExpiration` and `RefreshAhead` accept `"off"` in `[Cache]` and `appsettings.json`, and `TimeSpan.Zero` in
+  `WithSlidingExpiration` and `WithRefreshAhead`, to turn an inherited window off for one method, as `FailSafe`
+  already did. Before, a method could not turn them off.
+- A `CacheWhen<T>` for a type the method can't return, such as `CacheWhen<string>` on an `int` method, throws an
+  `InvalidOperationException` on the call. Before, it silently cached nothing.
+- `MethodCacheMemoryOptions.SizeLimit` is now `WeightLimit`. `MaxItems` and `WeightLimit` both bound the cache, so an
+  entry is evicted when either is reached; before, a `Weigher` made `MaxItems` stop counting. Setting `WeightLimit`
+  without a `Weigher` fails at startup instead of being ignored.
+
+Keys
+- New `IMethodCacheKeys`, resolved from dependency injection, returns the key of a call to a cached method:
+  `keys.For<IUserService>(users => users.GetUser(42))`. Overloads, versions, generic methods and keyed registrations
+  are handled like the real call, so you no longer write `"FindAsync(string)"` or the version yourself.
+  `MethodCacheKeys` still builds keys from their parts.
 
 Manual caching
 - `ICacheManager.GetOrCreateAsync` takes a state and a factory `(state, ct) => ...`, like `HybridCache`, so a hot path
@@ -36,6 +51,11 @@ Manual caching
 Administration
 - `ICacheAdministrator.InvalidateTagsAsync` takes an `IEnumerable<string>` and returns the `InvalidationResult`.
   It covers method and HTTP entries.
+- `CacheEntryInfo.Key` is now `StoredKey`, and `ListEntries`, `GetEntry` and `RemoveEntryAsync` take `storedKeyPrefix`
+  and `storedKey`. It is the key as stored, which for a manual entry with a version is not the key you pass to
+  `ICacheManager`. The admin endpoints return it as `storedKey`.
+- `RemoveEntryAsync`, `InvalidateTagsAsync` and `ClearAsync` throw the public `CacheInvalidationQueuedException` when
+  the change is applied in memory but still queued for the distributed cache. Before, they threw an internal type.
 - `ICacheStats` and the AspNetCore `CacheStatsResponse` are replaced by one `CacheStats` record; the stats endpoint
   returns it unchanged.
 - `CachedMethodInfo` now has the effective `Options` (duration, tags, version and the rest), `SettingSources` and

@@ -38,6 +38,7 @@
     "MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void",
     "MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void",
     "MethodCache.Generated.GeneratedServices",
+    "MethodCache.Generated.GeneratedServices.Decorated<T>(T? decorated) -> T!",
     "MethodCache.Generated.GeneratedServices.GetSites<T>(System.Func<MethodCache.Generated.GeneratedServices!, T!>! factory) -> T!",
     "MethodCache.Generated.GeneratedServices.InvalidateTags(string![]! tags) -> void",
     "MethodCache.Generated.GeneratedServices.InvalidateTagsAsync(string![]! tags, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!",

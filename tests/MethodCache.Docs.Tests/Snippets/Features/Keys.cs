@@ -39,14 +39,24 @@ namespace MyApp
 
     public static class KeyExamples
     {
-        public static (string Versioned, string Overload) Build()
+        public static (string Versioned, string Overload) Build(IMethodCacheKeys keys)
         {
             // begin-snippet: keys-versioned-and-overloaded
             // A method with a Version: "[MyApp]MyApp.IInvoiceService.GetAsync:v2:42"
+            var versioned = keys.For<IInvoiceService>(invoices => invoices.GetAsync(42));
+
+            // An overloaded method: "[MyApp]MyApp.IInvoiceService.FindAsync(string):INV-7"
+            var overload = keys.For<IInvoiceService>(invoices => invoices.FindAsync("INV-7"));
+            // end-snippet
+            return (versioned, overload);
+        }
+
+        public static (string Versioned, string Overload) BuildByHand()
+        {
+            // begin-snippet: keys-by-hand
+            // The version, and the method id of an overload, are spelled out
             var versioned = MethodCacheKeys.ForVersion(
                 typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
-
-            // An overloaded method: pass its method id. "[MyApp]MyApp.IInvoiceService.FindAsync(string):INV-7"
             var overload = MethodCacheKeys.For(
                 typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
             // end-snippet

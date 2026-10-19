@@ -136,6 +136,18 @@ public partial class VendorCompatibilityTests
     }
 
     [Fact]
+    public async Task FrozenNet10Vendor_TypedKeys_AskForARebuild()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IService, Service>();
+        services.AddMethodCache(b => b.FromAssemblyOf<Marker>());
+        await using var provider = services.BuildServiceProvider();
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IMethodCacheKeys>().For<IService>(service => service.Read(42)));
+        Assert.Contains("Rebuild FrozenVendor.Contract1Final", error.Message);
+        Assert.Equal(1, provider.GetRequiredService<IService>().Read(42));
+    }
+
+    [Fact]
     public async Task FrozenNet10Vendor_KeyedScopedBindings_RemainIsolated()
     {
         var services = new ServiceCollection();

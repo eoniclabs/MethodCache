@@ -215,8 +215,8 @@ UseMessagePack och UseJson. Bekvämlighetsöverlagringar är uttryckliga; de än
   Explicit metod-Enabled=true vinner därför över grupp-default false även från ett lägre lager.
 - Tags är fortsatt additiva över lagren om inte ClearTags uttryckligen används.
 
-MethodCacheMemoryOptions behåller MaxItems, MaxHttpBytes, Weigher + SizeLimit, CacheNullValues,
-JitterMaxDuration och MaxExpiration. Weigher/SizeLimit gäller bara metodresultat och mäts i användarens
+MethodCacheMemoryOptions behåller MaxItems, MaxHttpBytes, Weigher + WeightLimit, CacheNullValues,
+JitterMaxDuration och MaxExpiration. Weigher/WeightLimit gäller bara metodresultat och mäts i användarens
 kostnadsenheter; det är inte ett automatiskt byte-estimat. HTTP har alltid separat byte-budget.
 DefaultExpiration ersätts av Defaults.WithDuration. Utan explicit default gäller fem minuter.
 TinyLFU är enda policy. FastPath/statistics/cleanup-switchar och serialiserande minnesestimat tas bort.

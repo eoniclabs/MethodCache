@@ -40,8 +40,13 @@ explicit scopes:
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
 remain zero until the separate HTTP store is registered.
 
-`GetMethods()` returns immutable effective options, sources and L2 namespace kind. `ListEntries(keyPrefix, tag, limit)`
-and `GetEntry(key)` inspect live local entries without values; listing is a diagnostic scan, not a transaction.
+`GetMethods()` returns immutable effective options, sources and L2 namespace kind. `ListEntries(storedKeyPrefix, tag, limit)`
+and `GetEntry(storedKey)` inspect live local entries without values; listing is a diagnostic scan, not a transaction.
+`CacheEntryInfo.StoredKey` is the key as stored, which `GetEntry` and `RemoveEntryAsync` take. For a manual entry with a
+`Version` it includes the version, so it is not the key you pass to `ICacheManager`; there, use the key and version you
+cached it with. `RemoveEntryAsync`, `InvalidateTagsAsync` and `ClearAsync` complete once a configured distributed cache
+has confirmed the change, and throw `CacheInvalidationQueuedException` when it is applied in memory but still queued for
+the distributed cache. The cache retries on its own; don't repeat the call.
 `GetInvalidationQueues()` distinguishes storage recovery from pending backplane publication. A custom or NoOp manager
 has no built-in method administrator or fabricated storage statistics.
 

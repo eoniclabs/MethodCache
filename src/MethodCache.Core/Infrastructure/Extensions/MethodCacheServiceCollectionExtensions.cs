@@ -118,6 +118,7 @@ namespace Microsoft.Extensions.DependencyInjection
             });
 
             services.TryAddSingleton(static sp => new GeneratedServices(sp.GetRequiredService<DecoratorServices>()));
+            services.TryAddSingleton<IMethodCacheKeys>(static sp => new MethodCacheKeyRecorder(sp, sp.GetRequiredService<GeneratedParameters>()));
 
             PolicyRegistrationExtensions.EnsurePolicyServices(services);
 
@@ -302,6 +303,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var bindings = services.First(d => d.ServiceType == typeof(GeneratedParameters)).ImplementationInstance as GeneratedParameters;
             foreach (var method in registration.MethodKeys)
                 bindings!.KeyBindings.Add((MethodCacheKeys.Prefix(serviceType, method.Key), keySuffix ?? string.Empty, method.Id));
+            bindings!.Recorders[(serviceType, descriptor.ServiceKey)] = (registration, keySuffix);
             var background = descriptor.Lifetime != ServiceLifetime.Singleton;
             var slot = new RegistrationServicesKey();
             Func<IServiceProvider, object> decorate = provider => registration.Decorate(
@@ -411,6 +413,8 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
             internal List<(string Prefix, string Suffix, string Method)> KeyBindings { get; } = [];
+            // What IMethodCacheKeys needs to build a recording decorator for each registration
+            internal Dictionary<(Type Service, object? Key), (DecoratorRegistration Registration, string? KeySuffix)> Recorders { get; } = [];
             internal Func<string, CacheRuntimePolicy?> CreateLookup(Func<IPolicyRegistry> registry)
             {
                 var bindings = KeyBindings.OrderByDescending(static item => item.Prefix.Length).ThenByDescending(static item => item.Suffix.Length).ToArray();
@@ -494,7 +498,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// The provider a generated decorator is created with: the requesting one, except that it returns the
         /// registration's own <see cref="DecoratorServices"/>.
         /// </summary>
-        private sealed class RegistrationServiceProvider(IServiceProvider provider, GeneratedServices services) : IServiceProvider
+        internal sealed class RegistrationServiceProvider(IServiceProvider provider, GeneratedServices services) : IServiceProvider
         {
             public object? GetService(Type serviceType)
                 => serviceType == typeof(GeneratedServices) ? services : provider.GetService(serviceType);

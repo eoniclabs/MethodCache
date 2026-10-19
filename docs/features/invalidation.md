@@ -73,7 +73,7 @@ await cache.InvalidateTagsAsync(["order:42", "customer:7:orders"]);
 
 <!-- snippet: invalidation-by-key -->
 ```cs
-var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
+var key = keys.For<IOrderService>(orders => orders.GetAsync(42));
 await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
@@ -84,8 +84,9 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 ```
 <!-- endSnippet -->
 
-- `MethodCacheKeys.For` builds the key the generated decorator uses. Versioned and overloaded methods need a little
-  more; see [Building a key yourself](keys.md#building-a-key-yourself).
+- `IMethodCacheKeys.For` returns the key the generated decorator uses for that call, including overloads, versions,
+  generic methods and keyed registrations; resolve `IMethodCacheKeys` from dependency injection. See
+  [Building a key yourself](keys.md#building-a-key-yourself).
 - Invalidation matches exact tags. Attach a common tag to all entries in a group instead of using wildcard patterns.
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag ([Monitoring](monitoring.md)).
 

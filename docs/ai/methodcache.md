@@ -68,8 +68,8 @@ builder.Services.AddMethodCache();                               // after your r
   null has its own marker, and numeric/date formatting is invariant. Use the same helper for manual invalidation.
   Tags share an application-defined namespace; different literal templates can still select the same tag. Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
-- Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration`, `RefreshAhead`
-  (shorter than `Duration`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and the named `Group` setting.
+- Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
+  (shorter than `Duration`, or `"off"`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and the named `Group` setting.
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
@@ -107,7 +107,7 @@ reject unknown method ids and retire local policy generations. Declarative L2 na
 changes use private random namespaces. Never reintroduce cache callbacks, a factory context object, public policy pipelines,
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
 
-Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); ordinary durations must be positive. Disable fail-safe with `"off"` in attributes/configuration or `TimeSpan.Zero` in its builder. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
+Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); ordinary durations must be positive. Turn an inherited sliding expiration, refresh-ahead or fail-safe off with `"off"` in attributes/configuration or `TimeSpan.Zero` in the builder. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
 
 Select JSON with `UseJson(context)` for Native AOT or `UseJson(options)` for explicit settings. Options are owned snapshots. `VerifyRoundTrip` defaults to true but does not prove nested polymorphic/private data preservation. SQL schema changes require explicit migration; do not use automatic DDL to reinterpret existing unversioned tables. Entry format/serializer versions change value namespaces; logical tombstones, wire-v1 invalidations and HTTP epochs remain format-independent.
 

@@ -31,8 +31,8 @@ namespace App
 
         public IRepositoryDecorator(global::App.IRepository<__mcClassArgument0> decorated, global::MethodCache.Generated.GeneratedServices services)
         {
-            _decorated = decorated ?? throw new global::System.ArgumentNullException(nameof(decorated));
             if (services == null) throw new global::System.ArgumentNullException(nameof(services));
+            _decorated = services.Decorated(decorated);
             _services = services;
 
             // Created once per container, so a scoped or transient decorator costs only these field copies
