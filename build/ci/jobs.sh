@@ -103,6 +103,16 @@ job_packages() {
     compgen -G "artifacts/packages/$package.[0-9]*.nupkg" > /dev/null || { echo "Missing $package"; exit 1; }
   done
 
+  echo "== A release build gets the version.json version, as build/ci/publish.sh expects"
+  local release_version
+  release_version=$(python3 -c 'import json; print(json.load(open("version.json"))["version"])')
+  rm -rf artifacts/release-version
+  dotnet pack src/MethodCache.Core/MethodCache.Core.csproj --configuration Release -p:PublicRelease=true \
+    --output artifacts/release-version
+  [ -f "artifacts/release-version/MethodCache.$release_version.nupkg" ] || {
+    echo "Expected MethodCache.$release_version.nupkg, got:"; ls artifacts/release-version; exit 1
+  }
+
   echo "== The generator, analyzers and code fixes are in the MethodCache package"
   local contents
   contents=$(python3 -c 'import sys, zipfile; print("\n".join(zipfile.ZipFile(sys.argv[1]).namelist()))' \
