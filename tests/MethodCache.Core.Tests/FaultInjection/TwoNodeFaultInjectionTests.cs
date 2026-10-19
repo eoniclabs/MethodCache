@@ -75,7 +75,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
         await node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options
             .WithDuration(Duration)
-            .WithTags(tags));
+            .AddTags(tags));
 
     /// <summary>Invalidates a key or a tag, whichever <paramref name="byTag"/> says.</summary>
     private static Task Invalidate(ICacheManager node, bool byTag) =>

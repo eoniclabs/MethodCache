@@ -17,8 +17,8 @@ setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in 
 
 Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
 and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
-lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `WithTags`
-(`o => o.ClearTags().WithTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
+lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `AddTags`
+(`o => o.ClearTags().AddTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
 `appsettings.json`. The tags of the lower layers and of the defaults are then dropped, and an entry without them is
 no longer removed by a `[CacheInvalidate]` that lists them.
 

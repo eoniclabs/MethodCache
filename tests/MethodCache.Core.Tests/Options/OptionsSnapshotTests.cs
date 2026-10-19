@@ -9,10 +9,10 @@ public class OptionsSnapshotTests
     [Fact]
     public void Build_ReusedBuilder_DoesNotChangePreviousTags()
     {
-        var builder = new CacheEntryOptions.Builder().WithTags("first");
+        var builder = new CacheEntryOptions.Builder().AddTags("first");
         var snapshot = builder.Build();
 
-        builder.WithTags("second");
+        builder.AddTags("second");
         var next = builder.Build();
 
         Assert.Equal(new[] { "first" }, snapshot.Tags);

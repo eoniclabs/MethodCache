@@ -39,7 +39,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return _cache.GetStatsAsync();
     }
 
-    public IReadOnlyList<CacheEntryInfo> ListEntries(string? keyPrefix = null, string? tag = null, int limit = 100)
+    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
@@ -53,7 +53,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         {
             var node = pair.Value;
             if (IsLive(node, now)
-                && (keyPrefix == null || node.Key.StartsWith(keyPrefix, StringComparison.Ordinal))
+                && (storedKeyPrefix == null || node.Key.StartsWith(storedKeyPrefix, StringComparison.Ordinal))
                 && (tag == null || HasTag(node, tag)))
             {
                 if (matches.Count < limit)
@@ -74,32 +74,32 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             result[i] = Describe(matches.Dequeue(), now);
         }
 
-        return _http == null ? result : result.Concat(_http.DescribeEntries(keyPrefix, tag, limit))
-            .OrderBy(entry => entry.Key, StringComparer.Ordinal).Take(limit).ToArray();
+        return _http == null ? result : result.Concat(_http.DescribeEntries(storedKeyPrefix, tag, limit))
+            .OrderBy(entry => entry.StoredKey, StringComparer.Ordinal).Take(limit).ToArray();
     }
 
-    public CacheEntryInfo? GetEntry(string key)
+    public CacheEntryInfo? GetEntry(string storedKey)
     {
-        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(storedKey);
 
         var engine = _cache.Engine;
         var now = engine.Now;
-        return engine.TryPeek(key, out var node) && IsLive(node, now) ? Describe(node, now)
-            : _http?.Find(key) is { } http ? _http.Describe(http) : null;
+        return engine.TryPeek(storedKey, out var node) && IsLive(node, now) ? Describe(node, now)
+            : _http?.Find(storedKey) is { } http ? _http.Describe(http) : null;
     }
 
-    public async ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default)
+    public async ValueTask<bool> RemoveEntryAsync(string storedKey, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(storedKey);
         cancellationToken.ThrowIfCancellationRequested();
         var engine = _cache.Engine;
-        var wasLive = engine.TryPeek(key, out var node) && IsLive(node, engine.Now);
+        var wasLive = engine.TryPeek(storedKey, out var node) && IsLive(node, engine.Now);
         // Match GetEntry's precedence when an explicit method key resembles a hashed HTTP id.
-        if (!wasLive && HttpResponseStore.IsObservationId(key) && _http != null &&
-            await _http.RemoveObservationAsync(key, cancellationToken).ConfigureAwait(false)) return true;
+        if (!wasLive && HttpResponseStore.IsObservationId(storedKey) && _http != null &&
+            await _http.RemoveObservationAsync(storedKey, cancellationToken).ConfigureAwait(false)) return true;
 
         // With L2 an unobserved key can still live on another instance, so confirmed invalidation reports true.
-        var result = await _cache.InvalidatePreparedKeysAsync([key], cancellationToken).ConfigureAwait(false);
+        var result = await _cache.InvalidatePreparedKeysAsync([storedKey], cancellationToken).ConfigureAwait(false);
         HttpResponseStore.RequireConfirmed(result);
         return wasLive || _cache.HasDistributedCache;
     }
@@ -117,7 +117,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         cancellationToken.ThrowIfCancellationRequested();
         await _cache.ClearAsync().ConfigureAwait(false);
         if (_cache.GetInvalidationQueues().Distributed != 0)
-            throw new CacheInvalidationUnavailableException("Cache clear is queued for distributed recovery.");
+            throw new CacheInvalidationQueuedException("Cache clear is queued for distributed recovery.");
     }
 
     public InvalidationQueues GetInvalidationQueues() => _cache.GetInvalidationQueues();
@@ -156,7 +156,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         return new CacheEntryInfo
         {
-            Key = node.Key,
+            StoredKey = node.Key,
             ValueType = node.BoxedValue?.GetType().FullName,
             Age = TimeSpan.FromTicks(Math.Max(0, now - node.CreatedAt) / NanosPerTick),
             TimeToLive = remaining >= NoExpiryThreshold ? null : TimeSpan.FromTicks(remaining / NanosPerTick),

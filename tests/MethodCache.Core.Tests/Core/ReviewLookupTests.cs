@@ -57,7 +57,7 @@ public class ReviewLookupTests
         var backend = new AtomicTestCache();
         await using var writer = Node(backend);
         await using var reader = Node(backend);
-        await writer.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual", _ => new ValueTask<int>(42), options => options.WithTags("users"));
+        await writer.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual", _ => new ValueTask<int>(42), options => options.AddTags("users"));
         var cache = reader.GetRequiredService<ICacheManager>();
         Assert.True((await cache.TryGetAsync<int>("manual", default)).Found);
         var admin = reader.GetRequiredService<ICacheAdministrator>();

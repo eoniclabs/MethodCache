@@ -1,5 +1,4 @@
 using MethodCache;
-using MethodCache.Core.Runtime.Http;
 using MethodCache.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -18,7 +17,7 @@ public static class MethodCacheAdminEndpoints
     /// <item><c>GET stats</c>: hit, miss, eviction, entry and memory statistics</item>
     /// <item><c>GET methods</c>: the effective policy of every cached method</item>
     /// <item><c>GET entries?prefix=&amp;tag=&amp;limit=</c>: live entries, without their values</item>
-    /// <item><c>GET entry?key=</c> and <c>DELETE entry?key=</c>: one entry</item>
+    /// <item><c>GET entry?key=</c> and <c>DELETE entry?key=</c>: one entry, by the <c>storedKey</c> that <c>entries</c> lists</item>
     /// <item><c>POST invalidate</c> with <c>{ "tags": [...] }</c>: remove entries by tag</item>
     /// <item><c>DELETE entries</c>: remove every entry</item>
     /// </list>
@@ -43,7 +42,7 @@ public static class MethodCacheAdminEndpoints
         group.AddEndpointFilter(async (context, next) =>
         {
             try { return await next(context).ConfigureAwait(false); }
-            catch (CacheInvalidationUnavailableException)
+            catch (CacheInvalidationQueuedException)
             {
                 return TypedResults.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
                     title: "Cache invalidation is awaiting distributed confirmation.",

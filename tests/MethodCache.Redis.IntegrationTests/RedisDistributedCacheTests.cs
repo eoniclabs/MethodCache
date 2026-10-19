@@ -59,7 +59,7 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
         await node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options
             .WithDuration(TimeSpan.FromMinutes(5))
-            .WithTags(tags));
+            .AddTags(tags));
 
     private static async Task WaitUntil(Func<Task<bool>> condition)
     {

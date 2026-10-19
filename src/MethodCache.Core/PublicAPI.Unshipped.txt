@@ -29,8 +29,8 @@ MethodCache.CacheEntryInfo.Client.get -> string?
 MethodCache.CacheEntryInfo.Client.init -> void
 MethodCache.CacheEntryInfo.Description.get -> string?
 MethodCache.CacheEntryInfo.Description.init -> void
-MethodCache.CacheEntryInfo.Key.get -> string!
-MethodCache.CacheEntryInfo.Key.init -> void
+MethodCache.CacheEntryInfo.StoredKey.get -> string!
+MethodCache.CacheEntryInfo.StoredKey.init -> void
 MethodCache.CacheEntryInfo.Kind.get -> MethodCache.CacheEntryKind
 MethodCache.CacheEntryInfo.Kind.init -> void
 MethodCache.CacheEntryInfo.SizeBytes.get -> long?
@@ -60,7 +60,7 @@ MethodCache.CacheEntryOptions.Builder.WithDistributed(bool distributed) -> Metho
 MethodCache.CacheEntryOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithEnabled(bool enabled) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithSlidingExpiration(System.TimeSpan slidingExpiration) -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.WithTags(params string![]! tags) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.AddTags(params string![]! tags) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithVersion(int version) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.CanCache<T>(T value) -> bool
 MethodCache.CacheEntryOptions.ClearsTags.get -> bool
@@ -231,11 +231,11 @@ MethodCache.Generated.MethodCall.WithTypeArguments(string! typeArguments) -> Met
 MethodCache.ICacheAdministrator
 MethodCache.ICacheAdministrator.CheckDistributedCacheAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool?>
 MethodCache.ICacheAdministrator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
-MethodCache.ICacheAdministrator.GetEntry(string! key) -> MethodCache.CacheEntryInfo?
+MethodCache.ICacheAdministrator.GetEntry(string! storedKey) -> MethodCache.CacheEntryInfo?
 MethodCache.ICacheAdministrator.GetInvalidationQueues() -> MethodCache.InvalidationQueues!
 MethodCache.ICacheAdministrator.GetMethods() -> System.Collections.Generic.IReadOnlyList<MethodCache.CachedMethodInfo!>!
-MethodCache.ICacheAdministrator.ListEntries(string? keyPrefix = null, string? tag = null, int limit = 100) -> System.Collections.Generic.IReadOnlyList<MethodCache.CacheEntryInfo!>!
-MethodCache.ICacheAdministrator.RemoveEntryAsync(string! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+MethodCache.ICacheAdministrator.ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100) -> System.Collections.Generic.IReadOnlyList<MethodCache.CacheEntryInfo!>!
+MethodCache.ICacheAdministrator.RemoveEntryAsync(string! storedKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 MethodCache.ICacheKeyProvider
 MethodCache.ICacheKeyProvider.CacheKeyPart.get -> string!
 MethodCache.ICacheManager
@@ -297,8 +297,8 @@ MethodCache.MethodCacheMemoryOptions.MaxHttpBytes.set -> void
 MethodCache.MethodCacheMemoryOptions.MaxItems.get -> long
 MethodCache.MethodCacheMemoryOptions.MaxItems.set -> void
 MethodCache.MethodCacheMemoryOptions.MethodCacheMemoryOptions() -> void
-MethodCache.MethodCacheMemoryOptions.SizeLimit.get -> long
-MethodCache.MethodCacheMemoryOptions.SizeLimit.set -> void
+MethodCache.MethodCacheMemoryOptions.WeightLimit.get -> long
+MethodCache.MethodCacheMemoryOptions.WeightLimit.set -> void
 MethodCache.MethodCacheMemoryOptions.Weigher.get -> System.Func<string!, object?, long>?
 MethodCache.MethodCacheMemoryOptions.Weigher.set -> void
 MethodCache.MethodCacheTelemetry
@@ -419,3 +419,5 @@ MethodCache.NoOpCacheManager.GetOrCreateAsync<TState, T>(string! key, TState sta
 MethodCache.NoOpCacheManager.TryGetAsync<T>(string! key, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.NoOpCacheManager.InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string!>! keys, int? version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
 MethodCache.NoOpCacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string!>! tags, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.InvalidationResult!>
+MethodCache.CacheInvalidationQueuedException
+MethodCache.CacheInvalidationQueuedException.CacheInvalidationQueuedException(string! message) -> void

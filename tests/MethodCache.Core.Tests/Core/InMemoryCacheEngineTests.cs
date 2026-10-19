@@ -634,7 +634,7 @@ public class InMemoryCacheEngineTests
         var manager = CreateManager(o =>
         {
             o.Weigher = (_, value) => ((string)value!).Length;
-            o.MaxMemoryBytes = 1000;
+            o.WeightLimit = 1000;
         });
 
         for (var i = 0; i < 100; i++)
@@ -653,7 +653,7 @@ public class InMemoryCacheEngineTests
         var manager = CreateManager(o =>
         {
             o.Weigher = (_, value) => ((string)value!).Length;
-            o.MaxMemoryBytes = 1000;
+            o.WeightLimit = 1000;
         });
 
         for (var i = 0; i < 5; i++)

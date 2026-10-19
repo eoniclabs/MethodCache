@@ -144,8 +144,8 @@ namespace MethodCache.SourceGenerator
                 }
 
                 AddTimeSpan(definition, cacheAttr, "Duration");
-                AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
-                AddTimeSpan(definition, cacheAttr, "RefreshAhead");
+                AddTimeSpan(definition, cacheAttr, "SlidingExpiration", allowOff: true);
+                AddTimeSpan(definition, cacheAttr, "RefreshAhead", allowOff: true);
                 AddTimeSpan(definition, cacheAttr, "FailSafeTimeout");
                 AddTimeSpan(definition, cacheAttr, "FailSafeRetryAfter", "FailSafeRetryAfter");
                 foreach (var name in new[] { "Enabled", "Distributed" })
@@ -187,13 +187,13 @@ namespace MethodCache.SourceGenerator
                 }
             }
 
-            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name, string? property = null)
+            private static void AddTimeSpan(PolicyDefinition definition, AttributeData cacheAttr, string name, string? property = null, bool allowOff = false)
             {
                 property ??= name;
-                // Discovery rejects invalid explicit values before a policy is generated.
+                // Discovery rejects invalid explicit values before a policy is generated. "off" parses as zero.
                 if (TryGetNamedArgument(cacheAttr, name, out var argument) &&
                     argument.Value is string text &&
-                    MethodCache.Internal.DurationParser.TryParse(text, false, out var value))
+                    MethodCache.Internal.DurationParser.TryParse(text, allowOff, out var value))
                 {
                     definition.PolicyStatements.Add($"policy = policy with {{ {property} = global::System.TimeSpan.FromTicks({value.Ticks}L) }};");
                     definition.PolicyStatements.Add($"fields |= global::MethodCache.Policies.CachePolicyFields.{property};");

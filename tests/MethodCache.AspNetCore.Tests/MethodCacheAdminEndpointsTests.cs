@@ -110,9 +110,9 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var byPrefix = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?prefix=users:");
         var byTag = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?tag=orders");
 
-        Assert.Equal(new[] { "users:1", "users:2" }, byPrefix!.Select(e => e.Key));
+        Assert.Equal(new[] { "users:1", "users:2" }, byPrefix!.Select(e => e.StoredKey));
         var order = Assert.Single(byTag!);
-        Assert.Equal("orders:1", order.Key);
+        Assert.Equal("orders:1", order.StoredKey);
         Assert.Equal(typeof(int).FullName, order.ValueType);
         Assert.Contains("orders", order.Tags);
         Assert.NotNull(order.TimeToLive);
@@ -148,7 +148,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var remaining = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        Assert.Equal(new[] { "orders:1" }, remaining!.Select(e => e.Key));
+        Assert.Equal(new[] { "orders:1" }, remaining!.Select(e => e.StoredKey));
     }
 
     [Fact]

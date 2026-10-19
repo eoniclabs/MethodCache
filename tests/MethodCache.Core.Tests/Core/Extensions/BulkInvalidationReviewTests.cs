@@ -18,7 +18,7 @@ public class BulkInvalidationReviewTests
         {
             started.SetResult();
             return new(candidates.Task);
-        }, o => o.WithTags("tag")).AsTask();
+        }, o => o.AddTags("tag")).AsTask();
         await started.Task;
         await decorated.InvalidateByTagsAsync("tag");
         candidates.SetResult(new Dictionary<string, string> { ["key"] = "old" });
@@ -52,7 +52,7 @@ public class BulkInvalidationReviewTests
         {
             started.SetResult();
             return new ValueTask<IDictionary<string, string>>(result.Task);
-        }, o => o.WithTags("tag")).AsTask();
+        }, o => o.AddTags("tag")).AsTask();
         await started.Task;
 
         if (invalidation == "key") await cache.InvalidateByKeysAsync("key");

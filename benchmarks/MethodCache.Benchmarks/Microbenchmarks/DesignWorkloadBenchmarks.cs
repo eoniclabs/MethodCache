@@ -34,7 +34,8 @@ internal static class DesignWorkloadSetup
     private static extern int SetQos(uint quality, int priority);
 
     internal static void SetWeightLimit(MethodCacheMemoryOptions options, long limit)
-        => (typeof(MethodCacheMemoryOptions).GetProperty("SizeLimit") ?? typeof(MethodCacheMemoryOptions).GetProperty("MaxMemoryBytes")
+        => (typeof(MethodCacheMemoryOptions).GetProperty("WeightLimit") ?? typeof(MethodCacheMemoryOptions).GetProperty("SizeLimit")
+            ?? typeof(MethodCacheMemoryOptions).GetProperty("MaxMemoryBytes")
             ?? throw new InvalidOperationException("No supported weight limit.")).SetValue(options, limit);
 
     internal static MeterListener? Listen(IServiceCollection services, bool enabled)

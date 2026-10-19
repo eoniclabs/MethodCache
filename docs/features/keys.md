@@ -153,7 +153,7 @@ var overload = MethodCacheKeys.For(
 <!-- endSnippet -->
 
 `MethodCacheKeys.Prefix(type, name, version)` returns the start that every key of one method shares, for example for
-`ICacheAdministrator.ListEntries(keyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
+`ICacheAdministrator.ListEntries(storedKeyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
 
 ## Things to know
 

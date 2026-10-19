@@ -40,7 +40,7 @@ public class ReviewFixContractTests
         {
             started.SetResult();
             return new(pending.Task);
-        }, o => o.WithTags("scope"));
+        }, o => o.AddTags("scope"));
         await started.Task;
         await cache.InvalidateByTagsAsync("scope");
         pending.SetResult(new Dictionary<string, string> { ["key"] = "old" });

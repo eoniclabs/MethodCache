@@ -40,7 +40,7 @@ public class EntryListingPropertyTests
                     && (tag == null || tag == (index % 2 == 0 ? "even" : "odd")))
                 .OrderBy(key => key, StringComparer.Ordinal).Take(limit).ToArray();
             foreach (var culture in PropertySettings.Cultures)
-                Assert.Equal(expected, PropertySettings.InCulture(culture, () => admin.ListEntries(prefix, tag, limit).Select(entry => entry.Key).ToArray()));
+                Assert.Equal(expected, PropertySettings.InCulture(culture, () => admin.ListEntries(prefix, tag, limit).Select(entry => entry.StoredKey).ToArray()));
             Assert.Equal(keys.Where((_, index) => index % 3 != 0).Count(), admin.ListEntries(limit: int.MaxValue).Count);
             Assert.Throws<ArgumentOutOfRangeException>(() => admin.ListEntries(limit: 0));
             Assert.Throws<ArgumentOutOfRangeException>(() => admin.ListEntries(limit: -1));

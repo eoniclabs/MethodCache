@@ -308,7 +308,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static async Task ConfirmAsync(Task<bool>[] operations)
     {
         if ((await Task.WhenAll(operations).ConfigureAwait(false)).Any(static confirmed => !confirmed))
-            throw new CacheInvalidationUnavailableException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
+            throw new CacheInvalidationQueuedException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
     }
 
     private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending, bool shutdown = false)
@@ -446,7 +446,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         var now = _time.GetUtcNow();
         return new CacheEntryInfo
         {
-            Key = info.Id,
+            StoredKey = info.Id,
             ValueType = "HTTP response",
             Age = now > info.CreatedAt ? now - info.CreatedAt : TimeSpan.Zero,
             TimeToLive = info.Deadline > now ? info.Deadline - now : TimeSpan.Zero,
@@ -487,7 +487,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
 
     internal static void RequireConfirmed(InvalidationResult result)
     {
-        if (result.Queued > 0) throw new CacheInvalidationUnavailableException("Cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
+        if (result.Queued > 0) throw new CacheInvalidationQueuedException("Cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
     }
 
     internal HttpStorageInfo? Find(string id) => IsObservationId(id) ? List().FirstOrDefault(info => info.Id == id) : null;

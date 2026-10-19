@@ -29,6 +29,8 @@ internal partial class InMemoryCacheManager
     {
         if (options.Enabled == false) return _telemetry?.Enabled == true
             ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(state, cancellationToken).AsTask())) : factory(state, cancellationToken);
+        // A CacheWhen<T> that can never see this result type is a configuration error, reported before the factory runs
+        CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
         var policy = options.Runtime;
         if (policy == null)
         {

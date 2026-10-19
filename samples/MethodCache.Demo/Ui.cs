@@ -91,7 +91,7 @@ internal static class Ui
     public static void WriteEntries(IReadOnlyList<MethodCache.CacheEntryInfo> entries) =>
         Table(
             ["Key", "Expires in", "Tags"],
-            entries.Select(e => (IReadOnlyList<string>)[e.Key, Duration(e.TimeToLive), string.Join(", ", e.Tags)]));
+            entries.Select(e => (IReadOnlyList<string>)[e.StoredKey, Duration(e.TimeToLive), string.Join(", ", e.Tags)]));
 
     public static string Times(int count) => count == 1 ? "once" : $"{count} times";
 

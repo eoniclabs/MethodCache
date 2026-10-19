@@ -252,7 +252,7 @@ interface, wrap the calls in an interface of your own with `[Cache]`, or use the
 var rate = await cache.GetOrCreateAsync(
     $"fx:{from}:{to}",
     async ct => await client.GetRateAsync(from, to),
-    o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
+    o => o.WithDuration(TimeSpan.FromMinutes(1)).AddTags("fx"));
 ```
 <!-- endSnippet -->
 

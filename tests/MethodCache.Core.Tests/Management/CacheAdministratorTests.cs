@@ -26,7 +26,7 @@ public class CacheAdministratorTests
         new ServiceCollection()
             .AddSingleton(time ?? TimeProvider.System)
             .AddMethodCache(config => config.Method((IAdminDocService x) => x.GetAsync(default))
-                .Configure(options => options.WithDuration(TimeSpan.FromSeconds(30)).WithTags("docs")))
+                .Configure(options => options.WithDuration(TimeSpan.FromSeconds(30)).AddTags("docs")))
             .BuildServiceProvider();
 
     [Theory]
@@ -71,7 +71,7 @@ public class CacheAdministratorTests
 
         var entries = admin.ListEntries(limit: 2);
 
-        Assert.Equal(new[] { "docs:1", "docs:2" }, entries.Select(e => e.Key));
+        Assert.Equal(new[] { "docs:1", "docs:2" }, entries.Select(e => e.StoredKey));
         Assert.All(entries, e => Assert.Equal(typeof(string).FullName, e.ValueType));
         Assert.All(entries, e => Assert.InRange(e.TimeToLive!.Value, TimeSpan.Zero, TimeSpan.FromMinutes(5)));
     }

@@ -123,7 +123,7 @@ public class CoreInstrumentationTests
         using var request = new Activity("request").AddTag("http.url", canary).Start();
         request.ActivityTraceFlags = ActivityTraceFlags.Recorded;
         var manager = provider.GetRequiredService<ICacheManager>();
-        await manager.GetOrCreateAsync(canary, _ => ValueTask.FromResult(7), b => b.WithTags(canary));
+        await manager.GetOrCreateAsync(canary, _ => ValueTask.FromResult(7), b => b.AddTags(canary));
         await manager.InvalidateKeysAsync([canary]);
         await manager.InvalidateTagsAsync([canary]);
         Assert.Equal(3, spans.Count);

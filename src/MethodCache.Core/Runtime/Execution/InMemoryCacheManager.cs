@@ -77,6 +77,7 @@ namespace MethodCache.Extensibility
             _telemetry = telemetry;
             _http = http;
             _options = options?.Value ?? new MethodCacheMemoryOptions();
+            _options.EnsureValid();
             _weigher = _options.Weigher;
 
             _defaultDuration = ToNanos(_options.DefaultExpiration);
@@ -84,8 +85,11 @@ namespace MethodCache.Extensibility
             _timeProvider = timeProvider ?? TimeProvider.System;
             _jitter = ToNanos(_options.JitterMaxDuration);
 
-            var maximum = _weigher != null ? _options.MaxMemoryBytes : _options.MaxItems;
-            _engine = new MemoryCacheEngine(maximum, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)Math.Min(_options.MaxItems, int.MaxValue));
+            // Without a weigher every entry weighs one, so the weight limit is the item limit.
+            _engine = _weigher != null
+                ? new MemoryCacheEngine(_options.WeightLimit, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider),
+                    (int)_options.MaxItems, maximumEntries: _options.MaxItems)
+                : new MemoryCacheEngine(_options.MaxItems, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)_options.MaxItems);
 
             if (_options.EnableBackgroundCleanup)
             {
@@ -1131,6 +1135,7 @@ namespace MethodCache.Extensibility
                 return true;
             }
 
+            CachePredicateCheck.EnsureMatches(cacheWhen, typeof(T), methodName);
             try
             {
                 return cacheWhen(result);

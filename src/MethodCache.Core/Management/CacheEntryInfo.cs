@@ -3,8 +3,13 @@ namespace MethodCache;
 /// <summary>A snapshot of one cache entry. The cached value itself is not included.</summary>
 public sealed record CacheEntryInfo
 {
-    /// <summary>The cache key.</summary>
-    public required string Key { get; init; }
+    /// <summary>
+    /// The key the entry is stored under: the method's generated key, or for a manual entry the key passed to
+    /// <see cref="ICacheManager"/> framed with its version. Pass it to <see cref="ICacheAdministrator.GetEntry"/> and
+    /// <see cref="ICacheAdministrator.RemoveEntryAsync"/>; <see cref="ICacheManager"/> takes the key and version you
+    /// stored it with instead.
+    /// </summary>
+    public required string StoredKey { get; init; }
     /// <summary>The full name of the cached value's type, or <c>null</c> when the value is null.</summary>
     public string? ValueType { get; init; }
     /// <summary>How long ago the value was stored.</summary>

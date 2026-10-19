@@ -14,7 +14,7 @@ public class FourMethodManagerTests
         var services = new ServiceCollection();
         services.AddSingleton<ICacheManager>(custom);
         services.AddSingleton<IReader>(origin);
-        services.AddMethodCache(b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.WithDistributed(false).WithTags("flag:{id}")));
+        services.AddMethodCache(b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.WithDistributed(false).AddTags("flag:{id}")));
         await using var provider = services.BuildServiceProvider();
         var reader = provider.GetRequiredService<IReader>();
         Assert.Equal(1, await reader.ReadAsync(1));

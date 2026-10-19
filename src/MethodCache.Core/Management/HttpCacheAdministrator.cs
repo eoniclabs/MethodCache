@@ -22,15 +22,15 @@ internal sealed class HttpCacheAdministrator(HttpResponseStore store) : ICacheAd
         });
     }
     /// <inheritdoc />
-    public IReadOnlyList<CacheEntryInfo> ListEntries(string? keyPrefix = null, string? tag = null, int limit = 100)
+    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
-        return store.DescribeEntries(keyPrefix, tag, limit);
+        return store.DescribeEntries(storedKeyPrefix, tag, limit);
     }
     /// <inheritdoc />
-    public CacheEntryInfo? GetEntry(string key) => store.Find(key) is { } info ? store.Describe(info) : null;
+    public CacheEntryInfo? GetEntry(string storedKey) => store.Find(storedKey) is { } info ? store.Describe(info) : null;
     /// <inheritdoc />
-    public ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default) => store.RemoveObservationAsync(key, cancellationToken);
+    public ValueTask<bool> RemoveEntryAsync(string storedKey, CancellationToken cancellationToken = default) => store.RemoveObservationAsync(storedKey, cancellationToken);
     /// <inheritdoc />
     public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
         => store.InvalidateTagsAsync(InMemoryCacheManager.ValidateTargets(tags), cancellationToken);

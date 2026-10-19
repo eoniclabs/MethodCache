@@ -70,7 +70,7 @@ internal static class HttpNativeContract
         await Read(b, url);
         origin.Version = "removed";
         var known = admin.ListEntries().OrderBy(info => info.TimeToLive).Last();
-        Assert.True(await admin.RemoveEntryAsync(known.Key));
+        Assert.True(await admin.RemoveEntryAsync(known.StoredKey));
         Assert.Equal("removed:alice", await Read(a, url));
         Assert.Equal("removed:alice", await Read(c, url));
         // An unobserved id can also be a manual method key held only in L2. The public admin

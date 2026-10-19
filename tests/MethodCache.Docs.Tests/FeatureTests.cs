@@ -35,7 +35,7 @@ public class FeatureTests(ITestOutputHelper output)
         await users.ByIdsAsync([1, 2, 3]);
         await users.CountAsync(new Dictionary<string, int[]> { ["age"] = [30, 40] });
 
-        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "[MethodCache.Docs.Tests]MyApp.").Select(e => e.Key).ToList();
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(storedKeyPrefix: "[MethodCache.Docs.Tests]MyApp.").Select(e => e.StoredKey).ToList();
         foreach (var key in keys)
         {
             output.WriteLine(key);
@@ -90,7 +90,7 @@ public class FeatureTests(ITestOutputHelper output)
         await invoices.GetAsync(42);
         await invoices.FindAsync("INV-7");
 
-        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(keyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.Key).ToList();
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries(storedKeyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.StoredKey).ToList();
         var (versioned, overload) = KeyExamples.Build();
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.GetAsync:v2:42", versioned);
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
@@ -112,7 +112,7 @@ public class FeatureTests(ITestOutputHelper output)
         await using var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<IDocumentStore>().GetAsync("doc:2026/report.pdf");
 
-        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.Key).ToList();
+        var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.StoredKey).ToList();
         Assert.Contains(MethodCacheKeys.For(typeof(IDocumentStore), nameof(IDocumentStore.GetAsync), MethodCacheKeys.Part("doc:2026/report.pdf")), keys);
         Assert.DoesNotContain("doc:2026/report.pdf", keys);
     }

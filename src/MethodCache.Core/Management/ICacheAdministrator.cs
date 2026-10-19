@@ -17,30 +17,37 @@ public interface ICacheAdministrator
     ValueTask<CacheStats> GetStatsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Lists live entries, optionally filtered by key prefix and tag. The result is a snapshot ordered by key and
-    /// capped at <paramref name="limit"/> entries.
+    /// Lists live entries, optionally filtered by a prefix of <see cref="CacheEntryInfo.StoredKey"/> and by tag. The
+    /// result is a snapshot ordered by stored key and capped at <paramref name="limit"/> entries.
     /// </summary>
-    IReadOnlyList<CacheEntryInfo> ListEntries(string? keyPrefix = null, string? tag = null, int limit = 100);
-
-    /// <summary>Describes one live entry, or returns <c>null</c> when the key is not cached.</summary>
-    CacheEntryInfo? GetEntry(string key);
+    IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100);
 
     /// <summary>
-    /// Removes one entry, from memory and, when one is configured, from the distributed cache and the other
-    /// instances. Returns <c>false</c> when the key was not cached in this instance's memory and there is no
-    /// distributed cache that could hold it.
+    /// Describes one live entry by its <see cref="CacheEntryInfo.StoredKey"/>, or returns <c>null</c> when it is not
+    /// cached.
     /// </summary>
-    ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default);
+    CacheEntryInfo? GetEntry(string storedKey);
+
+    /// <summary>
+    /// Removes one entry by its <see cref="CacheEntryInfo.StoredKey"/>, from memory and, when one is configured, from
+    /// the distributed cache and the other instances. Returns <c>false</c> when the key was not cached in this
+    /// instance's memory and there is no distributed cache that could hold it. Throws
+    /// <see cref="CacheInvalidationQueuedException"/> while the distributed removal is queued for recovery.
+    /// </summary>
+    ValueTask<bool> RemoveEntryAsync(string storedKey, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes every method result and HTTP response carrying any of <paramref name="tags"/>, also when the
     /// application replaced the method cache manager. Unlike <see cref="ICacheManager.InvalidateTagsAsync"/>, it
     /// completes only once a configured distributed cache confirmed the invalidation, and throws
-    /// <see cref="InvalidOperationException"/> while the invalidation is queued for recovery.
+    /// <see cref="CacheInvalidationQueuedException"/> while the invalidation is queued for recovery.
     /// </summary>
     ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default);
 
-    /// <summary>Removes every entry and resets the hit and miss counters.</summary>
+    /// <summary>
+    /// Removes every entry and resets the hit and miss counters. Throws <see cref="CacheInvalidationQueuedException"/>
+    /// while the distributed clear is queued for recovery.
+    /// </summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Reports bounded local invalidation recovery queues.</summary>

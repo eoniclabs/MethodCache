@@ -25,7 +25,7 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync("Sample.Method", builder =>
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(2));
-            builder.WithTags("runtime");
+            builder.AddTags("runtime");
             builder.WithRefreshAhead(System.TimeSpan.FromSeconds(20));
         });
 
@@ -51,7 +51,7 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync("Sample.Entry", builder =>
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(3));
-            builder.WithTags("runtime", "docs");
+            builder.AddTags("runtime", "docs");
         });
 
         var snapshots = store.GetSnapshots();
@@ -72,7 +72,7 @@ public class RuntimeCacheConfiguratorTests
         {
             fluent.ForService<IRuntimeDocService>()
                 .Method(x => x.GetAsync(default))
-                .Configure(options => options.WithDuration(System.TimeSpan.FromSeconds(30)).WithTags("runtime", "users"));
+                .Configure(options => options.WithDuration(System.TimeSpan.FromSeconds(30)).AddTags("runtime", "users"));
 
             fluent.ForService<IRuntimeDocService>()
                 .Method(x => x.SearchAsync(default!))
@@ -169,7 +169,7 @@ public class RuntimeCacheConfiguratorTests
 
         await configurator.UpsertAsync(
             "Expiring.Method",
-            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)).WithTags("runtime"),
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)).AddTags("runtime"),
             metadata);
 
         var current = await configurator.GetOverrideAsync("Expiring.Method");

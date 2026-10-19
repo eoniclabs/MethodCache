@@ -112,8 +112,8 @@ namespace MethodCache.Infrastructure
         /// Indicates whether sliding expiration or refresh-ahead is configured.
         /// </summary>
         public bool HasRuntimeOptions =>
-            SlidingExpiration.HasValue ||
-            RefreshAhead.HasValue;
+            SlidingExpiration > TimeSpan.Zero ||
+            RefreshAhead > TimeSpan.Zero;
 
         // ============= Factory Methods =============
 

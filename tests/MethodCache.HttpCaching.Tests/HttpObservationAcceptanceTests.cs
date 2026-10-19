@@ -27,7 +27,7 @@ public class HttpObservationAcceptanceTests
         Assert.All(observed, info =>
         {
             Assert.Equal(CacheEntryKind.Http, info.Kind); Assert.Equal(CacheEntryStorage.ObservedDistributed, info.Storage);
-            Assert.Equal(69, info.Key.Length); Assert.Contains("Historical", info.Description);
+            Assert.Equal(69, info.StoredKey.Length); Assert.Contains("Historical", info.Description);
         });
         var text = JsonSerializer.Serialize(observed);
         foreach (var secret in new[] { "user-canary", "password-canary", "query-canary", "cookie-canary", "body-canary", "credential-canary" }) Assert.DoesNotContain(secret, text);

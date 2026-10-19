@@ -684,7 +684,7 @@ Static tags never format method arguments. A template formats only the parameter
 Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
 method. They are added to the `[Cache]` attribute's tags, so the attribute's `[CacheInvalidate]` tags keep working;
 only an explicit `ClearTags()` (or `"ClearTags": true` in `appsettings.json`) replaces them
-([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). An override with `o => o.WithTags("incident")` on `GetAsync` above gives its
+([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). An override with `o => o.AddTags("incident")` on `GetAsync` above gives its
 entries the tags `orders`, `order:{orderId}` and `incident`.
 
 `[CacheInvalidate]` also works on methods with `ref` or `ref readonly` returns, and on `Task` and `ValueTask` methods
@@ -872,8 +872,8 @@ setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in 
 
 Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
 and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
-lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `WithTags`
-(`o => o.ClearTags().WithTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
+lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `AddTags`
+(`o => o.ClearTags().AddTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
 `appsettings.json`. The tags of the lower layers and of the defaults are then dropped, and an entry without them is
 no longer removed by a `[CacheInvalidate]` that lists them.
 
@@ -1074,7 +1074,7 @@ public sealed class OrderReader(ICacheManager cache, IOrderRepository orders)
         cache.GetOrCreateAsync(
             $"order:{id}",
             async token => await orders.GetAsync(id, token),
-            o => o.WithDuration(TimeSpan.FromMinutes(30)).WithTags("orders", $"order:{id}"),
+            o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{id}"),
             cancellationToken: ct);
 }
 ```
@@ -1099,7 +1099,7 @@ var list = await cache.GetOrCreateAsync(
     o => o.WithDuration(TimeSpan.FromMinutes(30))
           .WithSlidingExpiration(TimeSpan.FromMinutes(10))
           .WithRefreshAhead(TimeSpan.FromMinutes(5))
-          .WithTags("orders", $"customer:{customerId}")
+          .AddTags("orders", $"customer:{customerId}")
           .WithVersion(2)
           .WithEnabled(customerId > 0));   // skip the cache when false
 ```
@@ -1272,7 +1272,7 @@ Static methods and sealed classes work the same way: the wrapper calls them, and
 var rate = await cache.GetOrCreateAsync(
     $"fx:{from}:{to}",
     async ct => await client.GetRateAsync(from, to),
-    o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
+    o => o.WithDuration(TimeSpan.FromMinutes(1)).AddTags("fx"));
 ```
 
 See [Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md).

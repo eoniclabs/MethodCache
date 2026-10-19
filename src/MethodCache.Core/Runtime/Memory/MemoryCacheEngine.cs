@@ -76,6 +76,9 @@ internal sealed class MemoryCacheEngine
     private readonly long _maximum;
     private readonly long _windowMaximum;
     private readonly long _protectedMaximum;
+    private readonly long _maximumEntries;
+    private readonly long _windowMaximumEntries;
+    private readonly long _protectedMaximumEntries;
 
     private readonly Action<Node> _onAccess;
     private readonly Func<Node, bool> _onTimerExpired;
@@ -84,6 +87,8 @@ internal sealed class MemoryCacheEngine
     private long _totalWeight;
     private long _windowWeight;
     private long _protectedWeight;
+    private long _windowEntries;
+    private long _protectedEntries;
     private long _evictionCount;
     private long _expirationCount;
     private int _maintenanceScheduled;
@@ -97,16 +102,23 @@ internal sealed class MemoryCacheEngine
     // Inserts enqueued but not yet applied by maintenance; may dip below zero for a moment.
     private long _pendingAdds;
 
-    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null, bool useRuntimeStringComparer = false)
+    /// <param name="maximum">The most total weight kept.</param>
+    /// <param name="maximumEntries">The most entries kept, whatever their weight. When every entry weighs one, leave it
+    /// unbounded: <paramref name="maximum"/> already counts entries.</param>
+    public MemoryCacheEngine(long maximum, EngineEvictionMode mode, Func<long> clock, int expectedItems, KeyComparer? comparer = null,
+        bool useRuntimeStringComparer = false, long maximumEntries = long.MaxValue)
     {
         if (maximum <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(maximum), maximum, "Maximum must be greater than zero.");
         }
 
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumEntries);
+
         if (useRuntimeStringComparer && comparer != null)
             throw new ArgumentException("A forced comparer cannot be combined with the runtime string comparer.", nameof(comparer));
         _maximum = maximum;
+        _maximumEntries = maximumEntries;
         _mode = mode;
         _clock = clock;
         // String-only stores can retain the runtime's optimized ordinal comparer and its built-in
@@ -118,9 +130,11 @@ internal sealed class MemoryCacheEngine
 
         if (mode == EngineEvictionMode.TinyLfu)
         {
+            // Both limits size the regions, so the admission policy keeps its proportions whichever limit binds.
             _windowMaximum = Math.Max(1, (long)(maximum * 0.01));
-            var mainMaximum = maximum - _windowMaximum;
-            _protectedMaximum = (long)(mainMaximum * 0.8);
+            _protectedMaximum = (long)((maximum - _windowMaximum) * 0.8);
+            _windowMaximumEntries = Math.Max(1, (long)(maximumEntries * 0.01));
+            _protectedMaximumEntries = (long)((maximumEntries - _windowMaximumEntries) * 0.8);
         }
 
         // Sized lazily from the live entry count (see OnAdd), so a huge or weight-based maximum costs nothing up front.
@@ -133,6 +147,11 @@ internal sealed class MemoryCacheEngine
     public long Now => _clock();
 
     public long Maximum => _maximum;
+
+    // Guarded by _evictionLock, like the counters they read.
+    private bool OverCapacity => _totalWeight > _maximum || _entryCount > _maximumEntries;
+    private bool WindowOverflows => _windowWeight > _windowMaximum || _windowEntries > _windowMaximumEntries;
+    private bool ProtectedOverflows => _protectedWeight > _protectedMaximum || _protectedEntries > _protectedMaximumEntries;
 
     /// <summary>
     /// Drains a full read buffer on the reading thread instead of the thread pool, so no access is ever dropped.
@@ -482,8 +501,8 @@ internal sealed class MemoryCacheEngine
                 added++;
                 OnAdd(task.Node);
 
-                // Evict as the batch is applied, so the tracked weight never exceeds the maximum by more than one entry.
-                if (_totalWeight > _maximum)
+                // Evict as the batch is applied, so the cache never exceeds a limit by more than one entry.
+                if (OverCapacity)
                 {
                     Evict();
                 }
@@ -547,6 +566,7 @@ internal sealed class MemoryCacheEngine
         node.Queue = QueueType.Window;
         _window.AddLast(node);
         _windowWeight += node.Weight;
+        _windowEntries++;
         Volatile.Write(ref _totalWeight, _totalWeight + node.Weight);
         _timerWheel.Schedule(node);
     }
@@ -579,6 +599,7 @@ internal sealed class MemoryCacheEngine
                 node.Queue = QueueType.Protected;
                 _protected.AddLast(node);
                 _protectedWeight += node.Weight;
+                _protectedEntries++;
                 DemoteFromProtected();
                 break;
             case QueueType.Protected:
@@ -589,7 +610,7 @@ internal sealed class MemoryCacheEngine
 
     private void DemoteFromProtected()
     {
-        while (_protectedWeight > _protectedMaximum)
+        while (ProtectedOverflows)
         {
             var demoted = _protected.First;
             if (demoted == null)
@@ -599,6 +620,7 @@ internal sealed class MemoryCacheEngine
 
             _protected.Remove(demoted);
             _protectedWeight -= demoted.Weight;
+            _protectedEntries--;
             demoted.Queue = QueueType.Probation;
             _probation.AddLast(demoted);
         }
@@ -625,6 +647,7 @@ internal sealed class MemoryCacheEngine
             case QueueType.Window:
                 _window.Remove(node);
                 _windowWeight -= node.Weight;
+                _windowEntries--;
                 break;
             case QueueType.Probation:
                 _probation.Remove(node);
@@ -632,6 +655,7 @@ internal sealed class MemoryCacheEngine
             case QueueType.Protected:
                 _protected.Remove(node);
                 _protectedWeight -= node.Weight;
+                _protectedEntries--;
                 break;
         }
 
@@ -656,7 +680,7 @@ internal sealed class MemoryCacheEngine
     {
         if (_mode != EngineEvictionMode.TinyLfu)
         {
-            while (_totalWeight > _maximum && _window.First is { } victim)
+            while (OverCapacity && _window.First is { } victim)
             {
                 EvictNode(victim);
             }
@@ -666,16 +690,17 @@ internal sealed class MemoryCacheEngine
 
         // Move overflow from the admission window into probation; those nodes are the candidates.
         Node? candidate = null;
-        while (_windowWeight > _windowMaximum && _window.First is { } moved)
+        while (WindowOverflows && _window.First is { } moved)
         {
             _window.Remove(moved);
             _windowWeight -= moved.Weight;
+            _windowEntries--;
             moved.Queue = QueueType.Probation;
             _probation.AddLast(moved);
             candidate ??= moved;
         }
 
-        while (_totalWeight > _maximum)
+        while (OverCapacity)
         {
             var victim = _probation.First;
             if (victim == candidate)

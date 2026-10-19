@@ -30,7 +30,7 @@ public class PolicyTransitionTests
     public async Task EqualDeclarations_ShareL2_AuditAndIdenticalPredicateDoNotRetire()
     {
         Func<int, bool> predicate = static value => value > 0;
-        void Configure(MethodCacheBuilder b) => b.Method((IReader r) => r.ReadAsync(0)).CacheWhen(predicate).Configure(o => o.WithTags("a", "b"));
+        void Configure(MethodCacheBuilder b) => b.Method((IReader r) => r.ReadAsync(0)).CacheWhen(predicate).Configure(o => o.AddTags("a", "b"));
         var writer = new Reader(100); var receiver = new Reader(200);
         await using var first = Node(writer, Configure);
         await using var second = Node(receiver, Configure);
@@ -39,7 +39,7 @@ public class PolicyTransitionTests
         Assert.Equal(0, receiver.Calls);
         var before = PolicyHandle.For(first.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), MethodId).Current;
         await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId,
-            o => o.CacheWhen(predicate).WithTags("b", "a", "a"), new RuntimeOverrideMetadata { Owner = "review" });
+            o => o.CacheWhen(predicate).AddTags("b", "a", "a"), new RuntimeOverrideMetadata { Owner = "review" });
         var after = PolicyHandle.For(first.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), MethodId).Current;
         Assert.Same(before.Generation, after.Generation);
         Assert.Equal(before.Identity, after.Identity);
@@ -139,7 +139,7 @@ public class PolicyTransitionTests
         var generation = handle.Current.Generation;
         var forged = DistributedCacheLayer.MethodTag(MethodId);
         var cache = node.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateAsync("app", _ => ValueTask.FromResult(1), o => o.WithTags(forged));
+        await cache.GetOrCreateAsync("app", _ => ValueTask.FromResult(1), o => o.AddTags(forged));
         await cache.InvalidateTagAsync(forged);
         Assert.False((await cache.TryGetAsync<int>("app")).Found);
         Assert.Same(generation, handle.Current.Generation);
@@ -193,7 +193,7 @@ public class PolicyTransitionTests
             3 => o => o.WithFailSafe(TimeSpan.FromSeconds(5)),
             4 => o => o.WithFailSafe(TimeSpan.Zero, timeout: TimeSpan.FromSeconds(1)),
             5 => o => o.WithFailSafe(TimeSpan.Zero, retryAfter: TimeSpan.FromSeconds(1)),
-            6 => o => o.WithTags("changed"),
+            6 => o => o.AddTags("changed"),
             7 => o => o.WithVersion(2),
             8 => o => o.WithDistributed(false),
             9 => o => o.CacheWhen<int>(value => value > 0),
@@ -203,7 +203,7 @@ public class PolicyTransitionTests
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var origin = new Reader(100) { FirstLoad = () => { started.SetResult(); return release.Task; } };
-        await using var node = Node(origin, setting == 11 ? b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.WithTags("initial")) : null);
+        await using var node = Node(origin, setting == 11 ? b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.AddTags("initial")) : null);
         var reader = node.GetRequiredService<IReader>();
         var pending = reader.ReadAsync(1);
         await started.Task;

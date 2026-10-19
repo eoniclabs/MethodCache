@@ -54,7 +54,7 @@ Static tags never format method arguments. A template formats only the parameter
 Tags set in startup code, `appsettings.json` or runtime overrides can use templates too, with any parameter of the
 method. They are added to the `[Cache]` attribute's tags, so the attribute's `[CacheInvalidate]` tags keep working;
 only an explicit `ClearTags()` (or `"ClearTags": true` in `appsettings.json`) replaces them
-([Configuration](configuration.md)). An override with `o => o.WithTags("incident")` on `GetAsync` above gives its
+([Configuration](configuration.md)). An override with `o => o.AddTags("incident")` on `GetAsync` above gives its
 entries the tags `orders`, `order:{orderId}` and `incident`.
 
 `[CacheInvalidate]` also works on methods with `ref` or `ref readonly` returns, and on `Task` and `ValueTask` methods

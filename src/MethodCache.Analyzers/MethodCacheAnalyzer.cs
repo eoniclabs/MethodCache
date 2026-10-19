@@ -47,7 +47,7 @@ namespace MethodCache.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and FailSafeRetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and FailSafeRetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe, SlidingExpiration and RefreshAhead also accept \"off\".",
             helpLinkUri: HelpLink(InvalidTimeSpanDiagnosticId));
 
         internal static readonly DiagnosticDescriptor InvalidVersionRule = new DiagnosticDescriptor(
@@ -136,7 +136,7 @@ namespace MethodCache.Analyzers
             {
                 if (Array.IndexOf(TimeSpanProperties, argument.Key) < 0) continue;
                 var text = argument.Value.Value as string;
-                if (!MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
+                if (!MethodCache.Internal.DurationParser.TryParse(text, argument.Key is "FailSafe" or "SlidingExpiration" or "RefreshAhead", out _))
                 {
                     yield return (argument.Key, text ?? "null");
                 }

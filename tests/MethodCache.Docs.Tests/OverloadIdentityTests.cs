@@ -22,8 +22,8 @@ namespace MethodCache.Docs.Tests
             Assert.Equal("first", queries.Find(new OverloadCases.OverloadFirst.Query(1)));
             Assert.Equal("second", queries.Find(new OverloadCases.OverloadSecond.Query(1)));
             var entries = provider.GetRequiredService<ICacheAdministrator>().ListEntries();
-            Assert.Contains(entries, e => e.Key.Contains("Find(OverloadCases.OverloadFirst.Query)", StringComparison.Ordinal));
-            Assert.Contains(entries, e => e.Key.Contains("Find(OverloadCases.OverloadSecond.Query)", StringComparison.Ordinal));
+            Assert.Contains(entries, e => e.StoredKey.Contains("Find(OverloadCases.OverloadFirst.Query)", StringComparison.Ordinal));
+            Assert.Contains(entries, e => e.StoredKey.Contains("Find(OverloadCases.OverloadSecond.Query)", StringComparison.Ordinal));
         }
 
         public interface IQueries

@@ -31,7 +31,7 @@ public class BoundedEntryListingTests
         var selected = admin.ListEntries(limit: 5);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.Equal(Enumerable.Range(0, 5).Select(i => "key:" + i.ToString("D6", CultureInfo.InvariantCulture)), selected.Select(e => e.Key));
+        Assert.Equal(Enumerable.Range(0, 5).Select(i => "key:" + i.ToString("D6", CultureInfo.InvariantCulture)), selected.Select(e => e.StoredKey));
         Assert.InRange(allocated, 0, 16_384);
     }
 }

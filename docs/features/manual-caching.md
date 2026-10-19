@@ -13,7 +13,7 @@ public sealed class OrderReader(ICacheManager cache, IOrderRepository orders)
         cache.GetOrCreateAsync(
             $"order:{id}",
             async token => await orders.GetAsync(id, token),
-            o => o.WithDuration(TimeSpan.FromMinutes(30)).WithTags("orders", $"order:{id}"),
+            o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{id}"),
             cancellationToken: ct);
 }
 ```
@@ -40,7 +40,7 @@ var list = await cache.GetOrCreateAsync(
     o => o.WithDuration(TimeSpan.FromMinutes(30))
           .WithSlidingExpiration(TimeSpan.FromMinutes(10))
           .WithRefreshAhead(TimeSpan.FromMinutes(5))
-          .WithTags("orders", $"customer:{customerId}")
+          .AddTags("orders", $"customer:{customerId}")
           .WithVersion(2)
           .WithEnabled(customerId > 0));   // skip the cache when false
 ```

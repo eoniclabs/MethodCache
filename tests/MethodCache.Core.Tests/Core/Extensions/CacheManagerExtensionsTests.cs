@@ -63,7 +63,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var first = await cacheManager.GetOrCreateAsync(
                 "order:21",
                 async ct => await LoadAsync(21),
-                o => o.WithDuration(TimeSpan.FromMinutes(5)).WithTags("orders"));
+                o => o.WithDuration(TimeSpan.FromMinutes(5)).AddTags("orders"));
             var second = await cacheManager.GetOrCreateAsync(
                 "order:21",
                 async ct => await LoadAsync(21));
@@ -155,7 +155,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             await cacheManager.GetOrCreateManyAsync(
                 new[] { "report:1" },
                 Factory,
-                options => options.WithDuration(TimeSpan.FromMinutes(5)).WithTags("reports"));
+                options => options.WithDuration(TimeSpan.FromMinutes(5)).AddTags("reports"));
 
             Assert.Equal("MethodCache.Fluent", cacheManager.LastMethodName);
             Assert.NotNull(cacheManager.LastPolicy);
@@ -193,7 +193,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 options => options
                     .WithDuration(duration)
                     .WithSlidingExpiration(TimeSpan.FromMinutes(2))
-                    .WithTags("reports", "metrics"));
+                    .AddTags("reports", "metrics"));
 
             // Assert runtime result
             Assert.Equal(99, result);

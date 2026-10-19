@@ -41,7 +41,7 @@ public static partial class PolicyBackendContract
         var generated = await cache.TryGetAsync<int>(key, default);
         Assert.True(generated.Found);
         Assert.Equal(101, generated.Value);
-        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual-lookup", _ => new ValueTask<int>(42), options => options.WithTags("lookup-tag"));
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual-lookup", _ => new ValueTask<int>(42), options => options.AddTags("lookup-tag"));
         Assert.True((await cache.TryGetAsync<int>("manual-lookup", default)).Found);
         Assert.Contains("lookup-tag", second.GetRequiredService<ICacheAdministrator>().GetEntry("manual-lookup")!.Tags);
         await cache.InvalidateTagsAsync(["lookup-tag"], default);
@@ -68,12 +68,12 @@ public static partial class PolicyBackendContract
         await using var first = await create(a, builder =>
         {
             builder.FromConfiguration(duration, "MethodCache").FromConfiguration(tags, "MethodCache");
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithTags("a", "b"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.AddTags("a", "b"));
         });
         await using var second = await create(b, builder =>
         {
             builder.FromConfiguration(tags, "MethodCache").FromConfiguration(duration, "MethodCache");
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithTags("b", "a", "a"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.AddTags("b", "a", "a"));
         });
         await SilenceAsync(first); await SilenceAsync(second);
         Assert.Equal(Handle(first).Current.Identity, Handle(second).Current.Identity);
@@ -82,7 +82,7 @@ public static partial class PolicyBackendContract
         Assert.Equal(0, b.Calls); // actual shared backend reuse, not two coincidentally equal factories
         var before = Handle(first).Current;
         await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId,
-            o => o.WithTags("b", "a"), new RuntimeOverrideMetadata { Owner = "audit-only" });
+            o => o.AddTags("b", "a"), new RuntimeOverrideMetadata { Owner = "audit-only" });
         Assert.Same(before.Generation, Handle(first).Current.Generation);
         Assert.Equal(before.Identity, Handle(first).Current.Identity);
         Assert.False(Handle(first).Current.PrivateIdentity);
@@ -214,7 +214,7 @@ public static partial class PolicyBackendContract
         await using var node = await create(origin, builder =>
         {
             builder.Services.AddSingleton<ICacheManager>(custom);
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithVersion(2).WithDistributed(false).WithTags("native:{id}"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithVersion(2).WithDistributed(false).AddTags("native:{id}"));
         });
         var reader = node.GetRequiredService<IOrigin>();
         Assert.Equal(101, await reader.ReadAsync(1)); Assert.Equal(102, await reader.ReadAsync(1));

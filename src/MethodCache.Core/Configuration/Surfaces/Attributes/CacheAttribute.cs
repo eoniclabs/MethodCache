@@ -55,7 +55,7 @@ namespace MethodCache
 
         /// <summary>
         /// Gets or sets a sliding expiration as a TimeSpan string. Each read extends the entry by this much, but
-        /// never beyond <see cref="Duration"/>.
+        /// never beyond <see cref="Duration"/>. <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
@@ -67,6 +67,7 @@ namespace MethodCache
         /// <summary>
         /// Gets or sets a refresh-ahead window as a TimeSpan string. A read within this window before the entry
         /// expires returns the cached value and refreshes it in the background, so callers do not wait for the method.
+        /// <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
