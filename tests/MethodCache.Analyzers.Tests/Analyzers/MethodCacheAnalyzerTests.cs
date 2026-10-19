@@ -216,6 +216,23 @@ public interface IService
         }
 
         [Theory]
+        [InlineData("SlidingExpiration", "off")]
+        [InlineData("RefreshAhead", "OFF")]
+        public async Task CacheWithOffSlidingOrRefresh_ReportsNothing(string property, string value)
+        {
+            var source = $@"
+using MethodCache;
+
+public interface IService
+{{
+    [Cache(Duration = ""00:10:00"", {property} = ""{value}"")]
+    string Get(int id);
+}}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Theory]
         [InlineData("Duration", "5 minutes")]
         [InlineData("RefreshAhead", "00:00:00")]
         public async Task CacheInterfaceWithInvalidTimeSpan_ReportsMC0004(string property, string value)

@@ -36,6 +36,9 @@ namespace CacheWhen
 
         [Cache]
         Task<int> FragileAsync(int id);
+
+        [Cache]
+        Task<int> MismatchAsync(int id);
     }
 
     public class Catalog : ICatalog
@@ -49,6 +52,7 @@ namespace CacheWhen
         public int Count(string category) { Calls++; return NextCount; }
         public ValueTask<string?> FindAsync(int id) { Calls++; return new ValueTask<string?>(NextFind); }
         public Task<int> FragileAsync(int id) => Task.FromResult(++Calls);
+        public Task<int> MismatchAsync(int id) => Task.FromResult(++Calls);
     }
 
     public static class Startup
@@ -64,6 +68,8 @@ namespace CacheWhen
                 config.Method((ICatalog c) => c.FragileAsync(Any<int>.Value))
                     .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1)))
                     .CacheWhen(r => throw new InvalidOperationException(""predicate bug""));
+                config.Method((ICatalog c) => c.MismatchAsync(Any<int>.Value))
+                    .Configure(o => o.CacheWhen<string>(r => r.Length > 0));
             });
         }
     }
@@ -127,6 +133,16 @@ namespace CacheWhen
 
         Assert.Equal(1, await Invoke<Task<int>>(catalog, "FragileAsync", 1));
         Assert.Equal(2, await Invoke<Task<int>>(catalog, "FragileAsync", 1));
+    }
+
+    [Fact]
+    public async Task APredicateForAnotherResultType_FailsTheCall_InsteadOfCachingNothing()
+    {
+        var (catalog, _, provider) = await CreateAsync();
+        await using var _ = provider;
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<Task<int>>(catalog, "MismatchAsync", 1));
+        Assert.Contains("CacheWhen<String>", error.Message, StringComparison.Ordinal);
     }
 
     private async Task<(object Catalog, Type Type, ServiceProvider Provider)> CreateAsync()
