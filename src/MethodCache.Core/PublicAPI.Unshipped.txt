@@ -253,6 +253,7 @@ MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync(System.Threading.Cancell
 MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 MethodCache.InvalidationQueues
+MethodCache.InvalidationQueues.InvalidationQueues() -> void
 MethodCache.InvalidationQueues.Distributed.get -> int
 MethodCache.InvalidationQueues.Distributed.init -> void
 MethodCache.InvalidationQueues.Publication.get -> int
