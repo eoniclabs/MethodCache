@@ -15,7 +15,7 @@ public class OwnedTransportOptionsTests
     public void InvalidConnectionSettings_AreRejectedWithoutConnecting(string configuration)
     {
         var services = new ServiceCollection();
-        services.AddMethodCacheRedis(options => options.Configuration = configuration);
+        services.AddMethodCache(mc => mc.UseRedis(options => options.Configuration = configuration));
         using var provider = services.BuildServiceProvider();
         Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IOptions<RedisOptions>>().Value);
     }
@@ -29,7 +29,7 @@ public class OwnedTransportOptionsTests
         var applicationBackplane = Substitute.For<IBackplane>();
         var services = new ServiceCollection();
         services.AddSingleton(applicationBackplane);
-        services.AddMethodCacheRedis(options => options.ConnectionMultiplexerFactory = _ => multiplexer);
+        services.AddMethodCache(mc => mc.UseRedis(options => options.ConnectionMultiplexerFactory = _ => multiplexer));
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "configured-last:");
         await using var provider = services.BuildServiceProvider();
         var owned = provider.GetRequiredKeyedService<IBackplane>("MethodCache");
@@ -43,7 +43,7 @@ public class OwnedTransportOptionsTests
     public void BoundPrefix_IsImmutableForAllOwnedServices()
     {
         var services = new ServiceCollection();
-        services.AddMethodCacheRedis("localhost:6379");
+        services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));
         using var provider = services.BuildServiceProvider();
         _ = provider.GetRequiredKeyedService<IBackplane>("MethodCache");
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IOptions<DistributedCacheOptions>>().Value.KeyPrefix = "too-late:");

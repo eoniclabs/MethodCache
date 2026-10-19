@@ -19,12 +19,9 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 var redis = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrEmpty(redis))
 {
-    builder.Services.AddMethodCacheRedis(options =>
-    {
-        options.Configuration = redis;
-    });
-    builder.Services.Configure<DistributedCacheOptions>(options =>
-        options.KeyPrefix = builder.Configuration["Demo:CachePrefix"] ?? "methodcache-webdemo:");
+    builder.Services.AddMethodCache(mc => mc
+        .UseRedis(redis)
+        .Distributed(options => options.KeyPrefix = builder.Configuration["Demo:CachePrefix"] ?? "methodcache-webdemo:"));
 }
 
 // Traces for cache misses and invalidations, metrics for every call. Exported when OTEL_EXPORTER_OTLP_ENDPOINT is set.

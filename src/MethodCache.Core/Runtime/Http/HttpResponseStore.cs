@@ -444,24 +444,30 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal CacheEntryInfo Describe(HttpStorageInfo info)
     {
         var now = _time.GetUtcNow();
-        return new CacheEntryInfo(info.Id, "HTTP response", now > info.CreatedAt ? now - info.CreatedAt : TimeSpan.Zero,
-            info.Deadline > now ? info.Deadline - now : TimeSpan.Zero, Array.AsReadOnly(info.Tags.ToArray()), 0)
+        return new CacheEntryInfo
         {
+            Key = info.Id,
+            ValueType = "HTTP response",
+            Age = now > info.CreatedAt ? now - info.CreatedAt : TimeSpan.Zero,
+            TimeToLive = info.Deadline > now ? info.Deadline - now : TimeSpan.Zero,
+            Tags = Array.AsReadOnly(info.Tags.ToArray()),
             Kind = CacheEntryKind.Http,
             Storage = Distributed ? CacheEntryStorage.ObservedDistributed : CacheEntryStorage.LocalMemory,
             Client = info.Client,
-            Format = info.Format,
             SizeBytes = info.Cost,
             Description = Distributed ? "Historical local observation; not verified L2 presence or a global inventory." : null
         };
     }
 
-    internal async ValueTask InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken token)
+    internal async ValueTask<InvalidationResult> InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken token)
     {
-        foreach (var tag in tags) InvalidateLocalTag(tag);
-        _telemetry.Invalidations("tag", "local", tags.Distinct(StringComparer.Ordinal).LongCount());
-        if (_distributed != null)
-            RequireConfirmed(await _distributed.InvalidateTargetsAsync(tags.Distinct(StringComparer.Ordinal).ToArray(), tags: true).WaitAsync(token).ConfigureAwait(false));
+        var distinct = tags.Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var tag in distinct) InvalidateLocalTag(tag);
+        _telemetry.Invalidations("tag", "local", distinct.Length);
+        if (_distributed == null) return new InvalidationResult { Requested = distinct.Length, Local = distinct.Length };
+        var result = await _distributed.InvalidateTargetsAsync(distinct, tags: true).WaitAsync(token).ConfigureAwait(false);
+        RequireConfirmed(result);
+        return result;
     }
 
     internal async ValueTask ClearAsync(CancellationToken token)

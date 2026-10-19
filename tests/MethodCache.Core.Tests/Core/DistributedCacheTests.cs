@@ -102,7 +102,7 @@ public class DistributedCacheTests
         using var second = CreateNode(backplane: false);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var batch = second.GetOrCreateManyAsync<string>(["key"], async (_, _, token) =>
+        var batch = second.GetOrCreateManyAsync<string>(["key"], async (_, token) =>
         {
             started.TrySetResult();
             await release.Task.WaitAsync(token);
@@ -122,7 +122,7 @@ public class DistributedCacheTests
         using var first = CreateNode(backplane: false);
         using var second = CreateNode(backplane: false);
         await Get(first, "key", () => "A");
-        var values = await second.GetOrCreateManyAsync<string>(["key", "key"], (keys, _, _) =>
+        var values = await second.GetOrCreateManyAsync<string>(["key", "key"], (keys, _) =>
             throw new InvalidOperationException($"factory called for {string.Join(", ", keys)}"));
         Assert.Equal("A", values["key"]);
         Assert.Equal(values["key"], await Get(second, "key", () => "C"));

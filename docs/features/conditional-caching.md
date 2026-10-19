@@ -37,18 +37,17 @@ builder.Services.AddMethodCache(config =>
 
 ## Skipping the cache for one call
 
-With [manual caching](manual-caching.md), `When` decides per call whether to use the cache at all:
+With [manual caching](manual-caching.md), `WithEnabled` decides per call whether to use the cache at all:
 
 <!-- snippet: conditional-when -->
 ```cs
 var results = await cache.GetOrCreateAsync(
     $"search:{text}",
-    async (ctx, ct) => await search(),
+    async ct => await search(),
     o => o.WithDuration(TimeSpan.FromMinutes(10))
           .WithEnabled(!preview));   // preview requests skip the cache entirely
 ```
 <!-- endSnippet -->
 
-When the predicate returns false, the factory runs and its result is neither read from nor written to the cache.
-`When` only applies to `GetOrCreateAsync`; for a `[Cache]` method use `CacheWhen`
-([Validation](configuration.md#validation)).
+With `WithEnabled(false)`, the factory runs and its result is neither read from nor written to the cache.
+To decide from the result instead, use `CacheWhen` ([Validation](configuration.md#validation)).

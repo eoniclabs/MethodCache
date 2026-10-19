@@ -14,7 +14,7 @@ public interface ICacheAdministrator
     ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Hit, miss, eviction, entry and memory statistics.</summary>
-    ValueTask<ICacheStats> GetStatsAsync(CancellationToken cancellationToken = default);
+    ValueTask<CacheStats> GetStatsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lists live entries, optionally filtered by key prefix and tag. The result is a snapshot ordered by key and
@@ -32,14 +32,19 @@ public interface ICacheAdministrator
     /// </summary>
     ValueTask<bool> RemoveEntryAsync(string key, CancellationToken cancellationToken = default);
 
-    /// <summary>Removes every entry carrying any of <paramref name="tags"/>.</summary>
-    Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Removes every method result and HTTP response carrying any of <paramref name="tags"/>, also when the
+    /// application replaced the method cache manager. Unlike <see cref="ICacheManager.InvalidateTagsAsync"/>, it
+    /// completes only once a configured distributed cache confirmed the invalidation, and throws
+    /// <see cref="InvalidOperationException"/> while the invalidation is queued for recovery.
+    /// </summary>
+    ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default);
 
     /// <summary>Removes every entry and resets the hit and miss counters.</summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Reports bounded local invalidation recovery queues.</summary>
-    InvalidationQueues GetInvalidationQueues() => new(0, 0);
+    InvalidationQueues GetInvalidationQueues();
 
     /// <summary>The effective policy of every cached method, as resolved from attributes, configuration and overrides.</summary>
     IReadOnlyList<CachedMethodInfo> GetMethods();

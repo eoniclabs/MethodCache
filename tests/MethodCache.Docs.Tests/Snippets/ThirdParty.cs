@@ -25,7 +25,7 @@ namespace Docs.ThirdParty
             // begin-snippet: readme-explicit-key
             var rate = await cache.GetOrCreateAsync(
                 $"fx:{from}:{to}",
-                async (ctx, ct) => await client.GetRateAsync(from, to),
+                async ct => await client.GetRateAsync(from, to),
                 o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
             // end-snippet
             return rate;

@@ -31,7 +31,7 @@ public class DurationGrammarTests
     [Theory]
     [InlineData("Version = -1", "MC0021")]
     [InlineData("FailSafeTimeout = \"0s\"", "MC0004")]
-    [InlineData("RetryAfter = \"0s\"", "MC0004")]
+    [InlineData("FailSafeRetryAfter = \"0s\"", "MC0004")]
     [InlineData("Duration = null", "MC0004")]
     public void InvalidSettings_AreGeneratorErrors(string setting, string id)
         => Assert.Contains(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == id);

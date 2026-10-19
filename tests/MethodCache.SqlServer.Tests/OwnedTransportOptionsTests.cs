@@ -12,11 +12,11 @@ public class OwnedTransportOptionsTests
         var calls = 0;
         var services = new ServiceCollection();
         services.AddSingleton(new DatabaseSettings("Server=localhost;Database=Cache;Integrated Security=true"));
-        services.AddMethodCacheSqlServer(options => options.ConnectionStringFactory = provider =>
+        services.AddMethodCache(mc => mc.UseSqlServer(options => options.ConnectionStringFactory = provider =>
         {
             calls++;
             return provider.GetRequiredService<DatabaseSettings>().ConnectionString;
-        });
+        }));
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "configured-last:");
         using var provider = services.BuildServiceProvider();
         var runtime = provider.GetRequiredService<SqlServerRuntimeOptions>();

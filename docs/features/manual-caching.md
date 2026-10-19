@@ -12,7 +12,7 @@ public sealed class OrderReader(ICacheManager cache, IOrderRepository orders)
     public ValueTask<Order> GetAsync(int id, CancellationToken ct = default) =>
         cache.GetOrCreateAsync(
             $"order:{id}",
-            async (ctx, token) => await orders.GetAsync(id, token),
+            async token => await orders.GetAsync(id, token),
             o => o.WithDuration(TimeSpan.FromMinutes(30)).WithTags("orders", $"order:{id}"),
             cancellationToken: ct);
 }
@@ -30,16 +30,16 @@ such as `order:42`, so keys from different places can't collide. An empty or whi
 
 ## Options
 
-`GetOrCreateAsync` takes every option, including callbacks and a predicate that only make sense per call:
+`GetOrCreateAsync` takes every option, including a predicate that only makes sense per call:
 
 <!-- snippet: manual-options -->
 ```cs
 var list = await cache.GetOrCreateAsync(
     $"orders:{customerId}:{status}",
-    async (ctx, ct) => await orders.ListAsync(customerId, status, ct),
+    async ct => await orders.ListAsync(customerId, status, ct),
     o => o.WithDuration(TimeSpan.FromMinutes(30))
           .WithSlidingExpiration(TimeSpan.FromMinutes(10))
-          .RefreshAhead(TimeSpan.FromMinutes(5))
+          .WithRefreshAhead(TimeSpan.FromMinutes(5))
           .WithTags("orders", $"customer:{customerId}")
           .WithVersion(2)
           .WithEnabled(customerId > 0));   // skip the cache when false
@@ -50,7 +50,10 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](invalidation.md).
 - `WithEnabled(false)` runs the factory for each call and bypasses reads, joins, stale values and publication.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before caching and after L2 reads.
-- `CacheContext` carries the logical key and an `Items` dictionary for the factory invocation.
+- On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
+  and pass `Options` instead of a builder action, so a call doesn't build options again.
+- To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
+  static factory.
 - Configuration files and runtime overrides apply to declared cached methods. Explicit-key calls use their own options.
 - `Build()` copies mutable collections. Later builder changes cannot change published options.
 
@@ -80,8 +83,7 @@ if (lookup.Found)
 ## Versions and the stored key
 
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
-shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `CacheContext.Key`
-always holds the key you passed. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
+shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
 version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
 `ICacheAdministrator` accepts the physical stored key from `CacheManagerExtensions.GetCacheKey(key, version)`;
 do not construct that internal format yourself.
@@ -101,7 +103,7 @@ the writer's value, as an individual read would:
 ```cs
 var users = await cache.GetOrCreateManyAsync<User>(
     userIds.Select(id => $"user:{id}"),
-    async (missingKeys, ctx, ct) =>
+    async (missingKeys, ct) =>
     {
         var ids = missingKeys.Select(k => int.Parse(k["user:".Length..])).ToList();
         var loaded = await repository.GetUsersAsync(ids, ct);   // one query for all misses

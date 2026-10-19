@@ -36,7 +36,7 @@ public class ReviewFixContractTests
         var cache = provider.GetRequiredService<ICacheManager>();
         var pending = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var batch = cache.GetOrCreateManyAsync<string>(["key"], (_, _, _) =>
+        var batch = cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {
             started.SetResult();
             return new(pending.Task);

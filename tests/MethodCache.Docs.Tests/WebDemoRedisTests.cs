@@ -75,10 +75,10 @@ public class WebDemoRedisTests : IAsyncLifetime
 
     private DemoWebFactory CreateFactory(IConnectionMultiplexer connection, string? dataFile = null) => new(dataFile: dataFile, clock: _clock, configure: services =>
     {
-        services.AddMethodCacheRedis(options =>
+        services.AddMethodCache(mc => mc.UseRedis(options =>
         {
             options.ConnectionMultiplexerFactory = _ => connection;
-        });
+        }));
         services.Configure<DistributedCacheOptions>(options =>
         {
             options.KeyPrefix = _prefix;

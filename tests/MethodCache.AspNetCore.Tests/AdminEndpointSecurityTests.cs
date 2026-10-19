@@ -198,7 +198,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         Assert.Equal("LocalMemory", metadata.RootElement.GetProperty("storage").GetString());
         var entry = await client.GetFromJsonAsync<Dictionary<string, object>>(Prefix + "/entry?key=users:1");
         Assert.Equal(
-            new[] { "age", "client", "description", "format", "key", "kind", "sizeBytes", "storage", "tags", "timeToLive", "valueType", "weight" },
+            new[] { "age", "client", "description", "key", "kind", "sizeBytes", "storage", "tags", "timeToLive", "valueType", "weight" },
             entry!.Keys.OrderBy(k => k, StringComparer.Ordinal));
     }
 
@@ -221,7 +221,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     {
         using var client = Client("root", "Admin");
 
-        var response = await client.PostAsJsonAsync(Prefix + "/invalidate", new InvalidateRequest(new[] { "user*", "*" }));
+        var response = await client.PostAsJsonAsync(Prefix + "/invalidate", new { Tags = new[] { "user*", "*" } });
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
@@ -246,7 +246,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         using var request = new HttpRequestMessage(new HttpMethod(method), path);
         if (method == "POST")
         {
-            request.Content = JsonContent.Create(new InvalidateRequest(new[] { "users" }));
+            request.Content = JsonContent.Create(new { Tags = new[] { "users" } });
         }
 
         using var response = await client.SendAsync(request);

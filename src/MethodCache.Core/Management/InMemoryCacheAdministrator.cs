@@ -33,7 +33,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return _cache.CheckDistributedCacheAsync(cancellationToken);
     }
 
-    public ValueTask<ICacheStats> GetStatsAsync(CancellationToken cancellationToken = default)
+    public ValueTask<CacheStats> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return _cache.GetStatsAsync();
@@ -104,11 +104,12 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return wasLive || _cache.HasDistributedCache;
     }
 
-    public async Task InvalidateTagsAsync(IReadOnlyCollection<string> tags, CancellationToken cancellationToken = default)
+    public async ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tags);
         var result = await _cache.InvalidateTagsAsync(tags, cancellationToken).ConfigureAwait(false);
         HttpResponseStore.RequireConfirmed(result);
+        return result;
     }
 
     public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
@@ -130,15 +131,11 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         return _policies.GetAllPolicies()
             .OrderBy(static result => result.MethodId, StringComparer.Ordinal)
-            .Select(result => new CachedMethodInfo(
-                result.MethodId,
-                result.Policy.Duration,
-                result.Policy.Tags,
-                result.Policy.Version,
-                result.Contributions.Select(static c => c.SourceId).Distinct(StringComparer.Ordinal).ToArray())
+            .Select(result => new CachedMethodInfo
             {
+                MethodId = result.MethodId,
                 Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
-                L2Namespace = PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity ? "private" : "shared",
+                IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
                 SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
                     new Dictionary<string, string>(result.FieldSources, StringComparer.Ordinal))
             })
@@ -157,12 +154,14 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
     {
         var remaining = Volatile.Read(ref node.LogicalExpiresAt) - now;
 
-        return new CacheEntryInfo(
-            node.Key,
-            node.BoxedValue?.GetType().FullName,
-            TimeSpan.FromTicks(Math.Max(0, now - node.CreatedAt) / NanosPerTick),
-            remaining >= NoExpiryThreshold ? null : TimeSpan.FromTicks(remaining / NanosPerTick),
-            node.Tags?.ToArray() ?? Array.Empty<string>(),
-            node.Weight);
+        return new CacheEntryInfo
+        {
+            Key = node.Key,
+            ValueType = node.BoxedValue?.GetType().FullName,
+            Age = TimeSpan.FromTicks(Math.Max(0, now - node.CreatedAt) / NanosPerTick),
+            TimeToLive = remaining >= NoExpiryThreshold ? null : TimeSpan.FromTicks(remaining / NanosPerTick),
+            Tags = node.Tags?.ToArray() ?? Array.Empty<string>(),
+            Weight = node.Weight
+        };
     }
 }

@@ -150,8 +150,8 @@ public class CacheAdministratorTests
 
         var method = Assert.Single(admin.GetMethods(), m => m.MethodId == methodId);
 
-        Assert.Equal(TimeSpan.FromSeconds(30), method.Duration);
-        Assert.Contains("docs", method.Tags);
-        Assert.NotEmpty(method.Sources);
+        Assert.Equal(TimeSpan.FromSeconds(30), method.Options.Duration);
+        Assert.Contains("docs", method.Options.Tags);
+        Assert.NotEmpty(method.SettingSources);
     }
 }

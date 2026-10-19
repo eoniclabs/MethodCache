@@ -57,7 +57,7 @@ public class InvalidationResultTests
     {
         using var memory = new InMemoryCacheManager();
         ICacheManager cache = memory;
-        await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
+        await cache.GetOrCreateAsync("key", _ => ValueTask.FromResult(1));
         await Assert.ThrowsAsync<ArgumentException>(async () => await cache.InvalidateKeysAsync(["key", " "]));
         Assert.True((await cache.TryGetAsync<int>("key")).Found);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cache.InvalidateKeysAsync(["key"], cancellationToken: new CancellationToken(true)));
@@ -77,7 +77,7 @@ public class InvalidationResultTests
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions(), timeProvider: time);
         using var memory = new InMemoryCacheManager(null, time, layer);
         ICacheManager cache = memory;
-        await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
+        await cache.GetOrCreateAsync("key", _ => ValueTask.FromResult(1));
         using var cancellation = new CancellationTokenSource();
         var invalidating = cache.InvalidateKeysAsync(["key"], cancellationToken: cancellation.Token).AsTask();
         await backend.Started.Task;

@@ -43,7 +43,7 @@ public class TelemetryPrivacyTests
         };
         ActivitySource.AddActivityListener(listener);
         var cache = provider.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateAsync(Canary, (_, _) => ValueTask.FromResult(7), new CacheEntryOptions.Builder().WithTags(Canary).Build());
+        await cache.GetOrCreateAsync(Canary, _ => ValueTask.FromResult(7), new CacheEntryOptions.Builder().WithTags(Canary).Build());
         await cache.InvalidateKeysAsync([Canary]);
         await cache.InvalidateTagsAsync([Canary]);
         await provider.GetRequiredService<ICacheAdministrator>().ClearAsync();
@@ -81,7 +81,7 @@ public class TelemetryPrivacyTests
         };
         ActivitySource.AddActivityListener(listener);
         using var parent = new Activity("request").SetTag("url.full", Canary).Start();
-        Assert.Equal(7, await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync(Canary, (_, _) => ValueTask.FromResult(7),
+        Assert.Equal(7, await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync(Canary, _ => ValueTask.FromResult(7),
             new CacheEntryOptions.Builder().WithTags(Canary).Build()));
         Assert.NotEmpty(logs.Messages);
         Assert.All(logs.Messages, message => Assert.DoesNotContain(Canary, message));
@@ -110,7 +110,7 @@ public class TelemetryPrivacyTests
         };
         ActivitySource.AddActivityListener(listener);
         using var parent = new Activity("request").AddBaggage("app.tenant", "tenant-a").Start();
-        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", (_, _) =>
+        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", _ =>
         {
             Assert.Equal("tenant-a", Activity.Current!.GetBaggageItem("app.tenant"));
             Assert.Null(Activity.Current.GetBaggageItem("cache.user_id"));

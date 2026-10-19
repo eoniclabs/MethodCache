@@ -8,18 +8,16 @@ namespace MethodCache.Core.Tests.Core.Extensions
     public class CacheManagerExtensionsTests
     {
         [Fact]
-        public async Task VersionedManualEntry_FormattedKeyInvalidationReloads_AndContextsKeepLogicalKeys()
+        public async Task VersionedManualEntry_FormattedKeyInvalidationReloads()
         {
             using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
-            var contexts = new List<string>();
             var calls = 0;
-            ValueTask<int> Load(CacheContext context, CancellationToken token) { contexts.Add(context.Key); return ValueTask.FromResult(++calls); }
+            ValueTask<int> Load(CancellationToken token) => ValueTask.FromResult(++calls);
             void Configure(CacheEntryOptions.Builder options) => options.WithVersion(3);
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
             await cache.InvalidateByKeysAsync(CacheManagerExtensions.GetCacheKey("logical", 3));
             Assert.Equal(2, await cache.GetOrCreateAsync("logical", Load, Configure));
-            Assert.All(contexts, key => Assert.Equal("logical", key));
             Assert.Equal("plain", CacheManagerExtensions.GetCacheKey("plain"));
             Assert.Equal("\0\0hostile", CacheManagerExtensions.GetCacheKey("\0hostile"));
             Assert.Throws<ArgumentOutOfRangeException>(() => CacheManagerExtensions.GetCacheKey("key", -1));
@@ -33,10 +31,10 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var cacheManager = new MockCacheManager();
             var factoryCallCount = 0;
 
-            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+            ValueTask<string> Factory(CancellationToken token)
             {
                 factoryCallCount++;
-                return new ValueTask<string>($"value:{context.Key}");
+                return new ValueTask<string>("value:user:42");
             }
 
             // Act
@@ -64,14 +62,14 @@ namespace MethodCache.Core.Tests.Core.Extensions
             // The README pattern: an async lambda awaiting a Task-returning call
             var first = await cacheManager.GetOrCreateAsync(
                 "order:21",
-                async (ctx, ct) => await LoadAsync(21),
+                async ct => await LoadAsync(21),
                 o => o.WithDuration(TimeSpan.FromMinutes(5)).WithTags("orders"));
             var second = await cacheManager.GetOrCreateAsync(
                 "order:21",
-                async (ctx, ct) => await LoadAsync(21));
+                async ct => await LoadAsync(21));
             var other = await cacheManager.GetOrCreateAsync(
                 "order:22",
-                async (ctx, ct) => await LoadAsync(22));
+                async ct => await LoadAsync(22));
 
             Assert.Equal(42, first);
             Assert.Equal(42, second);
@@ -89,7 +87,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var miss = await cacheManager.TryGetAsync<string>("orders:active");
 
             // Populate cache via fluent helper
-            await cacheManager.GetOrCreateAsync("orders:active", static (_, _) => new ValueTask<string>("cached"));
+            await cacheManager.GetOrCreateAsync("orders:active", static _ => new ValueTask<string>("cached"));
 
             // Act - hit
             var hit = await cacheManager.TryGetAsync<string>("orders:active");
@@ -105,14 +103,13 @@ namespace MethodCache.Core.Tests.Core.Extensions
         {
             // Arrange
             var cacheManager = new MockCacheManager();
-            await cacheManager.GetOrCreateAsync("user:existing", static (_, _) => new ValueTask<string>("cached"));
+            await cacheManager.GetOrCreateAsync("user:existing", static _ => new ValueTask<string>("cached"));
 
             var factoryCalls = 0;
-            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CacheContext context, CancellationToken token)
+            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
             {
                 factoryCalls++;
                 Assert.Equal(new[] { "user:missing", "user:another" }, missing);
-                Assert.Equal("MethodCache.Fluent.Bulk", context.Key);
 
                 IDictionary<string, string> results = new Dictionary<string, string>
                 {
@@ -145,7 +142,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
         {
             var cacheManager = new CapturingCacheManager();
 
-            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CacheContext context, CancellationToken token)
+            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
             {
                 IDictionary<string, string> results = new Dictionary<string, string>
                 {
@@ -174,7 +171,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await cacheManager.GetOrCreateManyAsync(
                     new[] { "missing" },
-                    (missing, _, _) => new ValueTask<IDictionary<string, string>>(new Dictionary<string, string>())));
+                    (missing, _) => new ValueTask<IDictionary<string, string>>(new Dictionary<string, string>())));
         }
 
         [Fact]
@@ -192,7 +189,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             // Act
             var result = await cacheManager.GetOrCreateAsync(
                 "report:monthly",
-                static (_, _) => new ValueTask<int>(99),
+                static _ => new ValueTask<int>(99),
                 options => options
                     .WithDuration(duration)
                     .WithSlidingExpiration(TimeSpan.FromMinutes(2))
@@ -221,7 +218,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
 
             await cacheManager.GetOrCreateAsync(
                 "user:invalidate",
-                static (_, _) => new ValueTask<string>("cached"));
+                static _ => new ValueTask<string>("cached"));
 
             await cacheManager.InvalidateByKeysAsync("user:invalidate");
 
@@ -235,7 +232,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var cacheManager = new MockCacheManager();
             var calls = 0;
 
-            ValueTask<string> Factory(CacheContext context, CancellationToken token)
+            ValueTask<string> Factory(CancellationToken token)
             {
                 calls++;
                 return new ValueTask<string>("value" + calls);
@@ -262,7 +259,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
 
             await cacheManager.GetOrCreateAsync(
                 "user:version",
-                static (_, _) => new ValueTask<int>(42),
+                static _ => new ValueTask<int>(42),
                 options => options.WithVersion(3));
 
             Assert.Equal("\0v3:user:version", cacheManager.LastKey);
@@ -280,18 +277,18 @@ namespace MethodCache.Core.Tests.Core.Extensions
             var cacheKey = "test-conditional-logic-key";
 
             // Test simple predicate that doesn't use arguments (for now)
-            Func<CacheContext, bool> predicate = ctx => true;
+            Func<string, bool> predicate = _ => true;
 
             var result1 = await cacheManager.GetOrCreateAsync(
                 cacheKey,
-                (ctx, ct) => { callCount++; return userService.GetUserAsync(1); },
-                configure: builder => builder.WithEnabled(predicate(new CacheContext(cacheKey)))
+                ct => { callCount++; return userService.GetUserAsync(1); },
+                configure: builder => builder.WithEnabled(predicate(cacheKey))
             );
 
             var result2 = await cacheManager.GetOrCreateAsync(
                 cacheKey,
-                (ctx, ct) => { callCount++; return userService.GetUserAsync(1); },
-                configure: builder => builder.WithEnabled(predicate(new CacheContext(cacheKey)))
+                ct => { callCount++; return userService.GetUserAsync(1); },
+                configure: builder => builder.WithEnabled(predicate(cacheKey))
             );
 
             // Should cache when predicate returns true
@@ -300,12 +297,12 @@ namespace MethodCache.Core.Tests.Core.Extensions
 
         private sealed class CapturingCacheManager : ICacheManager
         {
-            public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+            public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
             {
                 token.ThrowIfCancellationRequested();
                 var draft = MethodCache.Core.Configuration.Surfaces.Fluent.CachePolicyBuilderFactory.FromOptions(options ?? new CacheEntryOptions.Builder().Build()).Build(CacheKeyLookup.MethodName);
                 var policy = options?.Runtime ?? CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
-                return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
+                return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(state, token).AsTask(), policy, token));
             }
             public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(CacheLookupResult<T>.Miss);
             public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)

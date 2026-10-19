@@ -183,7 +183,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// Keeps cached results in a distributed cache that only MethodCache uses, created by
         /// <paramref name="cacheFactory"/>, as well as in memory. The app's own <see cref="IDistributedCache"/>, if
         /// any, is left alone. The method-result provider must implement <see cref="IAtomicInvalidationStore"/>; otherwise
-        /// starting the host fails (or, without a generic host, resolving the cache manager). Integrations such as <c>AddMethodCacheRedis</c> supply this capability.
+        /// starting the host fails (or, without a generic host, resolving the cache manager). Integrations such as <c>UseRedis</c> supply this capability.
         /// </summary>
         /// <param name="services">The service collection</param>
         /// <param name="cacheFactory">Creates the distributed cache, once</param>

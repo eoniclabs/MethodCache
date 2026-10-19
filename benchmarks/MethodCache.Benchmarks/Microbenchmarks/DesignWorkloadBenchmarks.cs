@@ -63,20 +63,20 @@ internal static class DesignWorkloadSetup
     {
         if (backend == "Local") return;
         if (backend == "Redis")
-            services.AddMethodCacheRedis(options =>
+            services.AddMethodCache(mc => mc.UseRedis(options =>
             {
                 options.Configuration = Environment.GetEnvironmentVariable("METHODCACHE_REDIS_URL")
                     ?? throw new InvalidOperationException("A real Redis is required.");
                 options.EnableBackplane = false;
-            });
+            }));
         else if (backend == "SqlServer")
-            services.AddMethodCacheSqlServer(options =>
+            services.AddMethodCache(mc => mc.UseSqlServer(options =>
             {
                 options.ConnectionString = Environment.GetEnvironmentVariable("METHODCACHE_SQLSERVER_CONNECTION")
                     ?? throw new InvalidOperationException("A real SQL Server is required.");
                 options.SchemaName = prefix.Replace(":", "", StringComparison.Ordinal);
                 options.EnableBackplane = false;
-            });
+            }));
         else throw new ArgumentOutOfRangeException(nameof(backend));
         // Register last: pre-PR4 provider registration also writes the Core prefix option.
         services.Configure<DistributedCacheOptions>(options =>
@@ -162,12 +162,12 @@ public class DesignMemoryWorkloadBenchmarks
         _listener = DesignWorkloadSetup.Listen(services, Listening);
         _provider = services.BuildServiceProvider();
         _cache = _provider.GetRequiredService<ICacheManager>();
-        for (var i = 0; i < 32; i++) _ = await _cache.GetOrCreateAsync("warm:" + i, static (_, _) => ValueTask.FromResult(42));
+        for (var i = 0; i < 32; i++) _ = await _cache.GetOrCreateAsync("warm:" + i, static _ => ValueTask.FromResult(42));
         _ = await Hit();
     }
 
-    [Benchmark] public ValueTask<int> Hit() => _cache.GetOrCreateAsync<int>("warm:0", static (_, _) => throw new InvalidOperationException("Expected a resident hit."));
-    [Benchmark] public ValueTask<int> EvictionPressure() => _cache.GetOrCreateAsync("pressure:" + Interlocked.Increment(ref _next), static (_, _) => ValueTask.FromResult(42));
+    [Benchmark] public ValueTask<int> Hit() => _cache.GetOrCreateAsync<int>("warm:0", static _ => throw new InvalidOperationException("Expected a resident hit."));
+    [Benchmark] public ValueTask<int> EvictionPressure() => _cache.GetOrCreateAsync("pressure:" + Interlocked.Increment(ref _next), static _ => ValueTask.FromResult(42));
 
     [Benchmark(OperationsPerInvoke = 256)]
     public Task ContendedHits() => Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Task.Run(async () =>
@@ -182,7 +182,7 @@ public class DesignMemoryWorkloadBenchmarks
         var source = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var arrivals = new Task<int>[4];
         for (var i = 0; i < arrivals.Length; i++)
-            arrivals[i] = _cache.GetOrCreateAsync(key, (_, _) =>
+            arrivals[i] = _cache.GetOrCreateAsync(key, _ =>
             {
                 OriginLoads++;
                 return new ValueTask<int>(source.Task);
@@ -224,20 +224,20 @@ public class DesignL2WorkloadBenchmarks
         _provider = services.BuildServiceProvider();
         await DesignWorkloadSetup.StartAsync(_provider);
         _cache = _provider.GetRequiredService<ICacheManager>();
-        _ = await _cache.GetOrCreateAsync("l2-hit", (_, _) => { OriginLoads++; return ValueTask.FromResult(42); });
+        _ = await _cache.GetOrCreateAsync("l2-hit", _ => { OriginLoads++; return ValueTask.FromResult(42); });
         _ = await Read(); _ = await Read();
         if (OriginLoads != 1) throw new InvalidOperationException($"Setup did not establish repeated real L2 hits (origin loads: {OriginLoads}).");
     }
 
     [Benchmark]
-    public ValueTask<int> Read() => _cache.GetOrCreateAsync<int>("l2-hit", (_, _) =>
+    public ValueTask<int> Read() => _cache.GetOrCreateAsync<int>("l2-hit", _ =>
     {
         OriginLoads++;
         throw new InvalidOperationException("An L2 read unexpectedly ran its origin.");
     });
 
     [Benchmark]
-    public ValueTask<int> Write() => _cache.GetOrCreateAsync("l2-write:" + ++_next, (_, _) =>
+    public ValueTask<int> Write() => _cache.GetOrCreateAsync("l2-write:" + ++_next, _ =>
     {
         OriginLoads++;
         return ValueTask.FromResult(42);

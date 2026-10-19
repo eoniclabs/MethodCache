@@ -20,13 +20,13 @@ dotnet add package MethodCache.Serialization.MessagePack
 
 <!-- snippet: distributed-messagepack -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .UseMessagePack());   // MethodCache.Serialization.MessagePack
 ```
 <!-- endSnippet -->
 
-Call `AddMethodCacheMessagePack()` with `AddMethodCacheRedis()`, `AddMethodCacheSqlServer()`, in any order. Entries written in the other format read as misses and are replaced,
+Call `UseMessagePack()` with `UseRedis(...)` or `UseSqlServer(...)`, in any order. Entries written in the other format read as misses and are replaced,
 so switching needs no flush.
 
 ## When to use it
@@ -38,7 +38,7 @@ so switching needs no flush.
 - Like JSON, the contractless resolver doesn't restore private setters or a derived type returned as its base type.
   With the default `VerifyRoundTrip = true`, MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
   with one warning per method and type.
-- Pass your own `MessagePackSerializerOptions` to `AddMethodCacheMessagePack(options)` to change them. Keep
+- Pass your own `MessagePackSerializerOptions` to `UseMessagePack(options)` to change them. Keep
   `UntrustedData` and don't enable typeless payloads: the distributed cache must not choose which types get created
   (see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#distributed-cache-redis-sql-server)).
 

@@ -56,11 +56,11 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddMethodCache();
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = _prefix);
-        services.AddMethodCacheRedis(options =>
+        services.AddMethodCache(mc => mc.UseRedis(options =>
         {
             options.Configuration = configuration;
             options.EnableBackplane = enableBackplane;
-        });
+        }));
         services.Configure<DistributedCacheOptions>(options =>
         {
             options.OperationTimeout = OperationTimeout;
@@ -76,7 +76,7 @@ public sealed class RedisToxiproxyTests : IAsyncLifetime
     }
 
     private static ValueTask<string> Get(ICacheManager node, string key, string value) =>
-        node.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(value), options => options.WithDuration(TimeSpan.FromMinutes(5)));
+        node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options.WithDuration(TimeSpan.FromMinutes(5)));
 
     private static async Task WaitUntil(Func<Task<bool>> condition, TimeSpan limit)
     {

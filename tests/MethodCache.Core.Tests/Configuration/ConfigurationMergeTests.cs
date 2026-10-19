@@ -88,7 +88,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         registry.GetPolicy(Id);
 
         await configurator.UpsertAsync(Id, b => b.WithDuration(TimeSpan.FromMinutes(1)),
-            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: time.GetUtcNow().AddMilliseconds(100)));
+            new RuntimeOverrideMetadata { Owner = "ops", ExpiresAt = time.GetUtcNow().AddMilliseconds(100) });
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(Id).Policy.Duration);
 
         time.Advance(TimeSpan.FromMilliseconds(99));
@@ -124,7 +124,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         if (resolveFirst) registry.GetPolicy(Id);
 
         await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.WithVersion(2),
-            new RuntimeOverrideMetadata(Owner: "ops", Reason: "incident"));
+            new RuntimeOverrideMetadata { Owner = "ops", Reason = "incident" });
 
         var policy = registry.GetPolicy(Id).Policy;
         output.WriteLine($"resolveFirst={resolveFirst}: duration={policy.Duration}, group={(policy.Metadata.TryGetValue("group", out var g) ? g : "<lost>")}");

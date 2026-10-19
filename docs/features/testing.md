@@ -49,7 +49,7 @@ var reader = new OrderReader(cache, repository);
 ```
 <!-- endSnippet -->
 
-`NoOpCacheManager` is in `MethodCache.Extensibility`. It disables method caching; HTTP response storage remains
+`NoOpCacheManager` is in the `MethodCache` namespace and sealed. It disables method caching; HTTP response storage remains
 independent. Configure HTTP caching separately and use its administrator for invalidation.
 
 ## Time

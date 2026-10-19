@@ -44,7 +44,7 @@ var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 await configurator.UpsertAsync<IOrdersService, Order>(
     s => s.GetAsync(Any<int>.Value),
     o => o.WithDuration(TimeSpan.FromMinutes(2)),
-    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
+    new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(4) });
 
 // By method id, for example from an admin form
 await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}]Docs.Configuration.IUserService.GetProfileAsync",

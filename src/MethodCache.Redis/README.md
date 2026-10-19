@@ -13,8 +13,7 @@ Backplane publication honors its cancellation token before sending and while wai
 
 <!-- snippet: redis-basic -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");
+builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));
 ```
 <!-- endSnippet -->
 
@@ -22,12 +21,9 @@ With options:
 
 <!-- snippet: redis-options -->
 ```cs
-builder.Services.AddMethodCacheRedis(options =>
-{
-    options.Configuration = "redis1:6379,redis2:6379,password=...";
-});
-builder.Services.Configure<DistributedCacheOptions>(options =>
-    options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis(options => options.Configuration = "redis1:6379,redis2:6379,password=...")
+    .Distributed(options => options.KeyPrefix = "orders-api:"));   // data and backplane use the same final prefix
 ```
 <!-- endSnippet -->
 
@@ -37,8 +33,8 @@ To share a connection your app already has instead:
 
 <!-- snippet: redis-shared-connection -->
 ```cs
-builder.Services.AddMethodCacheRedis(options =>
-    options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>());
+builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
+    options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>()));
 ```
 <!-- endSnippet -->
 

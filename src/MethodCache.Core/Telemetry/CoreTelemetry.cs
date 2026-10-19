@@ -100,7 +100,7 @@ internal sealed class CoreTelemetry : IDisposable
         try
         {
             var value = await manager.GetOrCreateFastAsync(key, policy.MethodId, request.Invoke, policy, token).ConfigureAwait(false);
-            outcome = manager is MethodCache.Extensibility.NoOpCacheManager ? RequestResult.Bypass
+            outcome = manager is MethodCache.NoOpCacheManager ? RequestResult.Bypass
                 : request.Ran ? RequestResult.Miss : RequestResult.Hit;
             return value;
         }

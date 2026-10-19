@@ -19,7 +19,7 @@ namespace MethodCache.SourceGenerator
                     case "RefreshAhead":
                     case "FailSafe":
                     case "FailSafeTimeout":
-                    case "RetryAfter":
+                    case "FailSafeRetryAfter":
                         if (argument.Value.Value is not string text || !MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
                             diagnostics.Add(DiagnosticInfo.Create(Diagnostics.InvalidDuration, location, argument.Key, argument.Value.Value?.ToString() ?? "null"));
                         break;

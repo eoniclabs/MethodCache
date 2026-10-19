@@ -11,15 +11,13 @@ instances and keep them across restarts:
 
 <!-- snippet: distributed-redis -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");   // MethodCache.Redis
+builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));   // MethodCache.Redis
 ```
 <!-- endSnippet -->
 
 <!-- snippet: distributed-sqlserver -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheSqlServer(connectionString);   // MethodCache.SqlServer
+builder.Services.AddMethodCache(mc => mc.UseSqlServer(connectionString));   // MethodCache.SqlServer
 ```
 <!-- endSnippet -->
 
@@ -125,11 +123,11 @@ the backplane message).
 
 <!-- snippet: distributed-outage-options -->
 ```cs
-builder.Services.Configure<DistributedCacheOptions>(options =>
+builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 {
     options.OperationTimeout = TimeSpan.FromMilliseconds(500);
     options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
-});
+}));
 ```
 <!-- endSnippet -->
 
@@ -186,9 +184,9 @@ smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");
-builder.Services.AddMethodCacheMessagePack();   // MethodCache.Serialization.MessagePack
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .UseMessagePack());   // MethodCache.Serialization.MessagePack
 ```
 <!-- endSnippet -->
 

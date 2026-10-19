@@ -14,7 +14,7 @@ public class HttpContractTests(RedisFixture redis)
         async Task<ServiceProvider> Create(HttpNativeContract.Origin origin, byte format, bool http)
         {
             var services = new ServiceCollection();
-            services.AddMethodCacheRedis(o => o.Configuration = configuration);
+            services.AddMethodCache(mc => mc.UseRedis(o => o.Configuration = configuration));
             services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.OperationTimeout = TimeSpan.FromSeconds(5); });
             HttpNativeContract.Configure(services, origin, format, http);
             var provider = services.BuildServiceProvider();

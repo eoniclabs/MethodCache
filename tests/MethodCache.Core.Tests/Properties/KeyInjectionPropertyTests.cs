@@ -72,7 +72,7 @@ public class KeyInjectionPropertyTests
             var loads = 0;
             var key = "\0" + text;
             var identity = CacheManagerExtensions.GetCacheKey(key, version);
-            ValueTask<int> Load() => cache.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(++loads),
+            ValueTask<int> Load() => cache.GetOrCreateAsync(key, _ => ValueTask.FromResult(++loads),
                 options => { if (version is { } value) options.WithVersion(value); });
             await cache.InvalidateByKeysAsync(identity);
             var first = await Load();
@@ -85,14 +85,15 @@ public class KeyInjectionPropertyTests
     private static ICacheManager CapturingManager()
     {
         var manager = Substitute.For<ICacheManager>();
-        manager.GetOrCreateAsync(Arg.Any<string>(), Arg.Any<Func<CacheContext, CancellationToken, ValueTask<string>>>(),
+        manager.GetOrCreateAsync(Arg.Any<string>(), Arg.Any<Func<CancellationToken, ValueTask<string>>>(),
+            Arg.Any<Func<Func<CancellationToken, ValueTask<string>>, CancellationToken, ValueTask<string>>>(),
             Arg.Any<CacheEntryOptions>(), Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.ArgAt<CacheEntryOptions>(2).GetCacheKey(call.ArgAt<string>(0))));
+            .Returns(call => ValueTask.FromResult(call.ArgAt<CacheEntryOptions>(3).GetCacheKey(call.ArgAt<string>(0))));
         return manager;
     }
 
     private static ValueTask<string> StoredKey(ICacheManager manager, string key, int? version) =>
-        manager.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult("unused"),
+        manager.GetOrCreateAsync(key, _ => ValueTask.FromResult("unused"),
             b => { if (version is { } v) b.WithVersion(v); });
 
     [Fact]

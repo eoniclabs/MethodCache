@@ -263,7 +263,7 @@ public class FeatureTests(ITestOutputHelper output)
         var cache = provider.GetRequiredService<ICacheManager>();
         for (var i = 0; i < 2; i++)
         {
-            await cache.GetOrCreateAsync("k", (_, _) => { loads++; return ValueTask.FromResult(1); });
+            await cache.GetOrCreateAsync("k", _ => { loads++; return ValueTask.FromResult(1); });
         }
 
         using var scope = provider.CreateScope();

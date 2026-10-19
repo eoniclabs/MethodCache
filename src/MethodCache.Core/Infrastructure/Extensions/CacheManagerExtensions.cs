@@ -18,32 +18,37 @@ namespace MethodCache
         private const int MaxConcurrentDistributedReads = 8;
 
         /// <summary>
-        /// Gets a cache value or creates it using the provided factory, using a fluent configuration surface.
+        /// Gets the value cached under <paramref name="key"/>, or runs <paramref name="factory"/> and caches its result
+        /// with the options set in <paramref name="configure"/>.
+        /// </summary>
+        /// <remarks>
+        /// Concurrent callers for the same key share one factory run. <paramref name="cancellationToken"/> cancels
+        /// this caller's wait; when it cancels a factory run other callers joined, they run the factory again.
+        /// <paramref name="configure"/> builds new options on every call; on a hot path, build them once and pass the
+        /// <see cref="CacheEntryOptions"/> instead.
+        /// </remarks>
+        public static ValueTask<T> GetOrCreateAsync<T>(this ICacheManager cacheManager, string key,
+            Func<CancellationToken, ValueTask<T>> factory, Action<CacheEntryOptions.Builder>? configure = null,
+            CancellationToken cancellationToken = default)
+            => GetOrCreateAsync(cacheManager, key, factory, BuildOptions(configure), cancellationToken);
+
+        /// <summary>
+        /// Gets the value cached under <paramref name="key"/>, or runs <paramref name="factory"/> and caches its result
+        /// with <paramref name="options"/>, which can be built once and reused for every call.
         /// </summary>
         /// <remarks>
         /// Concurrent callers for the same key share one factory run. <paramref name="cancellationToken"/> cancels
         /// this caller's wait; when it cancels a factory run other callers joined, they run the factory again.
         /// </remarks>
-        public static ValueTask<T> GetOrCreateAsync<T>(
-            this ICacheManager cacheManager,
-            string key,
-            Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            Action<CacheEntryOptions.Builder>? configure = null,
+        public static ValueTask<T> GetOrCreateAsync<T>(this ICacheManager cacheManager, string key,
+            Func<CancellationToken, ValueTask<T>> factory, CacheEntryOptions options,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(cacheManager);
-            var options = BuildOptions(configure);
-            ValidateKey(key);
-            return cacheManager.GetOrCreateAsync(key, factory, options, cancellationToken);
-        }
-
-        /// <summary>Gets or creates a value with a factory that does not need the cache context.</summary>
-        public static ValueTask<T> GetOrCreateAsync<T>(this ICacheManager cacheManager, string key,
-            Func<CancellationToken, ValueTask<T>> factory, Action<CacheEntryOptions.Builder>? configure = null,
-            CancellationToken cancellationToken = default)
-        {
             ArgumentNullException.ThrowIfNull(factory);
-            return GetOrCreateAsync(cacheManager, key, (_, token) => factory(token), configure, cancellationToken);
+            ArgumentNullException.ThrowIfNull(options);
+            ValidateKey(key);
+            return cacheManager.GetOrCreateAsync(key, factory, static (load, token) => load(token), options, cancellationToken);
         }
 
         /// <summary>Invalidates one logical key, optionally in a versioned key family.</summary>
@@ -57,27 +62,6 @@ namespace MethodCache
             => cacheManager.InvalidateTagsAsync([tag], cancellationToken);
 
         /// <summary>
-        /// Attempts to read a cached value without executing a factory.
-        /// </summary>
-        /// <param name="cacheManager">The cache manager.</param>
-        /// <param name="key">The key the value was stored under.</param>
-        /// <param name="version">The version the value was stored with (<c>WithVersion</c>), if any.</param>
-        /// <param name="cancellationToken">Cancels the lookup.</param>
-        public static ValueTask<CacheLookupResult<T>> TryGetAsync<T>(
-            this ICacheManager cacheManager,
-            string key,
-            int? version = null,
-            CancellationToken cancellationToken = default)
-        {
-            if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            ValidateKey(key);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return cacheManager.TryGetAsync<T>(key, version, cancellationToken);
-        }
-
-        /// <summary>
         /// Gets multiple cache values or creates them using the provided batch factory.
         /// </summary>
         /// <remarks>
@@ -88,7 +72,7 @@ namespace MethodCache
         public static async ValueTask<IDictionary<string, T>> GetOrCreateManyAsync<T>(
             this ICacheManager cacheManager,
             IEnumerable<string> keys,
-            Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
             Action<CacheEntryOptions.Builder>? configure = null,
             CancellationToken cancellationToken = default)
         {
@@ -118,7 +102,6 @@ namespace MethodCache
                         throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
                     }
 
-                    var singleContext = new CacheContext(key);
                     if (options.Enabled != false)
                     {
                         // A real lookup: the fast path also reports entries due for an early refresh as missing,
@@ -147,7 +130,6 @@ namespace MethodCache
 
                 if (missingKeys.Count > 0)
                 {
-                    var bulkContext = new CacheContext(BulkMethodName);
                     var policy = CreateRuntimePolicy(FluentMethodName, options);
                     using var batch = options.Enabled == false ? null : FindMemoryManager(cacheManager)?.BeginBulkLoad(
                         missingKeys.Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
@@ -155,7 +137,7 @@ namespace MethodCache
                     IDictionary<string, T> produced;
                     using (var origin = telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
                     {
-                        try { produced = await factory(missingKeys, bulkContext, cancellationToken).ConfigureAwait(false); }
+                        try { produced = await factory(missingKeys, cancellationToken).ConfigureAwait(false); }
                         catch (Exception error) { origin?.Fail(error); throw; }
                     }
                     outcome = options.Enabled == false ? RequestResult.Bypass : RequestResult.Miss;
@@ -189,13 +171,13 @@ namespace MethodCache
         }
 
         private static async ValueTask<IDictionary<string, T>> GetOrCreateManyCustomAsync<T>(ICacheManager manager,
-            string[] keys, Func<IReadOnlyList<string>, CacheContext, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+            string[] keys, Func<IReadOnlyList<string>, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
             CacheEntryOptions options, CancellationToken token)
         {
             var results = new Dictionary<string, T>(StringComparer.Ordinal);
             if (options.Enabled == false)
             {
-                var bypass = await factory(keys, new CacheContext(BulkMethodName), token).ConfigureAwait(false);
+                var bypass = await factory(keys, token).ConfigureAwait(false);
                 foreach (var key in keys) results[key] = Candidate(bypass, key);
                 return results;
             }
@@ -223,7 +205,7 @@ namespace MethodCache
                 {
                     var index = i;
                     arrivals[i] = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    pending[i] = manager.GetOrCreateAsync(missing[i], async (_, ct) =>
+                    pending[i] = manager.GetOrCreateAsync(missing[i], async ct =>
                     {
                         entered[index] = true;
                         arrivals[index].TrySetResult();
@@ -236,7 +218,7 @@ namespace MethodCache
                 await Task.WhenAll(arrivals.Select(static arrival => arrival.Task)).WaitAsync(token).ConfigureAwait(false);
                 foreach (var load in pending.Where(static load => load.IsFaulted || load.IsCanceled)) await load.ConfigureAwait(false);
                 var required = missing.Where((_, index) => entered[index]).ToArray();
-                var candidates = required.Length == 0 ? new Dictionary<string, T>() : await factory(required, new CacheContext(BulkMethodName), token).ConfigureAwait(false);
+                var candidates = required.Length == 0 ? new Dictionary<string, T>() : await factory(required, token).ConfigureAwait(false);
                 produced.TrySetResult(candidates);
                 var published = await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false);
                 for (var i = 0; i < missing.Count; i++) results[missing[i]] = published[i];
@@ -304,8 +286,8 @@ namespace MethodCache
         /// <summary>Returns the internal key used by the fluent manual cache for a logical key and optional version.</summary>
         /// <param name="key">The logical key supplied to the fluent cache.</param>
         /// <param name="version">The non-negative version supplied to WithVersion, or null for an unversioned entry.</param>
-        /// <returns>The key to pass to InvalidateByKeysAsync or the memory administrator.</returns>
-        /// <remarks>Reserved control characters separate identities. Treat the returned format as opaque; CacheContext.Key retains the logical key.</remarks>
+        /// <returns>The key the built-in manager stores the entry under, as <see cref="ICacheAdministrator"/> lists it.</returns>
+        /// <remarks>Reserved control characters separate identities. Treat the returned format as opaque.</remarks>
         public static string GetCacheKey(string key, int? version = null)
         {
             ValidateKey(key);

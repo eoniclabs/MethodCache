@@ -12,10 +12,10 @@ public class TagRetentionTests
     private const string ConnectionString = "Server=localhost;Database=Cache;Integrated Security=true;TrustServerCertificate=true";
 
     [Fact]
-    public void AddMethodCacheSqlServer_TagRetentionSqlServerCannotStore_IsRejectedAtStartup()
+    public void UseSqlServer_TagRetentionSqlServerCannotStore_IsRejectedAtStartup()
     {
         var services = new ServiceCollection();
-        services.AddMethodCacheSqlServer(ConnectionString);
+        services.AddMethodCache(mc => mc.UseSqlServer(ConnectionString));
         services.Configure<DistributedCacheOptions>(o => o.TagRetention = TimeSpan.MaxValue); // "keep forever"
         using var provider = services.BuildServiceProvider();
 
@@ -29,7 +29,7 @@ public class TagRetentionTests
     {
         // What every tag invalidation does with that setting today: the stamp write throws before it connects.
         // (A clamped write goes on to connect, and fails with a SqlException here, which this test allows.)
-        using var provider = new ServiceCollection().AddMethodCacheSqlServer(ConnectionString).BuildServiceProvider();
+        using var provider = new ServiceCollection().AddMethodCache(mc => mc.UseSqlServer(ConnectionString)).BuildServiceProvider();
         var store = (IAtomicInvalidationStore)provider.GetRequiredKeyedService<IDistributedCache>("MethodCache");
 
         var write = () => store.WriteInvalidationStampAsync("methodcache:t:T", 1, TimeSpan.MaxValue);

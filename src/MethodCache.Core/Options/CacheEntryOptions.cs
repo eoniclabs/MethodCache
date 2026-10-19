@@ -147,7 +147,7 @@ namespace MethodCache
                     throw new ArgumentOutOfRangeException(
                         nameof(duration),
                         $"Cache duration must be positive. Provided: {duration}. " +
-                        "Without a duration, entries use MethodCacheMemoryOptions.DefaultExpiration (5 minutes unless configured); " +
+                        "Without a duration, entries use the default set with Defaults(o => o.WithDuration(...)) (5 minutes unless configured); " +
                         "no entry lives longer than MethodCacheMemoryOptions.MaxExpiration. " +
                         "Common durations: TimeSpan.FromMinutes(5), TimeSpan.FromHours(1). " +
                         "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration");
@@ -214,7 +214,7 @@ namespace MethodCache
             /// <summary>
             /// Requests refresh-ahead behaviour before the entry expires.
             /// </summary>
-            public Builder RefreshAhead(TimeSpan window)
+            public Builder WithRefreshAhead(TimeSpan window)
             {
                 if (window <= TimeSpan.Zero)
                 {
@@ -233,7 +233,7 @@ namespace MethodCache
             /// <see cref="TimeSpan.Zero"/> as <paramref name="duration"/> turns fail-safe off, for example for one
             /// method when it is on for all of them.
             /// </summary>
-            public Builder FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+            public Builder WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
             {
                 if (duration < TimeSpan.Zero)
                 {

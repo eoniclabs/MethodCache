@@ -85,7 +85,7 @@ public class AdminDistributedRemovalTests
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
-        if (httpOnly) builder.Services.AddSingleton<ICacheManager>(new MethodCache.Extensibility.NoOpCacheManager());
+        if (httpOnly) builder.Services.AddSingleton<ICacheManager>(new MethodCache.NoOpCacheManager());
         builder.Services.AddMethodCache();
         builder.Services.AddMethodCacheDistributedCache(_ => backend);
         if (httpOnly) builder.Services.AddHttpClient("admin").AddHttpCaching();

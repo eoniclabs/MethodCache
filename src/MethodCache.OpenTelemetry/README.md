@@ -43,11 +43,11 @@ Configure `MethodCacheTelemetryOptions` in Core:
 
 <!-- snippet: otel-baggage -->
 ```cs
-builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 {
     options.RecordCacheKeys = true; // hashes by default; raw keys can contain secrets
     options.RecordCacheTags = false;
-});
+}));
 ```
 <!-- endSnippet -->
 

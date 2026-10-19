@@ -24,7 +24,7 @@ public class PolicyContractTests(SqlServerFixture sql)
             services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCacheSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); });
+            services.AddMethodCache(mc => mc.UseSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
             PolicySubscriptionBarrier.Decorate(services);
             var provider = services.BuildServiceProvider();
             try

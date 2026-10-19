@@ -1,20 +1,22 @@
-namespace MethodCache.Extensibility;
+using MethodCache.Extensibility;
 
-public partial class NoOpCacheManager
+namespace MethodCache;
+
+public sealed partial class NoOpCacheManager
 {
     /// <inheritdoc />
-    public virtual ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-        CacheEntryOptions? options, CancellationToken cancellationToken)
+    public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
+        CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(factory);
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("A cache key must be provided.", nameof(key));
         return new(RunAsync(options?.Runtime?.MethodId ?? CacheKeyLookup.MethodName,
-            () => factory(new CacheContext(key), cancellationToken).AsTask()));
+            () => factory(state, cancellationToken).AsTask()));
     }
 
     /// <inheritdoc />
-    public virtual ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         cancellationToken.ThrowIfCancellationRequested();
@@ -23,14 +25,14 @@ public partial class NoOpCacheManager
     }
 
     /// <inheritdoc />
-    public virtual ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         return Invalidate(keys, cancellationToken);
     }
 
     /// <inheritdoc />
-    public virtual ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken)
+    public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
         => Invalidate(tags, cancellationToken);
 
     private static ValueTask<InvalidationResult> Invalidate(IEnumerable<string> values, CancellationToken token)

@@ -92,7 +92,7 @@ public class RuntimePolicyOrderingTests
         var time = new FakeTimeProvider();
         using var store = new RuntimePolicyStore(time);
         await store.UpsertAsync(Method, Policy(1), CachePolicyFields.Duration,
-            operation == "expire" ? new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow() + TimeSpan.FromSeconds(1)) : null);
+            operation == "expire" ? new RuntimeOverrideMetadata { ExpiresAt = time.GetUtcNow() + TimeSpan.FromSeconds(1) } : null);
         using var release = new ManualResetEventSlim();
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         store.Changed += change =>

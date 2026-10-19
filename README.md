@@ -50,7 +50,7 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** One line caches chosen methods of an SDK or API client's own interface, no wrapper needed ([how](#caching-code-you-dont-own)).
 - **HTTP responses as well.** `AddHttpCaching()` on an `HttpClient` honors `Cache-Control` and revalidates with ETags ([how](#http-responses)).
-- **One line to go distributed.** `AddMethodCacheRedis(...)` shares results between instances and keeps every instance's memory cache in sync.
+- **One line to go distributed.** `AddMethodCache(mc => mc.UseRedis(...))` shares results between instances and keeps every instance's memory cache in sync.
 - **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache that stays within its size limit under load ([how strict](docs/features/memory-cache.md#how-strict-the-bound-is)), admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
 ## See it run
@@ -212,8 +212,7 @@ policy in code, and the change applies to the next call. See [Configuration](doc
 
 <!-- snippet: readme-distributed -->
 ```cs
-builder.Services.AddMethodCache();
-builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCacheSqlServer(connectionString)
+builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));       // or mc.UseSqlServer(connectionString)
 ```
 <!-- endSnippet -->
 
@@ -221,7 +220,7 @@ Results live in memory and in Redis (or SQL Server, or your own cache, see
 [Distributed cache](docs/features/distributed-cache.md)).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 Values are JSON by default; a method whose results JSON can't read back unchanged (private setters, a derived type,
-`object`) is kept in memory only, with a warning. `AddMethodCacheMessagePack()` makes values smaller.
+`object`) is kept in memory only, with a warning. `mc.UseMessagePack()` makes values smaller.
 If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
 Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
 during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
@@ -252,7 +251,7 @@ interface, wrap the calls in an interface of your own with `[Cache]`, or use the
 ```cs
 var rate = await cache.GetOrCreateAsync(
     $"fx:{from}:{to}",
-    async (ctx, ct) => await client.GetRateAsync(from, to),
+    async ct => await client.GetRateAsync(from, to),
     o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
 ```
 <!-- endSnippet -->
@@ -432,7 +431,7 @@ share a stable L2 namespace, while runtime overrides use private namespaces. Inv
 mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane sends. See
 [configuration](docs/features/configuration.md) and [distributed guarantees](docs/features/distributed-cache.md).
 
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
+Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
 
 Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).
 

@@ -10,8 +10,8 @@ public class NoOpCacheManagerTests
     {
         ICacheManager manager = new NoOpCacheManager();
         var calls = 0;
-        await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(++calls));
-        await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(++calls));
+        await manager.GetOrCreateAsync("key", _ => ValueTask.FromResult(++calls));
+        await manager.GetOrCreateAsync("key", _ => ValueTask.FromResult(++calls));
         Assert.Equal(2, calls);
         Assert.False((await manager.TryGetAsync<int>("key")).Found);
     }

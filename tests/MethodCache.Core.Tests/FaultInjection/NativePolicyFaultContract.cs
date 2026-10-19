@@ -40,7 +40,7 @@ internal static class NativePolicyFaultContract
                     Assert.Equal(3, publication.Confirmed);
                     break;
                 case "cancellation":
-                    await cache.GetOrCreateAsync("held", (_, _) => ValueTask.FromResult(1));
+                    await cache.GetOrCreateAsync("held", _ => ValueTask.FromResult(1));
                     if (includeEarlierStamp)
                         await store.WriteInvalidationStampAsync("fixture-prior:" + Guid.NewGuid().ToString("N"), time.GetUtcNow().UtcTicks, TimeSpan.FromHours(1));
                     store.Hold = true;
@@ -60,7 +60,7 @@ internal static class NativePolicyFaultContract
                     }
                     break;
                 case "validation":
-                    await cache.GetOrCreateAsync("retained", (_, _) => ValueTask.FromResult(1));
+                    await cache.GetOrCreateAsync("retained", _ => ValueTask.FromResult(1));
                     await Assert.ThrowsAsync<ArgumentException>(() => cache.InvalidateKeysAsync(["retained", " "]).AsTask());
                     await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.InvalidateKeysAsync(["retained"], cancellationToken: new CancellationToken(true)).AsTask());
                     Assert.True(memory.TryGetFreshForLookup<int>("retained").Found);

@@ -37,10 +37,10 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddMethodCache();
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = _prefix);
-        services.AddMethodCacheRedis(options =>
+        services.AddMethodCache(mc => mc.UseRedis(options =>
         {
             options.Configuration = configuration;
-        });
+        }));
 
         var provider = services.BuildServiceProvider();
         _nodes.Add(provider);
@@ -57,7 +57,7 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     }
 
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
-        await node.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(value), options => options
+        await node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options
             .WithDuration(TimeSpan.FromMinutes(5))
             .WithTags(tags));
 

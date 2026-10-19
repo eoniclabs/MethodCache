@@ -11,7 +11,7 @@ namespace MethodCache.Serialization.MessagePack;
 /// <remarks>
 /// The default options use the contractless resolver, so types need no attributes, keep <see cref="DateTime.Kind"/>,
 /// use LZ4 compression and treat stored data as untrusted.
-/// Register it with <see cref="Microsoft.Extensions.DependencyInjection.MethodCacheMessagePackServiceCollectionExtensions.AddMethodCacheMessagePack"/>.
+/// Register it with <c>UseMessagePack()</c> inside <c>AddMethodCache(mc =&gt; ...)</c>.
 /// </remarks>
 internal sealed class MessagePackCacheSerializer : ISerializer
 {

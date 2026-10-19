@@ -32,7 +32,7 @@ public class PolicyStateAcceptanceTests(RedisFixture redis)
             services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCacheRedis(configuration);
+            services.AddMethodCache(mc => mc.UseRedis(configuration));
             if (scenario is "unready-sync" or "disabled" or "refresh") GatedNativePolicyStore.Decorate(services, holdReads: scenario == "unready-sync");
             PolicyMessageGate.Decorate(services);
             var provider = services.BuildServiceProvider();

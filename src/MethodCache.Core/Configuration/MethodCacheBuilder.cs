@@ -56,6 +56,23 @@ public sealed class MethodCacheBuilder
         Services.Configure(configure);
         return this;
     }
+    /// <summary>
+    /// Configures the distributed cache added with <c>UseRedis</c> or <c>UseSqlServer</c>: key prefix, timeouts,
+    /// tag checks and the round-trip check.
+    /// </summary>
+    public MethodCacheBuilder Distributed(Action<DistributedCacheOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        Services.Configure(configure);
+        return this;
+    }
+    /// <summary>Configures what spans record: cache keys and tags are off by default.</summary>
+    public MethodCacheBuilder Telemetry(Action<MethodCacheTelemetryOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        Services.Configure(configure);
+        return this;
+    }
     /// <summary>Reads and watches the application's configuration section.</summary>
     public MethodCacheBuilder FromConfiguration(IConfiguration configuration, string sectionName = "MethodCache")
     { Services.AddMethodCacheFromConfiguration(configuration, sectionName); return this; }
@@ -83,11 +100,5 @@ public sealed class MethodCacheBuilder
         => Configuration.ForService<TService>().Method(method);
     /// <summary>Selects a method returning a value-task result.</summary>
     public IFluentMethodConfiguration<TResult> Method<TService, TResult>(Expression<Func<TService, ValueTask<TResult>>> method)
-        => Configuration.ForService<TService>().Method(method);
-    /// <summary>Selects a method returning no value.</summary>
-    public IFluentMethodConfiguration Method<TService>(Expression<Action<TService>> method)
-        => Configuration.ForService<TService>().Method(method);
-    /// <summary>Selects a task method returning no value.</summary>
-    public IFluentMethodConfiguration Method<TService>(Expression<Func<TService, Task>> method)
         => Configuration.ForService<TService>().Method(method);
 }

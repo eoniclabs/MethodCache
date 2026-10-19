@@ -525,7 +525,6 @@ public class SignatureCorpusTests
         var source = $$"""
             using System.Threading.Tasks;
             using MethodCache;
-            using MethodCache.Extensibility;
             using Microsoft.Extensions.DependencyInjection;
             namespace Corpus {
                 public interface ISvc { [Cache] int Get(int id); [CacheInvalidate] {{returnType}} Update(ref int value); }
@@ -533,9 +532,13 @@ public class SignatureCorpusTests
                     public int Get(int id) => id;
                     public {{returnType}} Update(ref int value) { value++; return {{result}}; }
                 }
-                public class CountingManager : NoOpCacheManager, ICacheManager {
+                public class CountingManager : ICacheManager {
+                    private readonly NoOpCacheManager _inner = new();
                     public int Calls;
-                    public override ValueTask<InvalidationResult> InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string> tags, System.Threading.CancellationToken token) { Calls++; return base.InvalidateTagsAsync(tags, token); }
+                    public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, System.Func<TState, System.Threading.CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options = null, System.Threading.CancellationToken token = default) => _inner.GetOrCreateAsync(key, state, factory, options, token);
+                    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, System.Threading.CancellationToken token = default) => _inner.TryGetAsync<T>(key, version, token);
+                    public ValueTask<InvalidationResult> InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string> keys, int? version = null, System.Threading.CancellationToken token = default) => _inner.InvalidateKeysAsync(keys, version, token);
+                    public ValueTask<InvalidationResult> InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string> tags, System.Threading.CancellationToken token = default) { Calls++; return _inner.InvalidateTagsAsync(tags, token); }
                 }
                 public static class Scenario {
                     public static async Task<int> RunAsync() {

@@ -97,7 +97,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Stats_ReportEntries()
     {
-        var stats = await _client.GetFromJsonAsync<CacheStatsResponse>("/methodcache/stats");
+        var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
 
         Assert.NotNull(stats);
         Assert.Equal(3, stats.LocalMethodEntries);
@@ -144,7 +144,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Invalidate_RemovesEntriesWithTheTag()
     {
-        var response = await _client.PostAsJsonAsync("/methodcache/invalidate", new InvalidateRequest(new[] { "users" }));
+        var response = await _client.PostAsJsonAsync("/methodcache/invalidate", new { Tags = new[] { "users" } });
         var remaining = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -154,7 +154,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Invalidate_RejectsAnEmptyTagList()
     {
-        var response = await _client.PostAsJsonAsync("/methodcache/invalidate", new InvalidateRequest(Array.Empty<string>()));
+        var response = await _client.PostAsJsonAsync("/methodcache/invalidate", new { Tags = Array.Empty<string>() });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -163,7 +163,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     public async Task Clear_RemovesEverything()
     {
         var response = await _client.DeleteAsync("/methodcache/entries");
-        var stats = await _client.GetFromJsonAsync<CacheStatsResponse>("/methodcache/stats");
+        var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(0, stats!.LocalMethodEntries);

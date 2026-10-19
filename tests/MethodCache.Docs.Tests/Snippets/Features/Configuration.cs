@@ -36,7 +36,7 @@ namespace Docs.Configuration
 
                 // One method
                 config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
-                      .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
+                      .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).WithRefreshAhead(TimeSpan.FromMinutes(5)));
             });
             // end-snippet
         }
@@ -58,7 +58,7 @@ namespace Docs.Configuration
             await configurator.UpsertAsync<IOrdersService, Order>(
                 s => s.GetAsync(Any<int>.Value),
                 o => o.WithDuration(TimeSpan.FromMinutes(2)),
-                new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
+                new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(4) });
 
             // By method id, for example from an admin form
             await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}]Docs.Configuration.IUserService.GetProfileAsync",
@@ -77,8 +77,8 @@ namespace Docs.Configuration
 
             foreach (var report in diagnostics.GetMethods())
             {
-                var sources = string.Join(", ", report.Sources);
-                Console.WriteLine($"{report.MethodId}: Duration={report.Duration}, from {sources}");
+                var sources = string.Join(", ", report.SettingSources.Values.Distinct());
+                Console.WriteLine($"{report.MethodId}: Duration={report.Options.Duration}, from {sources}");
             }
             // end-snippet
         }

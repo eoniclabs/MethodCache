@@ -71,39 +71,35 @@ namespace Docs.Packages
         public static void Basic(WebApplicationBuilder builder)
         {
             // begin-snippet: redis-basic
-            builder.Services.AddMethodCache();
-            builder.Services.AddMethodCacheRedis("localhost:6379");
+            builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));
             // end-snippet
         }
 
         public static void Options(WebApplicationBuilder builder)
         {
             // begin-snippet: redis-options
-            builder.Services.AddMethodCacheRedis(options =>
-            {
-                options.Configuration = "redis1:6379,redis2:6379,password=...";
-            });
-            builder.Services.Configure<DistributedCacheOptions>(options =>
-                options.KeyPrefix = "orders-api:");   // data and backplane use the same final prefix
+            builder.Services.AddMethodCache(mc => mc
+                .UseRedis(options => options.Configuration = "redis1:6379,redis2:6379,password=...")
+                .Distributed(options => options.KeyPrefix = "orders-api:"));   // data and backplane use the same final prefix
             // end-snippet
         }
 
         public static void SharedConnection(WebApplicationBuilder builder)
         {
             // begin-snippet: redis-shared-connection
-            builder.Services.AddMethodCacheRedis(options =>
-                options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>());
+            builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
+                options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>()));
             // end-snippet
         }
 
         public static void Outage(WebApplicationBuilder builder)
         {
             // begin-snippet: distributed-outage-options
-            builder.Services.Configure<DistributedCacheOptions>(options =>
+            builder.Services.AddMethodCache(mc => mc.Distributed(options =>
             {
                 options.OperationTimeout = TimeSpan.FromMilliseconds(500);
                 options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
-            });
+            }));
             // end-snippet
         }
     }
@@ -113,20 +109,19 @@ namespace Docs.Packages
         public static void Basic(WebApplicationBuilder builder)
         {
             // begin-snippet: sqlserver-basic
-            builder.Services.AddMethodCache();
-            builder.Services.AddMethodCacheSqlServer(builder.Configuration.GetConnectionString("Cache")!);
+            builder.Services.AddMethodCache(mc => mc.UseSqlServer(builder.Configuration.GetConnectionString("Cache")!));
             // end-snippet
         }
 
         public static void Options(WebApplicationBuilder builder, string connectionString)
         {
             // begin-snippet: sqlserver-options
-            builder.Services.AddMethodCacheSqlServer(options =>
+            builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
             {
                 options.ConnectionString = connectionString;
                 options.SchemaName = "cache";
                 options.BackplanePollingInterval = TimeSpan.FromMilliseconds(500);
-            });
+            }));
             // end-snippet
         }
     }
@@ -172,11 +167,11 @@ namespace Docs.Packages
         public static void IdentityOptions(WebApplicationBuilder builder)
         {
             // begin-snippet: otel-baggage
-            builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+            builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
             {
                 options.RecordCacheKeys = true; // hashes by default; raw keys can contain secrets
                 options.RecordCacheTags = false;
-            });
+            }));
             // end-snippet
         }
 

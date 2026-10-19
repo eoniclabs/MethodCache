@@ -47,14 +47,14 @@ namespace MethodCache.Analyzers
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and RetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and FailSafeRetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe also accepts \"off\".",
             helpLinkUri: HelpLink(InvalidTimeSpanDiagnosticId));
 
         internal static readonly DiagnosticDescriptor InvalidVersionRule = new DiagnosticDescriptor(
             "MC0021", "Invalid cache version", "Version must be non-negative when explicitly specified",
             Category, DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0021"));
 
-        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "RetryAfter" };
+        private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter" };
 
         /// <inheritdoc />
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule, InvalidVersionRule);

@@ -246,11 +246,11 @@ static void PrintPolicies(ICacheAdministrator admin, string title)
         admin.GetMethods()
             .Where(m => m.MethodId.Contains(".IProductCatalog.", StringComparison.Ordinal) || m.MethodId.Contains(".IWeatherService.", StringComparison.Ordinal))
             .OrderBy(m => m.MethodId, StringComparer.Ordinal)
-            .Select(m => (IReadOnlyList<string>)[ShortName(m.MethodId), Ui.Duration(m.Duration), string.Join(", ", m.Sources)]));
+            .Select(m => (IReadOnlyList<string>)[ShortName(m.MethodId), Ui.Duration(m.Options.Duration), string.Join(", ", m.SettingSources.Values.Distinct())]));
 }
 
 static TimeSpan? DurationOf(ICacheAdministrator admin, string methodId) =>
-    admin.GetMethods().FirstOrDefault(m => m.MethodId == methodId)?.Duration;
+    admin.GetMethods().FirstOrDefault(m => m.MethodId == methodId)?.Options.Duration;
 
 static string ShortName(string methodId) => methodId["MethodCache.Demo.".Length..];
 

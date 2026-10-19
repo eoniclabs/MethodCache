@@ -25,7 +25,7 @@ public static class AdvancedExamples
             config.Method((IAvailableProducts s) => s.FindAsync(Any<int>.Value))
                 .CacheWhen(product => product is not null);
             config.Method((IResilientRates s) => s.GetAsync(Any<string>.Value))
-                .Configure(options => options.FailSafe(TimeSpan.FromMinutes(1), retryAfter: TimeSpan.FromSeconds(5)));
+                .Configure(options => options.WithFailSafe(TimeSpan.FromMinutes(1), retryAfter: TimeSpan.FromSeconds(5)));
         });
         return services.BuildServiceProvider();
     }

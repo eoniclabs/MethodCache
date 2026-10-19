@@ -229,7 +229,7 @@ MaxExpiration är ett metodtak; det kapar inte HTTP:s freshness- eller stale-ret
 
 | ICacheManager | Retur och parametrar |
 |---|---|
-| GetOrCreateAsync | ValueTask med typat resultat; key, factory med CacheContext och token, immutable CacheEntryOptions eller null, caller-token sist. |
+| GetOrCreateAsync | ValueTask med typat resultat; key, state och en factory som får state och token (som HybridCache), immutable CacheEntryOptions eller null, caller-token sist. |
 | TryGetAsync | ValueTask med CacheLookupResult (Found och Value); logisk key, token och valfri icke-negativ version; samma NUL-framing som GetOrCreateAsync. Default/null/false/0 är giltiga hits. |
 | InvalidateKeysAsync | ValueTask med InvalidationResult; IEnumerable av logiska nycklar, token och valfri icke-negativ version. Samma NUL-framing som GetOrCreateAsync. |
 | InvalidateTagsAsync | ValueTask med InvalidationResult; IEnumerable av applikationstaggar och token. |

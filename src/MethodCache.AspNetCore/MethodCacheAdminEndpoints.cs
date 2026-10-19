@@ -66,12 +66,8 @@ public static class MethodCacheAdminEndpoints
         return group;
     }
 
-    private static async Task<Ok<CacheStatsResponse>> GetStatsAsync(ICacheAdministrator admin, CancellationToken cancellationToken)
-    {
-        var stats = await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false);
-        return TypedResults.Ok(new CacheStatsResponse(
-            stats.Hits, stats.Misses, stats.Evictions, stats.LocalMethodEntries, stats.LocalHttpEntries, stats.LocalHttpBytes, stats.ObservedDistributedEntries, stats.TotalWeight));
-    }
+    private static async Task<Ok<CacheStats>> GetStatsAsync(ICacheAdministrator admin, CancellationToken cancellationToken)
+        => TypedResults.Ok(await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false));
 
     private static Results<Ok<IReadOnlyList<CacheEntryInfo>>, ValidationProblem> ListEntries(
         ICacheAdministrator admin, string? prefix, string? tag, int? limit)
@@ -117,8 +113,5 @@ public static class MethodCacheAdminEndpoints
     }
 }
 
-/// <summary>Cache statistics as returned by the <c>stats</c> endpoint.</summary>
-public sealed record CacheStatsResponse(long Hits, long Misses, long Evictions, long LocalMethodEntries, long LocalHttpEntries, long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight);
-
 /// <summary>Body of the <c>invalidate</c> endpoint.</summary>
-public sealed record InvalidateRequest(IReadOnlyList<string>? Tags);
+internal sealed record InvalidateRequest(IReadOnlyList<string>? Tags);

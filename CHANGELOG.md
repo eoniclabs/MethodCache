@@ -4,6 +4,48 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Breaking changes since 1.0.0-rc.1
+
+An API review before 1.0.0 removed duplicates and names that didn't match the rest of the API. Each change below says
+what to write instead.
+
+Registration
+- `AddMethodCacheRedis`, `AddMethodCacheSqlServer` and `AddMethodCacheMessagePack` are removed. Use the builder:
+  `services.AddMethodCache(mc => mc.UseRedis("localhost:6379"))`, `mc.UseSqlServer(...)` and `mc.UseMessagePack()`.
+- New `mc.Distributed(o => ...)` and `mc.Telemetry(o => ...)` configure `DistributedCacheOptions` and
+  `MethodCacheTelemetryOptions`, so you don't need `services.Configure<...>` for them.
+- `MethodCacheBuilder.Method` and the `IRuntimeCacheConfigurator` expression helpers no longer accept `void` or `Task`
+  methods (they could never be cached). `IFluentMethodConfiguration` without a type argument is removed.
+
+Options and attributes
+- `CacheEntryOptions.Builder.RefreshAhead` and `FailSafe` are now `WithRefreshAhead` and `WithFailSafe`, like every
+  other builder method.
+- `[Cache(RetryAfter = ...)]` and `[CacheInterface(RetryAfter = ...)]` are now `FailSafeRetryAfter`, the name used in
+  code and in `appsettings.json`.
+
+Manual caching
+- `ICacheManager.GetOrCreateAsync` takes a state and a factory `(state, ct) => ...`, like `HybridCache`, so a hot path
+  can use a static lambda without a closure. `CacheContext` is removed: the factory gets the cancellation token, and
+  `GetOrCreateAsync(key, ct => ...)` keeps working through the extension methods.
+- `GetOrCreateManyAsync` factories take `(keys, ct)` instead of `(keys, context, ct)`.
+- The `TryGetAsync` extension method that duplicated `ICacheManager.TryGetAsync` is removed.
+- `NoOpCacheManager` moved from `MethodCache.Extensibility` to `MethodCache` and is sealed; wrap it to change one call.
+
+Administration
+- `ICacheAdministrator.InvalidateTagsAsync` takes an `IEnumerable<string>` and returns the `InvalidationResult`.
+  It covers method and HTTP entries.
+- `ICacheStats` and the AspNetCore `CacheStatsResponse` are replaced by one `CacheStats` record; the stats endpoint
+  returns it unchanged.
+- `CachedMethodInfo` now has the effective `Options` (duration, tags, version and the rest), `SettingSources` and
+  `IsDistributedNamespaceShared` instead of a copy of each setting.
+- `CacheEntryInfo`, `CachedMethodInfo`, `InvalidationQueues`, `RuntimeOverride` and `RuntimeOverrideMetadata` use
+  `init` properties instead of positional constructors, so new properties can be added in 1.x without breaking you.
+  Write `new RuntimeOverrideMetadata { Owner = "ops", ExpiresAt = ... }`. `CacheEntryInfo.Format` is removed.
+- `MethodCacheHealthCheck` and the request type of the invalidate endpoint are internal; register the check with
+  `services.AddHealthChecks().AddMethodCache()` and call the endpoints as before.
+
 ## 1.0.0-rc.1 (not released yet)
 
 The first public release on nuget.org, as a release candidate. Install it with `--prerelease`

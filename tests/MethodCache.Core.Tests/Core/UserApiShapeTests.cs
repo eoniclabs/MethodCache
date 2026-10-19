@@ -14,7 +14,7 @@ public class UserApiShapeTests
         var exported = typeof(MethodCacheBuilder).Assembly.GetExportedTypes();
         Assert.DoesNotContain(exported, type => type.Name == typeName);
         Assert.Contains(typeof(MethodCacheBuilder), exported);
-        Assert.Contains(typeof(IFluentMethodConfiguration), exported);
+        Assert.Contains(typeof(IFluentMethodConfiguration<>), exported);
     }
 
     [Fact]
@@ -29,7 +29,8 @@ public class UserApiShapeTests
                 Assert.Equal(typeof(CancellationToken), method.GetParameters().Last().ParameterType);
         foreach (var name in new[] { "OnHit", "OnMiss", "When", "WithMetrics" })
             Assert.DoesNotContain(typeof(CacheEntryOptions.Builder).GetMethods(), m => m.Name == name);
-        Assert.Null(typeof(CacheContext).GetProperty("Services"));
+        Assert.DoesNotContain(typeof(ICacheManager).Assembly.GetExportedTypes(), t => t.Name == "CacheContext");
+        Assert.True(typeof(NoOpCacheManager).IsSealed);
         Assert.Equal(new[] { "CacheNullValues", "JitterMaxDuration", "MaxExpiration", "MaxHttpBytes", "MaxItems", "SizeLimit", "Weigher" },
             typeof(MethodCacheMemoryOptions).GetProperties().Select(p => p.Name).Order().ToArray());
     }

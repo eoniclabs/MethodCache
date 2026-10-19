@@ -44,7 +44,7 @@ public class MemoryStatisticsTests
     {
         using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateAsync("method", (_, _) => ValueTask.FromResult(1));
+        await cache.GetOrCreateAsync("method", _ => ValueTask.FromResult(1));
         provider.GetRequiredService<CoreTelemetry>().ObserveHttp(() => new CacheObservation(0, 2, 128, 100, 0));
         var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();
         Assert.Equal(1, stats.LocalMethodEntries);

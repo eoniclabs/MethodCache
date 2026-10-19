@@ -17,7 +17,7 @@ public class ManualLookupTests
         await using var provider = services.BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheManager>();
         var calls = 0;
-        await cache.GetOrCreateAsync<string?>("entry", (_, _) => { calls++; return ValueTask.FromResult<string?>(null); }, options => options.WithDuration(TimeSpan.FromMinutes(1)).RefreshAhead(TimeSpan.FromSeconds(10)));
+        await cache.GetOrCreateAsync<string?>("entry", _ => { calls++; return ValueTask.FromResult<string?>(null); }, options => options.WithDuration(TimeSpan.FromMinutes(1)).WithRefreshAhead(TimeSpan.FromSeconds(10)));
         time.Advance(TimeSpan.FromSeconds(51));
         var lookup = await cache.TryGetAsync<string?>("entry");
         Assert.True(lookup.Found);

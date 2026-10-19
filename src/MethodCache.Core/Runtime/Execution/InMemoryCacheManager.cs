@@ -597,7 +597,7 @@ namespace MethodCache.Extensibility
         }
 
         /// <inheritdoc />
-        public ValueTask<ICacheStats> GetStatsAsync()
+        public ValueTask<CacheStats> GetStatsAsync()
         {
             var external = _telemetry?.Observe() ?? default;
             var stats = new CacheStats
@@ -612,7 +612,7 @@ namespace MethodCache.Extensibility
                 ObservedDistributedEntries = external.ObservedDistributedEntries
             };
 
-            return new ValueTask<ICacheStats>(stats);
+            return new ValueTask<CacheStats>(stats);
         }
 
         /// <inheritdoc />

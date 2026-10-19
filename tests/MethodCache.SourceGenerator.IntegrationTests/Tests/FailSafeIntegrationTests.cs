@@ -62,7 +62,7 @@ namespace FailSafe
         public static void ConfigureCentral(IServiceCollection services)
         {
             services.AddSingleton<IPrices, Prices>();
-            services.AddMethodCache(config => config.Defaults(o => o.FailSafe(TimeSpan.FromHours(1))));
+            services.AddMethodCache(config => config.Defaults(o => o.WithFailSafe(TimeSpan.FromHours(1))));
         }
 
         public static void ConfigureForSettings(IServiceCollection services)

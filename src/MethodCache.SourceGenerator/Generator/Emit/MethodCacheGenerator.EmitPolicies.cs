@@ -147,7 +147,7 @@ namespace MethodCache.SourceGenerator
                 AddTimeSpan(definition, cacheAttr, "SlidingExpiration");
                 AddTimeSpan(definition, cacheAttr, "RefreshAhead");
                 AddTimeSpan(definition, cacheAttr, "FailSafeTimeout");
-                AddTimeSpan(definition, cacheAttr, "RetryAfter", "FailSafeRetryAfter");
+                AddTimeSpan(definition, cacheAttr, "FailSafeRetryAfter", "FailSafeRetryAfter");
                 foreach (var name in new[] { "Enabled", "Distributed" })
                     if (TryGetNamedArgument(cacheAttr, name, out var flag) && flag.Value is bool enabled)
                         definition.PolicyStatements.Add($"policy = policy with {{ {name} = {(enabled ? "true" : "false")} }};");

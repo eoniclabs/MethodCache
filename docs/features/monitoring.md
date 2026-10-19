@@ -19,7 +19,7 @@ Console.WriteLine($"HTTP: {stats.LocalHttpEntries} local responses, {stats.Local
 Console.WriteLine($"Method weight: {stats.TotalWeight} (configured weight units)");
 
 foreach (var method in admin.GetMethods())
-    Console.WriteLine($"{method.MethodId}: {method.Duration}");
+    Console.WriteLine($"{method.MethodId}: {method.Options.Duration}");
 
 var entries = admin.ListEntries(tag: "user:42");
 await admin.InvalidateTagsAsync(["user:42"]);
@@ -152,12 +152,12 @@ Identity options belong to Core and do not depend on an exporter:
 
 <!-- snippet: monitoring-metrics-provider-registration -->
 ```cs
-builder.Services.AddMethodCache(); // Core emits standard Meter and ActivitySource instruments
-builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+// Core emits standard Meter and ActivitySource instruments
+builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 {
     options.RecordCacheKeys = false;
     options.RecordCacheTags = false;
-});
+}));
 ```
 <!-- endSnippet -->
 

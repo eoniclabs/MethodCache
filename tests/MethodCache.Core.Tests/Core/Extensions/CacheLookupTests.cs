@@ -26,8 +26,8 @@ public class CacheLookupTests
     public async Task TryGetAsync_EntryInsideItsRefreshWindow_IsFound()
     {
         using var cache = CreateManager();
-        await cache.GetOrCreateAsync("k", (_, _) => new ValueTask<string>("v"),
-            o => o.WithDuration(TimeSpan.FromMinutes(10)).RefreshAhead(TimeSpan.FromMinutes(1)));
+        await cache.GetOrCreateAsync("k", _ => new ValueTask<string>("v"),
+            o => o.WithDuration(TimeSpan.FromMinutes(10)).WithRefreshAhead(TimeSpan.FromMinutes(1)));
 
         _time.Advance(TimeSpan.FromSeconds(570)); // fresh, in the last minute
 
@@ -38,7 +38,7 @@ public class CacheLookupTests
     public async Task TryGetAsync_FastPathOff_FindsTheCachedEntry()
     {
         using var cache = CreateManager(o => o.EnableFastPath = false);
-        await cache.GetOrCreateAsync("k", (_, _) => new ValueTask<string>("v"));
+        await cache.GetOrCreateAsync("k", _ => new ValueTask<string>("v"));
 
         (await cache.TryGetAsync<string>("k")).Found.Should().BeTrue();
     }
@@ -47,10 +47,10 @@ public class CacheLookupTests
     public async Task GetOrCreateManyAsync_FastPathOff_DoesNotReloadCachedKeys()
     {
         using var cache = CreateManager(o => o.EnableFastPath = false);
-        await cache.GetOrCreateAsync("k", (_, _) => new ValueTask<string>("v"));
+        await cache.GetOrCreateAsync("k", _ => new ValueTask<string>("v"));
 
         var requested = new List<string>();
-        await cache.GetOrCreateManyAsync<string>(new[] { "k" }, (keys, _, _) =>
+        await cache.GetOrCreateManyAsync<string>(new[] { "k" }, (keys, _) =>
         {
             requested.AddRange(keys);
             return new ValueTask<IDictionary<string, string>>(keys.ToDictionary(k => k, _ => "fresh"));
@@ -67,7 +67,7 @@ public class CacheLookupTests
     [InlineData(1, null, 1)]
     public void Build_RefreshAheadNotShorterThanTheLifetime_Throws(int refreshMinutes, int? durationMinutes, int? slidingMinutes)
     {
-        var builder = new CacheEntryOptions.Builder().RefreshAhead(TimeSpan.FromMinutes(refreshMinutes));
+        var builder = new CacheEntryOptions.Builder().WithRefreshAhead(TimeSpan.FromMinutes(refreshMinutes));
         if (durationMinutes is { } duration) builder.WithDuration(TimeSpan.FromMinutes(duration));
         if (slidingMinutes is { } sliding) builder.WithSlidingExpiration(TimeSpan.FromMinutes(sliding));
 
@@ -77,7 +77,7 @@ public class CacheLookupTests
 
     [Fact]
     public void Build_RefreshAheadShorterThanTheDuration_Builds()
-        => new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromMinutes(10)).RefreshAhead(TimeSpan.FromMinutes(1)).Build()
+        => new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromMinutes(10)).WithRefreshAhead(TimeSpan.FromMinutes(1)).Build()
             .RefreshAhead.Should().Be(TimeSpan.FromMinutes(1));
 
     [Fact]
@@ -106,11 +106,11 @@ public class CacheLookupTests
     /// </summary>
     private sealed class ZeroHoldingManager : ICacheManager
     {
-        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName);
-            return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(new CacheContext(key), token).AsTask(), policy, token));
+            return new(GetOrCreateFastAsync(key, policy.MethodId, () => factory(state, token).AsTask(), policy, token));
         }
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(key == "present" ? CacheLookupResult<T>.Hit(default!) : CacheLookupResult<T>.Miss);
         public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)

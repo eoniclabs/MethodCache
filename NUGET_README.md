@@ -35,7 +35,7 @@ builder.Services.AddMethodCache();
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches chosen methods of an SDK client's own interface, no wrapper needed.
 - **HTTP responses as well.** `AddHttpCaching()` (package `MethodCache.HttpCaching`) on an `HttpClient` honors `Cache-Control` and revalidates with ETags. Register `AddMethodCache` too: Core owns a separate 100 MiB HTTP budget, or uses its configured native Redis/SQL transport exclusively. `KeepCookies` preserves cookies and bypasses response caching; confirmed mutations retire shared generations. Graceful async disposal retries pending invalidations once and reports any lost count; recovery is not durable across process exit. Local client-tag invalidation reclaims matching bodies through a scan of resident HTTP entries.
-- **One line to go distributed.** `AddMethodCacheRedis(...)` or `AddMethodCacheSqlServer(...)` (packages `MethodCache.Redis` and `MethodCache.SqlServer`) shares results between instances and keeps every instance's memory cache in sync.
+- **One line to go distributed.** `AddMethodCache(mc => mc.UseRedis(...))` or `mc.UseSqlServer(...)` (packages `MethodCache.Redis` and `MethodCache.SqlServer`) shares results between instances and keeps every instance's memory cache in sync.
 - **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry tracing and metrics.
 
 Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
@@ -83,7 +83,7 @@ share a stable L2 namespace, while runtime overrides use private namespaces. Inv
 mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane sends. See
 [configuration](docs/features/configuration.md) and [distributed guarantees](docs/features/distributed-cache.md).
 
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
+Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
 
 Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).
 
