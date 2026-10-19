@@ -1,12 +1,13 @@
+using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 
-namespace MethodCache.Extensibility
+namespace MethodCache
 {
     /// <summary>
     /// A cache manager that never caches: every call runs the factory and every lookup misses. Useful in tests, and
     /// for code that uses <c>GetOrCreateAsync</c> directly.
     /// </summary>
-    public partial class NoOpCacheManager : ICacheRuntime
+    public sealed partial class NoOpCacheManager : ICacheRuntime
     {
 
         /// <summary>Creates a cache manager that never caches.</summary>

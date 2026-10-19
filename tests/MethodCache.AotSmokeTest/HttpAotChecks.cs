@@ -31,7 +31,7 @@ internal static class HttpAotChecks
         Check(json.Contains("LocalMemory", StringComparison.Ordinal) && !json.Contains(callerA, StringComparison.Ordinal) &&
             !json.Contains(callerB, StringComparison.Ordinal) && !json.Contains("query-canary", StringComparison.Ordinal) &&
             !json.Contains("origin-", StringComparison.Ordinal), "HTTP AOT admin serialization leaked data.");
-        _ = await admin.RemoveEntryAsync(entries[0].Key);
+        _ = await admin.RemoveEntryAsync(entries[0].StoredKey);
         Check(await ReadAsync(callerA) == "origin-3", "HTTP AOT known-id invalidation failed.");
         await admin.ClearAsync();
         Check(await ReadAsync(callerA) == "origin-4", "HTTP AOT clear failed.");

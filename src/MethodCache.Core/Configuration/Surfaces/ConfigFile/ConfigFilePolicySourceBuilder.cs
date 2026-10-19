@@ -141,16 +141,17 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithVersion(version);
         }
 
-        var sliding = ReadTimeSpan(section, "SlidingExpiration");
+        // "off" (zero) turns an inherited sliding expiration or refresh-ahead off
+        var sliding = ReadTimeSpan(section, "SlidingExpiration", allowOff: true);
         if (sliding is { } slidingValue)
         {
             builder.WithSlidingExpiration(slidingValue);
         }
 
-        if (ReadTimeSpan(section, "RefreshAhead") is { } refresh)
+        if (ReadTimeSpan(section, "RefreshAhead", allowOff: true) is { } refresh)
         {
             // A window as long as the entry lives would reload the value on every hit
-            if (refresh >= duration || refresh >= sliding)
+            if (refresh > TimeSpan.Zero && (refresh >= duration || (sliding > TimeSpan.Zero && refresh >= sliding)))
             {
                 throw InvalidValue(section, "RefreshAhead", section["RefreshAhead"]!, "shorter than the section's Duration and SlidingExpiration");
             }
@@ -241,7 +242,7 @@ internal static class ConfigFilePolicySourceBuilder
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string name)
+    private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string name, bool allowOff = false)
     {
         if (section[name] is not { } text)
         {
@@ -249,9 +250,10 @@ internal static class ConfigFilePolicySourceBuilder
         }
 
         // The same grammar is used by attributes and configuration.
-        if (!MethodCache.Internal.DurationParser.TryParse(text, false, out var value))
+        if (!MethodCache.Internal.DurationParser.TryParse(text, allowOff, out var value))
         {
-            throw InvalidValue(section, name, text, "a positive time span such as \"00:05:00\"");
+            throw InvalidValue(section, name, text,
+                allowOff ? "a positive time span such as \"00:05:00\", or \"off\"" : "a positive time span such as \"00:05:00\"");
         }
 
         return value;

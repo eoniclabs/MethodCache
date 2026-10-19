@@ -69,15 +69,15 @@ public class AtomicCustomCacheTests
             switch (registration)
             {
                 case "redis":
-                    services.AddMethodCacheRedis("localhost:1");
+                    services.AddMethodCache(mc => mc.UseRedis("localhost:1"));
                     break;
                 case "sqlserver":
-                    services.AddMethodCacheSqlServer(options =>
+                    services.AddMethodCache(mc => mc.UseSqlServer(options =>
                     {
                         options.ConnectionString = "Server=localhost,1;Database=cache;User Id=sa;Password=x;Connect Timeout=1";
                         options.CreateTablesIfMissing = false;
                         options.EnableBackplane = false;
-                    });
+                    }));
                     break;
                 case "custom-owned":
                     services.AddMethodCacheDistributedCache(_ => new AtomicTestCache());

@@ -17,7 +17,7 @@ public static class Setup
         Console.WriteLine($"Method weight: {stats.TotalWeight} (configured weight units)");
 
         foreach (var method in admin.GetMethods())
-            Console.WriteLine($"{method.MethodId}: {method.Duration}");
+            Console.WriteLine($"{method.MethodId}: {method.Options.Duration}");
 
         var entries = admin.ListEntries(tag: "user:42");
         await admin.InvalidateTagsAsync(["user:42"]);
@@ -43,12 +43,12 @@ public static class Setup
     public static void CustomMetrics(WebApplicationBuilder builder)
     {
         // begin-snippet: monitoring-metrics-provider-registration
-        builder.Services.AddMethodCache(); // Core emits standard Meter and ActivitySource instruments
-        builder.Services.Configure<MethodCacheTelemetryOptions>(options =>
+        // Core emits standard Meter and ActivitySource instruments
+        builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
         {
             options.RecordCacheKeys = false;
             options.RecordCacheTags = false;
-        });
+        }));
         // end-snippet
     }
 }

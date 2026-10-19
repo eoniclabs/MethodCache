@@ -18,7 +18,7 @@ public class WeightedCapacityReviewTests
         {
             using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions
             {
-                MaxMemoryBytes = long.MaxValue,
+                WeightLimit = long.MaxValue,
                 Weigher = (_, _) => weight,
                 EvictionPolicy = eviction,
                 EnableBackgroundCleanup = false

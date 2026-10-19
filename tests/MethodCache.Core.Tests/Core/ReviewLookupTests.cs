@@ -57,7 +57,7 @@ public class ReviewLookupTests
         var backend = new AtomicTestCache();
         await using var writer = Node(backend);
         await using var reader = Node(backend);
-        await writer.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual", _ => new ValueTask<int>(42), options => options.WithTags("users"));
+        await writer.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual", _ => new ValueTask<int>(42), options => options.AddTags("users"));
         var cache = reader.GetRequiredService<ICacheManager>();
         Assert.True((await cache.TryGetAsync<int>("manual", default)).Found);
         var admin = reader.GetRequiredService<ICacheAdministrator>();
@@ -97,9 +97,16 @@ public class ReviewLookupTests
         Assert.False((await cache.TryGetAsync<int>(key, version, default)).Found);
     }
 
-    private sealed class ForwardingManager(ICacheManager inner) : NoOpCacheManager
+    private sealed class ForwardingManager(ICacheManager inner) : ICacheManager
     {
-        public override ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken cancellationToken)
-            => inner.GetOrCreateAsync(key, factory, options, cancellationToken);
+        private readonly NoOpCacheManager _noOp = new();
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
+            => inner.GetOrCreateAsync(key, state, factory, options, cancellationToken);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateKeysAsync(keys, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateTagsAsync(tags, cancellationToken);
     }
 }

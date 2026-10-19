@@ -15,7 +15,7 @@ For every cached method at once:
 
 <!-- snippet: failsafe-central -->
 ```cs
-builder.Services.AddMethodCache(config => config.Defaults(o => o.FailSafe(
+builder.Services.AddMethodCache(config => config.Defaults(o => o.WithFailSafe(
     duration: TimeSpan.FromHours(1),              // how long an expired value is kept as a fallback
     timeout: TimeSpan.FromMilliseconds(200),      // optional: don't wait longer than this when a fallback exists
     retryAfter: TimeSpan.FromSeconds(30))));       // optional: reuse the fallback this long before trying again
@@ -66,7 +66,7 @@ public interface IAccountService
 ```
 <!-- endSnippet -->
 
-In code, use the same builder method: `Configure(o => o.FailSafe(TimeSpan.FromHours(1)))`. `o.FailSafe(TimeSpan.Zero)`
+In code, use the same builder method: `Configure(o => o.WithFailSafe(TimeSpan.FromHours(1)))`. `o.WithFailSafe(TimeSpan.Zero)`
 turns it off. In `appsettings.json`, a method takes `FailSafe` (a time span or `"off"`), `FailSafeTimeout` and
 `FailSafeRetryAfter`.
 

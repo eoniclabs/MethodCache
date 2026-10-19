@@ -33,12 +33,12 @@ namespace MethodCache.SourceGenerator.IntegrationTests.Infrastructure
             _time = timeProvider ?? TimeProvider.System;
         }
 
-        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
             CacheEntryOptions? options, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var policy = options?.Runtime ?? CacheRuntimePolicy.Empty(CacheKeyLookup.MethodName) with { Duration = options?.Duration };
-            return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? CacheManagerExtensions.GetCacheKey(key), policy.MethodId, () => factory(new CacheContext(key), cancellationToken).AsTask(), policy, cancellationToken));
+            return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? CacheManagerExtensions.GetCacheKey(key), policy.MethodId, () => factory(state, cancellationToken).AsTask(), policy, cancellationToken));
         }
 
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)

@@ -45,7 +45,7 @@ public class TelemetryHitAllocationTests
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => requests += value);
         listener.Start();
         var originLoads = 0;
-        Func<CacheContext, CancellationToken, ValueTask<int>> factory = (_, _) =>
+        Func<CancellationToken, ValueTask<int>> factory = _ =>
         {
             originLoads++;
             return ValueTask.FromResult(42);
@@ -63,7 +63,7 @@ public class TelemetryHitAllocationTests
 
     // The probe returns before invoking assertions; initialization of assertion helpers is not cache work.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static long MeasureHits(ICacheManager cache, Func<CacheContext, CancellationToken, ValueTask<int>> factory,
+    private static long MeasureHits(ICacheManager cache, Func<CancellationToken, ValueTask<int>> factory,
         Action? insideMeasuredWindow = null)
     {
         var before = GC.GetAllocatedBytesForCurrentThread();

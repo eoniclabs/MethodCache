@@ -89,7 +89,7 @@ public class InMemoryCacheSoakTests
         var options = new MethodCacheMemoryOptions
         {
             Weigher = static (key, value) => 64 + (2L * key.Length) + (value is byte[] bytes ? bytes.Length : 0),
-            MaxMemoryBytes = WeightBound,
+            WeightLimit = WeightBound,
             DefaultExpiration = TimeSpan.FromSeconds(2),
             CleanupInterval = TimeSpan.FromSeconds(10),
         };

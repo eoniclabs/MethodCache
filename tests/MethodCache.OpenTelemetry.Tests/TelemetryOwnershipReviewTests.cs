@@ -54,11 +54,24 @@ public class TelemetryOwnershipReviewTests
     }
 
     public sealed class Counter { public int Disposals; }
-    public sealed class SyncManager(Counter counter) : NoOpCacheManager, IDisposable
+    public abstract class ForwardingManager : ICacheManager
+    {
+        private readonly NoOpCacheManager _inner = new();
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
+            => _inner.GetOrCreateAsync(key, state, factory, options, cancellationToken);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+            => _inner.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+            => _inner.InvalidateKeysAsync(keys, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+            => _inner.InvalidateTagsAsync(tags, cancellationToken);
+    }
+    public sealed class SyncManager(Counter counter) : ForwardingManager, IDisposable
     {
         public void Dispose() => counter.Disposals++;
     }
-    public sealed class AsyncManager(Counter counter) : NoOpCacheManager, IAsyncDisposable
+    public sealed class AsyncManager(Counter counter) : ForwardingManager, IAsyncDisposable
     {
         public ValueTask DisposeAsync() { counter.Disposals++; return default; }
     }

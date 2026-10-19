@@ -90,7 +90,7 @@ public class BackgroundLoadSeveralServicesTests
             var right = sp.GetRequiredService<IScopedRight>();
             return cache.GetOrCreateAsync(
                 "several-scoped",
-                async (_, _) =>
+                async _ =>
                 {
                     switch (shape)
                     {
@@ -108,7 +108,7 @@ public class BackgroundLoadSeveralServicesTests
                             return await left.GetAsync(1);
                     }
                 },
-                o => o.WithDuration(TimeSpan.FromSeconds(60)).RefreshAhead(TimeSpan.FromSeconds(30)));
+                o => o.WithDuration(TimeSpan.FromSeconds(60)).WithRefreshAhead(TimeSpan.FromSeconds(30)));
         }
 
         await using (var scope = provider.CreateAsyncScope())

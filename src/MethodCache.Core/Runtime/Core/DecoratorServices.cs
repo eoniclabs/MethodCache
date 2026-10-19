@@ -43,15 +43,17 @@ namespace MethodCache.Infrastructure
             _sitesRegistry = policyRegistry;
         }
 
-        private DecoratorServices(DecoratorServices container, RegistrationPolicyRegistry registration)
+        private DecoratorServices(DecoratorServices container, RegistrationPolicyRegistry registration, bool recordsKeys = false)
         {
             Diagnostics = container.Diagnostics;
             ParameterNames = container.ParameterNames;
             CacheManager = container.CacheManager;
-            FastMemory = container.FastMemory;
+            // A recording decorator never reads the cache, so every call reaches the load, where its key is recorded
+            FastMemory = recordsKeys ? null : container.FastMemory;
             PolicyRegistry = container.PolicyRegistry;
             KeyGenerator = container.KeyGenerator;
-            Telemetry = container.Telemetry;
+            Telemetry = recordsKeys ? null : container.Telemetry;
+            RecordsKeys = recordsKeys;
             _sitesRegistry = registration;
         }
 
@@ -62,6 +64,16 @@ namespace MethodCache.Infrastructure
         /// </summary>
         internal DecoratorServices ForRegistration(string? keySuffix, BackgroundLoadTarget? background)
             => new(this, new RegistrationPolicyRegistry(PolicyRegistry, keySuffix, background));
+
+        /// <summary>
+        /// The services of a decorator that records the key of each cached call instead of running it, for
+        /// <see cref="IMethodCacheKeys"/>. Its keys match those of the registration with <paramref name="keySuffix"/>.
+        /// </summary>
+        internal DecoratorServices ForKeyRecording(string? keySuffix)
+            => new(this, new RegistrationPolicyRegistry(PolicyRegistry, keySuffix, background: null), recordsKeys: true);
+
+        /// <summary>Whether a load records its key and returns a default value instead of running the method.</summary>
+        internal bool RecordsKeys { get; }
 
         /// <summary>
         /// The container's shared instance, which <c>AddMethodCache</c> registers. Containers set up without it

@@ -30,6 +30,9 @@ builder.Services.AddMethodCache(config =>
 - A rejected result is still returned to the caller, and the next call runs the method again.
 - The entry it would have replaced, including a fail-safe value, stays.
 - The predicate runs once per load, never on a cache hit. If it throws, the result is returned and not stored.
+- `config.Method(...).CacheWhen` gets the method's result type. A `CacheWhen<T>` set elsewhere for a type the method
+  can't return, such as `CacheWhen<string>` on a method that returns `int`, makes the call throw an
+  `InvalidOperationException` instead of silently caching nothing.
 - It is set in startup code only, so it can't come from `appsettings.json`. `Any<T>.Value` stands for any argument.
 
 > [!TIP]
@@ -37,18 +40,17 @@ builder.Services.AddMethodCache(config =>
 
 ## Skipping the cache for one call
 
-With [manual caching](manual-caching.md), `When` decides per call whether to use the cache at all:
+With [manual caching](manual-caching.md), `WithEnabled` decides per call whether to use the cache at all:
 
 <!-- snippet: conditional-when -->
 ```cs
 var results = await cache.GetOrCreateAsync(
     $"search:{text}",
-    async (ctx, ct) => await search(),
+    async ct => await search(),
     o => o.WithDuration(TimeSpan.FromMinutes(10))
           .WithEnabled(!preview));   // preview requests skip the cache entirely
 ```
 <!-- endSnippet -->
 
-When the predicate returns false, the factory runs and its result is neither read from nor written to the cache.
-`When` only applies to `GetOrCreateAsync`; for a `[Cache]` method use `CacheWhen`
-([Validation](configuration.md#validation)).
+With `WithEnabled(false)`, the factory runs and its result is neither read from nor written to the cache.
+To decide from the result instead, use `CacheWhen` ([Validation](configuration.md#validation)).

@@ -1,8 +1,14 @@
 namespace MethodCache;
 
 /// <summary>Immutable public description of one local method override.</summary>
-/// <param name="MethodId">The declared method identifier.</param>
-/// <param name="Options">The explicitly configured settings.</param>
-/// <param name="UpdatedAt">The most recent update time.</param>
-/// <param name="Metadata">Audit metadata accompanying the override.</param>
-public sealed record RuntimeOverride(string MethodId, CacheEntryOptions Options, DateTimeOffset UpdatedAt, RuntimeOverrideMetadata? Metadata);
+public sealed record RuntimeOverride
+{
+    /// <summary>The declared method identifier.</summary>
+    public required string MethodId { get; init; }
+    /// <summary>The explicitly configured settings.</summary>
+    public required CacheEntryOptions Options { get; init; }
+    /// <summary>The most recent update time.</summary>
+    public DateTimeOffset UpdatedAt { get; init; }
+    /// <summary>Audit metadata accompanying the override.</summary>
+    public RuntimeOverrideMetadata? Metadata { get; init; }
+}

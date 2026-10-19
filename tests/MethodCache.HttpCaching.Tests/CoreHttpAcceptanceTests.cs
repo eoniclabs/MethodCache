@@ -143,7 +143,7 @@ public class CoreHttpAcceptanceTests
         using var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("api");
         await client.GetStringAsync("https://example.test/a");
         var admin = provider.GetRequiredService<ICacheAdministrator>();
-        var id = Assert.Single(admin.ListEntries()).Key;
+        var id = Assert.Single(admin.ListEntries()).StoredKey;
         var memory = provider.GetRequiredService<MethodCache.Core.Storage.Abstractions.IMemoryCache>();
         await memory.SetAsync(id, 42, TimeSpan.FromMinutes(1));
         Assert.Equal(CacheEntryKind.Method, admin.GetEntry(id)!.Kind);

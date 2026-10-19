@@ -18,11 +18,11 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             return this;
         }
 
-        public IFluentMethodCacheConfiguration FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+        public IFluentMethodCacheConfiguration WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
         {
             // Validate now, so a bad value fails at the call that set it
-            new CacheEntryOptions.Builder().FailSafe(duration, timeout, retryAfter);
-            return DefaultPolicy(options => options.FailSafe(duration, timeout, retryAfter));
+            new CacheEntryOptions.Builder().WithFailSafe(duration, timeout, retryAfter);
+            return DefaultPolicy(options => options.WithFailSafe(duration, timeout, retryAfter));
         }
 
         public IFluentServiceConfiguration<TService> ForService<TService>()
@@ -147,19 +147,9 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 _inner = inner;
             }
 
-            public IFluentMethodConfiguration Method(Expression<Action<TService>> method)
-            {
-                return CreateMethodConfiguration(method);
-            }
-
             public IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, TResult>> method)
             {
                 return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
-            }
-
-            public IFluentMethodConfiguration Method(Expression<Func<TService, Task>> method)
-            {
-                return CreateMethodConfiguration(method);
             }
 
             public IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, Task<TResult>>> method)
@@ -190,7 +180,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             }
         }
 
-        private sealed class FluentMethodConfiguration : IFluentMethodConfiguration
+        private sealed class FluentMethodConfiguration
         {
             private readonly string _methodKey;
             private readonly List<Action<CacheEntryOptions.Builder>> _configurations = new();
@@ -201,14 +191,13 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 _methodKey = methodKey;
             }
 
-            public IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure)
+            public void Configure(Action<CacheEntryOptions.Builder> configure)
             {
                 if (configure == null) throw new ArgumentNullException(nameof(configure));
                 _configurations.Add(configure);
-                return this;
             }
 
-            public IFluentMethodConfiguration WithGroup(string groupName)
+            public void WithGroup(string groupName)
             {
                 if (string.IsNullOrWhiteSpace(groupName))
                 {
@@ -216,17 +205,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 }
 
                 _groupName = groupName;
-                return this;
             }
 
             public string? GroupName => _groupName;
 
             public Func<object?, bool>? CacheWhen { get; set; }
 
-            public IFluentMethodConfiguration WithVersion(int version)
+            public void WithVersion(int version)
             {
                 _configurations.Add(builder => builder.WithVersion(version));
-                return this;
             }
 
             public CacheEntryOptions BuildOptions()
@@ -277,12 +264,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 _inner.CacheWhen = new TypedCachePredicate<TResult>(predicate).Accept;
                 return this;
             }
-
-            IFluentMethodConfiguration IFluentMethodConfiguration.Configure(Action<CacheEntryOptions.Builder> configure) => Configure(configure);
-
-            IFluentMethodConfiguration IFluentMethodConfiguration.WithGroup(string groupName) => WithGroup(groupName);
-
-            IFluentMethodConfiguration IFluentMethodConfiguration.WithVersion(int version) => WithVersion(version);
         }
 
         private sealed class FluentGroupConfiguration : IFluentGroupConfiguration

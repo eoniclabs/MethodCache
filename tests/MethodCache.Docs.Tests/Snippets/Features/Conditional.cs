@@ -38,7 +38,7 @@ namespace Docs.Conditional
             // begin-snippet: conditional-when
             var results = await cache.GetOrCreateAsync(
                 $"search:{text}",
-                async (ctx, ct) => await search(),
+                async ct => await search(),
                 o => o.WithDuration(TimeSpan.FromMinutes(10))
                       .WithEnabled(!preview));   // preview requests skip the cache entirely
             // end-snippet

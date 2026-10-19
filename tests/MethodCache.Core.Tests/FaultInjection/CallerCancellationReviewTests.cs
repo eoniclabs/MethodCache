@@ -45,7 +45,7 @@ public class CallerCancellationReviewTests
         using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions { OperationTimeout = TimeSpan.FromHours(1) }, timeProvider: time);
         using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }), time, layer);
         using var cancellation = new CancellationTokenSource();
-        var load = manager.GetOrCreateManyAsync<int>(["key"], (_, _, _) => throw new InvalidOperationException("The cancelled read must not run a factory."), cancellationToken: cancellation.Token).AsTask();
+        var load = manager.GetOrCreateManyAsync<int>(["key"], (_, _) => throw new InvalidOperationException("The cancelled read must not run a factory."), cancellationToken: cancellation.Token).AsTask();
         await backend.FirstBlockStarted.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(1, backend.Blocked);
         cancellation.Cancel();

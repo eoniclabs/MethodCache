@@ -31,7 +31,7 @@ public interface IReportService
 ```
 <!-- endSnippet -->
 
-Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. The result must be an exact positive whole number of ticks; fractional ticks are rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0004](../user-guide/DIAGNOSTICS.md#mc0004) even without analyzers. `FailSafe` also accepts `"off"`; builder `FailSafe(TimeSpan.Zero)` disables it. Timeout and retry windows must stay positive.
+Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. The result must be an exact positive whole number of ticks; fractional ticks are rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0004](../user-guide/DIAGNOSTICS.md#mc0004) even without analyzers. `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`, and `TimeSpan.Zero` in the builder (`WithSlidingExpiration`, `WithRefreshAhead`, `WithFailSafe`) does the same. Timeout and retry windows must stay positive.
 
 ## Duration
 
@@ -51,6 +51,10 @@ longer than `MethodCacheMemoryOptions.MaxExpiration` (seven days). See [Memory c
 
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
 past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
+
+A method that inherits a sliding window from the defaults, a group or configuration turns it off with
+`SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
+same way.
 
 ## Refresh-ahead
 

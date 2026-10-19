@@ -13,7 +13,7 @@ internal static class CacheRuntimeExtensions
 
     private static Task<T> GetOrCreateCustomAsync<T>(ICacheManager manager, string key,
         Func<Task<T>> factory, CacheRuntimePolicy policy, CancellationToken token)
-        => manager.GetOrCreateAsync(key, (_, _) => new ValueTask<T>(factory()), CacheEntryOptions.FromRuntime(policy), token).AsTask();
+        => manager.GetOrCreateAsync(key, factory, static (load, _) => new ValueTask<T>(load()), CacheEntryOptions.FromRuntime(policy), token).AsTask();
 
     internal static Task<T> GetOrCreateAsync<T>(this ICacheManager manager, string name, object[] args,
         Func<Task<T>> factory, CacheRuntimePolicy policy, MethodCache.Extensibility.ICacheKeyGenerator generator)

@@ -44,9 +44,9 @@ public class AtomicInvalidationTests(RedisFixture fixture)
         finally { await cache.RemoveAsync(key); }
     }
 
-    private ServiceProvider CreateProvider() => new ServiceCollection().AddMethodCacheRedis(options =>
+    private ServiceProvider CreateProvider() => new ServiceCollection().AddMethodCache(mc => mc.UseRedis(options =>
     {
         options.Configuration = fixture.RequireConfiguration();
         options.EnableBackplane = false;
-    }).BuildServiceProvider();
+    })).BuildServiceProvider();
 }

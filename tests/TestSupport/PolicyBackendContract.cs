@@ -54,17 +54,17 @@ public static partial class PolicyBackendContract
 
         var writer = first.GetRequiredService<ICacheManager>();
         var receiver = cold.GetRequiredService<ICacheManager>();
-        await writer.GetOrCreateAsync<string?>("null", (_, _) => ValueTask.FromResult<string?>(null));
+        await writer.GetOrCreateAsync<string?>("null", _ => ValueTask.FromResult<string?>(null));
         var nullHit = await receiver.TryGetAsync<string?>("null");
         Assert.True(nullHit.Found); Assert.Null(nullHit.Value);
         await using var rejectsNull = await create(new Origin(500), builder => builder.Memory(o => o.CacheNullValues = false));
-        Assert.Equal("origin", await rejectsNull.GetRequiredService<ICacheManager>().GetOrCreateAsync("null", (_, _) => ValueTask.FromResult("origin")));
-        await writer.GetOrCreateAsync("predicate", (_, _) => ValueTask.FromResult(1));
-        Assert.Equal(2, await receiver.GetOrCreateAsync("predicate", (_, _) => ValueTask.FromResult(2), o => o.CacheWhen<int>(value => value > 1)));
-        await writer.GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(1));
-        Assert.Equal(2, await receiver.GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(2), o => o.WithDistributed(false)));
+        Assert.Equal("origin", await rejectsNull.GetRequiredService<ICacheManager>().GetOrCreateAsync("null", _ => ValueTask.FromResult("origin")));
+        await writer.GetOrCreateAsync("predicate", _ => ValueTask.FromResult(1));
+        Assert.Equal(2, await receiver.GetOrCreateAsync("predicate", _ => ValueTask.FromResult(2), o => o.CacheWhen<int>(value => value > 1)));
+        await writer.GetOrCreateAsync("local-only", _ => ValueTask.FromResult(1));
+        Assert.Equal(2, await receiver.GetOrCreateAsync("local-only", _ => ValueTask.FromResult(2), o => o.WithDistributed(false)));
         await using var verifier = await create(new Origin(600), null);
-        Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", (_, _) => ValueTask.FromResult(3)));
+        Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", _ => ValueTask.FromResult(3)));
 
         // Deadline assertions have no dependency on the preceding policy mutations or their callbacks.
         // Keep both timed nodes on one fresh physical scope. Subscription recovery may legitimately retire
@@ -81,28 +81,28 @@ public static partial class PolicyBackendContract
         var timedReceiver = timedSecond.GetRequiredService<ICacheManager>();
         var slow = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var loading = timedWriter.GetOrCreateAsync("slow", (_, _) => { started.TrySetResult(); return new ValueTask<int>(slow.Task); }, o => o.WithDuration(TimeSpan.FromSeconds(10))).AsTask();
+        var loading = timedWriter.GetOrCreateAsync("slow", _ => { started.TrySetResult(); return new ValueTask<int>(slow.Task); }, o => o.WithDuration(TimeSpan.FromSeconds(10))).AsTask();
         await started.Task;
         time.Advance(TimeSpan.FromSeconds(20));
         slow.SetResult(10); Assert.Equal(10, await loading);
         time.Advance(TimeSpan.FromSeconds(8));
-        Assert.Equal(10, await timedReceiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
+        Assert.Equal(10, await timedReceiver.GetOrCreateAsync("slow", _ => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
         time.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(20, await timedReceiver.GetOrCreateAsync("slow", (_, _) => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
-        await timedWriter.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
+        Assert.Equal(20, await timedReceiver.GetOrCreateAsync("slow", _ => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
+        await timedWriter.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
         var sliding = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(30))
-            .WithSlidingExpiration(TimeSpan.FromSeconds(2)).FailSafe(TimeSpan.FromSeconds(5)).Build();
-        Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
+            .WithSlidingExpiration(TimeSpan.FromSeconds(2)).WithFailSafe(TimeSpan.FromSeconds(5)).Build();
+        Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(2), sliding));
         for (var i = 0; i < 6; i++)
         {
             time.Advance(TimeSpan.FromMilliseconds(1500));
-            Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", (_, _) => ValueTask.FromResult(2), sliding));
+            Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(2), sliding));
         }
         time.Advance(TimeSpan.FromSeconds(1));
         await Assert.ThrowsAsync<InvalidOperationException>(() => timedReceiver.GetOrCreateAsync<int>("deadline",
-            (_, _) => ValueTask.FromException<int>(new InvalidOperationException()), sliding).AsTask());
+            _ => ValueTask.FromException<int>(new InvalidOperationException()), sliding).AsTask());
 
-        await writer.GetOrCreateAsync("version", (_, _) => ValueTask.FromResult(7), o => o.WithVersion(2));
+        await writer.GetOrCreateAsync("version", _ => ValueTask.FromResult(7), o => o.WithVersion(2));
         Assert.True((await verifier.GetRequiredService<ICacheManager>().TryGetAsync<int>("version", version: 2)).Found);
         var result = await writer.InvalidateKeysAsync([CacheManagerExtensions.GetCacheKey("version", 2), CacheManagerExtensions.GetCacheKey("version", 2)]);
         Assert.Equal(1, result.Requested); Assert.Equal(1, result.Local); Assert.Equal(1, result.Distributed);

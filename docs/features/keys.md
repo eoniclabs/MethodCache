@@ -27,7 +27,7 @@ Examples below assume the service assembly is named `MyApp`. Its simple name pre
 assembly versions are excluded, so redeploying a new version preserves key identity. Closed generic argument types
 also include their assembly identity. Assemblies with the same namespace/type names therefore keep separate entries.
 Assembly-name characters outside letters, digits, `.`, `_` and `-` are escaped as `%XXXX` UTF-16 code units.
-Use `MethodCacheKeys` to construct exact keys and the admin method list for configuration ids.
+Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself](#building-a-key-yourself)); the admin method list shows the method ids configuration uses.
 
 ## How arguments become keys
 
@@ -127,33 +127,47 @@ public interface IDocumentStore
 
 ## Building a key yourself
 
-`MethodCacheKeys` builds the key the decorator uses, so you can invalidate or inspect one entry without guessing the
-format:
+To invalidate or inspect one entry, ask `IMethodCacheKeys` for the key of the call. Resolve it from dependency
+injection; the compiler checks the call, so overloads, versions, generic methods and argument formatting can't be
+gotten wrong:
 
 <!-- snippet: invalidation-by-key -->
 ```cs
-var key = MethodCacheKeys.For(typeof(IOrderService), nameof(IOrderService.GetAsync), MethodCacheKeys.Part(42));
+var key = keys.For<IOrderService>(orders => orders.GetAsync(42));
 await cache.InvalidateKeyAsync(key);   // "[MyApp]Docs.Invalidation.IOrderService.GetAsync:42"
 ```
 <!-- endSnippet -->
 
-For a method with a `Version`, use `MethodCacheKeys.ForVersion`. For an overloaded method, pass its
-[method id](configuration.md#appsettingsjson) as the name, such as `FindAsync(string)`:
-
 <!-- snippet: keys-versioned-and-overloaded -->
 ```cs
 // A method with a Version: "[MyApp]MyApp.IInvoiceService.GetAsync:v2:42"
+var versioned = keys.For<IInvoiceService>(invoices => invoices.GetAsync(42));
+
+// An overloaded method: "[MyApp]MyApp.IInvoiceService.FindAsync(string):INV-7"
+var overload = keys.For<IInvoiceService>(invoices => invoices.FindAsync("INV-7"));
+```
+<!-- endSnippet -->
+
+`For` runs the call on a stand-in that records the key the decorator would use, under the method's current policy, so
+it also follows a runtime version change. The method itself never runs. The call must reach exactly one cached method;
+anything else, such as a method without `[Cache]`, throws an `InvalidOperationException`. For a keyed registration,
+pass its service key: `keys.For<IRates>(rates => rates.Get("EUR"), serviceKey: "ecb")`.
+
+Without the container, `MethodCacheKeys` builds the same keys from the parts. You then spell out the version and, for an
+overloaded method, its [method id](configuration.md#appsettingsjson):
+
+<!-- snippet: keys-by-hand -->
+```cs
+// The version, and the method id of an overload, are spelled out
 var versioned = MethodCacheKeys.ForVersion(
     typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
-
-// An overloaded method: pass its method id. "[MyApp]MyApp.IInvoiceService.FindAsync(string):INV-7"
 var overload = MethodCacheKeys.For(
     typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
 ```
 <!-- endSnippet -->
 
 `MethodCacheKeys.Prefix(type, name, version)` returns the start that every key of one method shares, for example for
-`ICacheAdministrator.ListEntries(keyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
+`ICacheAdministrator.ListEntries(storedKeyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
 
 ## Things to know
 

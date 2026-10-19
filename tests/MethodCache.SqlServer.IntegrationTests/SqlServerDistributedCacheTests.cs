@@ -42,12 +42,12 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
         // Test sharing/invalidations with a realistic infrastructure budget; production still defaults to 1s.
         services.Configure<DistributedCacheOptions>(options => options.OperationTimeout = TimeSpan.FromSeconds(5));
         services.AddMethodCache();
-        services.AddMethodCacheSqlServer(options =>
+        services.AddMethodCache(mc => mc.UseSqlServer(options =>
         {
             options.ConnectionString = connectionString;
             options.SchemaName = _schema;
             options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100);
-        });
+        }));
 
         var provider = services.BuildServiceProvider();
         _nodes.Add(provider);
@@ -63,9 +63,9 @@ public sealed class SqlServerDistributedCacheTests : IAsyncLifetime
     }
 
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
-        await node.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(value), options => options
+        await node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options
             .WithDuration(TimeSpan.FromMinutes(5))
-            .WithTags(tags));
+            .AddTags(tags));
 
     private static async Task WaitUntil(Func<Task<bool>> condition)
     {

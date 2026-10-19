@@ -32,7 +32,7 @@ public class PolicyStateAcceptanceTests(SqlServerFixture sql)
             services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCacheSqlServer(o => { o.ConnectionString = options.ConnectionString; o.SchemaName = options.SchemaName; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); });
+            services.AddMethodCache(mc => mc.UseSqlServer(o => { o.ConnectionString = options.ConnectionString; o.SchemaName = options.SchemaName; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
             if (scenario is "unready-sync" or "disabled" or "refresh") GatedNativePolicyStore.Decorate(services, holdReads: scenario == "unready-sync");
             PolicyMessageGate.Decorate(services);
             var provider = services.BuildServiceProvider();

@@ -73,9 +73,9 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     }
 
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
-        await node.GetOrCreateAsync(key, (_, _) => ValueTask.FromResult(value), options => options
+        await node.GetOrCreateAsync(key, _ => ValueTask.FromResult(value), options => options
             .WithDuration(Duration)
-            .WithTags(tags));
+            .AddTags(tags));
 
     /// <summary>Invalidates a key or a tag, whichever <paramref name="byTag"/> says.</summary>
     private static Task Invalidate(ICacheManager node, bool byTag) =>
@@ -113,7 +113,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
         var requested = new List<string>();
         var result = await b.GetOrCreateManyAsync<string>(
             new[] { "stored", "missing" },
-            (keys, _, _) =>
+            (keys, _) =>
             {
                 requested.AddRange(keys);
                 return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, key => "from factory"));

@@ -9,40 +9,36 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// </summary>
 public static class MethodCacheMessagePackServiceCollectionExtensions
 {
-    /// <summary>Selects MessagePack value serialization with the package's defaults.</summary>
-    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        builder.Services.AddMethodCacheMessagePack();
-        return builder;
-    }
-    /// <summary>Selects MessagePack value serialization with explicit serializer options.</summary>
-    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder, global::MessagePack.MessagePackSerializerOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(options);
-        builder.Services.AddMethodCacheMessagePack(options);
-        return builder;
-    }
     /// <summary>
-    /// Stores cached values in the distributed cache (Redis or SQL Server) as
-    /// MessagePack instead of JSON. Call it together with <c>AddMethodCacheRedis()</c>,
-    /// <c>AddMethodCacheSqlServer()</c>, in any order.
+    /// Stores cached values in the distributed cache (Redis or SQL Server) as MessagePack instead of JSON, with the
+    /// package's defaults. The order relative to <c>UseRedis</c> or <c>UseSqlServer</c> does not matter.
     /// </summary>
     /// <remarks>
     /// Entries written in another format are read as misses and replaced, so switching needs no cache flush.
     /// </remarks>
     /// <example>
     /// <code>
-    /// builder.Services.AddMethodCache();
-    /// builder.Services.AddMethodCacheRedis(options => options.Configuration = "localhost:6379");
-    /// builder.Services.AddMethodCacheMessagePack();
+    /// builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379").UseMessagePack());
     /// </code>
     /// </example>
-    public static IServiceCollection AddMethodCacheMessagePack(this IServiceCollection services, global::MessagePack.MessagePackSerializerOptions? options = null)
+    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(MethodCache.Infrastructure.OwnedServices.Key, new MessagePackCacheSerializer(options)));
-        return services;
+        ArgumentNullException.ThrowIfNull(builder);
+        AddMessagePack(builder.Services, null);
+        return builder;
     }
+
+    /// <summary>
+    /// Stores cached values in the distributed cache as MessagePack with explicit serializer options.
+    /// </summary>
+    public static MethodCache.MethodCacheBuilder UseMessagePack(this MethodCache.MethodCacheBuilder builder, global::MessagePack.MessagePackSerializerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(options);
+        AddMessagePack(builder.Services, options);
+        return builder;
+    }
+
+    private static void AddMessagePack(IServiceCollection services, global::MessagePack.MessagePackSerializerOptions? options)
+        => services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(MethodCache.Infrastructure.OwnedServices.Key, new MessagePackCacheSerializer(options)));
 }

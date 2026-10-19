@@ -20,7 +20,7 @@ public class HttpDeferredIdentityTests
         Assert.True(perKey < 4096, $"Local publication allocates {perKey:F1} B per key; target text already belongs to the stored key.");
         var listed = owner.Core.DescribeEntries(null, null, 100);
         var expected = keys.Select(HttpResponseStore.Identity).ToHashSet(StringComparer.Ordinal);
-        Assert.Equal(keys.Length, listed.Count(info => expected.Contains(info.Key)));
+        Assert.Equal(keys.Length, listed.Count(info => expected.Contains(info.StoredKey)));
         Assert.True(await owner.Core.RemoveObservationAsync(HttpResponseStore.Identity(keys[0]), default));
         Assert.Null(await storage.GetAsync(keys[0]));
     }
@@ -59,7 +59,7 @@ public class HttpDeferredIdentityTests
         string? observedBefore = null;
         if (inspectBeforeReplacement)
         {
-            observedBefore = Assert.Single(owner.Core.DescribeEntries(null, null, 10)).Key;
+            observedBefore = Assert.Single(owner.Core.DescribeEntries(null, null, 10)).StoredKey;
             Assert.Equal(expected, observedBefore);
         }
 
@@ -67,17 +67,17 @@ public class HttpDeferredIdentityTests
         var replacement = first with { StoredAt = time.GetUtcNow(), Content = new byte[2048] };
         Assert.True(await storage.TrySetAsync(key, replacement, TimeSpan.FromSeconds(20), default));
         var listed = Assert.Single(owner.Core.DescribeEntries(null, null, 10));
-        Assert.Equal(expected, listed.Key);
-        Assert.StartsWith("http:", listed.Key);
-        Assert.Equal(69, listed.Key.Length);
+        Assert.Equal(expected, listed.StoredKey);
+        Assert.StartsWith("http:", listed.StoredKey);
+        Assert.Equal(69, listed.StoredKey.Length);
         Assert.Equal(CacheEntryKind.Http, listed.Kind);
         Assert.Equal(CacheEntryStorage.LocalMemory, listed.Storage);
         Assert.Equal("identity-client", listed.Client);
         Assert.Equal(TimeSpan.Zero, listed.Age);
         Assert.Equal(TimeSpan.FromSeconds(20), listed.TimeToLive);
         Assert.Same(replacement, await storage.GetAsync(key));
-        Assert.Same(listed.Key, Assert.Single(owner.Core.DescribeEntries(null, null, 10)).Key);
-        if (observedBefore != null) Assert.Same(observedBefore, listed.Key);
+        Assert.Same(listed.StoredKey, Assert.Single(owner.Core.DescribeEntries(null, null, 10)).StoredKey);
+        if (observedBefore != null) Assert.Same(observedBefore, listed.StoredKey);
 
         Assert.True(await owner.Core.RemoveObservationAsync(expected, default));
         Assert.Null(await storage.GetAsync(key));

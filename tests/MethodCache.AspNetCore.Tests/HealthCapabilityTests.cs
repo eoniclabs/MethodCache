@@ -144,7 +144,7 @@ public class HealthCapabilityTests
     private sealed class CustomManager : ICacheManager
     {
         private readonly NoOpCacheManager _inner = new();
-        public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken cancellationToken) => _inner.GetOrCreateAsync(key, factory, options, cancellationToken);
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken cancellationToken) => _inner.GetOrCreateAsync(key, state, factory, options, cancellationToken);
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default) => _inner.TryGetAsync<T>(key, version, cancellationToken);
         public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default) => _inner.InvalidateKeysAsync(keys, version, cancellationToken);
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken) => _inner.InvalidateTagsAsync(tags, cancellationToken);

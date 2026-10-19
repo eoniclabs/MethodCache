@@ -13,11 +13,11 @@ public class SqlServerServiceCollectionExtensionsTests
     private const string ConnectionString = "Server=localhost;Database=Cache;Integrated Security=true;TrustServerCertificate=true";
 
     [Fact]
-    public void AddMethodCacheSqlServer_RegistersCacheTablesAndBackplane()
+    public void UseSqlServer_RegistersCacheTablesAndBackplane()
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCacheSqlServer(ConnectionString);
+        services.AddMethodCache(mc => mc.UseSqlServer(ConnectionString));
         using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredKeyedService<IDistributedCache>("MethodCache").Should().BeOfType<SqlServerDistributedCache>();
@@ -26,13 +26,13 @@ public class SqlServerServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMethodCacheSqlServer_LeavesTheAppsDistributedCacheAlone()
+    public void UseSqlServer_LeavesTheAppsDistributedCacheAlone()
     {
         var appCache = NSubstitute.Substitute.For<IDistributedCache>();
         var services = new ServiceCollection();
         services.AddSingleton(appCache);
 
-        services.AddMethodCacheSqlServer(ConnectionString);
+        services.AddMethodCache(mc => mc.UseSqlServer(ConnectionString));
         using var provider = services.BuildServiceProvider();
 
         provider.GetRequiredService<IDistributedCache>().Should().BeSameAs(appCache);
@@ -40,16 +40,16 @@ public class SqlServerServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMethodCacheSqlServer_PassesTableSettingsToTheCache()
+    public void UseSqlServer_PassesTableSettingsToTheCache()
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCacheSqlServer(options =>
+        services.AddMethodCache(mc => mc.UseSqlServer(options =>
         {
             options.ConnectionString = ConnectionString;
             options.SchemaName = "cache";
             options.TableName = "Entries";
-        });
+        }));
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
@@ -61,16 +61,16 @@ public class SqlServerServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMethodCacheSqlServer_CanSkipTablesAndBackplane()
+    public void UseSqlServer_CanSkipTablesAndBackplane()
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCacheSqlServer(options =>
+        services.AddMethodCache(mc => mc.UseSqlServer(options =>
         {
             options.ConnectionString = ConnectionString;
             options.CreateTablesIfMissing = false;
             options.EnableBackplane = false;
-        });
+        }));
 
         using var provider = services.BuildServiceProvider();
         provider.GetKeyedService<IBackplane>("MethodCache").Should().BeNull();
@@ -78,11 +78,11 @@ public class SqlServerServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddMethodCacheSqlServer_ValidatesOptions()
+    public void UseSqlServer_ValidatesOptions()
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCacheSqlServer(_ => { });
+        services.AddMethodCache(mc => mc.UseSqlServer(_ => { }));
         using var provider = services.BuildServiceProvider();
         var act = () => provider.GetRequiredService<IOptions<SqlServerOptions>>().Value;
         act.Should().Throw<OptionsValidationException>();

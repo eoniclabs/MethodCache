@@ -44,6 +44,46 @@ public sealed class JsonPolicySourceTests
     }
 
     [Fact]
+    public void SlidingExpirationAndRefreshAhead_Off_TurnsThemOffForOneMethod()
+    {
+        var data = new Dictionary<string, string?>
+        {
+            ["MethodCache:Defaults:SlidingExpiration"] = "00:02:00",
+            ["MethodCache:Defaults:RefreshAhead"] = "00:00:30",
+            ["MethodCache:Services:Sample.Type.Pinned:Duration"] = "00:10:00",
+            ["MethodCache:Services:Sample.Type.Pinned:SlidingExpiration"] = "off",
+            ["MethodCache:Services:Sample.Type.Pinned:RefreshAhead"] = "OFF"
+        };
+
+        var services = new ServiceCollection();
+        services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
+        var pinned = services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Pinned").Policy;
+
+        Assert.Equal(TimeSpan.Zero, pinned.SlidingExpiration);
+        Assert.Equal(TimeSpan.Zero, pinned.RefreshAhead);
+    }
+
+    [Theory]
+    [InlineData("SlidingExpiration", "00:00:00")]
+    [InlineData("RefreshAhead", "-00:00:01")]
+    [InlineData("Duration", "off")]
+    public void ZeroOrNegative_IsRejected_WhereOffIsNotMeant(string setting, string value)
+    {
+        var data = new Dictionary<string, string?>
+        {
+            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:10:00",
+            [$"MethodCache:Services:Sample.Type.Method:{setting}"] = value
+        };
+
+        var services = new ServiceCollection();
+        Assert.ThrowsAny<Exception>(() =>
+        {
+            services.AddMethodCache(methodCache => methodCache.FromConfiguration(new ConfigurationBuilder().AddInMemoryCollection(data).Build()));
+            services.BuildServiceProvider().GetRequiredService<IPolicyRegistry>().GetPolicy("Sample.Type.Method");
+        });
+    }
+
+    [Fact]
     public void FailSafeSection_FillsWhatAMethodLeavesOpen_AndAMethodCanTurnItOff()
     {
         var data = new Dictionary<string, string?>

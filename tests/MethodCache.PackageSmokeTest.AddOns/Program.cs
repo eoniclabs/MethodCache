@@ -140,24 +140,24 @@ public static class DistributedCheck
         });
         if (backend == Backend.Redis)
         {
-            services.AddMethodCacheRedis(options =>
+            services.AddMethodCache(mc => mc.UseRedis(options =>
             {
                 options.Configuration = connection;
-            });
+            }));
         }
         else
         {
-            services.AddMethodCacheSqlServer(options =>
+            services.AddMethodCache(mc => mc.UseSqlServer(options =>
             {
                 options.ConnectionString = connection;
                 options.SchemaName = isolation;
                 options.BackplanePollingInterval = TimeSpan.FromMilliseconds(200);
-            });
+            }));
         }
 
         if (messagePack)
         {
-            services.AddMethodCacheMessagePack();
+            services.AddMethodCache(mc => mc.UseMessagePack());
         }
 
         return new Instance(services.BuildServiceProvider());

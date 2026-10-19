@@ -25,8 +25,8 @@ public class PolymorphicContextTests
         using var a = Node();
         using var b = Node();
         var value = new ContextPayload([new ContextDog { Name = "rex", Breed = "collie" }], new PrivateState(42));
-        await a.GetRequiredService<ICacheManager>().GetOrCreateAsync("context", (_, _) => ValueTask.FromResult(value));
-        var result = await b.GetRequiredService<ICacheManager>().GetOrCreateAsync<ContextPayload>("context", (_, _) => throw new InvalidOperationException("Expected L2"));
+        await a.GetRequiredService<ICacheManager>().GetOrCreateAsync("context", _ => ValueTask.FromResult(value));
+        var result = await b.GetRequiredService<ICacheManager>().GetOrCreateAsync<ContextPayload>("context", _ => throw new InvalidOperationException("Expected L2"));
         Assert.Equal("collie", Assert.IsType<ContextDog>(Assert.Single(result.Animals)).Breed);
         Assert.Equal(42, result.State.Secret);
     }
@@ -45,8 +45,8 @@ public class PolymorphicContextTests
         using var provider = services.BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheManager>();
         var options = new CacheEntryOptions.Builder().WithDistributed(false).Build();
-        Assert.Equal(7, await cache.GetOrCreateAsync("local", (_, _) => ValueTask.FromResult(7), options));
-        Assert.Equal(7, await cache.GetOrCreateAsync<int>("local", (_, _) => throw new InvalidOperationException("Expected L1"), options));
+        Assert.Equal(7, await cache.GetOrCreateAsync("local", _ => ValueTask.FromResult(7), options));
+        Assert.Equal(7, await cache.GetOrCreateAsync<int>("local", _ => throw new InvalidOperationException("Expected L1"), options));
         Assert.Equal(0, backend.Operations);
         Assert.Equal(0, serializer.Operations);
     }

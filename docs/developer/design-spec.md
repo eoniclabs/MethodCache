@@ -215,8 +215,8 @@ UseMessagePack och UseJson. Bekvämlighetsöverlagringar är uttryckliga; de än
   Explicit metod-Enabled=true vinner därför över grupp-default false även från ett lägre lager.
 - Tags är fortsatt additiva över lagren om inte ClearTags uttryckligen används.
 
-MethodCacheMemoryOptions behåller MaxItems, MaxHttpBytes, Weigher + SizeLimit, CacheNullValues,
-JitterMaxDuration och MaxExpiration. Weigher/SizeLimit gäller bara metodresultat och mäts i användarens
+MethodCacheMemoryOptions behåller MaxItems, MaxHttpBytes, Weigher + WeightLimit, CacheNullValues,
+JitterMaxDuration och MaxExpiration. Weigher/WeightLimit gäller bara metodresultat och mäts i användarens
 kostnadsenheter; det är inte ett automatiskt byte-estimat. HTTP har alltid separat byte-budget.
 DefaultExpiration ersätts av Defaults.WithDuration. Utan explicit default gäller fem minuter.
 TinyLFU är enda policy. FastPath/statistics/cleanup-switchar och serialiserande minnesestimat tas bort.
@@ -229,7 +229,7 @@ MaxExpiration är ett metodtak; det kapar inte HTTP:s freshness- eller stale-ret
 
 | ICacheManager | Retur och parametrar |
 |---|---|
-| GetOrCreateAsync | ValueTask med typat resultat; key, factory med CacheContext och token, immutable CacheEntryOptions eller null, caller-token sist. |
+| GetOrCreateAsync | ValueTask med typat resultat; key, state och en factory som får state och token (som HybridCache), immutable CacheEntryOptions eller null, caller-token sist. |
 | TryGetAsync | ValueTask med CacheLookupResult (Found och Value); logisk key, token och valfri icke-negativ version; samma NUL-framing som GetOrCreateAsync. Default/null/false/0 är giltiga hits. |
 | InvalidateKeysAsync | ValueTask med InvalidationResult; IEnumerable av logiska nycklar, token och valfri icke-negativ version. Samma NUL-framing som GetOrCreateAsync. |
 | InvalidateTagsAsync | ValueTask med InvalidationResult; IEnumerable av applikationstaggar och token. |

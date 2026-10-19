@@ -55,7 +55,7 @@ namespace MethodCache
 
         /// <summary>
         /// Gets or sets a sliding expiration as a TimeSpan string. Each read extends the entry by this much, but
-        /// never beyond <see cref="Duration"/>.
+        /// never beyond <see cref="Duration"/>. <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
@@ -67,6 +67,7 @@ namespace MethodCache
         /// <summary>
         /// Gets or sets a refresh-ahead window as a TimeSpan string. A read within this window before the entry
         /// expires returns the cached value and refreshes it in the background, so callers do not wait for the method.
+        /// <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
@@ -78,7 +79,7 @@ namespace MethodCache
         /// <summary>
         /// Gets or sets how long an expired value is kept and returned when calling the method again throws, as a
         /// TimeSpan string, or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
-        /// methods. Unset uses the group or the central setting (<c>config.FailSafe(...)</c>).
+        /// methods. Unset uses the group or the central setting (<c>config.WithFailSafe(...)</c>).
         /// </summary>
         /// <example>
         /// <code>
@@ -99,8 +100,8 @@ namespace MethodCache
         /// </example>
         public string? FailSafeTimeout { get; set; }
 
-        /// <summary>Gets or sets the positive delay before retrying a failed load, for example "30s".</summary>
-        public string? RetryAfter { get; set; }
+        /// <summary>Gets or sets how long a served fail-safe value is reused before the method is called again, for example "30s".</summary>
+        public string? FailSafeRetryAfter { get; set; }
 
         /// <summary>Gets or sets whether caching is enabled. Omission inherits the configured policy.</summary>
         public bool Enabled { get; set; } = true;

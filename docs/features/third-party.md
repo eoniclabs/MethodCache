@@ -98,8 +98,8 @@ Static methods and sealed classes work the same way: the wrapper calls them, and
 ```cs
 var rate = await cache.GetOrCreateAsync(
     $"fx:{from}:{to}",
-    async (ctx, ct) => await client.GetRateAsync(from, to),
-    o => o.WithDuration(TimeSpan.FromMinutes(1)).WithTags("fx"));
+    async ct => await client.GetRateAsync(from, to),
+    o => o.WithDuration(TimeSpan.FromMinutes(1)).AddTags("fx"));
 ```
 <!-- endSnippet -->
 

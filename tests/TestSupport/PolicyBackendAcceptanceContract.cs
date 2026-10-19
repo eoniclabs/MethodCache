@@ -41,7 +41,7 @@ public static partial class PolicyBackendContract
         var generated = await cache.TryGetAsync<int>(key, default);
         Assert.True(generated.Found);
         Assert.Equal(101, generated.Value);
-        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual-lookup", _ => new ValueTask<int>(42), options => options.WithTags("lookup-tag"));
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("manual-lookup", _ => new ValueTask<int>(42), options => options.AddTags("lookup-tag"));
         Assert.True((await cache.TryGetAsync<int>("manual-lookup", default)).Found);
         Assert.Contains("lookup-tag", second.GetRequiredService<ICacheAdministrator>().GetEntry("manual-lookup")!.Tags);
         await cache.InvalidateTagsAsync(["lookup-tag"], default);
@@ -68,12 +68,12 @@ public static partial class PolicyBackendContract
         await using var first = await create(a, builder =>
         {
             builder.FromConfiguration(duration, "MethodCache").FromConfiguration(tags, "MethodCache");
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithTags("a", "b"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.AddTags("a", "b"));
         });
         await using var second = await create(b, builder =>
         {
             builder.FromConfiguration(tags, "MethodCache").FromConfiguration(duration, "MethodCache");
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithTags("b", "a", "a"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.AddTags("b", "a", "a"));
         });
         await SilenceAsync(first); await SilenceAsync(second);
         Assert.Equal(Handle(first).Current.Identity, Handle(second).Current.Identity);
@@ -82,7 +82,7 @@ public static partial class PolicyBackendContract
         Assert.Equal(0, b.Calls); // actual shared backend reuse, not two coincidentally equal factories
         var before = Handle(first).Current;
         await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId,
-            o => o.WithTags("b", "a"), new RuntimeOverrideMetadata(Owner: "audit-only"));
+            o => o.AddTags("b", "a"), new RuntimeOverrideMetadata { Owner = "audit-only" });
         Assert.Same(before.Generation, Handle(first).Current.Generation);
         Assert.Equal(before.Identity, Handle(first).Current.Identity);
         Assert.False(Handle(first).Current.PrivateIdentity);
@@ -167,7 +167,7 @@ public static partial class PolicyBackendContract
         }
         };
         Action<MethodCacheBuilder>? configure = refresh
-            ? builder => builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithDuration(TimeSpan.FromSeconds(3)).RefreshAhead(TimeSpan.FromSeconds(1))) : null;
+            ? builder => builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithDuration(TimeSpan.FromSeconds(3)).WithRefreshAhead(TimeSpan.FromSeconds(1))) : null;
         await using var node = await create(origin, configure);
         await SilenceAsync(node);
         var reader = node.GetRequiredService<IOrigin>();
@@ -214,7 +214,7 @@ public static partial class PolicyBackendContract
         await using var node = await create(origin, builder =>
         {
             builder.Services.AddSingleton<ICacheManager>(custom);
-            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithVersion(2).WithDistributed(false).WithTags("native:{id}"));
+            builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithVersion(2).WithDistributed(false).AddTags("native:{id}"));
         });
         var reader = node.GetRequiredService<IOrigin>();
         Assert.Equal(101, await reader.ReadAsync(1)); Assert.Equal(102, await reader.ReadAsync(1));
@@ -279,17 +279,24 @@ public static partial class PolicyBackendContract
         Assert.Equal(201, await b.ReadAsync(1)); Assert.Equal(102, await a.ReadAsync(1));
     }
 
-    private sealed class RecordingManager : NoOpCacheManager
+    private sealed class RecordingManager : ICacheManager
     {
+        private readonly NoOpCacheManager _noOp = new();
         internal int Calls;
         internal CacheEntryOptions? LastOptions;
-        public override async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            CacheEntryOptions? options, CancellationToken cancellationToken)
+        public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
         {
             Calls++; LastOptions = options;
             await Task.Yield();
-            return await base.GetOrCreateAsync(key, factory, options, cancellationToken);
+            return await _noOp.GetOrCreateAsync(key, state, factory, options, cancellationToken);
         }
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateKeysAsync(keys, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateTagsAsync(tags, cancellationToken);
     }
 }
 

@@ -20,7 +20,7 @@ namespace MethodCache
         /// the old value is reused for <paramref name="retryAfter"/> (default 30 seconds) before trying again. A method
         /// or group can change it, and <c>[Cache(FailSafe = "off")]</c> turns it off for one method.
         /// </summary>
-        IFluentMethodCacheConfiguration FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null);
+        IFluentMethodCacheConfiguration WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null);
 
         /// <summary>
         /// Configures the methods of one service; these settings win over the method's <c>[Cache]</c> attribute.
@@ -29,7 +29,7 @@ namespace MethodCache
 
         /// <summary>
         /// Configures defaults for the methods in group <paramref name="name"/>, which they join with
-        /// <c>[Cache(Group = "name")]</c> or <see cref="IFluentMethodConfiguration.WithGroup"/>. Settings a method sets itself
+        /// <c>[Cache(Group = "name")]</c> or <see cref="IFluentMethodConfiguration{TResult}.WithGroup"/>. Settings a method sets itself
         /// win; these win over <see cref="DefaultPolicy"/>.
         /// </summary>
         IFluentGroupConfiguration ForGroup(string name);
@@ -41,20 +41,10 @@ namespace MethodCache
     /// </summary>
     internal interface IFluentServiceConfiguration<TService>
     {
-        /// <summary>Configures a method that returns nothing.</summary>
-        /// <param name="method">An expression calling the method, such as <c>s =&gt; s.Run(Any&lt;int&gt;.Value)</c>.</param>
-        /// <returns>The method's configuration.</returns>
-        IFluentMethodConfiguration Method(Expression<Action<TService>> method);
-
         /// <summary>Configures a synchronous method that returns <typeparamref name="TResult"/>.</summary>
         /// <param name="method">An expression calling the method, such as <c>s =&gt; s.Get(Any&lt;int&gt;.Value)</c>.</param>
         /// <returns>The method's configuration.</returns>
         IFluentMethodConfiguration<TResult> Method<TResult>(Expression<Func<TService, TResult>> method);
-
-        /// <summary>Configures a method that returns a <see cref="Task"/> without a result.</summary>
-        /// <param name="method">An expression calling the method, such as <c>s =&gt; s.RunAsync(Any&lt;int&gt;.Value)</c>.</param>
-        /// <returns>The method's configuration.</returns>
-        IFluentMethodConfiguration Method(Expression<Func<TService, Task>> method);
 
         /// <summary>Configures a method that returns <see cref="Task{TResult}"/>.</summary>
         /// <param name="method">An expression calling the method, such as <c>s =&gt; s.GetAsync(Any&lt;int&gt;.Value)</c>.</param>
@@ -68,40 +58,28 @@ namespace MethodCache
     }
 
     /// <summary>
-    /// Configures one cached method selected through <see cref="MethodCacheBuilder"/>.
+    /// Configures one cached method selected through <see cref="MethodCacheBuilder"/>, whose result type is
+    /// <typeparamref name="TResult"/> (for async methods, the awaited type).
     /// </summary>
-    public interface IFluentMethodConfiguration
+    public interface IFluentMethodConfiguration<TResult>
     {
         /// <summary>Sets the method's cache options, such as duration and tags.</summary>
         /// <param name="configure">Sets options on the builder.</param>
         /// <returns>This configuration, for chaining.</returns>
-        IFluentMethodConfiguration Configure(Action<CacheEntryOptions.Builder> configure);
+        IFluentMethodConfiguration<TResult> Configure(Action<CacheEntryOptions.Builder> configure);
         /// <summary>
         /// Puts the method in a group, so it picks up the defaults set with
         /// <see cref="MethodCacheBuilder.Group"/>.
         /// </summary>
         /// <param name="groupName">The group's name.</param>
         /// <returns>This configuration, for chaining.</returns>
-        IFluentMethodConfiguration WithGroup(string groupName);
+        IFluentMethodConfiguration<TResult> WithGroup(string groupName);
         /// <summary>
         /// Sets the method's version, which changes every key of the method so values cached by an earlier version are ignored.
         /// </summary>
         /// <param name="version">Zero or more.</param>
         /// <returns>This configuration, for chaining.</returns>
-        IFluentMethodConfiguration WithVersion(int version);
-    }
-
-    /// <summary>
-    /// Configures one method whose result type is <typeparamref name="TResult"/> (for async methods, the awaited type).
-    /// </summary>
-    public interface IFluentMethodConfiguration<TResult> : IFluentMethodConfiguration
-    {
-        /// <inheritdoc cref="IFluentMethodConfiguration.Configure"/>
-        new IFluentMethodConfiguration<TResult> Configure(Action<CacheEntryOptions.Builder> configure);
-        /// <inheritdoc cref="IFluentMethodConfiguration.WithGroup"/>
-        new IFluentMethodConfiguration<TResult> WithGroup(string groupName);
-        /// <inheritdoc cref="IFluentMethodConfiguration.WithVersion"/>
-        new IFluentMethodConfiguration<TResult> WithVersion(int version);
+        IFluentMethodConfiguration<TResult> WithVersion(int version);
 
         /// <summary>
         /// Stores a result only when <paramref name="predicate"/> returns true, e.g. <c>CacheWhen(r =&gt; r.Count &gt; 0)</c>.

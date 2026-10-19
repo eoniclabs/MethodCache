@@ -20,7 +20,7 @@ public class FluentMethodCacheConfigurationTests
     public void BuildMethodPolicies_KeepsDefaultsAndGroupsApartFromMethods()
     {
         var configuration = new FluentMethodCacheConfiguration();
-        configuration.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)).RefreshAhead(TimeSpan.FromSeconds(10)));
+        configuration.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)).WithRefreshAhead(TimeSpan.FromSeconds(10)));
         configuration.ForGroup("orders").Configure(o => o.WithSlidingExpiration(TimeSpan.FromMinutes(2)));
         configuration.ForService<IOrderService>()
             .Method(s => s.GetOrderAsync(default))

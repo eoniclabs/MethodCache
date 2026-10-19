@@ -69,10 +69,10 @@ Migrate one service at a time; both caches can run side by side.
 | `SetAbsoluteExpiration` | `Duration` |
 | `SetSlidingExpiration` | `SlidingExpiration`, capped by `Duration` |
 | `Remove(key)` | `[CacheInvalidate]` with tags, or `InvalidateKeysAsync` |
-| `Size` and `SizeLimit` | `Weigher` and `SizeLimit` ([Memory cache](features/memory-cache.md)) |
+| `Size` and `SizeLimit` | `Weigher` and `WeightLimit` ([Memory cache](features/memory-cache.md)) |
 | `Priority` | Not needed: W-TinyLFU keeps the entries that are read often |
 | `GetOrCreateAsync`, which may run the factory several times at once | Concurrent misses share one call |
-| A separate `IDistributedCache` | `AddMethodCacheRedis(...)`, with the memory cache kept in sync ([Distributed cache](features/distributed-cache.md)) |
+| A separate `IDistributedCache` | `AddMethodCache(mc => mc.UseRedis(...))`, with the memory cache kept in sync ([Distributed cache](features/distributed-cache.md)) |
 
 ## Differences to know
 

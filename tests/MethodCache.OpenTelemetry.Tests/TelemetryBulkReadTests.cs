@@ -51,13 +51,13 @@ public sealed class TelemetryBulkReadTests : IDisposable
     {
         var a = CreateNode();
         var b = CreateNode();
-        (await a.GetOrCreateAsync("stored", (_, _) => ValueTask.FromResult("A"), options => options.WithDuration(Duration)))
+        (await a.GetOrCreateAsync("stored", _ => ValueTask.FromResult("A"), options => options.WithDuration(Duration)))
             .Should().Be("A");
 
         var requested = new List<string>();
         var result = await b.GetOrCreateManyAsync<string>(
             new[] { "stored", "missing" },
-            (keys, _, _) =>
+            (keys, _) =>
             {
                 requested.AddRange(keys);
                 return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, _ => "from factory"));

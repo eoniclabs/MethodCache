@@ -37,7 +37,7 @@ namespace MethodCache.Core.Storage.Abstractions
         /// <summary>
         /// Gets statistics about the memory cache.
         /// </summary>
-        ValueTask<ICacheStats> GetStatsAsync();
+        ValueTask<CacheStats> GetStatsAsync();
 
         /// <summary>
         /// Removes multiple keys from the memory cache.

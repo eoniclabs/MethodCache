@@ -17,13 +17,13 @@ namespace MethodCache;
 /// <see cref="ICacheKeyProvider.CacheKeyPart"/>. An array or collection of such values (records and classes only when
 /// sealed) is written as <see cref="Sequence{T}"/> writes it, after its runtime type name when that differs from the
 /// declared type. Methods with other arguments, or a subclass of a declared record
-/// or class, use the registered <see cref="MethodCache.Extensibility.ICacheKeyGenerator"/>, which
-/// produces <c>[Assembly]{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
+/// or class, use a hash of the arguments instead:
+/// <c>[Assembly]{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
 /// </remarks>
 /// <example>
 /// <code>
 /// var key = MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUser), MethodCacheKeys.Part(42));
-/// await cacheManager.InvalidateByKeysAsync(key);
+/// await cacheManager.InvalidateKeyAsync(key);
 /// </code>
 /// </example>
 public static class MethodCacheKeys

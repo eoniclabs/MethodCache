@@ -2,6 +2,7 @@ using FluentAssertions;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -634,7 +635,7 @@ public class InMemoryCacheEngineTests
         var manager = CreateManager(o =>
         {
             o.Weigher = (_, value) => ((string)value!).Length;
-            o.MaxMemoryBytes = 1000;
+            o.WeightLimit = 1000;
         });
 
         for (var i = 0; i < 100; i++)
@@ -653,7 +654,7 @@ public class InMemoryCacheEngineTests
         var manager = CreateManager(o =>
         {
             o.Weigher = (_, value) => ((string)value!).Length;
-            o.MaxMemoryBytes = 1000;
+            o.WeightLimit = 1000;
         });
 
         for (var i = 0; i < 5; i++)
@@ -668,6 +669,64 @@ public class InMemoryCacheEngineTests
         {
             (await manager.ExistsAsync($"small{i}")).Should().BeTrue();
         }
+    }
+
+    [Theory]
+    [InlineData((int)MemoryCacheEvictionPolicy.TinyLfu)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Lru)]
+    [InlineData((int)MemoryCacheEvictionPolicy.Fifo)]
+    public async Task MaxItems_StillApplies_WithAWeigher(int evictionValue)
+    {
+        var manager = CreateManager(o =>
+        {
+            o.EvictionPolicy = (MemoryCacheEvictionPolicy)evictionValue;
+            o.Weigher = static (_, _) => 1;
+            o.WeightLimit = 1_000_000;
+            o.MaxItems = 2;
+        });
+
+        for (var i = 0; i < 5; i++)
+        {
+            await manager.SetAsync($"k{i}", i, OneMinute);
+        }
+
+        var stats = await manager.GetStatsAsync();
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(2);
+        stats.TotalWeight.Should().BeLessThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public async Task WeightLimit_StillApplies_WhenMaxItemsIsLarger()
+    {
+        var manager = CreateManager(o =>
+        {
+            o.Weigher = static (_, _) => 100;
+            o.WeightLimit = 300;
+            o.MaxItems = 1000;
+        });
+
+        for (var i = 0; i < 10; i++)
+        {
+            await manager.SetAsync($"k{i}", i, OneMinute);
+        }
+
+        var stats = await manager.GetStatsAsync();
+        stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(3);
+        stats.TotalWeight.Should().BeLessThanOrEqualTo(300);
+    }
+
+    [Fact]
+    public void WeightLimit_WithoutAWeigher_FailsInsteadOfBeingIgnored()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => CreateManager(o => o.WeightLimit = 1000));
+        Assert.Contains("Weigher", error.Message, StringComparison.Ordinal);
+
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.Memory(o => o.WeightLimit = 1000));
+        using var provider = services.BuildServiceProvider();
+        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<ICacheManager>());
+        Assert.Throws<InvalidOperationException>(() =>
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MethodCache.Core.PolicyPipeline.Resolution.PolicyStartupValidation>>().Value);
     }
 
     [Fact]

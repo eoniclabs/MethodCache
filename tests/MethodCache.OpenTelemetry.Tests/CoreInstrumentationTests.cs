@@ -34,8 +34,8 @@ public class CoreInstrumentationTests
         await using var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
         Assert.IsType<InMemoryCacheManager>(manager);
-        await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(7));
-        await manager.GetOrCreateAsync<int>("key", (_, _) => throw new Exception("must hit"));
+        await manager.GetOrCreateAsync("key", _ => ValueTask.FromResult(7));
+        await manager.GetOrCreateAsync<int>("key", _ => throw new Exception("must hit"));
         Assert.Equal("MethodCache.load", Assert.Single(exported).OperationName);
         var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();
         Assert.Equal(1, stats.LocalMethodEntries);
@@ -56,7 +56,7 @@ public class CoreInstrumentationTests
         using var provider = services.BuildServiceProvider();
         var exported = new List<Metric>();
         using var sdk = Sdk.CreateMeterProviderBuilder().AddMethodCacheInstrumentation().AddInMemoryExporter(exported).Build();
-        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", (_, _) =>
+        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", _ =>
         {
             clock.Advance(TimeSpan.FromTicks(ticks));
             return ValueTask.FromResult(7);
@@ -83,9 +83,9 @@ public class CoreInstrumentationTests
         using var tracer = Sdk.CreateTracerProviderBuilder().AddMethodCacheInstrumentation().AddInMemoryExporter(spans).Build();
         using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
-        await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(7));
-        for (var i = 0; i < 100; i++) await manager.GetOrCreateAsync<int>("key", (_, _) => throw new Exception("hit"));
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await manager.GetOrCreateAsync<int>("failed", (_, _) => throw new InvalidOperationException("secret-error")));
+        await manager.GetOrCreateAsync("key", _ => ValueTask.FromResult(7));
+        for (var i = 0; i < 100; i++) await manager.GetOrCreateAsync<int>("key", _ => throw new Exception("hit"));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await manager.GetOrCreateAsync<int>("failed", _ => throw new InvalidOperationException("secret-error")));
         Assert.True(meter.ForceFlush());
         var metric = Assert.Single(exported, metric => metric.Name == "methodcache.requests");
         var outcomes = new Dictionary<string, long>();
@@ -123,7 +123,7 @@ public class CoreInstrumentationTests
         using var request = new Activity("request").AddTag("http.url", canary).Start();
         request.ActivityTraceFlags = ActivityTraceFlags.Recorded;
         var manager = provider.GetRequiredService<ICacheManager>();
-        await manager.GetOrCreateAsync(canary, (_, _) => ValueTask.FromResult(7), b => b.WithTags(canary));
+        await manager.GetOrCreateAsync(canary, _ => ValueTask.FromResult(7), b => b.AddTags(canary));
         await manager.InvalidateKeysAsync([canary]);
         await manager.InvalidateTagsAsync([canary]);
         Assert.Equal(3, spans.Count);
@@ -160,8 +160,8 @@ public class CoreInstrumentationTests
         services.Configure<MethodCacheMemoryOptions>(o => o.EnableFastPath = fastPath);
         using var provider = services.BuildServiceProvider();
         var manager = provider.GetRequiredService<ICacheManager>();
-        await manager.GetOrCreateAsync<string?>("null", (_, _) => ValueTask.FromResult<string?>(null), b => b.WithDuration(TimeSpan.FromSeconds(10)).RefreshAhead(TimeSpan.FromSeconds(2)));
-        await manager.GetOrCreateAsync<int?>("nullable", (_, _) => ValueTask.FromResult<int?>(null));
+        await manager.GetOrCreateAsync<string?>("null", _ => ValueTask.FromResult<string?>(null), b => b.WithDuration(TimeSpan.FromSeconds(10)).WithRefreshAhead(TimeSpan.FromSeconds(2)));
+        await manager.GetOrCreateAsync<int?>("nullable", _ => ValueTask.FromResult<int?>(null));
         if (refreshDue) clock.Advance(TimeSpan.FromSeconds(9));
         var exported = new List<Metric>();
         using var sdk = Sdk.CreateMeterProviderBuilder().AddMethodCacheInstrumentation().AddInMemoryExporter(exported).Build();
@@ -188,7 +188,7 @@ public class CoreInstrumentationTests
     public async Task LateSubscriber_ObservesCurrentLocalEntriesAndWeight()
     {
         using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
-        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(new byte[100_000]));
+        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", _ => ValueTask.FromResult(new byte[100_000]));
         var exported = new List<Metric>();
         using var sdk = Sdk.CreateMeterProviderBuilder().AddMethodCacheInstrumentation().AddInMemoryExporter(exported).Build();
         Assert.True(sdk.ForceFlush());

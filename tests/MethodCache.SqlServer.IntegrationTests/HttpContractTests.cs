@@ -14,7 +14,7 @@ public class HttpContractTests(SqlServerFixture sql)
         async Task<ServiceProvider> Create(HttpNativeContract.Origin origin, byte format, bool http)
         {
             var services = new ServiceCollection();
-            services.AddMethodCacheSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; });
+            services.AddMethodCache(mc => mc.UseSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; }));
             services.Configure<DistributedCacheOptions>(o => { o.ClockSkewTolerance = TimeSpan.Zero; o.OperationTimeout = TimeSpan.FromSeconds(5); });
             HttpNativeContract.Configure(services, origin, format, http);
             var provider = services.BuildServiceProvider(); var hosted = provider.GetServices<IHostedService>().ToArray();

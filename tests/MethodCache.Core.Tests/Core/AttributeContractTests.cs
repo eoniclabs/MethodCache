@@ -10,7 +10,7 @@ public class AttributeContractTests
     public interface ISettings
     {
         [Cache] int Inherited();
-        [Cache(Enabled = false, Distributed = false, Version = 0, FailSafe = " off ", RetryAfter = "2s")]
+        [Cache(Enabled = false, Distributed = false, Version = 0, FailSafe = " off ", FailSafeRetryAfter = "2s")]
         int Explicit();
         [Cache(Enabled = true, Distributed = true)] int Enabled();
     }

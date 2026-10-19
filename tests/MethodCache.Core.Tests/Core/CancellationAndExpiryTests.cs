@@ -213,7 +213,7 @@ public class CancellationAndExpiryTests
         using var cts = new CancellationTokenSource();
         var calls = 0;
 
-        async ValueTask<string> Factory(CacheContext _, CancellationToken ct)
+        async ValueTask<string> Factory(CancellationToken ct)
         {
             // The first load only ends through A's cancellation, so a slow machine cannot let it finish first
             var first = Interlocked.Increment(ref calls) == 1;
@@ -236,7 +236,7 @@ public class CancellationAndExpiryTests
     {
         var manager = CreateManager();
         var calls = 0;
-        ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> keys, CacheContext _, CancellationToken __)
+        ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> keys, CancellationToken _)
         {
             calls++;
             return new ValueTask<IDictionary<string, string>>(keys.ToDictionary(k => k, k => "v" + k));
@@ -253,7 +253,7 @@ public class CancellationAndExpiryTests
     public async Task FluentTryGet_FindsAnEntryStoredWithItsVersion()
     {
         var manager = CreateManager();
-        await manager.GetOrCreateAsync<string>("k", (_, _) => new ValueTask<string>("v"), b => b.WithVersion(2));
+        await manager.GetOrCreateAsync<string>("k", _ => new ValueTask<string>("v"), b => b.WithVersion(2));
 
         (await manager.TryGetAsync<string>("k", version: 2)).Found.Should().BeTrue();
         (await manager.TryGetAsync<string>("k", version: 3)).Found.Should().BeFalse();
@@ -265,9 +265,9 @@ public class CancellationAndExpiryTests
     {
         var manager = CreateManager();
         var calls = 0;
-        await manager.GetOrCreateAsync<string>("k", (_, _) => new ValueTask<string>("v"));
+        await manager.GetOrCreateAsync<string>("k", _ => new ValueTask<string>("v"));
 
-        var value = await manager.GetOrCreateAsync<string>("k", (_, _) => { calls++; return new ValueTask<string>("other"); });
+        var value = await manager.GetOrCreateAsync<string>("k", _ => { calls++; return new ValueTask<string>("other"); });
 
         value.Should().Be("v");
         calls.Should().Be(0);

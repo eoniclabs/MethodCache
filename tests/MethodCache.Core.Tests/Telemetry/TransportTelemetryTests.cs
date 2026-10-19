@@ -14,11 +14,11 @@ public class TransportTelemetryTests
         using var provider = Node(new MethodCache.TestSupport.AtomicTestCache());
         using var metrics = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateAsync("user:secret-key", (_, _) => ValueTask.FromResult(7));
+        await cache.GetOrCreateAsync("user:secret-key", _ => ValueTask.FromResult(7));
         var count = metrics.Distributed.Count;
         Assert.True(count >= 3);
         Assert.Contains(metrics.Distributed, row => row.Operation == "set");
-        Assert.Equal(7, await cache.GetOrCreateAsync<int>("user:secret-key", (_, _) => throw new InvalidOperationException("Expected hit")));
+        Assert.Equal(7, await cache.GetOrCreateAsync<int>("user:secret-key", _ => throw new InvalidOperationException("Expected hit")));
         Assert.Equal(count, metrics.Distributed.Count);
         await cache.InvalidateTagsAsync(["user:secret-tag"]);
         Assert.Contains(metrics.Distributed, row => row.Operation == "invalidate");

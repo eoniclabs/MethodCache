@@ -109,8 +109,7 @@ namespace Docs.Readme
         public static void Distributed(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-distributed
-            builder.Services.AddMethodCache();
-            builder.Services.AddMethodCacheRedis("localhost:6379");       // or AddMethodCacheSqlServer(connectionString)
+            builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));       // or mc.UseSqlServer(connectionString)
             // end-snippet
         }
 

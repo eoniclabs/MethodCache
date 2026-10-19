@@ -57,9 +57,13 @@ internal sealed class RuntimePolicyStore : IDisposable
     {
         RemoveExpiredPolicies();
         lock (_changesSync)
-            return _policies.Select(pair => new RuntimeOverride(pair.Key,
-                CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromPolicy(pair.Key, pair.Value.Policy, pair.Value.Fields), preparedKey: false),
-                pair.Value.Timestamp, pair.Value.Metadata)).ToArray();
+            return _policies.Select(pair => new RuntimeOverride
+            {
+                MethodId = pair.Key,
+                Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromPolicy(pair.Key, pair.Value.Policy, pair.Value.Fields), preparedKey: false),
+                UpdatedAt = pair.Value.Timestamp,
+                Metadata = pair.Value.Metadata
+            }).ToArray();
     }
 
     public IReadOnlyCollection<PolicySnapshot> GetSnapshots() => CaptureSnapshots().Snapshots;

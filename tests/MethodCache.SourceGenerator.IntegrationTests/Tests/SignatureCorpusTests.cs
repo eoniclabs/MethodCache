@@ -525,7 +525,6 @@ public class SignatureCorpusTests
         var source = $$"""
             using System.Threading.Tasks;
             using MethodCache;
-            using MethodCache.Extensibility;
             using Microsoft.Extensions.DependencyInjection;
             namespace Corpus {
                 public interface ISvc { [Cache] int Get(int id); [CacheInvalidate] {{returnType}} Update(ref int value); }
@@ -533,9 +532,13 @@ public class SignatureCorpusTests
                     public int Get(int id) => id;
                     public {{returnType}} Update(ref int value) { value++; return {{result}}; }
                 }
-                public class CountingManager : NoOpCacheManager, ICacheManager {
+                public class CountingManager : ICacheManager {
+                    private readonly NoOpCacheManager _inner = new();
                     public int Calls;
-                    public override ValueTask<InvalidationResult> InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string> tags, System.Threading.CancellationToken token) { Calls++; return base.InvalidateTagsAsync(tags, token); }
+                    public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, System.Func<TState, System.Threading.CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options = null, System.Threading.CancellationToken token = default) => _inner.GetOrCreateAsync(key, state, factory, options, token);
+                    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, System.Threading.CancellationToken token = default) => _inner.TryGetAsync<T>(key, version, token);
+                    public ValueTask<InvalidationResult> InvalidateKeysAsync(System.Collections.Generic.IEnumerable<string> keys, int? version = null, System.Threading.CancellationToken token = default) => _inner.InvalidateKeysAsync(keys, version, token);
+                    public ValueTask<InvalidationResult> InvalidateTagsAsync(System.Collections.Generic.IEnumerable<string> tags, System.Threading.CancellationToken token = default) { Calls++; return _inner.InvalidateTagsAsync(tags, token); }
                 }
                 public static class Scenario {
                     public static async Task<int> RunAsync() {
@@ -726,12 +729,12 @@ public class SignatureCorpusTests
             public interface ISvc { [Cache(Tags = new[] { "attribute:{a}" })] Task<int> Get(int a, int A); }
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:2\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{A}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.AddTags(\"runtime:{A}\")));"),
         ["runtime tags retain ambiguous placeholders"] = new("""
             public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
             public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.WithTags(\"runtime:{NAME}\")));"),
+            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.AddTags(\"runtime:{NAME}\")));"),
 
         ["application types shadow framework and cache infrastructure"] = new("""
             public class Task { }

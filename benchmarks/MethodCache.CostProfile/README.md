@@ -23,6 +23,10 @@ The script checks out `<base-ref>` in a temporary worktree, copies this profile 
 sides run exactly the same cases, builds both and runs `compare.py`. Without the two variables the Redis and SQL
 Server cases are skipped. Results and `report.md` go to `artifacts/cost-profile` (`COST_PROFILE_OUT`).
 
+A base from before the 1.0 API (such as `f43854d`) can't compile `DesignWorkloadBenchmarks.cs`, so it gets
+`pre-1.0-api/DesignWorkloadBenchmarks.cs.txt`: the same workloads written with `AddMethodCacheRedis` and
+`(context, ct)` factories. A change to the workloads in `DesignWorkloadBenchmarks.cs` goes into that copy too.
+
 The gate fails when a case, compared with the base,
 
 - sends more Redis or SQL commands per operation,

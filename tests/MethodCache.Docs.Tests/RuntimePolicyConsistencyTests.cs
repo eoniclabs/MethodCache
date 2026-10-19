@@ -27,7 +27,7 @@ public class RuntimePolicyConsistencyTests
         start.SetResult();
         await Task.WhenAll(updates);
         var stored = (await runtime.GetOverridesAsync()).Single(m => m.MethodId == method);
-        Assert.Equal(stored.Options.Duration, admin.GetMethods().Single(m => m.MethodId == method).Duration);
+        Assert.Equal(stored.Options.Duration, admin.GetMethods().Single(m => m.MethodId == method).Options.Duration);
     }
     public interface IConcurrentReader { [Cache] int Read(); }
     public sealed class ConcurrentReader : IConcurrentReader { public int Read() => 42; }

@@ -23,8 +23,8 @@ namespace Docs.Manual
         public ValueTask<Order> GetAsync(int id, CancellationToken ct = default) =>
             cache.GetOrCreateAsync(
                 $"order:{id}",
-                async (ctx, token) => await orders.GetAsync(id, token),
-                o => o.WithDuration(TimeSpan.FromMinutes(30)).WithTags("orders", $"order:{id}"),
+                async token => await orders.GetAsync(id, token),
+                o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{id}"),
                 cancellationToken: ct);
     }
     // end-snippet
@@ -36,11 +36,11 @@ namespace Docs.Manual
             // begin-snippet: manual-options
             var list = await cache.GetOrCreateAsync(
                 $"orders:{customerId}:{status}",
-                async (ctx, ct) => await orders.ListAsync(customerId, status, ct),
+                async ct => await orders.ListAsync(customerId, status, ct),
                 o => o.WithDuration(TimeSpan.FromMinutes(30))
                       .WithSlidingExpiration(TimeSpan.FromMinutes(10))
-                      .RefreshAhead(TimeSpan.FromMinutes(5))
-                      .WithTags("orders", $"customer:{customerId}")
+                      .WithRefreshAhead(TimeSpan.FromMinutes(5))
+                      .AddTags("orders", $"customer:{customerId}")
                       .WithVersion(2)
                       .WithEnabled(customerId > 0));   // skip the cache when false
             // end-snippet
@@ -62,7 +62,7 @@ namespace Docs.Manual
             // begin-snippet: manual-many
             var users = await cache.GetOrCreateManyAsync<User>(
                 userIds.Select(id => $"user:{id}"),
-                async (missingKeys, ctx, ct) =>
+                async (missingKeys, ct) =>
                 {
                     var ids = missingKeys.Select(k => int.Parse(k["user:".Length..])).ToList();
                     var loaded = await repository.GetUsersAsync(ids, ct);   // one query for all misses

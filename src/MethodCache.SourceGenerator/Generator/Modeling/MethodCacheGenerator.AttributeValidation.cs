@@ -6,6 +6,9 @@ namespace MethodCache.SourceGenerator
 {
     public sealed partial class MethodCacheGenerator
     {
+        // These settings turn an inherited feature off for one method with "off"
+        private static bool AllowsOff(string setting) => setting is "FailSafe" or "SlidingExpiration" or "RefreshAhead";
+
         private static List<DiagnosticInfo> ValidateCacheAttribute(AttributeData attribute, Location? fallback)
         {
             var diagnostics = new List<DiagnosticInfo>();
@@ -19,8 +22,8 @@ namespace MethodCache.SourceGenerator
                     case "RefreshAhead":
                     case "FailSafe":
                     case "FailSafeTimeout":
-                    case "RetryAfter":
-                        if (argument.Value.Value is not string text || !MethodCache.Internal.DurationParser.TryParse(text, argument.Key == "FailSafe", out _))
+                    case "FailSafeRetryAfter":
+                        if (argument.Value.Value is not string text || !MethodCache.Internal.DurationParser.TryParse(text, AllowsOff(argument.Key), out _))
                             diagnostics.Add(DiagnosticInfo.Create(Diagnostics.InvalidDuration, location, argument.Key, argument.Value.Value?.ToString() ?? "null"));
                         break;
                     case "Version":

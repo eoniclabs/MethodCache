@@ -34,7 +34,7 @@ namespace Docs.MemoryCache
             // begin-snippet: memory-weigher
             builder.Services.Configure<MethodCacheMemoryOptions>(o =>
             {
-                o.SizeLimit = 256 * 1024 * 1024;   // bound the cache by size instead of by count
+                o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
                 o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
             });
             // end-snippet

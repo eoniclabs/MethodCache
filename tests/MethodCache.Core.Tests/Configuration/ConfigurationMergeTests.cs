@@ -88,7 +88,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         registry.GetPolicy(Id);
 
         await configurator.UpsertAsync(Id, b => b.WithDuration(TimeSpan.FromMinutes(1)),
-            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: time.GetUtcNow().AddMilliseconds(100)));
+            new RuntimeOverrideMetadata { Owner = "ops", ExpiresAt = time.GetUtcNow().AddMilliseconds(100) });
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(Id).Policy.Duration);
 
         time.Advance(TimeSpan.FromMilliseconds(99));
@@ -109,7 +109,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddMethodCache(c =>
         {
             c.Group("g", o => o.WithDuration(TimeSpan.FromMinutes(10)));
-            c.Method((IConfigMergeService x) => x.Get(0)).WithGroup("g").Configure(o => o.WithTags("t1"));
+            c.Method((IConfigMergeService x) => x.Get(0)).WithGroup("g").Configure(o => o.AddTags("t1"));
         });
         return services.BuildServiceProvider();
     }
@@ -124,7 +124,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         if (resolveFirst) registry.GetPolicy(Id);
 
         await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.WithVersion(2),
-            new RuntimeOverrideMetadata(Owner: "ops", Reason: "incident"));
+            new RuntimeOverrideMetadata { Owner = "ops", Reason = "incident" });
 
         var policy = registry.GetPolicy(Id).Policy;
         output.WriteLine($"resolveFirst={resolveFirst}: duration={policy.Duration}, group={(policy.Metadata.TryGetValue("group", out var g) ? g : "<lost>")}");
@@ -156,7 +156,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var registry = sp.GetRequiredService<IPolicyRegistry>();
         if (resolveFirst) registry.GetPolicy(Id);
 
-        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.WithTags("t2", "t1"));
+        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.AddTags("t2", "t1"));
 
         Assert.Equal(new[] { "t2", "t1" }, registry.GetPolicy(Id).Policy.Tags);
     }
@@ -170,7 +170,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var registry = sp.GetRequiredService<IPolicyRegistry>();
         if (resolveFirst) registry.GetPolicy(Id);
 
-        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.ClearTags().WithTags("t2"));
+        await sp.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(Id, b => b.ClearTags().AddTags("t2"));
 
         Assert.Equal(new[] { "t2" }, registry.GetPolicy(Id).Policy.Tags);
     }
@@ -182,7 +182,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         var services = new ServiceCollection();
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-        services.AddMethodCache(c => c.Defaults(o => o.WithTags("from-second-call")));
+        services.AddMethodCache(c => c.Defaults(o => o.AddTags("from-second-call")));
         services.AddMethodCache(c => c.Method((IConfigMergeService x) => x.Get(0)).WithVersion(1));
         await using var sp = services.BuildServiceProvider();
 

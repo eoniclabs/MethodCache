@@ -14,7 +14,7 @@ public class FourMethodManagerTests
         var services = new ServiceCollection();
         services.AddSingleton<ICacheManager>(custom);
         services.AddSingleton<IReader>(origin);
-        services.AddMethodCache(b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.WithDistributed(false).WithTags("flag:{id}")));
+        services.AddMethodCache(b => b.Method((IReader r) => r.ReadAsync(0)).Configure(o => o.WithDistributed(false).AddTags("flag:{id}")));
         await using var provider = services.BuildServiceProvider();
         var reader = provider.GetRequiredService<IReader>();
         Assert.Equal(1, await reader.ReadAsync(1));
@@ -35,7 +35,7 @@ public class FourMethodManagerTests
     {
         ICacheManager custom = new FourMethodManager();
         var options = new CacheEntryOptions.Builder().WithVersion(4).CacheWhen<int>(value => value > 0).Build();
-        Assert.Equal(1, await custom.GetOrCreateAsync("manual", (context, _) => { Assert.Equal("manual", context.Key); return ValueTask.FromResult(1); }, options));
+        Assert.Equal(1, await custom.GetOrCreateAsync("manual", _ => ValueTask.FromResult(1), options));
         Assert.Equal(1, (await custom.TryGetAsync<int>("manual", version: 4)).Value);
         Assert.False((await custom.TryGetAsync<int>("manual")).Found);
         await custom.InvalidateKeyAsync("manual", version: 4);
@@ -52,7 +52,7 @@ public class FourMethodManagerTests
         var wrapper = new PublicForwarder(inner);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var candidates = new TaskCompletionSource<IDictionary<string, int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var bulk = wrapper.GetOrCreateManyAsync<int>(["bulk", "bulk"], (missing, _, _) =>
+        var bulk = wrapper.GetOrCreateManyAsync<int>(["bulk", "bulk"], (missing, _) =>
         {
             Assert.Equal(new[] { "bulk" }, missing);
             started.SetResult();
@@ -71,19 +71,26 @@ public class FourMethodManagerTests
     {
         var manager = new SynchronouslyFailingManager();
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.GetOrCreateManyAsync<int>(["first", "second"],
-            (_, _, _) => throw new Xunit.Sdk.XunitException("The bulk factory must not run.")).AsTask());
+            (_, _) => throw new Xunit.Sdk.XunitException("The bulk factory must not run.")).AsTask());
         Assert.NotNull(manager.FirstLoad);
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.FirstLoad!.WaitAsync(TimeSpan.FromSeconds(5)));
     }
 
-    private sealed class SynchronouslyFailingManager : NoOpCacheManager
+    private sealed class SynchronouslyFailingManager : ICacheManager
     {
+        private readonly NoOpCacheManager _noOp = new();
         public Task? FirstLoad;
-        public override ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            CacheEntryOptions? options, CancellationToken cancellationToken)
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateKeysAsync(keys, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateTagsAsync(tags, cancellationToken);
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
         {
             if (key == "second") throw new InvalidOperationException("Manager rejected the second load.");
-            var load = factory(new CacheContext(key), cancellationToken).AsTask();
+            var load = factory(state, cancellationToken).AsTask();
             FirstLoad = load;
             return new(load);
         }
@@ -92,11 +99,11 @@ public class FourMethodManagerTests
     private sealed class PublicForwarder(ICacheManager inner) : ICacheManager
     {
         public int Calls;
-        public async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
         {
             Calls++;
             await Task.Yield();
-            return await inner.GetOrCreateAsync(key, factory, options, token);
+            return await inner.GetOrCreateAsync(key, state, factory, options, token);
         }
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => inner.TryGetAsync<T>(key, version, token);
         public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default) => inner.InvalidateKeysAsync(keys, version, token);
@@ -122,7 +129,7 @@ public class FourMethodManagerTests
         private readonly Dictionary<string, object?> _values = new(StringComparer.Ordinal);
         public int Calls;
         public CacheEntryOptions? LastOptions;
-        public async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+        public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
             CacheEntryOptions? options, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -130,7 +137,7 @@ public class FourMethodManagerTests
             options ??= new CacheEntryOptions.Builder().Build();
             var storedKey = options.GetCacheKey(key);
             if (options.Enabled != false && _values.TryGetValue(storedKey, out var stored) && options.CanCache((T)stored!)) return (T)stored!;
-            var value = await factory(new CacheContext(key), cancellationToken);
+            var value = await factory(state, cancellationToken);
             if (options.CanCache(value)) _values[storedKey] = value;
             return value;
         }

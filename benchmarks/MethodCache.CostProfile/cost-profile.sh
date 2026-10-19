@@ -45,6 +45,12 @@ for file in Comparison/GeneratedContractBenchmarks.cs Microbenchmarks/DesignWork
   mkdir -p "$(dirname "$base_tree/benchmarks/MethodCache.Benchmarks/$file")"
   cp "$root/benchmarks/MethodCache.Benchmarks/$file" "$base_tree/benchmarks/MethodCache.Benchmarks/$file"
 done
+# A base from before the 1.0 API (no state factory on ICacheManager, AddMethodCacheRedis instead of UseRedis) can't
+# compile this harness; it gets the same workloads written in its own API
+if ! grep -q "TState state" "$base_tree/src/MethodCache.Core/Runtime/ICacheManager.cs"; then
+  cp "$here/pre-1.0-api/DesignWorkloadBenchmarks.cs.txt" \
+    "$base_tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs"
+fi
 
 for side in base head; do
   tree=$root

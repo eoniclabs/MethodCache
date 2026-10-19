@@ -14,10 +14,10 @@ public class ManualLookupReviewTests
     {
         var time = new FakeTimeProvider();
         using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = fastPath, EnableBackgroundCleanup = false }), time);
-        await manager.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(7), options =>
+        await manager.GetOrCreateAsync("key", _ => ValueTask.FromResult(7), options =>
         {
             options.WithDuration(TimeSpan.FromSeconds(60));
-            if (refreshDue) options.RefreshAhead(TimeSpan.FromSeconds(10));
+            if (refreshDue) options.WithRefreshAhead(TimeSpan.FromSeconds(10));
         });
         time.Advance(TimeSpan.FromSeconds(51));
         Assert.Equal(7, await manager.GetAsync<int>("key"));
@@ -33,7 +33,7 @@ public class ManualLookupReviewTests
     {
         var time = new FakeTimeProvider();
         using var manager = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableFastPath = false, CacheNullValues = true, EnableBackgroundCleanup = false }), time);
-        await manager.GetOrCreateAsync<string?>("null", (_, _) => ValueTask.FromResult<string?>(null), options =>
+        await manager.GetOrCreateAsync<string?>("null", _ => ValueTask.FromResult<string?>(null), options =>
         {
             options.WithDuration(TimeSpan.FromMinutes(1));
             if (version.HasValue) options.WithVersion(version.Value);

@@ -17,8 +17,8 @@ setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in 
 
 Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
 and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
-lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `WithTags`
-(`o => o.ClearTags().WithTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
+lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `AddTags`
+(`o => o.ClearTags().AddTags("orders")`), or set `"ClearTags": true` next to `Tags` for a method in
 `appsettings.json`. The tags of the lower layers and of the defaults are then dropped, and an entry without them is
 no longer removed by a `[CacheInvalidate]` that lists them.
 
@@ -39,7 +39,7 @@ builder.Services.AddMethodCache(config =>
 
     // One method
     config.Method((IUserService s) => s.GetProfileAsync(Any<int>.Value))
-          .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).RefreshAhead(TimeSpan.FromMinutes(5)));
+          .Configure(o => o.WithDuration(TimeSpan.FromHours(2)).WithRefreshAhead(TimeSpan.FromMinutes(5)));
 });
 ```
 <!-- endSnippet -->
@@ -92,7 +92,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   are named as reflection sees them: a tuple is `System.ValueTuple<int, string>` (element names dropped), `nint` is
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)).
-- Settings: `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe` (a time span or `"off"`), `FailSafeTimeout`,
+- Settings: `Duration`, `SlidingExpiration`, `RefreshAhead` and `FailSafe` (each but `Duration` a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Enabled`, `Distributed`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
   method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
   diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
@@ -136,7 +136,7 @@ var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 await configurator.UpsertAsync<IOrdersService, Order>(
     s => s.GetAsync(Any<int>.Value),
     o => o.WithDuration(TimeSpan.FromMinutes(2)),
-    new RuntimeOverrideMetadata(Owner: "ops", Reason: "Incident 4211", ExpiresAt: DateTimeOffset.UtcNow.AddHours(4)));
+    new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(4) });
 
 // By method id, for example from an admin form
 await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}]Docs.Configuration.IUserService.GetProfileAsync",
@@ -180,8 +180,8 @@ var diagnostics = app.Services.GetRequiredService<ICacheAdministrator>();
 
 foreach (var report in diagnostics.GetMethods())
 {
-    var sources = string.Join(", ", report.Sources);
-    Console.WriteLine($"{report.MethodId}: Duration={report.Duration}, from {sources}");
+    var sources = string.Join(", ", report.SettingSources.Values.Distinct());
+    Console.WriteLine($"{report.MethodId}: Duration={report.Options.Duration}, from {sources}");
 }
 ```
 <!-- endSnippet -->
@@ -194,13 +194,15 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 
 | Setting | Rule | Checked |
 |---------|------|---------|
-| `Duration`, `SlidingExpiration`, `RefreshAhead` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
-| `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
-| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]` (`FailSafeTimeout` and `RetryAfter`): at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `Duration` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. `CacheWhen<T>` is
-configured in code. Cache callbacks, context predicates and a service provider in `CacheContext` are no longer supported.
+configured in code; a `CacheWhen<T>` for a type the method can't return, such as `CacheWhen<string>` on a method that
+returns `int`, throws an `InvalidOperationException` on the call instead of silently caching nothing. Cache callbacks
+and context predicates are not supported.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
@@ -208,4 +210,4 @@ Published options and policy tags are owned, read-only snapshots. Mutating a col
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
 
-`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `RetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.
+`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `FailSafeRetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.

@@ -31,7 +31,7 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
                 await runtime.ClearAsync();
             }
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
-            await cache.GetOrCreateAsync("local", (_, _) => ValueTask.FromResult("old"));
+            await cache.GetOrCreateAsync("local", _ => ValueTask.FromResult("old"));
             await using var connection = new SqlConnection(options.ConnectionString);
             await connection.OpenAsync();
             await using var command = new SqlCommand($"""
@@ -42,7 +42,7 @@ public class BackplaneAcknowledgementTests(SqlServerFixture fixture)
             await command.ExecuteNonQueryAsync();
             await receiver.PollOnceAsync(Handle, CancellationToken.None);
             Assert.Equal(2, clears);
-            Assert.Equal("new", await cache.GetOrCreateAsync("local", (_, _) => ValueTask.FromResult("new")));
+            Assert.Equal("new", await cache.GetOrCreateAsync("local", _ => ValueTask.FromResult("new")));
             Assert.Single(logger.Warnings);
             Assert.DoesNotContain("sensitive-payload", logger.Warnings[0]);
         }

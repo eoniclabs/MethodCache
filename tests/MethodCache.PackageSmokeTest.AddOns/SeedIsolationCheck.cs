@@ -72,7 +72,7 @@ internal static class SeedIsolationCheck
                 var result = await instance.Users.GetAsync(7);
                 if (result != new User(7, "user-7") || UserService.Calls != (phase == "origin" ? 1 : 0)) return 4;
                 var entries = instance.Administrator.ListEntries();
-                if (!entries.Any(entry => entry.Key == key)) return 5;
+                if (!entries.Any(entry => entry.StoredKey == key)) return 5;
             }
             else if (phase == "key")
             {

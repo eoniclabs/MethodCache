@@ -16,14 +16,14 @@ public class TelemetryRequestTests
         using var provider = Node(clock);
         using var recorded = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateManyAsync<int>(["a", "b"], (keys, _, _) =>
+        await cache.GetOrCreateManyAsync<int>(["a", "b"], (keys, _) =>
         {
             clock.Advance(TimeSpan.FromMilliseconds(2));
             return ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 7));
         });
-        await cache.GetOrCreateManyAsync<int>(["a", "b"], (_, _, _) => throw new Exception("must hit"));
-        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _, _) => ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<int>(["d"], (_, _, _) => throw new InvalidOperationException("failed")));
+        await cache.GetOrCreateManyAsync<int>(["a", "b"], (_, _) => throw new Exception("must hit"));
+        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _) => ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<int>(["d"], (_, _) => throw new InvalidOperationException("failed")));
         Assert.Equal(new[] { "bypass", "error", "hit", "miss" }, recorded.Requests.Order(StringComparer.Ordinal));
         Assert.Equal(3, recorded.Loads.Count);
         Assert.Contains(recorded.Loads, row => row.Value == 0.002 && Equals(row.Tags["name"], "MethodCache.Fluent.Bulk"));
@@ -75,12 +75,12 @@ public class TelemetryRequestTests
         using var provider = Node(clock);
         using var recorded = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
-        var options = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(30)).RefreshAhead(TimeSpan.FromSeconds(10)).Build();
-        await cache.GetOrCreateAsync("refresh", (_, _) => ValueTask.FromResult(7), options);
+        var options = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(30)).WithRefreshAhead(TimeSpan.FromSeconds(10)).Build();
+        await cache.GetOrCreateAsync("refresh", _ => ValueTask.FromResult(7), options);
         clock.Advance(TimeSpan.FromSeconds(21));
         var began = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Assert.Equal(7, await cache.GetOrCreateAsync("refresh", (_, _) => { began.TrySetResult(); return new ValueTask<int>(release.Task); }, options));
+        Assert.Equal(7, await cache.GetOrCreateAsync("refresh", _ => { began.TrySetResult(); return new ValueTask<int>(release.Task); }, options));
         await began.Task.WaitAsync(TimeSpan.FromSeconds(30));
         release.SetResult(8);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -99,13 +99,13 @@ public class TelemetryRequestTests
         using var provider = Node(new FakeTimeProvider());
         using var recorded = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
-        Assert.Equal(7, await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(7)));
-        Assert.Equal(7, await cache.GetOrCreateAsync<int>("key", (_, _) => throw new InvalidOperationException("must hit")));
+        Assert.Equal(7, await cache.GetOrCreateAsync("key", _ => ValueTask.FromResult(7)));
+        Assert.Equal(7, await cache.GetOrCreateAsync<int>("key", _ => throw new InvalidOperationException("must hit")));
         Assert.True((await cache.TryGetAsync<int>("key")).Found);
         Assert.False((await cache.TryGetAsync<int>("missing")).Found);
         var disabled = new CacheEntryOptions.Builder().WithEnabled(false).Build();
-        Assert.Equal(9, await cache.GetOrCreateAsync("bypass", (_, _) => ValueTask.FromResult(9), disabled));
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateAsync<int>("error", (_, _) => throw new InvalidOperationException("source failed")));
+        Assert.Equal(9, await cache.GetOrCreateAsync("bypass", _ => ValueTask.FromResult(9), disabled));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateAsync<int>("error", _ => throw new InvalidOperationException("source failed")));
         Assert.Equal(new[] { "bypass", "error", "hit", "hit", "miss", "miss" }, recorded.Requests.Order(StringComparer.Ordinal));
         Assert.Equal(3, recorded.Loads.Count);
     }
@@ -117,8 +117,8 @@ public class TelemetryRequestTests
         using var recorded = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
         var release = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var first = cache.GetOrCreateAsync("flight", (_, _) => new ValueTask<int>(release.Task));
-        var joined = cache.GetOrCreateAsync<int>("flight", (_, _) => throw new InvalidOperationException("must join"));
+        var first = cache.GetOrCreateAsync("flight", _ => new ValueTask<int>(release.Task));
+        var joined = cache.GetOrCreateAsync<int>("flight", _ => throw new InvalidOperationException("must join"));
         release.SetResult(42);
         Assert.Equal(42, await first);
         Assert.Equal(42, await joined);
@@ -133,9 +133,9 @@ public class TelemetryRequestTests
         var shared = new MethodCache.TestSupport.AtomicTestCache(clock);
         using var a = Node(clock, shared);
         using var b = Node(clock, shared);
-        await a.GetRequiredService<ICacheManager>().GetOrCreateAsync("l2", (_, _) => ValueTask.FromResult(7));
+        await a.GetRequiredService<ICacheManager>().GetOrCreateAsync("l2", _ => ValueTask.FromResult(7));
         using var recorded = new TelemetryRecorder(b);
-        Assert.Equal(7, await b.GetRequiredService<ICacheManager>().GetOrCreateAsync<int>("l2", (_, _) => throw new InvalidOperationException("must read L2")));
+        Assert.Equal(7, await b.GetRequiredService<ICacheManager>().GetOrCreateAsync<int>("l2", _ => throw new InvalidOperationException("must read L2")));
         Assert.Equal("hit", Assert.Single(recorded.Requests));
         Assert.Empty(recorded.Loads);
     }
@@ -147,11 +147,11 @@ public class TelemetryRequestTests
         using var provider = Node(clock);
         using var recorded = new TelemetryRecorder(provider);
         var cache = provider.GetRequiredService<ICacheManager>();
-        var options = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(1)).FailSafe(TimeSpan.FromMinutes(1)).Build();
-        await cache.GetOrCreateAsync("stale", (_, _) => ValueTask.FromResult(7), options);
+        var options = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(1)).WithFailSafe(TimeSpan.FromMinutes(1)).Build();
+        await cache.GetOrCreateAsync("stale", _ => ValueTask.FromResult(7), options);
         clock.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(7, await cache.GetOrCreateAsync<int>("stale", (_, _) => throw new InvalidOperationException("canary-origin-error"), options));
-        Assert.Equal(7, await cache.GetOrCreateAsync<int>("stale", (_, _) => throw new InvalidOperationException("throttle must serve stale"), options));
+        Assert.Equal(7, await cache.GetOrCreateAsync<int>("stale", _ => throw new InvalidOperationException("canary-origin-error"), options));
+        Assert.Equal(7, await cache.GetOrCreateAsync<int>("stale", _ => throw new InvalidOperationException("throttle must serve stale"), options));
         Assert.Equal(new[] { "miss", "stale", "stale" }, recorded.Requests.Order(StringComparer.Ordinal));
         Assert.Equal(2, recorded.Loads.Count);
         Assert.Contains(recorded.Loads, row => Equals(row.Tags.GetValueOrDefault("error.type"), typeof(InvalidOperationException).FullName));

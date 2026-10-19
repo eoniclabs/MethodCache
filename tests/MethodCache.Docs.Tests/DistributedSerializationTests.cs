@@ -43,10 +43,10 @@ public class DistributedSerializationTests
     {
         using var first = Instance();
         using var second = Instance();
-        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("page", (_, _) => ValueTask.FromResult((Total: 7, Name: "x")));
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("page", _ => ValueTask.FromResult((Total: 7, Name: "x")));
 
         var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync<(int Total, string Name)>(
-            "page", (_, _) => throw new InvalidOperationException("read from the distributed cache"));
+            "page", _ => throw new InvalidOperationException("read from the distributed cache"));
 
         Assert.Equal((7, "x"), read);
     }
@@ -56,11 +56,11 @@ public class DistributedSerializationTests
     {
         using var first = Instance();
         using var second = Instance();
-        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("account", (_, _) => ValueTask.FromResult(Account.Create(42)));
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync("account", _ => ValueTask.FromResult(Account.Create(42)));
 
         var calls = 0;
         var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync(
-            "account", (_, _) => { calls++; return ValueTask.FromResult(Account.Create(42)); });
+            "account", _ => { calls++; return ValueTask.FromResult(Account.Create(42)); });
 
         Assert.Equal(1, calls);
         Assert.Equal(42, read.Id);
@@ -71,10 +71,10 @@ public class DistributedSerializationTests
     {
         using var first = Instance();
         using var second = Instance();
-        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync<IReadOnlyList<int>>("ids", (_, _) => ValueTask.FromResult<IReadOnlyList<int>>(new[] { 1, 2, 3 }));
+        await first.GetRequiredService<ICacheManager>().GetOrCreateAsync<IReadOnlyList<int>>("ids", _ => ValueTask.FromResult<IReadOnlyList<int>>(new[] { 1, 2, 3 }));
 
         var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync<IReadOnlyList<int>>(
-            "ids", (_, _) => throw new InvalidOperationException("read from the distributed cache"));
+            "ids", _ => throw new InvalidOperationException("read from the distributed cache"));
 
         Assert.Equal(new[] { 1, 2, 3 }, read);
     }
@@ -85,11 +85,11 @@ public class DistributedSerializationTests
         using var first = Instance();
         using var second = Instance();
         var cache = first.GetRequiredService<ICacheManager>();
-        await cache.GetOrCreateAsync<Animal>("cat", (_, _) => ValueTask.FromResult(new Animal { Name = "cat" }));
-        await cache.GetOrCreateAsync<Animal>("rex", (_, _) => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
+        await cache.GetOrCreateAsync<Animal>("cat", _ => ValueTask.FromResult(new Animal { Name = "cat" }));
+        await cache.GetOrCreateAsync<Animal>("rex", _ => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
 
         var read = await second.GetRequiredService<ICacheManager>().GetOrCreateAsync<Animal>(
-            "rex", (_, _) => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
+            "rex", _ => ValueTask.FromResult<Animal>(new Dog { Name = "rex", Breed = "collie" }));
 
         Assert.Equal("collie", Assert.IsType<Dog>(read).Breed);
     }

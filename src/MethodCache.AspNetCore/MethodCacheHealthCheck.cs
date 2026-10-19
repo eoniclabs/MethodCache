@@ -7,7 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace MethodCache.AspNetCore;
 
 /// <summary>Reports configured cache capabilities, local statistics, recovery queues and transport health.</summary>
-public sealed class MethodCacheHealthCheck : IHealthCheck
+internal sealed class MethodCacheHealthCheck : IHealthCheck
 {
     private readonly IServiceProvider _services;
 

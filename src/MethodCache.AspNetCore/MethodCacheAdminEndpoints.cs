@@ -1,5 +1,4 @@
 using MethodCache;
-using MethodCache.Core.Runtime.Http;
 using MethodCache.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -18,7 +17,7 @@ public static class MethodCacheAdminEndpoints
     /// <item><c>GET stats</c>: hit, miss, eviction, entry and memory statistics</item>
     /// <item><c>GET methods</c>: the effective policy of every cached method</item>
     /// <item><c>GET entries?prefix=&amp;tag=&amp;limit=</c>: live entries, without their values</item>
-    /// <item><c>GET entry?key=</c> and <c>DELETE entry?key=</c>: one entry</item>
+    /// <item><c>GET entry?key=</c> and <c>DELETE entry?key=</c>: one entry, by the <c>storedKey</c> that <c>entries</c> lists</item>
     /// <item><c>POST invalidate</c> with <c>{ "tags": [...] }</c>: remove entries by tag</item>
     /// <item><c>DELETE entries</c>: remove every entry</item>
     /// </list>
@@ -43,7 +42,7 @@ public static class MethodCacheAdminEndpoints
         group.AddEndpointFilter(async (context, next) =>
         {
             try { return await next(context).ConfigureAwait(false); }
-            catch (CacheInvalidationUnavailableException)
+            catch (CacheInvalidationQueuedException)
             {
                 return TypedResults.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
                     title: "Cache invalidation is awaiting distributed confirmation.",
@@ -66,12 +65,8 @@ public static class MethodCacheAdminEndpoints
         return group;
     }
 
-    private static async Task<Ok<CacheStatsResponse>> GetStatsAsync(ICacheAdministrator admin, CancellationToken cancellationToken)
-    {
-        var stats = await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false);
-        return TypedResults.Ok(new CacheStatsResponse(
-            stats.Hits, stats.Misses, stats.Evictions, stats.LocalMethodEntries, stats.LocalHttpEntries, stats.LocalHttpBytes, stats.ObservedDistributedEntries, stats.TotalWeight));
-    }
+    private static async Task<Ok<CacheStats>> GetStatsAsync(ICacheAdministrator admin, CancellationToken cancellationToken)
+        => TypedResults.Ok(await admin.GetStatsAsync(cancellationToken).ConfigureAwait(false));
 
     private static Results<Ok<IReadOnlyList<CacheEntryInfo>>, ValidationProblem> ListEntries(
         ICacheAdministrator admin, string? prefix, string? tag, int? limit)
@@ -117,8 +112,5 @@ public static class MethodCacheAdminEndpoints
     }
 }
 
-/// <summary>Cache statistics as returned by the <c>stats</c> endpoint.</summary>
-public sealed record CacheStatsResponse(long Hits, long Misses, long Evictions, long LocalMethodEntries, long LocalHttpEntries, long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight);
-
 /// <summary>Body of the <c>invalidate</c> endpoint.</summary>
-public sealed record InvalidateRequest(IReadOnlyList<string>? Tags);
+internal sealed record InvalidateRequest(IReadOnlyList<string>? Tags);

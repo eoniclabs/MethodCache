@@ -15,7 +15,7 @@ namespace MethodCache.Core.Runtime.Distributed
     {
         internal static string NotAtomicMessage(Type cacheType) =>
             $"The distributed cache ({cacheType.FullName}) must implement IAtomicInvalidationStore so concurrent invalidations cannot move timestamps backwards. " +
-            "Use MethodCache.Redis/SqlServer (AddMethodCacheRedis, AddMethodCacheSqlServer) or implement backend-atomic stamps in your custom provider.";
+            "Use MethodCache.Redis/SqlServer (UseRedis, UseSqlServer) or implement backend-atomic stamps in your custom provider.";
 
         internal sealed class Validator(IServiceProvider services, string ownCacheKey) : IValidateOptions<DistributedCacheStoreValidation>
         {
@@ -26,7 +26,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 {
                     return ValidateOptionsResult.Fail(
                         "MethodCache needs an owned IDistributedCache implementing IAtomicInvalidationStore; the application cache is not a fallback. " +
-                        "or use AddMethodCacheRedis() or AddMethodCacheSqlServer().");
+                        "or use UseRedis() or UseSqlServer() in AddMethodCache.");
                 }
 
                 return cache is IAtomicInvalidationStore

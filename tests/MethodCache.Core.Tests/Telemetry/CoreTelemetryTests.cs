@@ -103,10 +103,17 @@ public class CoreTelemetryTests
         Assert.Empty(invalidations);
     }
 
-    private sealed class ForwardingManager(ICacheManager inner) : MethodCache.Extensibility.NoOpCacheManager
+    private sealed class ForwardingManager(ICacheManager inner) : ICacheManager
     {
-        public override ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
-            CacheEntryOptions? options, CancellationToken token) => inner.GetOrCreateAsync(key, factory, options, token);
+        private readonly MethodCache.NoOpCacheManager _noOp = new();
+        public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
+            CacheEntryOptions? options = null, CancellationToken token = default) => inner.GetOrCreateAsync(key, state, factory, options, token);
+        public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.TryGetAsync<T>(key, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateKeysAsync(keys, version, cancellationToken);
+        public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
+            => _noOp.InvalidateTagsAsync(tags, cancellationToken);
     }
 
     [Fact]

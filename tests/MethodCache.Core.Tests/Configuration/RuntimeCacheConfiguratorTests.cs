@@ -25,8 +25,8 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync("Sample.Method", builder =>
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(2));
-            builder.WithTags("runtime");
-            builder.RefreshAhead(System.TimeSpan.FromSeconds(20));
+            builder.AddTags("runtime");
+            builder.WithRefreshAhead(System.TimeSpan.FromSeconds(20));
         });
 
         var snapshots = store.GetSnapshots();
@@ -51,7 +51,7 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync("Sample.Entry", builder =>
         {
             builder.WithDuration(System.TimeSpan.FromMinutes(3));
-            builder.WithTags("runtime", "docs");
+            builder.AddTags("runtime", "docs");
         });
 
         var snapshots = store.GetSnapshots();
@@ -72,7 +72,7 @@ public class RuntimeCacheConfiguratorTests
         {
             fluent.ForService<IRuntimeDocService>()
                 .Method(x => x.GetAsync(default))
-                .Configure(options => options.WithDuration(System.TimeSpan.FromSeconds(30)).WithTags("runtime", "users"));
+                .Configure(options => options.WithDuration(System.TimeSpan.FromSeconds(30)).AddTags("runtime", "users"));
 
             fluent.ForService<IRuntimeDocService>()
                 .Method(x => x.SearchAsync(default!))
@@ -159,15 +159,17 @@ public class RuntimeCacheConfiguratorTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         using var store = new RuntimePolicyStore(time);
         var configurator = new RuntimeCacheConfigurator(store);
-        var metadata = new RuntimeOverrideMetadata(
-            Owner: "ops-team",
-            Reason: "incident mitigation",
-            Ticket: "INC-1234",
-            ExpiresAt: time.GetUtcNow().AddMilliseconds(150));
+        var metadata = new RuntimeOverrideMetadata
+        {
+            Owner = "ops-team",
+            Reason = "incident mitigation",
+            Ticket = "INC-1234",
+            ExpiresAt = time.GetUtcNow().AddMilliseconds(150)
+        };
 
         await configurator.UpsertAsync(
             "Expiring.Method",
-            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)).WithTags("runtime"),
+            (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)).AddTags("runtime"),
             metadata);
 
         var current = await configurator.GetOverrideAsync("Expiring.Method");
@@ -192,7 +194,7 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync(
             "Expiring.Method",
             (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
-            new RuntimeOverrideMetadata(Owner: "ops", ExpiresAt: expiresAt));
+            new RuntimeOverrideMetadata { Owner = "ops", ExpiresAt = expiresAt });
 
         time.Advance(TimeSpan.FromMinutes(5) - TimeSpan.FromTicks(1));
         Assert.NotNull(await configurator.GetOverrideAsync("Expiring.Method"));
@@ -213,11 +215,11 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync(
             "Short.Method",
             (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
-            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(1)));
+            new RuntimeOverrideMetadata { ExpiresAt = time.GetUtcNow().AddMinutes(1) });
         await configurator.UpsertAsync(
             "Long.Method",
             (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
-            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(10)));
+            new RuntimeOverrideMetadata { ExpiresAt = time.GetUtcNow().AddMinutes(10) });
         changes.Clear();
 
         time.Advance(TimeSpan.FromMinutes(1));
@@ -243,11 +245,11 @@ public class RuntimeCacheConfiguratorTests
         await configurator.UpsertAsync(
             "Renewed.Method",
             (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
-            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(1)));
+            new RuntimeOverrideMetadata { ExpiresAt = time.GetUtcNow().AddMinutes(1) });
         await configurator.UpsertAsync(
             "Renewed.Method",
             (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromSeconds(30)),
-            new RuntimeOverrideMetadata(ExpiresAt: time.GetUtcNow().AddMinutes(5)));
+            new RuntimeOverrideMetadata { ExpiresAt = time.GetUtcNow().AddMinutes(5) });
 
         time.Advance(TimeSpan.FromMinutes(2));
         Assert.NotNull(await configurator.GetOverrideAsync("Renewed.Method"));

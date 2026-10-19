@@ -69,9 +69,11 @@ namespace MethodCache
         internal Func<object?, bool>? CacheWhen { get; }
         /// <summary>Checks whether the typed result may be cached. A throwing predicate rejects the result.</summary>
         /// <remarks>Custom managers apply this check both before publication and after distributed reads.</remarks>
+        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate is for a type that a <typeparamref name="T"/> result can never be.</exception>
         public bool CanCache<T>(T value)
         {
             if (Enabled == false) return false;
+            CachePredicateCheck.EnsureMatches(CacheWhen, typeof(T), "this call");
             try { return CacheWhen?.Invoke(value) != false; }
             catch (Exception) { return false; }
         }
@@ -147,7 +149,7 @@ namespace MethodCache
                     throw new ArgumentOutOfRangeException(
                         nameof(duration),
                         $"Cache duration must be positive. Provided: {duration}. " +
-                        "Without a duration, entries use MethodCacheMemoryOptions.DefaultExpiration (5 minutes unless configured); " +
+                        "Without a duration, entries use the default set with Defaults(o => o.WithDuration(...)) (5 minutes unless configured); " +
                         "no entry lives longer than MethodCacheMemoryOptions.MaxExpiration. " +
                         "Common durations: TimeSpan.FromMinutes(5), TimeSpan.FromHours(1). " +
                         "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration");
@@ -162,7 +164,7 @@ namespace MethodCache
             /// they are added to the tags of its <c>[Cache]</c> attribute and of the other layers, so
             /// <c>[CacheInvalidate]</c> still reaches the entry; call <see cref="ClearTags"/> first to replace them.
             /// </summary>
-            public Builder WithTags(params string[] tags)
+            public Builder AddTags(params string[] tags)
             {
                 if (tags == null)
                 {
@@ -193,15 +195,16 @@ namespace MethodCache
             }
 
             /// <summary>
-            /// Sets the sliding expiration window for the cache entry.
+            /// Sets the sliding expiration window for the cache entry. <see cref="TimeSpan.Zero"/> turns sliding
+            /// expiration off, for example for one method when it is on for all of them.
             /// </summary>
             public Builder WithSlidingExpiration(TimeSpan slidingExpiration)
             {
-                if (slidingExpiration <= TimeSpan.Zero)
+                if (slidingExpiration < TimeSpan.Zero)
                 {
                     throw new ArgumentOutOfRangeException(
                         nameof(slidingExpiration),
-                        $"Sliding expiration must be positive. Provided: {slidingExpiration}. " +
+                        $"Sliding expiration cannot be negative; use TimeSpan.Zero to turn it off. Provided: {slidingExpiration}. " +
                         "Sliding expiration resets the timer on each cache access. " +
                         "Example: TimeSpan.FromMinutes(10) keeps frequently-accessed items cached. " +
                         "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration");
@@ -212,13 +215,14 @@ namespace MethodCache
             }
 
             /// <summary>
-            /// Requests refresh-ahead behaviour before the entry expires.
+            /// Reloads the value in the background when a hit arrives within <paramref name="window"/> of its expiry.
+            /// <see cref="TimeSpan.Zero"/> turns refresh-ahead off, for example for one method when it is on for all of them.
             /// </summary>
-            public Builder RefreshAhead(TimeSpan window)
+            public Builder WithRefreshAhead(TimeSpan window)
             {
-                if (window <= TimeSpan.Zero)
+                if (window < TimeSpan.Zero)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(window), "Refresh window must be positive.");
+                    throw new ArgumentOutOfRangeException(nameof(window), window, "Refresh window cannot be negative; use TimeSpan.Zero to turn refresh-ahead off.");
                 }
 
                 _refreshAhead = window;
@@ -233,7 +237,7 @@ namespace MethodCache
             /// <see cref="TimeSpan.Zero"/> as <paramref name="duration"/> turns fail-safe off, for example for one
             /// method when it is on for all of them.
             /// </summary>
-            public Builder FailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+            public Builder WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
             {
                 if (duration < TimeSpan.Zero)
                 {
@@ -277,9 +281,12 @@ namespace MethodCache
             public CacheEntryOptions Build()
             {
                 // A window as long as the entry lives would reload the value on every hit
-                if (_refreshAhead >= _duration || _refreshAhead >= _slidingExpiration)
+                // Zero means off for both, so it never conflicts
+                var refreshOn = _refreshAhead > TimeSpan.Zero;
+                var tooLongForDuration = refreshOn && _refreshAhead >= _duration;
+                if (tooLongForDuration || (refreshOn && _slidingExpiration > TimeSpan.Zero && _refreshAhead >= _slidingExpiration))
                 {
-                    var lifetime = _refreshAhead >= _duration ? $"Duration ({_duration})" : $"SlidingExpiration ({_slidingExpiration})";
+                    var lifetime = tooLongForDuration ? $"Duration ({_duration})" : $"SlidingExpiration ({_slidingExpiration})";
                     throw new InvalidOperationException(
                         $"RefreshAhead ({_refreshAhead}) must be shorter than {lifetime}, or every hit would reload the value. " +
                         "See: https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead");

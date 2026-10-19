@@ -91,7 +91,7 @@ public class PolicyResolverTests
         var fluent = new FluentPolicySource(config =>
         {
             config.DefaultPolicy(o => o.WithDuration(TimeSpan.FromMinutes(1)).WithSlidingExpiration(TimeSpan.FromSeconds(30)));
-            config.ForGroup("orders").Configure(o => o.RefreshAhead(TimeSpan.FromSeconds(10)).WithSlidingExpiration(TimeSpan.FromSeconds(20)));
+            config.ForGroup("orders").Configure(o => o.WithRefreshAhead(TimeSpan.FromSeconds(10)).WithSlidingExpiration(TimeSpan.FromSeconds(20)));
             config.ForGroup("users").Configure(o => o.WithVersion(3));
         });
 

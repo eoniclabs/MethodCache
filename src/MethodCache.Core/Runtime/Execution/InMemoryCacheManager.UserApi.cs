@@ -7,7 +7,7 @@ namespace MethodCache.Extensibility;
 internal partial class InMemoryCacheManager
 {
     /// <inheritdoc />
-    public ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory,
+    public ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
         CacheEntryOptions? options, CancellationToken cancellationToken)
     {
         ValidateTarget(key, nameof(key));
@@ -21,15 +21,16 @@ internal partial class InMemoryCacheManager
             RecordHitTelemetry(CacheKeyLookup.MethodName, cachedNode);
             return new(cached!);
         }
-        return GetOrCreateUserSlowAsync(key, cacheKey, factory, options, cancellationToken);
+        return GetOrCreateUserSlowAsync(key, cacheKey, state, factory, options, cancellationToken);
     }
 
-    private ValueTask<T> GetOrCreateUserSlowAsync<T>(string key, string cacheKey,
-        Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions options, CancellationToken cancellationToken)
+    private ValueTask<T> GetOrCreateUserSlowAsync<TState, T>(string key, string cacheKey, TState state,
+        Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions options, CancellationToken cancellationToken)
     {
-        var context = new CacheContext(key);
         if (options.Enabled == false) return _telemetry?.Enabled == true
-            ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(context, cancellationToken).AsTask())) : factory(context, cancellationToken);
+            ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(state, cancellationToken).AsTask())) : factory(state, cancellationToken);
+        // A CacheWhen<T> that can never see this result type is a configuration error, reported before the factory runs
+        CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
         var policy = options.Runtime;
         if (policy == null)
         {
@@ -37,7 +38,7 @@ internal partial class InMemoryCacheManager
             policy = CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
         }
         return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, policy.MethodId,
-            () => factory(context, cancellationToken).AsTask(), policy, cancellationToken));
+            () => factory(state, cancellationToken).AsTask(), policy, cancellationToken));
     }
 
     /// <inheritdoc />

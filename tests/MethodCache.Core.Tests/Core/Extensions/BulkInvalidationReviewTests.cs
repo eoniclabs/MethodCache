@@ -14,11 +14,11 @@ public class BulkInvalidationReviewTests
         var decorated = new CountingDecorator(cache);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var candidates = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var batch = decorated.GetOrCreateManyAsync<string>(["key"], (_, _, _) =>
+        var batch = decorated.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {
             started.SetResult();
             return new(candidates.Task);
-        }, o => o.WithTags("tag")).AsTask();
+        }, o => o.AddTags("tag")).AsTask();
         await started.Task;
         await decorated.InvalidateByTagsAsync("tag");
         candidates.SetResult(new Dictionary<string, string> { ["key"] = "old" });
@@ -32,9 +32,9 @@ public class BulkInvalidationReviewTests
     {
         using var cache = new InMemoryCacheManager();
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<string>(["key"],
-            (_, _, _) => throw new InvalidOperationException("source failed")));
+            (_, _) => throw new InvalidOperationException("source failed")));
         await cache.InvalidateByKeysAsync("key");
-        var fresh = await cache.GetOrCreateManyAsync<string>(["key"], (_, _, _) =>
+        var fresh = await cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
             ValueTask.FromResult<IDictionary<string, string>>(new Dictionary<string, string> { ["key"] = "new" }));
         Assert.Equal("new", fresh["key"]);
     }
@@ -48,11 +48,11 @@ public class BulkInvalidationReviewTests
         using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var result = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var load = cache.GetOrCreateManyAsync<string>(["key"], (_, _, _) =>
+        var load = cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {
             started.SetResult();
             return new ValueTask<IDictionary<string, string>>(result.Task);
-        }, o => o.WithTags("tag")).AsTask();
+        }, o => o.AddTags("tag")).AsTask();
         await started.Task;
 
         if (invalidation == "key") await cache.InvalidateByKeysAsync("key");
@@ -66,8 +66,8 @@ public class BulkInvalidationReviewTests
 
     private sealed class CountingDecorator(ICacheManager inner) : ICacheManager, ICacheManagerDecorator
     {
-        public async ValueTask<T> GetOrCreateAsync<T>(string key, Func<CacheContext, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
-        { Calls++; await Task.Yield(); return await inner.GetOrCreateAsync(key, factory, options, token); }
+        public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions? options, CancellationToken token)
+        { Calls++; await Task.Yield(); return await inner.GetOrCreateAsync(key, state, factory, options, token); }
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => inner.TryGetAsync<T>(key, version, token);
         public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default) => inner.InvalidateKeysAsync(keys, version, token);
         public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken token) => inner.InvalidateTagsAsync(tags, token);

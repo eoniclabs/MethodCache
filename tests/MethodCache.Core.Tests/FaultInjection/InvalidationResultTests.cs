@@ -26,7 +26,8 @@ public class InvalidationResultTests
         Assert.Equal(1, result.Queued);
         Assert.Equal(1, result.Published);
         Assert.Equal(1, result.PublicationQueued);
-        Assert.Equal(new InvalidationQueues(1, 1), memory.GetInvalidationQueues());
+        // The public constructor, which an ICacheAdministrator of your own uses, builds the same value
+        Assert.Equal(new InvalidationQueues { Distributed = 1, Publication = 1 }, memory.GetInvalidationQueues());
         Assert.False(await layer.CheckAvailableAsync(CancellationToken.None));
         await layer.FlushAsync(force: true);
         Assert.Equal(0, memory.GetInvalidationQueues().Distributed);
@@ -57,7 +58,7 @@ public class InvalidationResultTests
     {
         using var memory = new InMemoryCacheManager();
         ICacheManager cache = memory;
-        await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
+        await cache.GetOrCreateAsync("key", _ => ValueTask.FromResult(1));
         await Assert.ThrowsAsync<ArgumentException>(async () => await cache.InvalidateKeysAsync(["key", " "]));
         Assert.True((await cache.TryGetAsync<int>("key")).Found);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await cache.InvalidateKeysAsync(["key"], cancellationToken: new CancellationToken(true)));
@@ -77,7 +78,7 @@ public class InvalidationResultTests
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions(), timeProvider: time);
         using var memory = new InMemoryCacheManager(null, time, layer);
         ICacheManager cache = memory;
-        await cache.GetOrCreateAsync("key", (_, _) => ValueTask.FromResult(1));
+        await cache.GetOrCreateAsync("key", _ => ValueTask.FromResult(1));
         using var cancellation = new CancellationTokenSource();
         var invalidating = cache.InvalidateKeysAsync(["key"], cancellationToken: cancellation.Token).AsTask();
         await backend.Started.Task;

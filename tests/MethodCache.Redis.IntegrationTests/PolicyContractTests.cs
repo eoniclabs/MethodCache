@@ -23,7 +23,7 @@ public class PolicyContractTests(RedisFixture redis)
             services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
             services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
             services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCacheRedis(o => { o.Configuration = configuration; });
+            services.AddMethodCache(mc => mc.UseRedis(o => { o.Configuration = configuration; }));
             PolicySubscriptionBarrier.Decorate(services);
             var provider = services.BuildServiceProvider();
             try
@@ -45,7 +45,7 @@ public class PolicyContractTests(RedisFixture redis)
     {
         var services = new ServiceCollection();
         services.Configure<DistributedCacheOptions>(o => o.KeyPrefix = "policy-fault:" + Guid.NewGuid().ToString("N") + ":");
-        services.AddMethodCacheRedis(redis.RequireConfiguration());
+        services.AddMethodCache(mc => mc.UseRedis(redis.RequireConfiguration()));
         await using var provider = services.BuildServiceProvider();
         var store = Assert.IsAssignableFrom<IAtomicInvalidationStore>(provider.GetRequiredKeyedService<IDistributedCache>("MethodCache"));
         await NativePolicyFaultContract.RunAsync(scenario, store, provider.GetRequiredKeyedService<IBackplane>("MethodCache"));

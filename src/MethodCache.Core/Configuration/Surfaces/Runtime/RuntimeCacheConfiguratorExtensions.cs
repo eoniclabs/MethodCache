@@ -11,12 +11,6 @@ namespace MethodCache;
 public static class RuntimeCacheConfiguratorExtensions
 {
     /// <summary>Removes the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
-    public static Task RemoveAsync<TService>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, Task>> methodExpression, CancellationToken cancellationToken = default)
-        => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
-
-    /// <summary>Removes the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
     public static Task RemoveAsync<TService, TResult>(
         this IRuntimeCacheConfigurator configurator,
         Expression<Func<TService, Task<TResult>>> methodExpression, CancellationToken cancellationToken = default)
@@ -27,20 +21,6 @@ public static class RuntimeCacheConfiguratorExtensions
         this IRuntimeCacheConfigurator configurator,
         Expression<Func<TService, TResult>> methodExpression, CancellationToken cancellationToken = default)
         => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
-
-    /// <summary>Removes the runtime override of the void method <paramref name="methodExpression"/> calls.</summary>
-    public static Task RemoveAsync<TService>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Action<TService>> methodExpression, CancellationToken cancellationToken = default)
-        => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
-
-    /// <summary>Applies or replaces the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
-    public static Task UpsertAsync<TService>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, Task>> methodExpression,
-        Action<CacheEntryOptions.Builder> configure,
-        RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default)
-        => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
 
     /// <summary>Applies or replaces the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
     public static Task UpsertAsync<TService, TResult>(
@@ -54,14 +34,6 @@ public static class RuntimeCacheConfiguratorExtensions
     public static Task UpsertAsync<TService, TResult>(
         this IRuntimeCacheConfigurator configurator,
         Expression<Func<TService, TResult>> methodExpression,
-        Action<CacheEntryOptions.Builder> configure,
-        RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default)
-        => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
-
-    /// <summary>Applies or replaces the runtime override of the void method <paramref name="methodExpression"/> calls.</summary>
-    public static Task UpsertAsync<TService>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Action<TService>> methodExpression,
         Action<CacheEntryOptions.Builder> configure,
         RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default)
         => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);

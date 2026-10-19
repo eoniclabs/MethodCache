@@ -20,8 +20,8 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 
 | Option | Default | What it does |
 |--------|---------|--------------|
-| `MaxItems` | 10,000 | The most entries kept |
-| `SizeLimit` | 1000 MB | The most total weight kept; used only with a `Weigher` |
+| `MaxItems` | 10,000 | The most entries kept, also when a `Weigher` is set |
+| `WeightLimit` | 1000 MB | The most total weight kept; needs a `Weigher` |
 | `Weigher` | none | Returns an entry's cost, for example its size in bytes |
 | `MaxExpiration` | 7 days | No entry lives longer, whatever its duration |
 | `JitterMaxDuration` | zero | Adds a random extra lifetime up to this value, so entries created together don't expire together |
@@ -54,13 +54,15 @@ Object sizes can't be measured reliably at runtime, so to bound the cache by mem
 ```cs
 builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 {
-    o.SizeLimit = 256 * 1024 * 1024;   // bound the cache by size instead of by count
+    o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
     o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
 });
 ```
 <!-- endSnippet -->
 
-The weigher must be fast, thread-safe and return a non-negative value. Without one, `SizeLimit` is ignored.
+The weigher must be fast, thread-safe and return a non-negative value. Both limits apply: an entry is evicted as soon
+as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when many small entries should fit. Setting
+`WeightLimit` without a `Weigher` fails at startup, since there is nothing to weigh entries with.
 
 ## Memory statistics
 
@@ -72,7 +74,7 @@ properties, and there are no sampling/accurate-estimation modes. HTTP entries an
 ## How strict the bound is
 
 Cache hits never wait for eviction. It runs in batches off the read path, so a new entry is stored at once and counted
-against `MaxItems` (or `SizeLimit`) when the next batch applies it. Under any load:
+against `MaxItems` and `WeightLimit` when the next batch applies it. Under any load:
 
 - The counted size or weight is never more than one entry over the bound.
 - When writers get ahead of eviction, they wait for it and help with it, so at most `16 × processor count` (at least

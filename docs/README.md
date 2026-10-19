@@ -54,6 +54,6 @@ pages is compiled and tested in CI.
 [Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
 between releases.
 
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `RetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](features/configuration.md) and [keys](features/keys.md).
+Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](features/configuration.md) and [keys](features/keys.md).
 
 - [Distributed wire contract 1](developer/distributed-wire-v1.md): provider framing, entry formats, permanent epochs and schema migration.

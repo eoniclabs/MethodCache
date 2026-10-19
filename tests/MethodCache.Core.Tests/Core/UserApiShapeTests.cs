@@ -14,7 +14,7 @@ public class UserApiShapeTests
         var exported = typeof(MethodCacheBuilder).Assembly.GetExportedTypes();
         Assert.DoesNotContain(exported, type => type.Name == typeName);
         Assert.Contains(typeof(MethodCacheBuilder), exported);
-        Assert.Contains(typeof(IFluentMethodConfiguration), exported);
+        Assert.Contains(typeof(IFluentMethodConfiguration<>), exported);
     }
 
     [Fact]
@@ -29,8 +29,9 @@ public class UserApiShapeTests
                 Assert.Equal(typeof(CancellationToken), method.GetParameters().Last().ParameterType);
         foreach (var name in new[] { "OnHit", "OnMiss", "When", "WithMetrics" })
             Assert.DoesNotContain(typeof(CacheEntryOptions.Builder).GetMethods(), m => m.Name == name);
-        Assert.Null(typeof(CacheContext).GetProperty("Services"));
-        Assert.Equal(new[] { "CacheNullValues", "JitterMaxDuration", "MaxExpiration", "MaxHttpBytes", "MaxItems", "SizeLimit", "Weigher" },
+        Assert.DoesNotContain(typeof(ICacheManager).Assembly.GetExportedTypes(), t => t.Name == "CacheContext");
+        Assert.True(typeof(NoOpCacheManager).IsSealed);
+        Assert.Equal(new[] { "CacheNullValues", "JitterMaxDuration", "MaxExpiration", "MaxHttpBytes", "MaxItems", "Weigher", "WeightLimit" },
             typeof(MethodCacheMemoryOptions).GetProperties().Select(p => p.Name).Order().ToArray());
     }
 
@@ -38,10 +39,10 @@ public class UserApiShapeTests
     public void BuiltOptions_AreImmutable_AndCustomManagersCanCheckTypedPredicates()
     {
         var input = new[] { "first" };
-        var builder = new CacheEntryOptions.Builder().WithTags(input).WithEnabled(true).CacheWhen<int>(value => value > 0);
+        var builder = new CacheEntryOptions.Builder().AddTags(input).WithEnabled(true).CacheWhen<int>(value => value > 0);
         var options = builder.Build();
         input[0] = "changed";
-        builder.WithTags("later").WithEnabled(false);
+        builder.AddTags("later").WithEnabled(false);
         Assert.Equal(new[] { "first" }, options.Tags);
         Assert.True(options.CanCache(1));
         Assert.False(options.CanCache(0));

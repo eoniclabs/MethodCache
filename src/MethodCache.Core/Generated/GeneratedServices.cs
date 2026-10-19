@@ -23,6 +23,13 @@ public sealed class GeneratedServices
         return provider.GetRequiredService<GeneratedServices>();
     }
 
+    /// <summary>
+    /// Returns the instance a decorator wraps. Null only for a decorator that records keys (see
+    /// <see cref="IMethodCacheKeys"/>), whose cached calls never reach it.
+    /// </summary>
+    public T Decorated<T>(T? decorated) where T : class
+        => decorated ?? (_services.RecordsKeys ? null! : throw new ArgumentNullException(nameof(decorated)));
+
     /// <summary>Shares generated method slots once per registration and container.</summary>
     public T GetSites<T>(Func<GeneratedServices, T> factory) where T : class
     {

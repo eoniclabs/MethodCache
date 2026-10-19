@@ -10,7 +10,8 @@ namespace MethodCache
         private long _maxItems = 10000;
 
         /// <summary>
-        /// Maximum number of items in the cache.
+        /// The most method results kept in memory. Default 10 000. Always applies, also together with
+        /// <see cref="WeightLimit"/>.
         /// </summary>
         public long MaxItems
         {
@@ -25,24 +26,26 @@ namespace MethodCache
             }
         }
 
-        private long _maxMemoryBytes = 1000 * 1024 * 1024; // 1000MB
+        private long _weightLimit = 1000 * 1024 * 1024; // 1000MB
+        private bool _weightLimitSet;
 
         /// <summary>
-        /// Maximum total weight of the cache when a <see cref="Weigher"/> is configured (typically bytes).
-        /// Ignored without a weigher, since object sizes cannot be measured reliably at runtime.
+        /// The most total weight kept, in the units <see cref="Weigher"/> returns (typically bytes). Default 1000 MB.
+        /// Applies together with <see cref="MaxItems"/>, so whichever limit is reached first evicts. Setting it requires
+        /// a <see cref="Weigher"/>, since object sizes cannot be measured reliably at runtime: without one the cache
+        /// fails at startup instead of ignoring the limit.
         /// </summary>
-        public long SizeLimit
+        public long WeightLimit
         {
-            get => _maxMemoryBytes;
+            get => _weightLimit;
             set
             {
                 if (value <= 0)
-                    throw new ArgumentOutOfRangeException(nameof(SizeLimit), value, "SizeLimit must be greater than zero.");
-                _maxMemoryBytes = value;
+                    throw new ArgumentOutOfRangeException(nameof(WeightLimit), value, "WeightLimit must be greater than zero.");
+                _weightLimit = value;
+                _weightLimitSet = true;
             }
         }
-
-        internal long MaxMemoryBytes { get => SizeLimit; set => SizeLimit = value; }
         private long _maxHttpBytes = 100 * 1024 * 1024;
         /// <summary>Maximum resident HTTP storage cost in bytes, including bodies, headers and conservative metadata overhead.
         /// Shared by all HTTP clients; independent of method weights. Default 100 MiB.</summary>
@@ -94,11 +97,19 @@ namespace MethodCache
         internal MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.TinyLfu;
 
         /// <summary>
-        /// Optional function returning the cost of an entry (for example its size in bytes). When set, the
-        /// cache is bounded by <see cref="MaxMemoryBytes"/> measured in these units instead of by <see cref="MaxItems"/>.
+        /// Optional function returning the weight of an entry (for example its size in bytes). When set, the cache is
+        /// bounded by <see cref="WeightLimit"/> measured in these units as well as by <see cref="MaxItems"/>.
         /// Must be fast, thread-safe and return a non-negative value.
         /// </summary>
         public Func<string, object?, long>? Weigher { get; set; }
+
+        /// <summary>Throws when the options contradict each other, so the cache fails at startup instead of on use.</summary>
+        internal void EnsureValid()
+        {
+            if (_weightLimitSet && Weigher == null)
+                throw new InvalidOperationException(
+                    "MethodCacheMemoryOptions.WeightLimit needs a Weigher to measure entries. Set Weigher too, or bound the cache by MaxItems only.");
+        }
 
         /// <summary>
         /// When true, <c>null</c> results are cached like any other value, so a method returning null is not

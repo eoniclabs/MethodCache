@@ -56,8 +56,8 @@ namespace MethodCache
         /// <summary>Gets or sets the fail-safe timeout, as <see cref="CacheAttribute.FailSafeTimeout"/>.</summary>
         public string? FailSafeTimeout { get; set; }
 
-        /// <summary>Gets or sets the positive delay before retrying a failed load, for example "30s".</summary>
-        public string? RetryAfter { get; set; }
+        /// <summary>Gets or sets how long a served fail-safe value is reused before the method is called again, for example "30s".</summary>
+        public string? FailSafeRetryAfter { get; set; }
 
         /// <summary>Gets or sets whether caching is enabled. Omission inherits the configured policy.</summary>
         public bool Enabled { get; set; } = true;

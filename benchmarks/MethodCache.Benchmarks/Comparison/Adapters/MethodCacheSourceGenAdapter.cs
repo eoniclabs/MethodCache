@@ -44,7 +44,7 @@ public class MethodCacheSourceGenAdapter : ICacheAdapter
     {
         var loaded = false;
         // Arbitrary factories use the manual API. Generated hits are measured by GetAsyncDirect.
-        var result = await _cacheManager.GetOrCreateAsync(key, async (_, _) =>
+        var result = await _cacheManager.GetOrCreateAsync(key, async _ =>
         {
             loaded = true;
             _stats.Misses++;

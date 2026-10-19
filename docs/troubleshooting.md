@@ -54,7 +54,7 @@ a key.
 
 ## A change in appsettings.json has no effect
 
-- `AddMethodCacheFromConfiguration(builder.Configuration)` must be called.
+- `AddMethodCache(mc => mc.FromConfiguration(builder.Configuration))` must be called.
 - The key under `Services` must be the method id: the interface's full name, a dot and the method name. An unknown id
   is logged as a warning at startup. `GET /methodcache/methods` lists the ids.
 - A runtime override for the method wins over the file ([Configuration](features/configuration.md)).

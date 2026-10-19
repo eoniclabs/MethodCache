@@ -127,11 +127,11 @@ namespace VendorApp
         var methods = provider.GetRequiredService<ICacheAdministrator>().GetMethods();
 
         var rate = Assert.Single(methods, m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
-        Assert.Equal(TimeSpan.FromMinutes(1), rate.Duration);
-        Assert.Contains("fx", rate.Tags);
+        Assert.Equal(TimeSpan.FromMinutes(1), rate.Options.Duration);
+        Assert.Contains("fx", rate.Options.Tags);
 
         var currencies = Assert.Single(methods, m => m.MethodId.EndsWith("IFxVendorClient.GetCurrenciesAsync", StringComparison.Ordinal));
-        Assert.Equal(TimeSpan.FromHours(1), currencies.Duration);
+        Assert.Equal(TimeSpan.FromHours(1), currencies.Options.Duration);
 
         Assert.DoesNotContain(methods, m => m.MethodId.EndsWith("IFxVendorClient.CreateOrderAsync", StringComparison.Ordinal));
     }
@@ -153,7 +153,7 @@ namespace VendorApp
 
         var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
             m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
-        Assert.Equal(TimeSpan.FromSeconds(30), rate.Duration);
+        Assert.Equal(TimeSpan.FromSeconds(30), rate.Options.Duration);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ namespace VendorApp
         await using var provider = services.BuildServiceProvider();
         var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
             m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
-        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+        Assert.Equal(TimeSpan.FromHours(1), rate.Options.Duration);
     }
 
     // An assembly passed to AddMethodCache whose code hasn't run yet still has its decorator chosen, even when
@@ -196,7 +196,7 @@ namespace VendorApp
 
         var rate = Assert.Single(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
             m => m.MethodId.EndsWith("IFxVendorClient.GetRateAsync", StringComparison.Ordinal));
-        Assert.Equal(TimeSpan.FromHours(1), rate.Duration);
+        Assert.Equal(TimeSpan.FromHours(1), rate.Options.Duration);
     }
 
     private static string SharedVendorSource(string ns, string duration) => $@"
