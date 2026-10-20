@@ -7,8 +7,8 @@ namespace MethodCache.Generated;
 
 /// <summary>
 /// Writes a cache key into a caller-supplied buffer, usually on the stack, so a cache hit can be looked up without
-/// allocating the key string. Produces exactly the text <see cref="MethodCacheKeys"/> builds. Generated decorators
-/// use it; application code rarely needs it.
+/// allocating the key string. Produces exactly the key <see cref="IMethodCacheKeys.For{TService}"/> returns. For
+/// generated decorators; not for direct use.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public ref struct KeyBuilder

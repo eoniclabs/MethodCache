@@ -69,7 +69,8 @@ namespace MethodCache
         /// <summary>
         /// Stores a result only when <paramref name="predicate"/> returns true, e.g. <c>CacheWhen(r =&gt; r.Count &gt; 0)</c>.
         /// A rejected result is still returned to the caller, the entry it would have replaced stays, and the next call
-        /// runs the method again. The predicate runs once per load, never on a cache hit.
+        /// runs the method again. The predicate runs once per load and on each value read from the distributed cache,
+        /// where a rejected value is skipped and the method runs; it never runs on a hit in memory.
         /// </summary>
         IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate);
     }
