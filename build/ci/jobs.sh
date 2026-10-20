@@ -113,13 +113,13 @@ job_packages() {
     echo "Expected MethodCache.$release_version.nupkg, got:"; ls artifacts/release-version; exit 1
   }
 
-  echo "== The generator, analyzers and code fixes are in the MethodCache package"
+  echo "== The generator, analyzers, code fixes and the CS9057 build targets are in the MethodCache package"
   local contents
   contents=$(python3 -c 'import sys, zipfile; print("\n".join(zipfile.ZipFile(sys.argv[1]).namelist()))' \
     artifacts/packages/MethodCache.[0-9]*.nupkg)
-  for dll in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll \
-             analyzers/dotnet/cs/MethodCache.CodeFixes.dll; do
-    grep -qx "$dll" <<< "$contents" || { echo "Missing $dll"; exit 1; }
+  for file in analyzers/dotnet/cs/MethodCache.SourceGenerator.dll analyzers/dotnet/cs/MethodCache.Analyzers.dll \
+              analyzers/dotnet/cs/MethodCache.CodeFixes.dll build/MethodCache.targets buildTransitive/MethodCache.targets; do
+    grep -qx "$file" <<< "$contents" || { echo "Missing $file"; exit 1; }
   done
 
   echo "== Install the package and run the Quick Start"
