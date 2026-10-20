@@ -131,20 +131,23 @@ internal static class ConfigFilePolicySourceBuilder
         return policies;
     }
 
-    /// <summary>Explains a tag template that doesn't fit a cached method, naming the configuration that causes it.</summary>
+    /// <summary>
+    /// Explains a tag template that doesn't fit a cached method, naming the configuration that causes it. A rejected
+    /// reload logs the reason, so it holds no part of the tag; InvalidValue's message quotes the whole value.
+    /// </summary>
     private static InvalidOperationException TagError(IConfigurationSection root, List<ConfiguredPolicy> policies, TagProblem problem)
     {
         if (problem.FromChecked && policies.FirstOrDefault(policy => policy.Draft.MethodId == problem.LayerId) is { } tagged)
         {
             var tag = tagged.Section.GetSection("Tags").GetChildren().FirstOrDefault(item => item.Value == problem.Tag);
             return InvalidValue(tagged.Section, tag == null ? "Tags" : $"Tags:{tag.Key}", problem.Tag,
-                $"a tag template that fits '{problem.MethodId}': {problem.Reason}");
+                $"a tag template that fits '{problem.MethodId}': {problem.ValueFreeReason}");
         }
 
         // The tag is set elsewhere, and this configuration puts the method in the group it is set for
         var section = policies.FirstOrDefault(policy => policy.Draft.MethodId == problem.MethodId)?.Section ?? root;
         return new InvalidOperationException(
-            $"MethodCache configuration '{section.Path}' lets a tag set in {problem.Where} reach its method, but {problem.Reason}.");
+            $"MethodCache configuration '{section.Path}' lets a tag set in {problem.Where} reach its method, but {problem.ValueFreeReason}.");
     }
 
     /// <summary>Rejects Group, Metadata and Notes outside a method's entry, since they describe one method.</summary>

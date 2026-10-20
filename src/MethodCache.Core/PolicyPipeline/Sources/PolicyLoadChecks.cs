@@ -30,7 +30,7 @@ internal sealed class PolicyLoadChecks
 /// <summary>A source that checks its policies with the <see cref="PolicyLoadChecks"/> the resolver gives it.</summary>
 internal interface IUsesPolicyLoadChecks
 {
-    /// <summary>Called once, before the source's policies are first read.</summary>
+    /// <summary>Called before the source's policies are first read, and again if loading is retried.</summary>
     void UseChecks(PolicyLoadChecks checks);
 }
 
@@ -38,7 +38,8 @@ internal interface IUsesPolicyLoadChecks
 /// <param name="MethodId">The cached method the tag reaches.</param>
 /// <param name="LayerId">The id the tag is set under: the method's own id, a group's defaults or the defaults for all methods.</param>
 /// <param name="Tag">The tag template.</param>
-/// <param name="Reason">Why it doesn't fit, without repeating the tag.</param>
+/// <param name="Reason">Why it doesn't fit, naming the placeholder.</param>
+/// <param name="ValueFreeReason">Why it doesn't fit, without any part of the tag, for a message a log may show.</param>
 /// <param name="Where">Where the tag is set, such as <c>mc.Defaults(...)</c>.</param>
 /// <param name="FromChecked">Whether the tag comes from the policies being checked rather than another source.</param>
-internal sealed record TagProblem(string MethodId, string LayerId, string Tag, string Reason, string Where, bool FromChecked);
+internal sealed record TagProblem(string MethodId, string LayerId, string Tag, string Reason, string ValueFreeReason, string Where, bool FromChecked);

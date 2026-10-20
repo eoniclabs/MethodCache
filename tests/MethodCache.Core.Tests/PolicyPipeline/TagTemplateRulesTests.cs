@@ -24,9 +24,13 @@ public class TagTemplateRulesTests
     public void Check_PlaceholderThatWouldStayLiteral_ExplainsWhy(string tag, string[] parameters, string reason, string rule)
     {
         var problem = TagTemplateRules.Check(tag, parameters);
+        var explanation = TagTemplateRules.Explain(tag, parameters)!.Value;
 
         Assert.NotNull(problem);
         Assert.Contains(reason, problem, StringComparison.Ordinal);
         Assert.EndsWith($"({rule})", problem, StringComparison.Ordinal);
+        Assert.Equal(problem, explanation.Reason);
+        Assert.StartsWith("a placeholder ", explanation.ValueFreeReason, StringComparison.Ordinal);
+        Assert.DoesNotContain("{", explanation.ValueFreeReason, StringComparison.Ordinal);
     }
 }

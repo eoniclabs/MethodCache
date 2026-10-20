@@ -524,9 +524,10 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 {
                     foreach (var tag in layer.Policy.Tags)
                     {
-                        if (TagTemplateRules.Check(tag, parameterNames) is { } reason)
+                        if (TagTemplateRules.Explain(tag, parameterNames) is { } explanation)
                         {
-                            yield return new TagProblem(methodId, layerId, tag, reason, Describe(layer, layerId), layer.Key == replaced);
+                            yield return new TagProblem(methodId, layerId, tag, explanation.Reason, explanation.ValueFreeReason,
+                                Describe(layer, layerId), layer.Key == replaced);
                         }
                     }
                 }

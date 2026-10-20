@@ -213,8 +213,8 @@ public class ConfigFileRulesTests
             [$"MethodCache:Methods:{GetId}:Tags:1"] = "item:{itemId}"
         });
 
-        Assert.Contains($"'MethodCache:Methods:{GetId}:Tags:1'", error.Message, StringComparison.Ordinal);
-        Assert.Contains("{itemId} names no parameter of the method, whose parameters are id", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"'MethodCache:Methods:{GetId}:Tags:1' has value 'item:{{itemId}}'", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"fits '{GetId}': a placeholder names no parameter of the method, whose parameters are id", error.Message, StringComparison.Ordinal);
         Assert.Contains("MC0010", error.Message, StringComparison.Ordinal);
     }
 
@@ -267,7 +267,8 @@ public class ConfigFileRulesTests
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
 
         Assert.Contains($"'MethodCache:Methods:{GetId}' lets a tag set in mc.Group(\"orders\", ...) reach its method", error.Message, StringComparison.Ordinal);
-        Assert.Contains("{orderId} names no parameter of the method, whose parameters are id", error.Message, StringComparison.Ordinal);
+        Assert.Contains("but a placeholder names no parameter of the method, whose parameters are id", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("order:", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
