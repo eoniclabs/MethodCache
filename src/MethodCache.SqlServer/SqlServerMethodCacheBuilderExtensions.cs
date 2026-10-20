@@ -55,13 +55,8 @@ public static class SqlServerMethodCacheBuilderExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         MethodCache.Infrastructure.OwnedServices.AddOptions(services);
-        services.AddOptions<SqlServerOptions>().Configure(configure)
-            .Validate(options =>
-            {
-                try { options.Validate(); return true; }
-                catch (InvalidOperationException) { return false; }
-            }, "SqlServerOptions requires a connection, table names and valid positive polling/retention settings.")
-            .ValidateOnStart();
+        services.AddOptions<SqlServerOptions>().Configure(configure).ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<SqlServerOptions>, SqlServerOptionsValidator>());
         services.TryAddSingleton(static sp =>
         {
             var configured = sp.GetRequiredService<IOptions<SqlServerOptions>>().Value;
@@ -112,3 +107,23 @@ public static class SqlServerMethodCacheBuilderExtensions
 }
 
 internal sealed record SqlServerRuntimeOptions(SqlServerOptions Options, string Prefix);
+
+/// <summary>Fails startup with the message of the rule the options break, not a summary of every rule.</summary>
+internal sealed class SqlServerOptionsValidator : IValidateOptions<SqlServerOptions>
+{
+    /// <inheritdoc />
+    public ValidateOptionsResult Validate(string? name, SqlServerOptions options)
+    {
+        // UseSqlServer configures the unnamed options; named ones are not MethodCache's
+        if (name != Microsoft.Extensions.Options.Options.DefaultName) return ValidateOptionsResult.Skip;
+        try
+        {
+            options.Validate();
+            return ValidateOptionsResult.Success;
+        }
+        catch (InvalidOperationException error)
+        {
+            return ValidateOptionsResult.Fail(error.Message);
+        }
+    }
+}
