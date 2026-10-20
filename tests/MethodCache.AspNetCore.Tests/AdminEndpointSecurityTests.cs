@@ -89,6 +89,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
                 "DELETE /ops/cache/entry",
                 "GET /ops/cache/entry",
                 "POST /ops/cache/invalidate",
+                "POST /ops/cache/invalidate-method",
                 "GET /ops/cache/methods",
                 "GET /ops/cache/stats",
             },
@@ -143,6 +144,8 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     [InlineData("GET", "/stats?verbose=true")]
     [InlineData("POST", "/clear?tag=users")]      // clear takes no filter; it must not look as if it did
     [InlineData("POST", "/invalidate?tag=users")]
+    [InlineData("POST", "/invalidate-method?methodId=Users")]
+    [InlineData("GET", "/entries?methodId=")]
     [InlineData("GET", "/entries?limit=0")]
     [InlineData("GET", "/entries?limit=-1")]
     [InlineData("GET", "/entries?limit=1001")]
@@ -176,6 +179,8 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     [InlineData("/invalidate", "application/x-www-form-urlencoded", "tags=users")]
     [InlineData("/invalidate", "text/plain", "{\"tags\":[\"users\"]}")]
     [InlineData("/invalidate", "multipart/form-data; boundary=x", "--x\r\nContent-Disposition: form-data; name=\"tags\"\r\n\r\nusers\r\n--x--")]
+    [InlineData("/invalidate-method", "application/x-www-form-urlencoded", "methodId=Users")]
+    [InlineData("/invalidate-method", "text/plain", "{\"methodId\":\"Users\"}")]
     [InlineData("/clear", "application/x-www-form-urlencoded", "")]
     [InlineData("/clear", "text/plain", "{}")]
     [InlineData("/clear", "multipart/form-data; boundary=x", "--x--")]
