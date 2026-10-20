@@ -89,7 +89,8 @@ public class AdminMethodEndpointsTests : IAsyncLifetime
     [Theory]
     [InlineData("/methodcache/entries?methodId=")]
     [InlineData("/methodcache/entries?methodId=%20")]
-    public async Task Entries_EmptyMethodId_IsRejected(string path)
+    [InlineData("/methodcache/entries?methodId=%5BUnknown%5DNs.IService.Method")]
+    public async Task Entries_EmptyOrUnknownMethodId_IsRejected(string path)
     {
         var response = await _client.GetAsync(path);
 

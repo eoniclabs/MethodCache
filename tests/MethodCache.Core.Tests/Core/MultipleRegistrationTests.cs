@@ -89,6 +89,23 @@ public class MultipleRegistrationTests
     }
 
     [Fact]
+    public async Task For_ScopedFactoryWithSlowAsyncDisposal_ReturnsWithoutWaitingForTheDisposal()
+    {
+        var disposal = new TaskCompletionSource();
+        var disposed = new TaskCompletionSource();
+        using var provider = Build(services => services
+            .AddScoped<IRates>(_ => new RatesA())
+            .AddScoped<IRates>(_ => new SlowDisposingRates(disposal.Task, disposed)));
+
+        var key = provider.GetRequiredService<IMethodCacheKeys>().For<IRates>(rates => rates.Get(1));
+
+        Assert.Equal(Prefix + "#[MethodCache.Core.Tests]MethodCache.Core.Tests.Core.MultipleRegistrationTests+SlowDisposingRates:1", key);
+        Assert.False(disposed.Task.IsCompleted);
+        disposal.SetResult();
+        await disposed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task TagInvalidation_SeveralRegistrations_ReachesEveryOne()
     {
         var a = new RatesA();
@@ -112,9 +129,34 @@ public class MultipleRegistrationTests
     }
 
     [Fact]
-    public void AddMethodCache_TwoRegistrationsOfTheSameType_IsRejected()
+    public void GetServices_TwoTypeRegistrationsOfTheSameType_ShareCachedResults()
     {
-        var services = new ServiceCollection().AddSingleton<IRates, RatesA>().AddScoped<IRates, RatesA>();
+        // The container builds both from the same type and dependencies, so they are interchangeable: a library and the
+        // application both adding the same registration must keep working
+        using var provider = Build(services => services.AddSingleton<IRates, RatesA>().AddScoped<IRates, RatesA>());
+        using var scope = provider.CreateScope();
+
+        var all = scope.ServiceProvider.GetServices<IRates>().ToArray();
+
+        Assert.Equal(["A1", "A1"], all.Select(rates => rates.Get(1)));
+        Assert.Equal([Prefix + TypeA + ":1"], StoredKeys(provider));
+    }
+
+    [Fact]
+    public void Resolve_TypeRegistrationAndFactoryCreatingTheSameType_Fails()
+    {
+        // A factory may configure its instance differently, so it must not share the type registration's results
+        using var provider = Build(services => services.AddSingleton<IRates, RatesA>().AddSingleton<IRates>(_ => new RatesA()));
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetServices<IRates>().ToArray());
+
+        Assert.Contains(typeof(RatesA).FullName!, error.Message);
+    }
+
+    [Fact]
+    public void AddMethodCache_TypeRegistrationAndInstanceOfTheSameType_IsRejected()
+    {
+        var services = new ServiceCollection().AddSingleton<IRates, RatesA>().AddSingleton<IRates>(new RatesA());
 
         var error = Assert.Throws<InvalidOperationException>(() => services.AddMethodCache());
 
@@ -261,4 +303,13 @@ public class MultipleRegistrationTests
     public sealed class RatesA() : RatesBase("A");
 
     public sealed class RatesB() : RatesBase("B");
+
+    public sealed class SlowDisposingRates(Task disposal, TaskCompletionSource disposed) : RatesBase("S"), IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            await disposal;
+            disposed.SetResult();
+        }
+    }
 }

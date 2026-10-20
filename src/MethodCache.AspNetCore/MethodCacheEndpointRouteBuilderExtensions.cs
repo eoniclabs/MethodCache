@@ -89,8 +89,13 @@ public static class MethodCacheEndpointRouteBuilderExtensions
         var take = limit ?? 100;
         if (take is < 1 or > MaxListLimit)
             return Invalid("limit", $"limit must be between 1 and {MaxListLimit}.");
-        if (methodId is not null && string.IsNullOrWhiteSpace(methodId))
-            return MissingMethodId();
+        if (methodId is not null)
+        {
+            if (string.IsNullOrWhiteSpace(methodId)) return MissingMethodId();
+            // A mistyped id would list nothing and look like a method without entries
+            if (!admin.GetMethods().Any(method => string.Equals(method.MethodId, methodId, StringComparison.Ordinal)))
+                return UnknownMethodId();
+        }
 
         return TypedResults.Ok(admin.ListEntries(storedKeyPrefix, tag, take, methodId));
     }
@@ -132,7 +137,7 @@ public static class MethodCacheEndpointRouteBuilderExtensions
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
             // An unknown id would otherwise remove nothing and still answer 204; the id is not echoed back
-            return Invalid("methodId", "No cached method has this id: pass a methodId as methods lists it.");
+            return UnknownMethodId();
         }
 
         return TypedResults.NoContent();
@@ -148,6 +153,9 @@ public static class MethodCacheEndpointRouteBuilderExtensions
 
     private static ValidationProblem MissingStoredKey()
         => Invalid("storedKey", "storedKey is required: pass the storedKey of an entry, as entries lists it.");
+
+    private static ValidationProblem UnknownMethodId()
+        => Invalid("methodId", "No cached method has this id: pass a methodId as methods lists it.");
 
     private static ValidationProblem MissingMethodId()
         => Invalid("methodId", "methodId is required: pass the id of a cached method, as methods lists it.");
@@ -175,7 +183,8 @@ public static class MethodCacheEndpointRouteBuilderExtensions
     }
 }
 
-/// <summary>Body of the <c>invalidate</c> endpoint.</summary>
+/// <summary>Body of the <c>invalidate</c> endpoint. Any other property is rejected rather than ignored.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record InvalidateRequest(IReadOnlyList<string>? Tags);
 
 /// <summary>

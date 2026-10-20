@@ -164,6 +164,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     [InlineData("{\"tags\":[\"users\",\" \"]}")]
     [InlineData("{\"tags\":[\"users\",null]}")]
     [InlineData("{\"tags\":\"users\"}")]
+    [InlineData("{\"tags\":[\"users\"],\"methodId\":\"Users\"}")] // a filter it does not take must not be ignored
     [InlineData("not json")]
     public async Task Invalidate_RejectsABadBody_AndRemovesNothing(string body)
     {

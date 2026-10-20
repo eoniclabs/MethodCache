@@ -379,9 +379,10 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static InvalidOperationException SameImplementation(Type serviceType, object? serviceKey, Type implementationType) => new(
             $"MethodCache found two registrations of {serviceType}{(serviceKey == null ? string.Empty : $" with service key {serviceKey}")} " +
-            $"that both use {implementationType}. When an interface has more than one registration, each caches its own results " +
-            "under its implementation type, so two of the same type would share cached results. Register them with different " +
-            "service keys (AddKeyedSingleton, AddKeyedScoped or AddKeyedTransient), or remove one of them.");
+            $"that both create {implementationType}, and at least one of them is an instance or a factory. When an interface has more " +
+            "than one registration, each caches its own results under its implementation type, so these two would share cached " +
+            "results although they may be configured differently. Register them with different service keys (AddKeyedSingleton, " +
+            "AddKeyedScoped or AddKeyedTransient), or remove one of them.");
 
         /// <summary>
         /// One registration MethodCache decorated: what its cache keys carry, and how the decorator finds the
@@ -396,6 +397,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 ServiceKey = descriptor.ServiceKey;
                 Lifetime = descriptor.Lifetime;
                 InnerKey = new DecoratedServiceKey(descriptor.ServiceType, descriptor.ServiceKey);
+                IsTypeRegistration = (descriptor.IsKeyedService ? descriptor.KeyedImplementationType : descriptor.ImplementationType) != null;
                 ImplementationType = descriptor.IsKeyedService
                     ? descriptor.KeyedImplementationType ?? descriptor.KeyedImplementationInstance?.GetType()
                     : descriptor.ImplementationType ?? descriptor.ImplementationInstance?.GetType();
@@ -418,6 +420,16 @@ namespace Microsoft.Extensions.DependencyInjection
 
             /// <summary>The registered implementation type or instance type; null for a factory, whose type is known once it runs.</summary>
             internal Type? ImplementationType { get; }
+
+            /// <summary>
+            /// Whether the container builds the implementation from its type. Two such registrations of one type are
+            /// interchangeable and share cached results; an instance or a factory may be configured differently.
+            /// </summary>
+            internal bool IsTypeRegistration { get; }
+
+            /// <summary>Whether this registration and <paramref name="other"/> may share cached results.</summary>
+            internal bool Interchangeable(DecoratedRegistration other)
+                => IsTypeRegistration && other.IsTypeRegistration && ImplementationType == other.ImplementationType;
 
             /// <summary>The service key part of a keyed registration's cache keys (<c>@ecb</c>), else null.</summary>
             internal string? KeyedSuffix { get; }
@@ -458,8 +470,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 finally
                 {
+                    // Not blocking on an asynchronous disposal: it finishes in the background, and a failure is observed
                     var disposal = scope.DisposeAsync();
-                    if (!disposal.IsCompletedSuccessfully) disposal.AsTask().GetAwaiter().GetResult();
+                    if (disposal.IsCompleted) disposal.GetAwaiter().GetResult();
+                    else _ = disposal.AsTask().ContinueWith(static task => _ = task.Exception, CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                 }
             }
         }
@@ -503,7 +518,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
             internal void Claim(DecoratedRegistration registration, Type type)
             {
-                if (!ReferenceEquals(_owners.GetOrAdd((registration.Group, type), registration), registration))
+                var owner = _owners.GetOrAdd((registration.Group, type), registration);
+                if (!ReferenceEquals(owner, registration) && !registration.Interchangeable(owner))
                 {
                     throw SameImplementation(registration.ServiceType, registration.ServiceKey, type);
                 }
@@ -647,7 +663,8 @@ namespace Microsoft.Extensions.DependencyInjection
             /// <summary>
             /// Brings each interface's registrations per service key up to date after an <c>AddMethodCache</c> call:
             /// registrations the application removed since are dropped, so a single remaining one keeps its plain keys,
-            /// and two registrations of the same implementation type are rejected, since their keys would be the same.
+            /// and two registrations of the same implementation type are rejected, since their keys would be the same,
+            /// unless the container builds both from that type.
             /// </summary>
             internal void GroupRegistrations(IServiceCollection services)
             {
@@ -656,10 +673,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     group.RemoveAll(registration => !services.Contains(registration.Decorator));
                     if (group.Count > 0) Recorders[key] = group[^1];
                     if (group.Count < 2) continue;
-                    var seen = new HashSet<Type>();
+                    var seen = new Dictionary<Type, DecoratedRegistration>();
                     foreach (var registration in group)
-                        if (registration.ImplementationType is { } type && !seen.Add(type))
+                    {
+                        if (registration.ImplementationType is not { } type) continue;
+                        if (!seen.TryAdd(type, registration) && !registration.Interchangeable(seen[type]))
                             throw SameImplementation(registration.ServiceType, registration.ServiceKey, type);
+                    }
                 }
             }
 
