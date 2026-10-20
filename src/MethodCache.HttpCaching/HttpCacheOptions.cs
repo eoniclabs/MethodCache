@@ -3,8 +3,13 @@ namespace MethodCache.HttpCaching;
 /// <summary>
 /// Settings for HTTP caching on one HttpClient. Set them in <c>AddHttpCaching(options => ...)</c>.
 /// </summary>
-/// <remarks>Size and freshness/retention values must be non-negative. Background revalidation timeout must be
-/// positive and no greater than 4,294,967,294 milliseconds. Named settings are validated when the host starts.</remarks>
+/// <remarks>
+/// Only GET and HEAD responses are cached. Other safe methods (OPTIONS, TRACE) go to the origin and change nothing;
+/// any other method, including one the cache does not know, goes to the origin and, when it succeeds, removes the
+/// cached responses for its URL (RFC 9111 section 4.4). <see cref="MaxResponseBytes"/> and the background
+/// revalidation timeout must be positive (the timeout at most 4,294,967,294 milliseconds), and freshness and
+/// retention durations non-negative. Named settings are validated when the host starts.
+/// </remarks>
 public sealed class HttpCacheOptions
 {
     /// <summary>
@@ -69,20 +74,17 @@ public sealed class HttpCacheOptions
     /// <summary>Timeout for a background revalidation. Default 10 seconds.</summary>
     public TimeSpan BackgroundRevalidationTimeout { get; set; } = TimeSpan.FromSeconds(10);
 
-    /// <summary>Responses larger than this are not cached. Default 10 MB; 0 means no limit.</summary>
-    public long MaxResponseSize { get; set; } = 10 * 1024 * 1024;
+    /// <summary>
+    /// Responses with a body larger than this many bytes are not cached. Default 10 MiB. Must be positive; set
+    /// <see cref="long.MaxValue"/> for no limit.
+    /// </summary>
+    public long MaxResponseBytes { get; set; } = 10 * 1024 * 1024;
 
     /// <summary>
     /// Request headers that are always part of the cache key, for APIs that vary responses on a header
     /// (a tenant id, say) without sending <c>Vary</c>.
     /// </summary>
     public ISet<string> KeyHeaders { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Request methods whose responses are cached. Default GET and HEAD. Unsafe methods such as POST are never
-    /// cached; a successful one removes the cached responses for its URL instead.
-    /// </summary>
-    public ISet<HttpMethod> CacheableMethods { get; } = new HashSet<HttpMethod> { HttpMethod.Get, HttpMethod.Head };
 
     /// <summary>
     /// Adds <c>X-Cache</c> (HIT, MISS, REVALIDATED, STALE, STALE-IF-ERROR), <c>X-Cache-Age</c> and

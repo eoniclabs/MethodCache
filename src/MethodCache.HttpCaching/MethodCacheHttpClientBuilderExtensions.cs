@@ -60,11 +60,12 @@ public static class MethodCacheHttpClientBuilderExtensions
         var options = services.AddOptions<HttpCacheOptions>(name)
             .Validate(static options => options.Tags.Count <= 125 && options.Tags.All(static tag => !string.IsNullOrWhiteSpace(tag) && tag.Length <= 1024),
                 "HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.")
-            .Validate(static options => options.MaxResponseSize >= 0 &&
-                (options.DefaultMaxAge == null || options.DefaultMaxAge >= TimeSpan.Zero) &&
+            .Validate(static options => options.MaxResponseBytes > 0,
+                "HttpCacheOptions.MaxResponseBytes must be positive; set long.MaxValue for no limit.")
+            .Validate(static options => (options.DefaultMaxAge == null || options.DefaultMaxAge >= TimeSpan.Zero) &&
                 options.MaxHeuristicFreshness >= TimeSpan.Zero && options.StaleRetention >= TimeSpan.Zero &&
                 options.MaxStaleIfError >= TimeSpan.Zero,
-                "HTTP response size and freshness/retention durations must be non-negative; zero response size means no limit.")
+                "HTTP freshness and retention durations must be non-negative.")
             .Validate(static options => options.BackgroundRevalidationTimeout > TimeSpan.Zero &&
                 options.BackgroundRevalidationTimeout <= TimeSpan.FromMilliseconds(uint.MaxValue - 1),
                 "HTTP background revalidation timeout must be positive and fit the platform timer range.")

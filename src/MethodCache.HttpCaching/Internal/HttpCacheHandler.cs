@@ -127,11 +127,11 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         var isUnsafe = IsUnsafeMethod(request.Method);
 
-        // Unsafe methods are never served from cache, even if listed in CacheableMethods, so they always invalidate.
+        // Only GET and HEAD are served from or stored in the cache; a successful unsafe method invalidates below.
         // Range requests go to the origin: a partial response is never stored, and a stored full one isn't cut up.
         // So do requests with the caller's own validators: its 304 must reach it, not be replaced by the cache's.
         // A request with a body (a search sent as GET) is not identified by its URL alone.
-        if (options.KeepCookies || isUnsafe || !options.CacheableMethods.Contains(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
+        if (options.KeepCookies || !IsCacheableMethod(request.Method) || requestDirectives.NoStore || request.Headers.Range != null ||
             request.Content != null || HasCallerConditionals(request) || HasUnsafeTransport(options))
         {
             if (requestDirectives.OnlyIfCached)
@@ -317,7 +317,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
     }
 
-    // RFC 9110 section 9.2.1: GET, HEAD, OPTIONS and TRACE are safe; everything else may change the resource.
+    private static bool IsCacheableMethod(HttpMethod method) => method == HttpMethod.Get || method == HttpMethod.Head;
+
+    // RFC 9110 section 9.2.1: GET, HEAD, OPTIONS and TRACE are safe. RFC 9111 section 4.4 treats every other method,
+    // including one whose safety the cache doesn't know (QUERY, say), as unsafe: it invalidates.
     private static bool IsUnsafeMethod(HttpMethod method)
         => method != HttpMethod.Get && method != HttpMethod.Head && method != HttpMethod.Options && method != HttpMethod.Trace;
 
@@ -402,10 +405,10 @@ internal sealed class HttpCacheHandler : DelegatingHandler
 
         // Reading a response body is part of the HTTP request. A failed read cannot be treated as a cache miss:
         // the partially consumed response would reach the caller with missing bytes.
-        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseSize, cancellationToken, responseDelay: responseDelay, storage: storage, storageKey: cacheKey).ConfigureAwait(false);
+        var entry = await HttpCacheEntry.FromResponseAsync(request, response, _timeProvider.GetUtcNow(), options.MaxResponseBytes, cancellationToken, responseDelay: responseDelay, storage: storage, storageKey: cacheKey).ConfigureAwait(false);
         if (entry == null)
         {
-            return StoreResult.NotStored; // Larger than MaxResponseSize; the caller still reads all of it
+            return StoreResult.NotStored; // Larger than MaxResponseBytes; the caller still reads all of it
         }
 
         var attempt = new StoreAttempt();
@@ -581,7 +584,7 @@ internal sealed class HttpCacheHandler : DelegatingHandler
     /// </summary>
     private static bool IsStorable(HttpRequestMessage request, HttpResponseMessage response, HttpCacheOptions options)
     {
-        if (response.Content?.Headers.ContentLength is { } length && options.MaxResponseSize > 0 && length > options.MaxResponseSize)
+        if (response.Content?.Headers.ContentLength is { } length && length > options.MaxResponseBytes)
         {
             return false;
         }

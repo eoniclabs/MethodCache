@@ -49,7 +49,7 @@ public class HttpCacheSafetyTests
         var body = new CountingStream(size);
         var calls = 0;
         var handler = HttpCacheTestFactory.CreateHandler(
-            new HttpCacheOptions { MaxResponseSize = 1024 },
+            new HttpCacheOptions { MaxResponseBytes = 1024 },
             new LambdaHandler(_ =>
             {
                 calls++;

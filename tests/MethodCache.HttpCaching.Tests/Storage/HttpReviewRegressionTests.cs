@@ -33,6 +33,7 @@ public class HttpReviewRegressionTests
 
     [Theory]
     [InlineData("size")]
+    [InlineData("size-zero")]
     [InlineData("default-age")]
     [InlineData("heuristic")]
     [InlineData("retention")]
@@ -48,7 +49,8 @@ public class HttpReviewRegressionTests
         {
             switch (invalid)
             {
-                case "size": options.MaxResponseSize = -1; break;
+                case "size": options.MaxResponseBytes = -1; break;
+                case "size-zero": options.MaxResponseBytes = 0; break;
                 case "default-age": options.DefaultMaxAge = TimeSpan.FromTicks(-1); break;
                 case "heuristic": options.MaxHeuristicFreshness = TimeSpan.FromTicks(-1); break;
                 case "retention": options.StaleRetention = TimeSpan.FromTicks(-1); break;
@@ -71,7 +73,7 @@ public class HttpReviewRegressionTests
         builder.Services.AddMethodCache();
         builder.Services.AddHttpClient("valid-bounds").AddHttpCaching(options =>
         {
-            options.MaxResponseSize = 0;
+            options.MaxResponseBytes = large ? long.MaxValue : 1;
             options.DefaultMaxAge = large ? TimeSpan.MaxValue : TimeSpan.Zero;
             options.MaxHeuristicFreshness = large ? TimeSpan.MaxValue : TimeSpan.Zero;
             options.StaleRetention = large ? TimeSpan.MaxValue : TimeSpan.Zero;
