@@ -57,7 +57,8 @@ sequenceDiagram
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
   with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
 - Only Redis and Microsoft SQL Server are supported. Other stores, such as PostgreSQL, are not; the storage
-  interfaces are internal.
+  interfaces are internal. Use one of them: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)` and
+  `UseMessagePack()` without either log a warning at startup, since they have nothing to apply to.
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
@@ -195,7 +196,7 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 ## Owned storage and compatibility
 
-Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` before building the container. All Configure registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
+Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
 
 `TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
 

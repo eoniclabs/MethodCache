@@ -62,8 +62,9 @@ same way.
 gets the cached value at once, and the reload replaces it, so a popular entry never makes anyone wait. An entry that
 isn't read in the window simply expires.
 
-The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: in code
-(`Build()` throws an `InvalidOperationException`) and in `appsettings.json` (startup fails) a longer one is rejected.
+The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: on `[Cache]`
+(build error [MC0023](../user-guide/DIAGNOSTICS.md#mc0023)), in code (`Build()` throws an `InvalidOperationException`)
+and in `appsettings.json` (startup fails) a longer one is rejected.
 When settings from different places combine into such a window, for example an attribute's `RefreshAhead` with a
 shorter `Duration` from configuration, the reload starts halfway through the entry's life instead.
 

@@ -174,7 +174,7 @@ En ändring efter en beräknad hash måste göra eventuell cachad hash inaktuell
 Detta följer även [BCL-kontraktet för alternativa jämförare](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ialternateequalitycomparer-2.gethashcode?view=net-10.0).
 
 Hash och seed är intern, processlokal metadata och ingår inte i nyckeltext, L2, wire-format, admin,
-MethodCacheKeys.For eller invalidationsmeddelanden. Restart eller en annan process får inte ändra dessa
+IMethodCacheKeys.For eller invalidationsmeddelanden. Restart eller en annan process får inte ändra dessa
 identiteter. Policy-/versionsbyten skapar prefixstate för den nya snapshoten och behåller dess isolering.
 
 En egen jämförare måste ha dokumenterat skydd mot avsiktliga kollisionsangrepp för det faktiska algoritm-
@@ -202,7 +202,7 @@ UseMessagePack och UseJson. Bekvämlighetsöverlagringar är uttryckliga; de än
   Redan registrerade tjänster ignorerar kandidatvalet. Samma urval gäller JIT och Native AOT.
 - Open generics och KeyedService.AnyKey får inte tyst bli okachade. När en registrering saknar en stödd,
   genererad bindning ska startupfelet ange det; konkreta closed generics och vanliga keyed tjänster stöds.
-- Runtime-konfiguratorn erbjuder UpsertAsync, RemoveAsync, ClearAsync och GetOverridesAsync, samt typade
+- Runtime-konfiguratorn erbjuder UpsertAsync, RemoveAsync, ClearAsync (ValueTask) och GetOverrides(), samt typade
   method-expression-överlagringar. Alla tar token sist. Okänt method-id avvisas utan att lagras.
   Batch/mask/publik CachePolicy tas bort. Grupp/global-defaults vid startup och config finns kvar; runtime-
   konfiguratorn ändrar metoder (ingen dold gruppadministration via en felstavad metodsträng).
@@ -240,8 +240,8 @@ avgränsad L2-parallellism. Logiska versionerade nycklar konstrueras centralt; a
 
 En builder gäller startup, config, runtime och manuella anrop: duration, sliding, refresh, fail-safe,
 tags/clear-tags, version, Distributed och Enabled. Typade anrop/metoder har CacheWhen.
-OnHit/OnMiss/When(CacheContext)/WithMetrics/ICacheMetrics och CacheContext.Services tas bort.
-CacheContext behöver inte en IServiceProvider. Publicering av options tar kopior av muterbara samlingar.
+OnHit/OnMiss/When(CacheContext)/WithMetrics/ICacheMetrics och CacheContext tas bort; fabriken får bara
+cancellation token. Publicering av options tar kopior av muterbara samlingar.
 
 Användarens async-API har token sist. Generatorfasaden har också tokens på async-laddning/invalidation;
 bootstrap/Describe och rena synkrona helpers omfattas inte av reflection-regeln.
@@ -387,7 +387,8 @@ Vid osäkerhet är det en miss, aldrig en förlängd gammal post.
   Whitespace runt värdet tillåts, suffix case-insensitive; multipla suffix, exponent, komma, NaN/infinity,
   overflow, negativa värden och ospecificerade rena tal avvisas. Upplösning är ticks; positivt värde som
   avrundas till noll avvisas. Även runtime/builders validerar positiva tidsfönster.
-- FailSafe är undantaget: text off (case-insensitive) stänger av; FailSafe(TimeSpan.Zero) på CacheEntryOptions.Builder är kodformen (den interna policybyggaren använder WithFailSafe).
+- SlidingExpiration, RefreshAhead och FailSafe är undantaget: text off (case-insensitive) stänger av; WithFailSafe(TimeSpan.Zero),
+  WithSlidingExpiration(TimeSpan.Zero) och WithRefreshAhead(TimeSpan.Zero) på CacheEntryOptions.Builder är kodformen.
   Zero är annars ogiltigt för duration, sliding, refresh, fail-safe-timeout och retry. FailSafeRetryAfter
   behåller default 30 sekunder. Unset följer defaults och är inte off.
 - Generatorn rapporterar fel själv och skriver aldrig en default som reserv för ogiltig explicit data.
@@ -405,13 +406,13 @@ i Core; standard false. Hashed keys är standard när nyckelregistrering aktiver
 
 | Instrument | Typ/enhet | Dimensioner och betydelse |
 |---|---|---|
-| methodcache.requests | Counter, {request} | kind=method/http, name=method-id/client, result=hit/miss/stale/revalidated/bypass/error. Exakt en slutkategori per anrop. |
-| methodcache.load.duration | Histogram, s | kind/name, error.type; bara faktiskt körda laddningar från datakällan, inte flight-joiners eller rena L2-hits. |
-| methodcache.entries | ObservableUpDownCounter, {entry} | kind; bara faktiskt lokalt lagrade svar/resultat, inte observationsregistret eller uppskattad global L2. |
+| methodcache.requests | Counter, {request} | methodcache.kind=method/manual/http, methodcache.method (method-id) eller methodcache.http.client, methodcache.bulk, methodcache.result=hit/miss/stale/revalidated/bypass/error. Exakt en slutkategori per anrop. |
+| methodcache.load.duration | Histogram, s | methodcache.kind/methodcache.method, error.type; hinkar 0,005–10 s; bara faktiskt körda laddningar från datakällan, inte flight-joiners eller rena L2-hits. |
+| methodcache.entries | ObservableUpDownCounter, {entry} | methodcache.kind; bara faktiskt lokalt lagrade svar/resultat, inte observationsregistret eller uppskattad global L2. |
 | methodcache.http.size | ObservableUpDownCounter, By | Lokalt lagrade HTTP-bytes enligt §9.1. Noll body-storage i L2-läge; observerad L2-storlek läggs inte till. |
-| methodcache.invalidations | Counter, {invalidation} | type=key/tag/method/clear, stage=local/distributed/queued/published/publication_queued; räknar targets per stage från §4.2. Stages summeras inte till operationsantal. |
-| methodcache.distributed.duration | Histogram, s | operation=get/set/remove/invalidate, error.type; individuella transportoperationer. |
-| methodcache.distributed.queue | ObservableUpDownCounter, {invalidation} | stage=storage/publication; distinct pending targets. |
+| methodcache.invalidations | Counter, {invalidation} | methodcache.invalidation.type=key/tag/method/clear, methodcache.invalidation.stage=local/distributed/queued/published/publication_queued; räknar targets per stage från §4.2. Stages summeras inte till operationsantal. |
+| methodcache.distributed.duration | Histogram, s | methodcache.operation=get/set/remove/invalidate, error.type; hinkar 0,005–10 s; individuella transportoperationer. |
+| methodcache.distributed.queue | ObservableUpDownCounter, {invalidation} | methodcache.invalidation.stage=storage/publication; distinct pending targets. |
 
 En failed fast probe räknar inte miss om senare väg faktiskt ger hit eller joins; refresh har separat
 load-duration och är inte en andra användar-request. Exception/stale-fallback avslutar requesten en gång.
@@ -777,7 +778,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 |---|---|---|
 | F01 | CsCheck över slumpade seed, prefix/argument och alla delningspunkter; tomma delar, UTF-16-surrogates, escaping, olika buffertstorlekar, Append efter lookup och reservnycklar. | Delad hash är exakt samma som helsträngshash för samma sluttext/seed; growth och Append lämnar aldrig gammal hash aktiv. |
 | F02 | Tvinga hashkollisioner via en intern testhook; skriv/hämta/ersätt/ta bort genom string-, span- och builder-vägar, inklusive konkurrerande publicering och eviction. | Bara identisk ordinal nyckel är en träff; alla vägar hittar samma post; borttagning och frekvensspårning fungerar trots kollisioner. |
-| F03 | Två processer med olika seed delar Redis/SQL; MethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop. | Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består. |
+| F03 | Två processer med olika seed delar Redis/SQL; IMethodCacheKeys.For, key/tag/clear-invalidation, admin och restart. Byt även policy under ett fångat anrop. | Nyckeltext och L2-identitet oförändrade; samma data delas och invalidieras; inget processhashvärde lagras/sänds och snapshot-isoleringen består. |
 | F04 | Granska algoritm/seed/hotmodell; kör algoritmens referensvektorer och dokumenterade adversariala kollisionsfall med långa gemensamma prefix och kontrollerad arbetsmätning. | Dokumenterat skydd mot avsiktlig hashflooding; regressioner mäts utan sleeps eller sköra nanosekundasserts. Slumpmässig fördelning ensam räknas inte som godkännande. |
 | F05 | Kör fryst PR 1-vendor-DLL mot prefixhash-Core utan regenerering; hela hit/miss-vägen på net10.0 och AOT, med korta/långa prefix och lyssnare av/på. | Samma kontrakt och cachebeteende; manifest oförändrat; full-path-resultat och allokeringar klarar §10, ingen funktion tas bort för vinsten. |
 

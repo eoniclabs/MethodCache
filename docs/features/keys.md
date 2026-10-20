@@ -113,7 +113,7 @@ builder.Services.AddMethodCache(cache => cache.UseJson());
 
 ## Method scope
 
-Generated keys always include the assembly simple name, interface, method, version, closed generic types and keyed-service identity where applicable. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
+Generated keys always include the assembly simple name, interface, method, version, closed generic types, the implementation type when an interface has several registrations, and the service key of a keyed registration. An argument cannot replace that scope: `CacheKeyAttribute` and its `UseAsRawKey` flag have been removed. Use `ICacheKeyProvider` to customize one argument's part, or the manual `ICacheManager` API when supplying a complete key.
 
 <!-- snippet: keys-scoped -->
 ```cs
@@ -153,21 +153,27 @@ it also follows a runtime version change. The method itself never runs. The call
 anything else, such as a method without `[Cache]`, throws an `InvalidOperationException`. For a keyed registration,
 pass its service key: `keys.For<IRates>(rates => rates.Get("EUR"), serviceKey: "ecb")`.
 
-Without the container, `MethodCacheKeys` builds the same keys from the parts. You then spell out the version and, for an
-overloaded method, its [method id](configuration.md#appsettingsjson):
+To work with every entry of one method, ask for its method id instead. It is the id the admin method list shows and
+appsettings uses, and it covers all arguments, versions, generic arguments and keyed registrations of the method:
 
-<!-- snippet: keys-by-hand -->
+<!-- snippet: keys-method-id -->
 ```cs
-// The version, and the method id of an overload, are spelled out
-var versioned = MethodCacheKeys.ForVersion(
-    typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
-var overload = MethodCacheKeys.For(
-    typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
+// "[MyApp]MyApp.IInvoiceService.FindAsync(string)": the arguments don't matter
+var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+var entries = admin.ListEntries(methodId: methodId);
 ```
 <!-- endSnippet -->
 
-`MethodCacheKeys.Prefix(type, name, version)` returns the start that every key of one method shares, for example for
-`ICacheAdministrator.ListEntries(storedKeyPrefix: ...)`. `MethodCacheKeys.Pattern` returns the same followed by `*`.
+<!-- snippet: keys-invalidate-method -->
+```cs
+var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+var result = await admin.InvalidateMethodAsync(methodId);   // every result of the method, on every instance
+```
+<!-- endSnippet -->
+
+`CacheEntryInfo.MethodId` tells which method an entry belongs to; it is `null` for entries stored through
+`ICacheManager` directly. An application `ICacheManager` stores entries under `MethodCacheKeys.StoredKey(key, version)`;
+see [Manual caching](manual-caching.md).
 
 ## Things to know
 
@@ -186,21 +192,26 @@ var overload = MethodCacheKeys.For(
   method keeps the id of the interface that declares it.
 - **Keyed registrations** have their service key after the method name, so `AddKeyedScoped<IRates, EcbRates>("ecb")`
   and `AddKeyedScoped<IRates, FedRates>("fed")` each cache their own results: `[MyApp]MyApp.IRates.Get@ecb:1` and
-  `[MyApp]MyApp.IRates.Get@fed:1`. `MethodCacheKeys.KeyedMethodName("Get", "ecb")` returns the name to pass to `For`,
-  `Prefix` or `Pattern`. Other keys carry their type (`Get@[MyApp]MyApp.Region.Eu`, `Get@Int32(7)`), and a string with a
-  `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()`
-  throws for a keyed registration of a cached interface with any other key. A `KeyedService.AnyKey` registration is
-  left uncached. `MethodCacheKeys.Pattern(type, "Get")`
-  matches the entries of every registration. Tags don't include the service key, so a `[CacheInvalidate]` tag, on any
-  registration, removes the matching entries of all of them.
+  `[MyApp]MyApp.IRates.Get@fed:1`. Other keys carry their type (`Get@[MyApp]MyApp.Region.Eu`, `Get@Int32(7)`), and a
+  string with a `.`, `(` or `"` in it is written in quotes, so keys of different types never share entries. The service
+  key must be a string, enum, bool, char, integer or `Guid`; `AddMethodCache()` throws for a keyed registration of a
+  cached interface with any other key, and for a `KeyedService.AnyKey` registration. A constructor parameter marked
+  `[ServiceKey]` receives your key, as it does without MethodCache.
+- **Several registrations of one interface** under the same service key (or under none) with different
+  implementation types each cache their own results. Their keys carry the implementation type before any service key:
+  with `AddSingleton<IRates, EcbRates>()` and `AddSingleton<IRates, FedRates>()` the keys are
+  `[MyApp]MyApp.IRates.Get#[MyApp]MyApp.EcbRates:1` and `[MyApp]MyApp.IRates.Get#[MyApp]MyApp.FedRates:1`. A single
+  registration keeps the plain key. Two registrations the container builds from the same implementation type, such as
+  a library and the application both calling `AddSingleton<IRates, EcbRates>()`, are interchangeable and share their
+  results. An instance registration can be configured differently, so `AddMethodCache()` fails when one has the same
+  type as another registration under that key; a factory that creates the same type as another registration fails
+  when both have been created. Give each its own service key instead. `keys.For<IRates>(...)` returns the key of the
+  last registration, the one `GetService<IRates>()` returns.
+- **All registrations of a method share its method id and its tags.** A `[CacheInvalidate]` tag, on any registration,
+  and `InvalidateMethodAsync` remove the matching entries of all of them.
+- **Generic methods** carry their closed type arguments after the method name, before any implementation type or
+  service key: `Get<[System.Private.CoreLib]System.Int32>:1`. Overloads that differ only in generic arity stay apart in
+  ids and keys: `Get(int)`, ``Get`1(int)`` and ``Get`2(int)``. `keys.For` writes the type arguments for you, and the
+  method id covers every closed type.
 - To see the keys your application produces, list them with `ICacheAdministrator.ListEntries()` or the admin
   endpoints ([Monitoring](monitoring.md)).
-
-MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
-
-Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
-
-For a closed generic method, include `<` + `MethodCacheKeys.TypePart(typeof(T))` + `>` after the method name,
-before any keyed-service suffix and version. Pass that same method name to `ForVersion`, `Prefix` and `Pattern`;
-it matches both inline and fallback keys. A pattern with the plain method name and no version matches all its
-specializations. A version-specific pattern requires the closed type arguments.

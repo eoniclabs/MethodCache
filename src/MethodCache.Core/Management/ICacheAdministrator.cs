@@ -74,7 +74,8 @@ public interface ICacheAdministrator
 
     /// <summary>
     /// Removes every entry and resets the hit and miss counters. Throws <see cref="CacheInvalidationQueuedException"/>
-    /// while the distributed clear is queued for recovery.
+    /// while the distributed clear is queued for recovery. When the application registered its own
+    /// <see cref="ICacheManager"/>, only HTTP responses are removed; clear the method results through that manager.
     /// </summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 

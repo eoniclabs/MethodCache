@@ -19,8 +19,9 @@ namespace Docs.NativeAot
         public static void Register(WebApplicationBuilder builder)
         {
             // begin-snippet: native-aot-registration
-            builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));
-            builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
+            builder.Services.AddMethodCache(mc => mc
+                .UseRedis("localhost:6379")
+                .UseJson(ShopJsonContext.Default));
             // end-snippet
         }
     }

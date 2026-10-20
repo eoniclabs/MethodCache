@@ -15,7 +15,7 @@ pages is compiled and tested in CI.
 - [Generated decorators](features/source-generator.md): supported signatures and forwarded interface members.
 - [Cache keys](features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
-- [Invalidation](features/invalidation.md): tags with argument templates, keys and patterns.
+- [Invalidation](features/invalidation.md): tags with argument templates, keys and whole methods.
 - [Fail-safe](features/fail-safe.md): serve the last good value when a dependency fails or is slow.
 - [Conditional caching](features/conditional-caching.md): store only the results you want to keep.
 - [Configuration](features/configuration.md): defaults, groups, `appsettings.json` with live reload, runtime overrides.

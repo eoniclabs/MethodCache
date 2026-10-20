@@ -146,7 +146,7 @@ constraints and concurrent access. Parameter: `ItemCount` 50, 100, 200.
 
 ### `serialization`: SerializationBenchmarks
 
-Cache key generators compared: `MessagePackKeyGenerator` (from `MethodCache.Serialization.MessagePack`), a JSON key
+Cache key generators compared: MethodCache's own `FastHashKeyGenerator`, a JSON key
 generator and a `ToString` key generator, on simple and complex arguments and on key collisions. Parameters:
 `ObjectCount` 10, 100, 1000; `ObjectType` Small, Medium, Large.
 

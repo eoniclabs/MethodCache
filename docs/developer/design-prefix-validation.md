@@ -32,7 +32,7 @@ This is a candidate until the full section-10 timing gates pass. No 15–20 ns /
   publications, and identical frequency admission/eviction outcomes. Full ordinal text always determines equality.
 - F03: installed-package workers start independent CLRs and therefore independent process hash secrets.
   Nine worker phases per Redis/SQL test cover population, cross-process L2 hit, helper-key removal, tag removal,
-  clear and restart hit. Public admin key text must match MethodCacheKeys.For. No process hash/seed is exported.
+  clear and restart hit. Public admin key text must match IMethodCacheKeys.For. No process hash/seed is exported.
 - F04: [algorithm/threat review](prefix-hash-security.md), author reference vectors, known seeded-polynomial
   collision families with long common prefixes/NUL/surrogates, and bounded hash-chain comparison work rather
   than fragile timing assertions. Distribution tests alone are not treated as a security proof.

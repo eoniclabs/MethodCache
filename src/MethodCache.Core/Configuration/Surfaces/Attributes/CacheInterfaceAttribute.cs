@@ -9,8 +9,9 @@ namespace MethodCache
     /// <remarks>
     /// Only the methods named in <see cref="Methods"/> are cached, so a call that changes data is never cached by
     /// accident; every other method calls the implementation directly. Settings for one method can be changed like
-    /// those of any cached method: with <c>ForService&lt;T&gt;().Method(...)</c>, <c>appsettings.json</c> (method id:
-    /// the interface's full name, a dot and the method name) or <c>IRuntimeCacheConfigurator</c>.
+    /// those of any cached method: with <c>mc.Method(...)</c>, <c>appsettings.json</c> (method id: the name of the
+    /// assembly that declares the interface in brackets, the interface's full name, a dot and the method name, such as
+    /// <c>[Fx.Sdk]Fx.Sdk.IFxClient.GetRateAsync</c>) or <c>IRuntimeCacheConfigurator</c>.
     /// </remarks>
     /// <example>
     /// <code>

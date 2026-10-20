@@ -98,6 +98,12 @@ key; an interface registered only keyed is not also registered without a key. Th
 keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
 integer or `Guid` ([Keys](features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
 rejected, since its implementation is created for whichever key is requested; register concrete keys instead.
+A constructor parameter marked `[ServiceKey]` receives your key, as without MethodCache.
+
+Several registrations of one interface, such as `AddScoped<IPriceProvider, StorePrices>()` and
+`AddScoped<IPriceProvider, PartnerPrices>()` resolved as `IEnumerable<IPriceProvider>`, each cache their own results;
+the implementation type is part of their keys. Two registrations of the same implementation type share their results
+([Keys](features/keys.md#things-to-know)).
 Open generic registrations and closed types without a generated binding also give a named startup error.
 
 Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project

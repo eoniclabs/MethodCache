@@ -45,9 +45,11 @@ under the same OS user from local credential files.
 | The web demo is started outside Development | It requires cookie authentication and the `Admin` role, returning 401/403 for refused requests. Only Development permits anonymous admin access. `WebDemoSecurityTests` starts the actual sample and checks every admin route in both environments. The sample has no sign-in page; deployed applications must configure their own authentication. |
 | Demo data can be reset outside Development | `/demo/reset` and `/demo/queries` are mapped only in Development. The sample tests verify that Production returns 404 for both. |
 | A web demo price update omits a price or supplies null/negative input | The endpoint returns 400 before writing or invalidating. `WebDemoInputTests` verifies stored and cached products stay unchanged, and checks zero and the maximum decimal as valid boundaries. |
-| A cross-site form or `fetch` without preflight calls `invalidate` with the admin's cookie | `POST invalidate` only accepts `application/json`, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415. The `DELETE` endpoints need a preflight too. Don't add a CORS policy that allows these routes from other origins. |
-| Cached values leak through the admin API | Entries are listed with key, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
-| Bad input | A missing `key` or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys and tags are matched literally, never as patterns. |
+| A cross-site form or `fetch` without preflight calls `invalidate`, `invalidate-method` or `clear` with the admin's cookie | The `POST` endpoints only accept an `application/json` body, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415, and a request without a body 400. `DELETE entry` needs a preflight too. Don't add a CORS policy that allows these routes from other origins. |
+| A filter in the wrong place empties the whole cache | Emptying everything is its own endpoint, `POST clear`, which takes only `{}`: a body with any property, such as `{ "tags": [...] }`, is 400. `invalidate` takes only `tags` and `invalidate-method` only `methodId`, and an unknown query parameter is 400 on every endpoint, so a misplaced filter is rejected instead of ignored. |
+| `invalidate-method` removes another method's entries | The `methodId` must be exactly the id of a cached method, as `methods` lists it; anything else is 400 and removes nothing. Entries are matched by the method they belong to, not by a key prefix, so `GetUser` never reaches `GetUsers`. |
+| Cached values leak through the admin API | Entries are listed with stored key, method id, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
+| Bad input | A missing `storedKey` or `methodId`, a `methodId` no cached method has, or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys, tags and method ids are matched literally, never as patterns. |
 
 The health check reports counts only. If you map it with a detailed response writer, put that endpoint behind
 authorization too.
@@ -62,7 +64,7 @@ authorization too.
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
 | Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
-| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A confirmed `POST`, `PUT`, `PATCH` or `DELETE` atomically advances every relevant shared URL generation before returning, including for bypass/KeepCookies clients. Older origin/304/body writes remain in an obsolete namespace. L2 nodes capture fresh generations in one bounded metadata batch; correctness does not rely on backplane delivery. An unconfirmed mutation throws `HttpCacheInvalidationException`, disposes its response and retains owned recovery after caller cancellation. The origin may have succeeded: do not automatically repeat it. |
+| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A confirmed `POST`, `PUT`, `PATCH` or `DELETE` atomically advances every relevant shared URL generation before returning, including for bypass/KeepCookies clients. Older origin/304/body writes remain in an obsolete namespace. L2 nodes capture fresh generations in one bounded metadata batch; correctness does not rely on backplane delivery. An unconfirmed mutation throws `HttpCacheInvalidationException`, disposes its response and retains owned recovery after caller cancellation. The origin may have succeeded: do not automatically repeat it. A GET or HEAD whose answer replaces a stored response that can't be retired throws the same exception; it is safe to retry. |
 | Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
 | A followed redirect hands one caller's response to another | The transport drops `Authorization` on a redirect and changes the URL on the same message. A response that ended at another URL or method is never stored under the URL that was requested, and entries are keyed on the request as the caller sent it, before the transport changed it. |
 | A malformed `Cache-Control` hides `private` or `no-store` | A `Cache-Control` or `Vary` field the parser rejects, also next to a valid one, makes the response not storable instead of being ignored. |
@@ -89,14 +91,14 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 
 | Signal | Recorded by default | Opt-in |
 |---|---|---|
-| Spans | Static method/client names, operation/type and `error.type`; no exception messages, stacks or copied HTTP/URL attributes | Core `MethodCacheTelemetryOptions.RecordCacheKeys` (SHA-256 by default, raw with `HashCacheKeys=false`); `RecordCacheTags` for application tags |
+| Spans | `methodcache.kind`, the static `methodcache.method` or `methodcache.http.client`, `methodcache.operation` or `methodcache.invalidation.type`, and `error.type`; no exception messages, stacks or copied HTTP/URL attributes | Core `MethodCacheTelemetryOptions.RecordCacheKeys` (SHA-256 by default, raw with `HashCacheKeys=false`); `RecordCacheTags` for application tags |
 | Baggage | No library-added baggage | The app controls normal ambient .NET baggage propagation/export |
-| Metrics | `kind`, static `name`, `result`, invalidation `type`/`stage`, transport `operation` and `error.type` | None: keys, tags, URLs, user ids and tenant ids never become metric dimensions |
+| Metrics | `methodcache.kind`, the static `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result`, `methodcache.invalidation.type` and `.stage`, `methodcache.operation` and `error.type` | None: keys, tags, URLs, user ids and tenant ids never become metric dimensions |
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
 export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. Invalid configuration reloads and failed policy watchers likewise log
-only the error type, retaining the last accepted policies. Health check failures expose exception types only. Standard
+contain credentials, keys or argument values. An invalid configuration reload logs the path of the setting it
+rejected, never the value, and failed policy watchers log only the error type; both keep the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
 

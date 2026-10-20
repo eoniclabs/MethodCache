@@ -82,7 +82,8 @@ the retired bodies from that slot, releasing their byte budget immediately. Gene
 their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
 cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
 to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
-bounded recovery. The origin mutation may have succeeded: do not automatically retry it. Cancelling the caller stops
+bounded recovery. The origin mutation may have succeeded: do not automatically retry it. A GET or HEAD whose answer
+replaces a stored response that can't be retired throws the same exception; it is safe to retry. Cancelling the caller stops
 its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
 tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
 bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
@@ -114,7 +115,9 @@ This keeps the implicit client tag out of the publication index while preserving
 other configuration of that handler, so the default registration caches at once. Other named clients are unaffected.
 A handler that already has cookies off is left alone, so a cookie-free handler shared between clients keeps working.
 `ConfigureHttpClientDefaults(b => b.AddHttpCaching())` caches every client, each under its own name: two clients
-never share entries, and they all use the settings given there.
+never share entries, and they all use the settings given there. A client has at most one cache: calling
+`AddHttpCaching` again for one client, or twice, adds no second cache and applies every settings delegate. To give
+one client other settings, use `services.Configure<HttpCacheOptions>("name", o => ...)`.
 `KeepCookies=true` preserves the transport configuration and completely bypasses response caching, validation and
 stale fallback. `only-if-cached` then returns 504. A successful unsafe mutation still retires shared generations.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP

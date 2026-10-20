@@ -18,7 +18,7 @@ var checks = new (string Name, Func<Task<string?>> Run)[]
     ("Redis across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.Redis)),
     ("SQL Server across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.SqlServer)),
     ("ASP.NET Core admin endpoints and health check", AspNetCoreCheck.RunAsync),
-    ("OpenTelemetry metrics and spans", OpenTelemetryCheck.RunAsync),
+    ("OpenTelemetry metrics and spans, mc.Telemetry and IMethodCacheKeys", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
 };
 
@@ -129,36 +129,36 @@ public static class DistributedCheck
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
-        services.AddMethodCache();
-        services.AddHealthChecks().AddMethodCache();
-        services.Configure<DistributedCacheOptions>(options =>
+        services.AddMethodCache(mc =>
         {
-            options.KeyPrefix = isolation + ":";
-            // The seed-isolation workers share this host's clock. The default skew margin intentionally
-            // rejects publications loaded very shortly after an invalidation; this test concerns identities.
-            if (sameClock) options.ClockSkewTolerance = TimeSpan.Zero;
-        });
-        if (backend == Backend.Redis)
-        {
-            services.AddMethodCache(mc => mc.UseRedis(options =>
+            mc.Distributed(options =>
             {
-                options.Configuration = connection;
-            }));
-        }
-        else
-        {
-            services.AddMethodCache(mc => mc.UseSqlServer(options =>
-            {
-                options.ConnectionString = connection;
-                options.SchemaName = isolation;
-                options.BackplanePollingInterval = TimeSpan.FromMilliseconds(200);
-            }));
-        }
+                options.KeyPrefix = isolation + ":";
+                // The seed-isolation workers share this host's clock. The default skew margin intentionally
+                // rejects publications loaded very shortly after an invalidation; this test concerns identities.
+                if (sameClock) options.ClockSkewTolerance = TimeSpan.Zero;
+            });
 
-        if (messagePack)
-        {
-            services.AddMethodCache(mc => mc.UseMessagePack());
-        }
+            if (backend == Backend.Redis)
+            {
+                mc.UseRedis(options => options.Configuration = connection);
+            }
+            else
+            {
+                mc.UseSqlServer(options =>
+                {
+                    options.ConnectionString = connection;
+                    options.SchemaName = isolation;
+                    options.BackplanePollingInterval = TimeSpan.FromMilliseconds(200);
+                });
+            }
+
+            if (messagePack)
+            {
+                mc.UseMessagePack();
+            }
+        });
+        services.AddHealthChecks().AddMethodCache();
 
         return new Instance(services.BuildServiceProvider());
     }
@@ -271,7 +271,10 @@ public static class AspNetCoreCheck
     }
 }
 
-/// <summary>Hits and misses reach the MethodCache meter, and a miss starts a span.</summary>
+/// <summary>
+/// Hits and misses reach the MethodCache meter, a miss starts a span that carries its key when mc.Telemetry asks for
+/// it, and the key from IMethodCacheKeys removes the cached call.
+/// </summary>
 public static class OpenTelemetryCheck
 {
     public static async Task<string?> RunAsync()
@@ -297,34 +300,57 @@ public static class OpenTelemetryCheck
         meters.Start();
 
         var spans = 0;
+        var keyedLoads = 0;
         using var activities = new ActivityListener
         {
             ShouldListenTo = source => source.Name.StartsWith("MethodCache", StringComparison.Ordinal),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = _ => Interlocked.Increment(ref spans),
+            ActivityStopped = activity =>
+            {
+                Interlocked.Increment(ref spans);
+                if (activity.OperationName == "MethodCache.load" && activity.GetTagItem("methodcache.key") is string)
+                {
+                    Interlocked.Increment(ref keyedLoads);
+                }
+            },
         };
         ActivitySource.AddActivityListener(activities);
 
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<IUserService, UserService>();
-        services.AddMethodCache();
+        services.AddMethodCache(mc => mc.Telemetry(o => o.RecordCacheKeys = true));
         await using var provider = services.BuildServiceProvider();
+        UserService.Reset();
         await using (var scope = provider.CreateAsyncScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<IUserService>();
             await users.GetAsync(3);
             await users.GetAsync(3);
             await users.GetAsync(3);
+
+            var key = scope.ServiceProvider.GetRequiredService<IMethodCacheKeys>().For<IUserService>(u => u.GetAsync(3));
+            await scope.ServiceProvider.GetRequiredService<ICacheManager>().InvalidateKeyAsync(key);
+            await users.GetAsync(3);
         }
 
         meters.RecordObservableInstruments();
-        if (Interlocked.Read(ref misses) != 1 || Interlocked.Read(ref hits) != 2)
+        if (Interlocked.Read(ref misses) != 2 || Interlocked.Read(ref hits) != 2)
         {
-            return $"expected 1 miss and 2 hits on the meter, got {misses} and {hits}";
+            return $"expected 2 misses and 2 hits on the meter, got {misses} and {hits}";
         }
 
-        return spans > 0 ? null : "the miss started no span";
+        if (UserService.Calls != 2)
+        {
+            return $"invalidating the key from IMethodCacheKeys did not remove the cached call ({UserService.Calls} calls)";
+        }
+
+        if (spans == 0)
+        {
+            return "the miss started no span";
+        }
+
+        return keyedLoads > 0 ? null : "mc.Telemetry(o => o.RecordCacheKeys = true) put no methodcache.key on the load span";
     }
 }
 

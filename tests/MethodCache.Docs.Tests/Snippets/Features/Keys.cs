@@ -60,6 +60,15 @@ namespace MyApp
             // end-snippet
             return entries;
         }
+
+        public static async Task<InvalidationResult> InvalidateMethod(IMethodCacheKeys keys, ICacheAdministrator admin)
+        {
+            // begin-snippet: keys-invalidate-method
+            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+            var result = await admin.InvalidateMethodAsync(methodId);   // every result of the method, on every instance
+            // end-snippet
+            return result;
+        }
     }
 
     // begin-snippet: keys-provider

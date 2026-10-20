@@ -30,8 +30,9 @@ public sealed partial class ShopJsonContext : JsonSerializerContext;
 
 <!-- snippet: native-aot-registration -->
 ```cs
-builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));
-builder.Services.AddMethodCache(cache => cache.UseJson(ShopJsonContext.Default));
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .UseJson(ShopJsonContext.Default));
 ```
 <!-- endSnippet -->
 
