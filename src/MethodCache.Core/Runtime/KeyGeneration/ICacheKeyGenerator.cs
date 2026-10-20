@@ -18,7 +18,6 @@ namespace MethodCache.Extensibility
     /// Built-in implementations:
     /// - FastHashKeyGenerator (the default): 128-bit hash of a canonical binary form
     /// - JsonKeyGenerator: human-readable format, useful for debugging
-    /// - MessagePackKeyGenerator (MethodCache.Serialization.MessagePack package): SHA-256 of the MessagePack form
     /// </remarks>
     internal interface ICacheKeyGenerator
     {

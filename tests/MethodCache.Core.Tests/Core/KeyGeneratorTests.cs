@@ -2,7 +2,6 @@ using FluentAssertions;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
-using MethodCache.Serialization.MessagePack;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core
@@ -50,20 +49,6 @@ namespace MethodCache.Core.Tests.Core
         }
 
         [Fact]
-        public void MessagePackKeyGenerator_WithPrimitiveArgs_ReturnsDeterministicKey()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimePolicy.FromPolicy("Method1", CachePolicy.Empty, CachePolicyFields.None);
-
-            var key1 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
-            var key2 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
-            var key3 = generator.GenerateKey("Method1", new object[] { 2, "test", true }, descriptor);
-
-            Assert.Equal(key1, key2);
-            Assert.NotEqual(key1, key3);
-        }
-
-        [Fact]
         public void FastHashKeyGenerator_WithPrimitiveArgs_ReturnsDeterministicKey()
         {
             var generator = new FastHashKeyGenerator();
@@ -86,24 +71,6 @@ namespace MethodCache.Core.Tests.Core
             var key1 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
             var key2 = generator.GenerateKey("Method1", new object[] { 1, "test", true }, descriptor);
             var key3 = generator.GenerateKey("Method1", new object[] { 2, "test", true }, descriptor);
-
-            Assert.Equal(key1, key2);
-            Assert.NotEqual(key1, key3);
-        }
-
-        [Fact]
-        public void MessagePackKeyGenerator_WithPlainPOCO_ReturnsDeterministicKey()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimePolicy.FromPolicy("Method2", CachePolicy.Empty, CachePolicyFields.None);
-
-            var obj1 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
-            var obj2 = new PlainTestClass { Id = 1, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
-            var obj3 = new PlainTestClass { Id = 2, Name = "Test", CreatedAt = new DateTime(2023, 1, 1), IsActive = true };
-
-            var key1 = generator.GenerateKey("Method2", new object[] { obj1 }, descriptor);
-            var key2 = generator.GenerateKey("Method2", new object[] { obj2 }, descriptor);
-            var key3 = generator.GenerateKey("Method2", new object[] { obj3 }, descriptor);
 
             Assert.Equal(key1, key2);
             Assert.NotEqual(key1, key3);
@@ -146,42 +113,6 @@ namespace MethodCache.Core.Tests.Core
         }
 
         [Fact]
-        public void MessagePackKeyGenerator_WithICacheKeyProvider_UsesCacheKeyPart()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
-
-            var user1 = new TestUser { Id = 1 };
-            var user2 = new TestUser { Id = 1 };
-            var user3 = new TestUser { Id = 2 };
-
-            var key1 = generator.GenerateKey("Method3", new object[] { user1 }, descriptor);
-            var key2 = generator.GenerateKey("Method3", new object[] { user2 }, descriptor);
-            var key3 = generator.GenerateKey("Method3", new object[] { user3 }, descriptor);
-
-            Assert.Equal(key1, key2);
-            Assert.NotEqual(key1, key3);
-        }
-
-        [Fact]
-        public void MessagePackKeyGenerator_WithMultipleICacheKeyProviderArgs_AvoidsConcatenationCollisions()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var descriptor = CacheRuntimePolicy.FromPolicy("Method3", CachePolicy.Empty, CachePolicyFields.None);
-
-            var key1 = generator.GenerateKey(
-                "Method3",
-                new object[] { new TestKeyPart { Part = "ab" }, new TestKeyPart { Part = "c" } },
-                descriptor);
-            var key2 = generator.GenerateKey(
-                "Method3",
-                new object[] { new TestKeyPart { Part = "a" }, new TestKeyPart { Part = "bc" } },
-                descriptor);
-
-            Assert.NotEqual(key1, key2);
-        }
-
-        [Fact]
         public void FastHashKeyGenerator_WithICacheKeyProvider_UsesCacheKeyPart()
         {
             var generator = new FastHashKeyGenerator();
@@ -215,35 +146,6 @@ namespace MethodCache.Core.Tests.Core
 
             Assert.Equal(key1, key2);
             Assert.NotEqual(key1, key3);
-        }
-
-        [Fact]
-        public void MessagePackKeyGenerator_WithVersion_IncludesVersionInKey()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var policy1 = CachePolicy.Empty with { Version = 1 };
-            var policy2 = CachePolicy.Empty with { Version = 2 };
-            var descriptor1 = CacheRuntimePolicy.FromPolicy("Method4", policy1, CachePolicyFields.Version);
-            var descriptor2 = CacheRuntimePolicy.FromPolicy("Method4", policy2, CachePolicyFields.Version);
-
-            var key1 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
-            var key2 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor1);
-            var key3 = generator.GenerateKey("Method4", new object[] { 1 }, descriptor2);
-
-            Assert.Equal(key1, key2);
-            Assert.NotEqual(key1, key3); // Version is hashed into the key, so different versions produce different keys
-        }
-
-        [Fact]
-        public void MessagePackKeyGenerator_KeysStartWithTheMethodAndVersion()
-        {
-            var generator = new MessagePackKeyGenerator();
-            var versioned = CacheRuntimePolicy.FromPolicy("App.IUsers.Find", CachePolicy.Empty with { Version = 3 }, CachePolicyFields.Version);
-
-            generator.GenerateKey("App.IUsers.Find", new object?[] { 1, null }, CacheRuntimePolicy.Empty("App.IUsers.Find"))
-                .Should().MatchRegex("^App\\.IUsers\\.Find:[0-9a-f]{64}$");
-            generator.GenerateKey("App.IUsers.Find", new object?[] { 1 }, versioned)
-                .Should().MatchRegex("^App\\.IUsers\\.Find:v3:[0-9a-f]{64}$");
         }
 
         [Fact]
@@ -291,7 +193,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -325,7 +226,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -355,7 +255,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -385,7 +284,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -413,7 +311,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -443,7 +340,6 @@ namespace MethodCache.Core.Tests.Core
         {
             var generators = new ICacheKeyGenerator[]
             {
-                new MessagePackKeyGenerator(),
                 new FastHashKeyGenerator(),
                 new JsonKeyGenerator()
             };
@@ -477,31 +373,25 @@ namespace MethodCache.Core.Tests.Core
         [Fact]
         public void KeyGenerators_ShouldProduceValidKeysForSameInput()
         {
-            var messagePackGenerator = new MessagePackKeyGenerator();
             var fastHashGenerator = new FastHashKeyGenerator();
             var jsonGenerator = new JsonKeyGenerator();
 
             var descriptor = CacheRuntimePolicy.FromPolicy("TestMethod", CachePolicy.Empty, CachePolicyFields.None);
             var testObj = new PlainTestClass { Id = 1, Name = "Test" };
 
-            var messagePackKey = messagePackGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
             var fastHashKey = fastHashGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
             var jsonKey = jsonGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
 
             // All should be valid non-empty strings
-            Assert.NotNull(messagePackKey);
             Assert.NotNull(fastHashKey);
             Assert.NotNull(jsonKey);
-            Assert.NotEmpty(messagePackKey);
             Assert.NotEmpty(fastHashKey);
             Assert.NotEmpty(jsonKey);
 
             // Each generator should be consistent with itself
-            var messagePackKey2 = messagePackGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
             var fastHashKey2 = fastHashGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
             var jsonKey2 = jsonGenerator.GenerateKey("TestMethod", new object[] { testObj }, descriptor);
 
-            Assert.Equal(messagePackKey, messagePackKey2);
             Assert.Equal(fastHashKey, fastHashKey2);
             Assert.Equal(jsonKey, jsonKey2);
         }

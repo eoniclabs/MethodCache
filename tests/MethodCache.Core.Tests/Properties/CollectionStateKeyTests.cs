@@ -1,7 +1,6 @@
 using CsCheck;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
-using MethodCache.Serialization.MessagePack;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Properties;
@@ -11,7 +10,6 @@ public class CollectionStateKeyTests
     [Theory]
     [InlineData(typeof(FastHashKeyGenerator))]
     [InlineData(typeof(JsonKeyGenerator))]
-    [InlineData(typeof(MessagePackKeyGenerator))]
     public void Collection_PublicStateAndElements_IdentifyTheArgument(Type generatorType)
     {
         var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
