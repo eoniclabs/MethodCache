@@ -31,7 +31,9 @@ internal sealed class RedisConnection : IDisposable
             return () => Task.FromResult(factory(services));
         }
 
-        var configuration = options.Configuration;
+        // Options validation guarantees a configuration string whenever there is no factory
+        var configuration = options.Configuration ?? throw new InvalidOperationException(
+            Microsoft.Extensions.DependencyInjection.RedisMethodCacheBuilderExtensions.MissingConnectionMessage);
         return () => ConnectAsync(configuration);
     }
 

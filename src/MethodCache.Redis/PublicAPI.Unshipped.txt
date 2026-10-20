@@ -1,6 +1,6 @@
 #nullable enable
 MethodCache.Redis.RedisOptions
-MethodCache.Redis.RedisOptions.Configuration.get -> string!
+MethodCache.Redis.RedisOptions.Configuration.get -> string?
 MethodCache.Redis.RedisOptions.Configuration.set -> void
 MethodCache.Redis.RedisOptions.ConnectionMultiplexerFactory.get -> System.Func<System.IServiceProvider!, StackExchange.Redis.IConnectionMultiplexer!>?
 MethodCache.Redis.RedisOptions.ConnectionMultiplexerFactory.set -> void
