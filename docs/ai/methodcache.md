@@ -71,7 +71,7 @@ builder.Services.AddMethodCache();                               // after your r
   Tags share an application-defined namespace; different literal templates can still select the same tag. Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
 - Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
-  (shorter than `Duration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
+  (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
   the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
 - Cached objects are shared between callers: return immutable types such as records.

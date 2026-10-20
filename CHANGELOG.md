@@ -48,9 +48,9 @@ Options and attributes
   `mc.Method(...).CacheWhen(...)` for each method it applies to.
 - A `CacheWhen<T>` for a type the method can't return, such as `CacheWhen<string>` on an `int` method, throws an
   `InvalidOperationException` on the call. Before, it silently cached nothing.
-- `[Cache]` or `[assembly: CacheInterface]` with a `RefreshAhead` that isn't shorter than `Duration` is the new error
-  MC0023. Before, it compiled and the window was cut to half the duration while the app ran. Make it shorter than
-  `Duration`, or remove it.
+- `[Cache]` or `[assembly: CacheInterface]` with a `RefreshAhead` that isn't shorter than the `Duration` or
+  `SlidingExpiration` next to it is the new error MC0023, as in code and `appsettings.json`. Before, it compiled and the
+  window was cut to half the entry's life while the app ran. Make it shorter than both, or remove it.
 - `MethodCacheMemoryOptions.SizeLimit` is now `WeightLimit`. `MaxItems` and `WeightLimit` both bound the cache, so an
   entry is evicted when either is reached; before, a `Weigher` made `MaxItems` stop counting. Setting `WeightLimit`
   without a `Weigher` fails at startup instead of being ignored.

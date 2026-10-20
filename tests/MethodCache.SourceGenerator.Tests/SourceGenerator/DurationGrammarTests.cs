@@ -35,6 +35,8 @@ public class DurationGrammarTests
     [InlineData("Duration = null", "MC0004")]
     [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
     [InlineData("RefreshAhead = \"00:02:00\", Duration = \"1m\"", "MC0023")]
+    [InlineData("SlidingExpiration = \"1m\", RefreshAhead = \"2m\"", "MC0023")]
+    [InlineData("Duration = \"1h\", SlidingExpiration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
     public void InvalidSettings_AreGeneratorErrors(string setting, string id)
         => Assert.Contains(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == id);
 
@@ -47,6 +49,16 @@ public class DurationGrammarTests
 
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.StartsWith("RefreshAhead = \"2m\" is not shorter than Duration = \"1m\"", diagnostic.GetMessage(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefreshAheadNotShorterThanSlidingExpiration_NamesBothValues()
+    {
+        var diagnostic = Assert.Single(
+            Generate("using MethodCache; public interface IExample { [Cache(SlidingExpiration = \"1m\", RefreshAhead = \"2m\")] int Read(); }").Diagnostics,
+            d => d.Id == "MC0023");
+
+        Assert.StartsWith("RefreshAhead = \"2m\" is not shorter than SlidingExpiration = \"1m\"", diagnostic.GetMessage(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -65,6 +77,8 @@ public class DurationGrammarTests
     [InlineData("Duration = \"1m\", RefreshAhead = \"off\"")]
     [InlineData("RefreshAhead = \"10m\"")]
     [InlineData("Duration = \"1m\", RefreshAhead = \"soon\"")]
+    [InlineData("Duration = \"1h\", SlidingExpiration = \"5m\", RefreshAhead = \"1m\"")]
+    [InlineData("SlidingExpiration = \"off\", RefreshAhead = \"10m\"")]
     public void RefreshAheadShorterThanDuration_OrWithoutBothValues_IsNotMC0023(string setting)
         => Assert.DoesNotContain(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == "MC0023");
 

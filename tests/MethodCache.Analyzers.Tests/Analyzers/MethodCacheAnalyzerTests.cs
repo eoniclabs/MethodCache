@@ -40,6 +40,8 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         [Theory]
         [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "RefreshAhead = \"1m\" is not shorter than Duration = \"1m\"")]
         [InlineData("RefreshAhead = \"00:05:00\", Duration = \"2m\"", "RefreshAhead = \"00:05:00\" is not shorter than Duration = \"2m\"")]
+        [InlineData("SlidingExpiration = \"1m\", RefreshAhead = \"2m\"", "RefreshAhead = \"2m\" is not shorter than SlidingExpiration = \"1m\"")]
+        [InlineData("Duration = \"1h\", SlidingExpiration = \"1m\", RefreshAhead = \"1m\"", "RefreshAhead = \"1m\" is not shorter than SlidingExpiration = \"1m\"")]
         public async Task RefreshAheadNotShorterThanDuration_IsAnError(string settings, string message)
         {
             var diagnostic = Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
@@ -64,6 +66,8 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         [InlineData("Duration = \"1m\", RefreshAhead = \"30s\"")]
         [InlineData("Duration = \"1m\", RefreshAhead = \"off\"")]
         [InlineData("RefreshAhead = \"1h\"")]
+        [InlineData("Duration = \"1h\", SlidingExpiration = \"5m\", RefreshAhead = \"1m\"")]
+        [InlineData("SlidingExpiration = \"off\", RefreshAhead = \"1h\"")]
         public async Task RefreshAheadShorterThanDuration_OrWithoutADuration_IsAccepted(string settings)
             => Assert.Empty(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
 

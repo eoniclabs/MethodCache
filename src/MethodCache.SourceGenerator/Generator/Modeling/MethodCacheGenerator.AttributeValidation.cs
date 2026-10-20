@@ -34,11 +34,16 @@ namespace MethodCache.SourceGenerator
             }
 
             // A refresh window as long as the entry lives would reload the value on every hit
-            if (TryGetDuration(attribute, "Duration", out var durationText, out var duration) &&
-                TryGetDuration(attribute, "RefreshAhead", out var refreshText, out var refresh) &&
-                refresh > System.TimeSpan.Zero && refresh >= duration)
+            if (TryGetDuration(attribute, "RefreshAhead", out var refreshText, out var refresh) && refresh > System.TimeSpan.Zero)
             {
-                diagnostics.Add(DiagnosticInfo.Create(Diagnostics.RefreshAheadNotShorterThanDuration, location, refreshText, durationText));
+                foreach (var lifetime in new[] { "Duration", "SlidingExpiration" })
+                {
+                    if (TryGetDuration(attribute, lifetime, out var lifetimeText, out var value) && value > System.TimeSpan.Zero && refresh >= value)
+                    {
+                        diagnostics.Add(DiagnosticInfo.Create(Diagnostics.RefreshAheadNotShorterThanDuration, location, refreshText, lifetime, lifetimeText));
+                        break;
+                    }
+                }
             }
 
             return diagnostics;
