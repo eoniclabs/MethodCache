@@ -88,13 +88,30 @@ namespace Microsoft.Extensions.DependencyInjection
                 var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Configuration");
                 if (logger != null)
                 {
-                    source.ReloadFailed += ex => logger.LogError("Ignored reloaded MethodCache configuration; the previous cache policies stay in effect. Error type: {ErrorType}.", ex.GetType().FullName);
+                    source.ReloadFailed += error => LogRejectedReload(logger, error);
                 }
 
                 return new PolicySourceRegistration(source, PolicySourcePriority.ConfigurationFiles);
             });
 
             return services;
+        }
+
+        /// <summary>
+        /// Logs why a reloaded configuration was rejected: the path of the setting and what is wrong with it, never
+        /// the value, which may be anything the configuration holds. Errors without a value carry the path in their message.
+        /// </summary>
+        private static void LogRejectedReload(ILogger logger, Exception error)
+        {
+            if (ConfigurationValueError.TryGet(error, out var path, out var reason))
+            {
+                logger.LogError("Ignored reloaded MethodCache configuration: '{ConfigurationPath}' {Reason}. The previous cache policies stay in effect.",
+                    path, reason);
+            }
+            else
+            {
+                logger.LogError("Ignored reloaded MethodCache configuration: {Reason} The previous cache policies stay in effect.", error.Message);
+            }
         }
 
         private static void EnsureCoreServices(IServiceCollection services)
