@@ -50,8 +50,8 @@ or in `appsettings.json`:
 
 ## Per method
 
-A method or group can change any of it, and its own setting wins over the central one. The retry interval can be set
-in code or `appsettings.json` only, not on `[Cache]`:
+A method or group can change any of it, and its own setting wins over the central one. `[Cache]` takes the same three
+settings as `FailSafe`, `FailSafeTimeout` and `FailSafeRetryAfter`:
 
 <!-- snippet: failsafe-per-method -->
 ```cs
