@@ -78,7 +78,7 @@ public static class AdvancedExamples
         source.Failing = true;
         checks.Add(new("An API failure returns the expired last good value", await rates.GetAsync("EUR/SEK") == 100m));
         await rates.GetAsync("EUR/SEK");
-        checks.Add(new("RetryAfter prevents another API call during the outage", source.Calls == 2));
+        checks.Add(new("FailSafeRetryAfter prevents another API call during the outage", source.Calls == 2));
         source.Failing = false;
         source.Rate = 120m;
         clock.Advance(TimeSpan.FromSeconds(6));
