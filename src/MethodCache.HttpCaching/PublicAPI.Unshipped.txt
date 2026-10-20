@@ -22,10 +22,10 @@ MethodCache.HttpCaching.HttpCacheOptions.IsSharedCache.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.KeepCookies.get -> bool
 MethodCache.HttpCaching.HttpCacheOptions.KeepCookies.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.KeyHeaders.get -> System.Collections.Generic.ISet<string!>!
-MethodCache.HttpCaching.HttpCacheOptions.MaxResponseBytes.get -> long
-MethodCache.HttpCaching.HttpCacheOptions.MaxResponseBytes.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.MaxHeuristicFreshness.get -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheOptions.MaxHeuristicFreshness.set -> void
+MethodCache.HttpCaching.HttpCacheOptions.MaxResponseBytes.get -> long
+MethodCache.HttpCaching.HttpCacheOptions.MaxResponseBytes.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.MaxStaleIfError.get -> System.TimeSpan
 MethodCache.HttpCaching.HttpCacheOptions.MaxStaleIfError.set -> void
 MethodCache.HttpCaching.HttpCacheOptions.StaleRetention.get -> System.TimeSpan
