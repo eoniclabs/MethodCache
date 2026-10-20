@@ -51,6 +51,11 @@ if ! grep -q "TState state" "$base_tree/src/MethodCache.Core/Runtime/ICacheManag
   cp "$here/pre-1.0-api/DesignWorkloadBenchmarks.cs.txt" \
     "$base_tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/DesignWorkloadBenchmarks.cs"
 fi
+# Nor, without IMethodCacheKeys, the prefix benchmark's key, which it builds with the static MethodCacheKeys.For
+if [ ! -f "$base_tree/src/MethodCache.Core/Runtime/KeyGeneration/IMethodCacheKeys.cs" ]; then
+  cp "$here/pre-1.0-api/GeneratedPrefixHitPathBenchmarks.cs.txt" \
+    "$base_tree/benchmarks/MethodCache.Benchmarks/Microbenchmarks/GeneratedPrefixHitPathBenchmarks.cs"
+fi
 
 for side in base head; do
   tree=$root

@@ -25,7 +25,9 @@ Server cases are skipped. Results and `report.md` go to `artifacts/cost-profile`
 
 A base from before the 1.0 API (such as `f43854d`) can't compile `DesignWorkloadBenchmarks.cs`, so it gets
 `pre-1.0-api/DesignWorkloadBenchmarks.cs.txt`: the same workloads written with `AddMethodCacheRedis` and
-`(context, ct)` factories. A change to the workloads in `DesignWorkloadBenchmarks.cs` goes into that copy too.
+`(context, ct)` factories. A change to the workloads in `DesignWorkloadBenchmarks.cs` goes into that copy too. Such a
+base also lacks `IMethodCacheKeys`, so it gets `pre-1.0-api/GeneratedPrefixHitPathBenchmarks.cs.txt`, which builds the
+same key with the static `MethodCacheKeys.For` it had; the same goes for changes to that benchmark.
 
 The gate fails when a case, compared with the base,
 
