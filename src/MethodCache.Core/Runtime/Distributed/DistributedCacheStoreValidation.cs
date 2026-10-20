@@ -25,7 +25,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 if (cache == null)
                 {
                     return ValidateOptionsResult.Fail(
-                        "MethodCache needs a distributed cache of its own that implements IAtomicInvalidationStore; it does not fall back to the application's IDistributedCache. " +
+                        "MethodCache needs an owned IDistributedCache implementing IAtomicInvalidationStore; the application cache is not a fallback. " +
                         "Use UseRedis() or UseSqlServer() in AddMethodCache.");
                 }
 
