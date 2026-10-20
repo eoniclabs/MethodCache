@@ -3619,6 +3619,8 @@ Add-on packages
   client. It has one, and every settings delegate applies; use
   `services.Configure<HttpCacheOptions>("name", o => ...)` to give one client other settings.
 - Invalid `UseSqlServer` options gave the same general message for every problem. The message names the rule.
+- Calling `UseSqlServer` more than once, to add to its options, created the tables once per call at startup, and
+  while SQL Server was down each call waited and retried on its own. The tables are created once.
 - A rejected `appsettings.json` reload logged only the exception type. It logs the setting's path and what is wrong
   with it, never the value.
 - A project's own `<WarningsAsErrors>` replaced MethodCache's CS9057 error, so with a too old SDK the generator was

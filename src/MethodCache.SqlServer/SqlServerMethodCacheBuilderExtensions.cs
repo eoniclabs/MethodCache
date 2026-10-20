@@ -76,9 +76,10 @@ public static class SqlServerMethodCacheBuilderExtensions
             return new SqlServerRuntimeOptions(options,
                 sp.GetRequiredKeyedService<DistributedCacheOptions>(MethodCache.Infrastructure.OwnedServices.Key).KeyPrefix);
         });
-        services.AddSingleton<IHostedService>(sp => new SqlServerTables(
+        // UseSqlServer may be called again to add to the options; the tables are still created once
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SqlServerTables>(sp => new SqlServerTables(
             sp.GetRequiredService<SqlServerRuntimeOptions>().Options,
-            sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>()));
+            sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>())));
         services.TryAddKeyedSingleton<IBackplane>(MethodCache.Infrastructure.OwnedServices.Key, static (sp, _) =>
         {
             var runtime = sp.GetRequiredService<SqlServerRuntimeOptions>();

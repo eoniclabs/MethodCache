@@ -26,6 +26,18 @@ public class SqlServerServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void UseSqlServer_Twice_RegistersOneTableInitializer()
+    {
+        var services = new ServiceCollection();
+
+        services.AddMethodCache(mc => mc.UseSqlServer(ConnectionString));
+        services.AddMethodCache(mc => mc.UseSqlServer(options => options.SchemaName = "cache"));
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetServices<IHostedService>().Should().ContainSingle(service => service is SqlServerTables);
+    }
+
+    [Fact]
     public void UseSqlServer_LeavesTheAppsDistributedCacheAlone()
     {
         var appCache = NSubstitute.Substitute.For<IDistributedCache>();
