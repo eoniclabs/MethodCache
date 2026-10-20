@@ -1,4 +1,5 @@
 using MethodCache.Core.Runtime.Http;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using MethodCache;
@@ -253,6 +254,8 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void DecorateExistingRegistrations(IServiceCollection services, ModuleCatalog catalog)
         {
             var decorated = GetDecoratedRegistrations(services);
+            var parameters = GetGeneratedParameters(services);
+            services.TryAddSingleton(static _ => new ImplementationClaims());
 
             for (var index = 0; index < services.Count; index++)
             {
@@ -270,52 +273,205 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 if (serviceType.ContainsGenericParameters || ReferenceEquals(descriptor.ServiceKey, KeyedService.AnyKey))
                     throw new InvalidOperationException($"MethodCache cannot bind the open generic or AnyKey registration of {serviceType}. Register concrete closed types with explicit keys.");
-                var innerKey = new DecoratedServiceKey(serviceType, descriptor.ServiceKey);
-                var decorator = DescribeDecorator(services, descriptor, registration, innerKey);
-                services.Add(CreateKeyedCopy(descriptor, innerKey));
+                var decoratedRegistration = new DecoratedRegistration(registration, descriptor);
+                var decorator = DescribeDecorator(services, decoratedRegistration, parameters);
+                services.Add(CreateInnerRegistration(descriptor, decoratedRegistration.InnerKey));
 
                 // Replacing the original slot keeps registration order, and therefore IEnumerable<T> order
                 services[index] = decorator;
+                decoratedRegistration.Decorator = decorator;
                 decorated.Add(decorator);
+                parameters.Add(decoratedRegistration);
                 registration.AddPolicies?.Invoke(services);
+            }
+
+            parameters.GroupRegistrations(services);
+        }
+
+        /// <summary>
+        /// The decorator registration that takes the place of the application's registration. Each registration has
+        /// decorator services of its own, created once per container from the root provider: its cache keys carry
+        /// its service key, and its implementation type when the interface has more than one registration under that
+        /// key, so two registrations never share entries; a scoped or transient one lets background loads create a
+        /// new instance in a new scope.
+        /// </summary>
+        private static ServiceDescriptor DescribeDecorator(IServiceCollection services, DecoratedRegistration decorated, GeneratedParameters parameters)
+        {
+            var serviceType = decorated.ServiceType;
+            var registration = decorated.Registration;
+            foreach (var method in registration.MethodKeys)
+                parameters.KeyBindings.Add((MethodCacheKeys.Prefix(serviceType, method.Key), decorated.KeyedSuffix ?? string.Empty, method.Id));
+            parameters.Recorders[(serviceType, decorated.ServiceKey)] = decorated;
+            var slot = new RegistrationServicesKey();
+            Func<IServiceProvider, object> decorate = provider =>
+            {
+                var inner = provider.GetRequiredKeyedService(typeof(object), decorated.InnerKey);
+                var generated = provider.GetRequiredKeyedService<RegistrationServices>(slot).For(inner);
+                return registration.Decorate(new RegistrationServiceProvider(provider, generated), inner);
+            };
+            services.AddKeyedSingleton(slot, (root, _) => new RegistrationServices(root, decorated));
+
+            return decorated.ServiceKey != null
+                ? ServiceDescriptor.DescribeKeyed(serviceType, decorated.ServiceKey, (provider, _) => decorate(provider), decorated.Lifetime)
+                : ServiceDescriptor.Describe(serviceType, decorate, decorated.Lifetime);
+        }
+
+        /// <summary>
+        /// Formats an implementation type for the cache keys of a registration that shares its interface and service
+        /// key with others: <c>#</c> and the type's assembly-qualified stable name, with <c>\</c>, <c>:</c> and
+        /// <c>@</c> escaped so the part always ends at the service key or the key's next part.
+        /// </summary>
+        internal static string ImplementationPart(Type implementationType)
+        {
+            var name = MethodCache.Infrastructure.StableTypeIdentity.For(implementationType);
+            return "#" + (name.AsSpan().IndexOfAny('\\', ':', '@') < 0
+                ? name
+                : name.Replace("\\", "\\\\").Replace(":", "\\:").Replace("@", "\\@"));
+        }
+
+        /// <summary>The length of an implementation part at the start of <paramref name="rest"/>, up to the service key or next key part.</summary>
+        private static int ImplementationPartLength(ReadOnlySpan<char> rest)
+        {
+            for (var index = 1; index < rest.Length; index++)
+            {
+                if (rest[index] == '\\') index++;
+                else if (rest[index] is ':' or '@') return index;
+            }
+
+            return rest.Length;
+        }
+
+        private static InvalidOperationException SameImplementation(Type serviceType, object? serviceKey, Type implementationType) => new(
+            $"MethodCache found two registrations of {serviceType}{(serviceKey == null ? string.Empty : $" with service key {serviceKey}")} " +
+            $"that both use {implementationType}. When an interface has more than one registration, each caches its own results " +
+            "under its implementation type, so two of the same type would share cached results. Register them with different " +
+            "service keys (AddKeyedSingleton, AddKeyedScoped or AddKeyedTransient), or remove one of them.");
+
+        /// <summary>
+        /// One registration MethodCache decorated: what its cache keys carry, and how the decorator finds the
+        /// implementation the container creates for it under a private key.
+        /// </summary>
+        internal sealed class DecoratedRegistration
+        {
+            internal DecoratedRegistration(DecoratorRegistration registration, ServiceDescriptor descriptor)
+            {
+                Registration = registration;
+                ServiceType = descriptor.ServiceType;
+                ServiceKey = descriptor.ServiceKey;
+                Lifetime = descriptor.Lifetime;
+                InnerKey = new DecoratedServiceKey(descriptor.ServiceType, descriptor.ServiceKey);
+                ImplementationType = descriptor.IsKeyedService
+                    ? descriptor.KeyedImplementationType ?? descriptor.KeyedImplementationInstance?.GetType()
+                    : descriptor.ImplementationType ?? descriptor.ImplementationInstance?.GetType();
+                if (descriptor.IsKeyedService)
+                {
+                    KeyedSuffix = "@" + (MethodCacheKeys.ServiceKeyPart(descriptor.ServiceKey!) ?? throw new InvalidOperationException(
+                        $"The keyed registration of {ServiceType} has a service key of type {descriptor.ServiceKey!.GetType()}. MethodCache puts the " +
+                        "service key in the cache keys, so each registration caches its own results, and needs a key with a stable string form: " +
+                        "a string, enum, bool, char, integer or Guid. Use a key with a supported stable representation."));
+                }
+            }
+
+            internal DecoratorRegistration Registration { get; }
+            internal Type ServiceType { get; }
+            internal object? ServiceKey { get; }
+            internal ServiceLifetime Lifetime { get; }
+
+            /// <summary>The private key of the application's own registration, which the container creates the implementation from.</summary>
+            internal object InnerKey { get; }
+
+            /// <summary>The registered implementation type or instance type; null for a factory, whose type is known once it runs.</summary>
+            internal Type? ImplementationType { get; }
+
+            /// <summary>The service key part of a keyed registration's cache keys (<c>@ecb</c>), else null.</summary>
+            internal string? KeyedSuffix { get; }
+
+            /// <summary>The decorator that took the application's registration's place.</summary>
+            internal ServiceDescriptor Decorator { get; set; } = null!;
+
+            /// <summary>The registrations of the same interface under the same service key, this one included.</summary>
+            internal List<DecoratedRegistration> Group { get; set; } = [];
+
+            /// <summary>
+            /// Whether other registrations share this one's interface and service key, so its cache keys carry its
+            /// implementation type. Set by every <c>AddMethodCache</c> call and read when the container first builds the
+            /// decorator, so a registration decorated by an earlier call follows one added by a later call.
+            /// </summary>
+            internal bool Shared => Group.Count > 1;
+
+            /// <summary>The implementation type a factory registration created, once one decorator was built.</summary>
+            internal Type? ObservedType { get; set; }
+
+            /// <summary>What this registration adds to the method part of its cache keys, given the type it creates.</summary>
+            internal string? SuffixFor(Type implementationType)
+                => Shared ? ImplementationPart(implementationType) + KeyedSuffix : KeyedSuffix;
+
+            /// <summary>
+            /// The suffix for <see cref="IMethodCacheKeys"/>, which records keys without creating the decorator: a
+            /// factory registration that shares its interface creates one implementation to learn its type.
+            /// </summary>
+            internal string? RecordingSuffix(IServiceProvider root)
+            {
+                if (!Shared) return KeyedSuffix;
+                if ((ImplementationType ?? ObservedType) is { } known) return SuffixFor(known);
+                if (Lifetime == ServiceLifetime.Singleton) return SuffixFor(root.GetRequiredKeyedService(typeof(object), InnerKey).GetType());
+                var scope = root.CreateAsyncScope();
+                try
+                {
+                    return SuffixFor(scope.ServiceProvider.GetRequiredKeyedService(typeof(object), InnerKey).GetType());
+                }
+                finally
+                {
+                    var disposal = scope.DisposeAsync();
+                    if (!disposal.IsCompletedSuccessfully) disposal.AsTask().GetAwaiter().GetResult();
+                }
             }
         }
 
         /// <summary>
-        /// The decorator registration that takes the place of <paramref name="descriptor"/>. An unkeyed singleton
-        /// uses the container's decorator services. A keyed registration puts its service key in its cache keys, so
-        /// two registrations of one interface never share entries, and a scoped or transient one lets background
-        /// loads create a new instance in a new scope; those get decorator services of their own, created once per
-        /// container from the root provider.
+        /// One registration's decorator services in one container. A registration that shares its interface gets one
+        /// set per implementation type, and claims the type, so two registrations that create the same type fail
+        /// instead of sharing cached results.
         /// </summary>
-        private static ServiceDescriptor DescribeDecorator(IServiceCollection services, ServiceDescriptor descriptor, DecoratorRegistration registration, DecoratedServiceKey innerKey)
+        private sealed class RegistrationServices(IServiceProvider root, DecoratedRegistration registration)
         {
-            var serviceType = descriptor.ServiceType;
-            string? keySuffix = null;
-            if (descriptor.IsKeyedService)
+            private readonly ConcurrentDictionary<Type, GeneratedServices> _byType = new();
+            private GeneratedServices? _single;
+
+            internal GeneratedServices For(object inner)
             {
-                keySuffix = "@" + (MethodCacheKeys.ServiceKeyPart(descriptor.ServiceKey!) ?? throw new InvalidOperationException(
-                    $"The keyed registration of {serviceType} has a service key of type {descriptor.ServiceKey!.GetType()}. MethodCache puts the " +
-                    "service key in the cache keys, so each registration caches its own results, and needs a key with a stable string form: " +
-                    "a string, enum, bool, char, integer or Guid. Use a key with a supported stable representation."));
+                if (!registration.Shared)
+                {
+                    return LazyInitializer.EnsureInitialized(ref _single, () => Create(registration.KeyedSuffix));
+                }
+
+                var type = registration.ImplementationType ?? inner.GetType();
+                if (_byType.TryGetValue(type, out var existing)) return existing;
+                if (registration.ImplementationType == null) registration.ObservedType ??= type;
+                root.GetRequiredService<ImplementationClaims>().Claim(registration, type);
+                return _byType.GetOrAdd(type, static (key, self) => self.Create(self.SuffixFor(key)), this);
             }
 
-            var bindings = services.First(d => d.ServiceType == typeof(GeneratedParameters)).ImplementationInstance as GeneratedParameters;
-            foreach (var method in registration.MethodKeys)
-                bindings!.KeyBindings.Add((MethodCacheKeys.Prefix(serviceType, method.Key), keySuffix ?? string.Empty, method.Id));
-            bindings!.Recorders[(serviceType, descriptor.ServiceKey)] = (registration, keySuffix);
-            var background = descriptor.Lifetime != ServiceLifetime.Singleton;
-            var slot = new RegistrationServicesKey();
-            Func<IServiceProvider, object> decorate = provider => registration.Decorate(
-                new RegistrationServiceProvider(provider, provider.GetRequiredKeyedService<GeneratedServices>(slot)),
-                provider.GetRequiredKeyedService(serviceType, innerKey));
-            services.AddKeyedSingleton(slot, (root, _) => new GeneratedServices(DecoratorServices.From(root).ForRegistration(
-                keySuffix,
-                background ? new BackgroundLoadTarget(root.GetRequiredService<IServiceScopeFactory>(), serviceType, innerKey) : null)));
+            private string? SuffixFor(Type type) => registration.SuffixFor(type);
 
-            return descriptor.IsKeyedService
-                ? ServiceDescriptor.DescribeKeyed(serviceType, descriptor.ServiceKey, (provider, _) => decorate(provider), descriptor.Lifetime)
-                : ServiceDescriptor.Describe(serviceType, decorate, descriptor.Lifetime);
+            private GeneratedServices Create(string? suffix) => new(DecoratorServices.From(root).ForRegistration(suffix,
+                registration.Lifetime != ServiceLifetime.Singleton
+                    ? new BackgroundLoadTarget(root.GetRequiredService<IServiceScopeFactory>(), typeof(object), registration.InnerKey)
+                    : null));
+        }
+
+        /// <summary>Which registration uses each implementation type, per interface and service key, in one container.</summary>
+        private sealed class ImplementationClaims
+        {
+            private readonly ConcurrentDictionary<(List<DecoratedRegistration> Group, Type Type), DecoratedRegistration> _owners = new();
+
+            internal void Claim(DecoratedRegistration registration, Type type)
+            {
+                if (!ReferenceEquals(_owners.GetOrAdd((registration.Group, type), registration), registration))
+                {
+                    throw SameImplementation(registration.ServiceType, registration.ServiceKey, type);
+                }
+            }
         }
 
         /// <summary>
@@ -333,38 +489,58 @@ namespace Microsoft.Extensions.DependencyInjection
             }
         }
 
-        private static ServiceDescriptor CreateKeyedCopy(ServiceDescriptor descriptor, object key)
+        /// <summary>
+        /// The application's registration under MethodCache's private key, so the container still creates, shares
+        /// and disposes the implementation as before. It is registered as <see cref="object"/>, not as the interface,
+        /// so resolving the interface with <see cref="KeyedService.AnyKey"/> finds only the decorators. The
+        /// implementation still sees the application's key: a keyed factory gets it, and a type whose constructor
+        /// takes the key is created by <see cref="ServiceKeyActivator"/> instead of the container.
+        /// </summary>
+        private static ServiceDescriptor CreateInnerRegistration(ServiceDescriptor descriptor, object key)
         {
+            var serviceKey = descriptor.ServiceKey;
             if (descriptor.IsKeyedService)
             {
                 if (descriptor.KeyedImplementationInstance != null)
                 {
-                    return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationInstance);
+                    return new ServiceDescriptor(typeof(object), key, descriptor.KeyedImplementationInstance);
                 }
 
                 if (descriptor.KeyedImplementationFactory != null)
                 {
                     // The factory sees the key the application registered, not the private one
                     var keyedFactory = descriptor.KeyedImplementationFactory;
-                    var serviceKey = descriptor.ServiceKey;
-                    return new ServiceDescriptor(descriptor.ServiceType, key, (provider, _) => keyedFactory(provider, serviceKey), descriptor.Lifetime);
+                    return new ServiceDescriptor(typeof(object), key, (provider, _) => keyedFactory(provider, serviceKey), descriptor.Lifetime);
                 }
 
-                return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.KeyedImplementationType!, descriptor.Lifetime);
+                return CreateInnerType(descriptor.KeyedImplementationType!, serviceKey, key, descriptor.Lifetime);
             }
 
             if (descriptor.ImplementationInstance != null)
             {
-                return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationInstance);
+                return new ServiceDescriptor(typeof(object), key, descriptor.ImplementationInstance);
             }
 
             if (descriptor.ImplementationFactory != null)
             {
                 var factory = descriptor.ImplementationFactory;
-                return new ServiceDescriptor(descriptor.ServiceType, key, (provider, _) => factory(provider), descriptor.Lifetime);
+                return new ServiceDescriptor(typeof(object), key, (provider, _) => factory(provider), descriptor.Lifetime);
             }
 
-            return new ServiceDescriptor(descriptor.ServiceType, key, descriptor.ImplementationType!, descriptor.Lifetime);
+            return CreateInnerType(descriptor.ImplementationType!, serviceKey: null, key, descriptor.Lifetime);
+        }
+
+        private static ServiceDescriptor CreateInnerType(
+            [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)] Type implementationType,
+            object? serviceKey, object key, ServiceLifetime lifetime)
+        {
+            if (!ServiceKeyActivator.UsesServiceKey(implementationType))
+            {
+                return new ServiceDescriptor(typeof(object), key, implementationType, lifetime);
+            }
+
+            var activator = new ServiceKeyActivator(implementationType, serviceKey);
+            return new ServiceDescriptor(typeof(object), key, (provider, _) => activator.Create(provider), lifetime);
         }
 
         private static HashSet<ServiceDescriptor> GetDecoratedRegistrations(IServiceCollection services)
@@ -409,12 +585,48 @@ namespace Microsoft.Extensions.DependencyInjection
                     .SelectMany(m => m.Candidates.GetValueOrDefault(registration.ServiceType) ?? []);
         }
 
+        private static GeneratedParameters GetGeneratedParameters(IServiceCollection services)
+            => (GeneratedParameters)services.First(d => d.ServiceType == typeof(GeneratedParameters)).ImplementationInstance!;
+
         internal sealed class GeneratedParameters
         {
+            private readonly Dictionary<(Type Service, object? Key), List<DecoratedRegistration>> _groups = [];
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+
+            // The service key part of each registration; an implementation part before it is skipped when matching
             internal List<(string Prefix, string Suffix, string Method)> KeyBindings { get; } = [];
-            // What IMethodCacheKeys needs to build a recording decorator for each registration
-            internal Dictionary<(Type Service, object? Key), (DecoratorRegistration Registration, string? KeySuffix)> Recorders { get; } = [];
+
+            // What IMethodCacheKeys needs to build a recording decorator for each registration: the last one of an
+            // interface and service key, the one GetService and GetKeyedService return
+            internal Dictionary<(Type Service, object? Key), DecoratedRegistration> Recorders { get; } = [];
+
+            internal void Add(DecoratedRegistration registration)
+            {
+                var key = (registration.ServiceType, registration.ServiceKey);
+                if (!_groups.TryGetValue(key, out var group)) _groups[key] = group = [];
+                group.Add(registration);
+                registration.Group = group;
+            }
+
+            /// <summary>
+            /// Brings each interface's registrations per service key up to date after an <c>AddMethodCache</c> call:
+            /// registrations the application removed since are dropped, so a single remaining one keeps its plain keys,
+            /// and two registrations of the same implementation type are rejected, since their keys would be the same.
+            /// </summary>
+            internal void GroupRegistrations(IServiceCollection services)
+            {
+                foreach (var (key, group) in _groups)
+                {
+                    group.RemoveAll(registration => !services.Contains(registration.Decorator));
+                    if (group.Count > 0) Recorders[key] = group[^1];
+                    if (group.Count < 2) continue;
+                    var seen = new HashSet<Type>();
+                    foreach (var registration in group)
+                        if (registration.ImplementationType is { } type && !seen.Add(type))
+                            throw SameImplementation(registration.ServiceType, registration.ServiceKey, type);
+                }
+            }
+
             internal Func<string, CacheRuntimePolicy?> CreateLookup(Func<IPolicyRegistry> registry)
             {
                 var bindings = KeyBindings.OrderByDescending(static item => item.Prefix.Length).ThenByDescending(static item => item.Suffix.Length).ToArray();
@@ -426,13 +638,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     if (!key.StartsWith(binding.Prefix, StringComparison.Ordinal)) continue;
                     var rest = key.AsSpan(binding.Prefix.Length);
-                    if (!rest.IsEmpty && rest[0] is not ':' and not '<' and not '@') continue;
+                    if (!rest.IsEmpty && rest[0] is not ':' and not '<' and not '@' and not '#') continue;
                     if (!rest.IsEmpty && rest[0] == '<')
                     {
                         var end = rest.IndexOf('>');
                         if (end < 0) continue;
                         rest = rest[(end + 1)..];
                     }
+                    if (!rest.IsEmpty && rest[0] == '#') rest = rest[ImplementationPartLength(rest)..];
                     if (!rest.StartsWith(binding.Suffix, StringComparison.Ordinal)) continue;
                     rest = rest[binding.Suffix.Length..];
                     var policy = PolicyHandle.For(registry, binding.Method).Current;

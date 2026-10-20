@@ -374,7 +374,9 @@ namespace QuickStart
         InvokeStartup(assembly, "WithoutConfiguration", services);
 
         Assert.Single(services, d => d.ServiceType == interfaceType && !d.IsKeyedService);
-        Assert.Single(services, d => d.ServiceType == interfaceType && d.IsKeyedService);
+        // The application's own registration, moved to MethodCache's private key
+        Assert.Single(services, d => d.IsKeyedService && d.ServiceKey!.ToString() == "MethodCache inner " + interfaceType.Name);
+        Assert.DoesNotContain(services, d => d.ServiceType == interfaceType && d.IsKeyedService);
     }
 
     [Fact]
