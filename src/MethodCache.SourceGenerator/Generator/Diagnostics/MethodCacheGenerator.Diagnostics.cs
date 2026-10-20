@@ -19,6 +19,11 @@ namespace MethodCache.SourceGenerator
                 "MC0021", "Invalid cache version", "Version must be non-negative when explicitly specified",
                 "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0021"));
 
+            internal static readonly DiagnosticDescriptor RefreshAheadNotShorterThanDuration = new(
+                "MC0023", "RefreshAhead is not shorter than Duration",
+                "RefreshAhead = \"{0}\" is not shorter than Duration = \"{1}\", so every hit would reload the value; use a RefreshAhead window shorter than the Duration",
+                "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0023"));
+
             internal static readonly DiagnosticDescriptor UnsupportedVoidCache = new(
                 id: "MC0003",
                 title: "Caching not supported on void returns",

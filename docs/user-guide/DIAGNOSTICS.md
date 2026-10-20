@@ -27,6 +27,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MC0019](#mc0019) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
+| [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` on the same attribute | |
 
 ## MC0001
 
@@ -199,6 +200,12 @@ cache. When only the in-memory cache is used, or memory-only is what you want, s
 ## MC0021
 
 An explicitly supplied `Version` is negative. Omit it to inherit the configured version or use a non-negative integer.
+
+## MC0023
+
+`RefreshAhead` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` next to it, or longer. The
+refresh window starts that long before an entry expires, so every hit would reload the value. Use a window shorter than
+the `Duration`, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead off.
 
 ## Diagnostic ID migration
 

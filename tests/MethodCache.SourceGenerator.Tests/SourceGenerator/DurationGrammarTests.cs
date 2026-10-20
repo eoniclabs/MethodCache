@@ -33,8 +33,40 @@ public class DurationGrammarTests
     [InlineData("FailSafeTimeout = \"0s\"", "MC0004")]
     [InlineData("FailSafeRetryAfter = \"0s\"", "MC0004")]
     [InlineData("Duration = null", "MC0004")]
+    [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
+    [InlineData("RefreshAhead = \"00:02:00\", Duration = \"1m\"", "MC0023")]
     public void InvalidSettings_AreGeneratorErrors(string setting, string id)
         => Assert.Contains(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == id);
+
+    [Fact]
+    public void RefreshAheadNotShorterThanDuration_NamesBothValues()
+    {
+        var diagnostic = Assert.Single(
+            Generate("using MethodCache; public interface IExample { [Cache(Duration = \"1m\", RefreshAhead = \"2m\")] int Read(); }").Diagnostics,
+            d => d.Id == "MC0023");
+
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        Assert.StartsWith("RefreshAhead = \"2m\" is not shorter than Duration = \"1m\"", diagnostic.GetMessage(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefreshAheadNotShorterThanDuration_OnCacheInterface_IsAGeneratorError()
+    {
+        const string code = """
+            using MethodCache;
+            [assembly: CacheInterface(typeof(System.IFormatProvider), "GetFormat", Duration = "1m", RefreshAhead = "90s")]
+            """;
+
+        Assert.Contains(Generate(code).Diagnostics, d => d.Id == "MC0023");
+    }
+
+    [Theory]
+    [InlineData("Duration = \"1m\", RefreshAhead = \"59s\"")]
+    [InlineData("Duration = \"1m\", RefreshAhead = \"off\"")]
+    [InlineData("RefreshAhead = \"10m\"")]
+    [InlineData("Duration = \"1m\", RefreshAhead = \"soon\"")]
+    public void RefreshAheadShorterThanDuration_OrWithoutBothValues_IsNotMC0023(string setting)
+        => Assert.DoesNotContain(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == "MC0023");
 
     [Theory]
     [InlineData("[Cache(\"old-group\")] int Read();")]
