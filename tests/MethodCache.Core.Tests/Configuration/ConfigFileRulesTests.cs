@@ -64,6 +64,14 @@ public class ConfigFileRulesTests
         Assert.Contains("Groups:<name>", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DefaultsIdUsedAsAMethodKey_FailsStartup()
+    {
+        var error = LoadFails(new() { ["MethodCache:Methods:*:Duration"] = "00:01:00" });
+
+        Assert.StartsWith("MethodCache configuration 'MethodCache:Methods:*' is not a method id", error.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("Defaults", "Group", "orders")]
     [InlineData("Defaults", "Notes", "why")]

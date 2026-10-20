@@ -548,9 +548,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             PolicySourcePriority.StartupFluent when layerId == MethodIds.AllMethods => "mc.Defaults(...)",
             PolicySourcePriority.StartupFluent when group != null => $"mc.Group(\"{group}\", ...)",
             PolicySourcePriority.StartupFluent => "mc.Method(...)",
-            PolicySourcePriority.ConfigurationFiles when layerId == MethodIds.AllMethods => "the configuration's Defaults",
-            PolicySourcePriority.ConfigurationFiles when group != null => $"the configuration's Groups:{group}",
-            PolicySourcePriority.ConfigurationFiles => "the configuration's Methods",
+            // Configuration checks its own tags and names their paths, so this is a tag from another configuration
+            PolicySourcePriority.ConfigurationFiles => "configuration",
             PolicySourcePriority.RuntimeOverrides => "a runtime override",
             _ => $"the policy source '{layer.Policy.Provenance.LastOrDefault()?.SourceId}'"
         };
