@@ -113,6 +113,11 @@ MethodCache.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.CacheLookupResult<T>.Found.get -> bool
 MethodCache.CacheLookupResult<T>.Value.get -> T?
 MethodCache.CacheManagerExtensions
+MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Attribute = 0 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Code = 1 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Configuration = 2 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.RuntimeOverride = 3 -> MethodCache.CacheSettingSource
 MethodCache.CacheStats
 MethodCache.CacheStats.Evictions.get -> long
 MethodCache.CacheStats.Evictions.init -> void
@@ -135,7 +140,7 @@ MethodCache.CachedMethodInfo.MethodId.get -> string!
 MethodCache.CachedMethodInfo.MethodId.init -> void
 MethodCache.CachedMethodInfo.Options.get -> MethodCache.CacheEntryOptions!
 MethodCache.CachedMethodInfo.Options.init -> void
-MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, MethodCache.CacheSettingSource>!
 MethodCache.CachedMethodInfo.SettingSources.init -> void
 MethodCache.DistributedCacheOptions
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.get -> System.TimeSpan

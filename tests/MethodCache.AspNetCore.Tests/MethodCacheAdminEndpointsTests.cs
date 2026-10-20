@@ -34,11 +34,23 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     private WebApplication _app = null!;
     private HttpClient _client = null!;
 
+    public interface IAdminGreeter
+    {
+        [Cache(Duration = "00:05:00", FailSafe = "00:30:00")]
+        ValueTask<string> GreetAsync(string name);
+    }
+
+    public sealed class AdminGreeter : IAdminGreeter
+    {
+        public ValueTask<string> GreetAsync(string name) => ValueTask.FromResult("Hello " + name);
+    }
+
     public async Task InitializeAsync()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        builder.Services.AddSingleton<IAdminGreeter, AdminGreeter>();
         builder.Services.AddMethodCache();
         builder.Services.AddHealthChecks().AddMethodCache();
         builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
@@ -175,7 +187,29 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var response = await _client.GetAsync("/methodcache/methods");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.NotNull(await response.Content.ReadFromJsonAsync<List<CachedMethodInfo>>());
+        // CacheEntryOptions is built by its Builder, so the list is read as JSON rather than back into CachedMethodInfo
+        var methods = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(System.Text.Json.JsonValueKind.Array, methods.ValueKind);
+        Assert.NotEqual(0, methods.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Methods_ReportWhereEachSettingComesFrom_ByNameAsJsonStrings()
+    {
+        await _app.Services.GetRequiredService<IRuntimeCacheConfigurator>()
+            .UpsertAsync<IAdminGreeter>(g => g.GreetAsync(Any<string>.Value), o => o.WithFailSafeTimeout(TimeSpan.FromSeconds(1)));
+
+        var json = await _client.GetStringAsync("/methodcache/methods");
+        var greeter = Assert.Single(System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateArray(),
+            method => method.GetProperty("methodId").GetString()!.EndsWith("IAdminGreeter.GreetAsync", StringComparison.Ordinal));
+        var sources = greeter.GetProperty("settingSources").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString());
+
+        Assert.Equal(new Dictionary<string, string?>
+        {
+            ["Duration"] = "Attribute",
+            ["FailSafe"] = "Attribute",
+            ["FailSafeTimeout"] = "RuntimeOverride"
+        }, sources);
     }
 
     [Fact]

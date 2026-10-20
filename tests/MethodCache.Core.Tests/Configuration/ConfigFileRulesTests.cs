@@ -46,7 +46,7 @@ public class ConfigFileRulesTests
 
         Assert.Contains($"'MethodCache:Methods:{GetId}'", error.Message, StringComparison.Ordinal);
         Assert.Contains("'MethodCache:Methods:second'", error.Message, StringComparison.Ordinal);
-        Assert.Contains($"both configure '{GetId}'", error.Message, StringComparison.Ordinal);
+        Assert.Contains("configure the same method", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -60,8 +60,8 @@ public class ConfigFileRulesTests
             ["MethodCache:Methods:0:Duration"] = "00:01:00"
         });
 
-        Assert.Contains($"'MethodCache:Methods:0' uses '{id}' as a method id", error.Message, StringComparison.Ordinal);
-        Assert.Contains("MethodCache:Groups:<name>", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"'MethodCache:Methods:0:MethodId' has value '{id}', which is not a method id", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Groups:<name>", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -248,6 +248,45 @@ public class ConfigFileRulesTests
 
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(GetId).Policy.Duration);
         Assert.False(registry.GetPolicy(GetId).Policy.Metadata.ContainsKey("group"));
+    }
+
+    [Fact]
+    public void GroupKeyPuttingAMethodWhereACodeTagDoesNotFit_FailsStartup()
+    {
+        var configuration = Configuration(new() { [$"MethodCache:Methods:{GetId}:Group"] = "orders" });
+        using var provider = Build(configuration, mc => mc.Group("orders", o => o.AddTags("order:{orderId}")));
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains($"'MethodCache:Methods:{GetId}' lets a tag set in mc.Group(\"orders\", ...) reach its method", error.Message, StringComparison.Ordinal);
+        Assert.Contains("{orderId} names no parameter of the method, whose parameters are id", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SettingSources_CreditEachSourceOnlyForTheSettingsItSets_ByPropertyName()
+    {
+        var configuration = Configuration(new()
+        {
+            [$"MethodCache:Methods:{OrderId}:SlidingExpiration"] = "00:01:00",
+            [$"MethodCache:Methods:{OrderId}:ClearTags"] = "true",
+            [$"MethodCache:Methods:{OrderId}:Metadata:owner"] = "team-a"
+        });
+        await using var provider = Build(configuration, mc => mc.Group("orders", o => o.WithVersion(2).WithDuration(TimeSpan.FromMinutes(3))));
+        await provider.GetRequiredService<IRuntimeCacheConfigurator>()
+            .UpsertAsync<IRules>(r => r.GetOrderAsync(Any<int>.Value), o => o.WithFailSafeRetryAfter(TimeSpan.FromSeconds(5)));
+
+        var method = provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == OrderId);
+
+        Assert.Equal(new Dictionary<string, CacheSettingSource>
+        {
+            ["Duration"] = CacheSettingSource.Code,
+            ["Version"] = CacheSettingSource.Code,
+            ["SlidingExpiration"] = CacheSettingSource.Configuration,
+            ["Tags"] = CacheSettingSource.Configuration,
+            ["FailSafeRetryAfter"] = CacheSettingSource.RuntimeOverride
+        }, method.SettingSources);
+        Assert.Equal("{\"Duration\":\"Code\"}", System.Text.Json.JsonSerializer.Serialize(
+            method.SettingSources.Where(pair => pair.Key == "Duration").ToDictionary()));
     }
 
     [Fact]

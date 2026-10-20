@@ -95,17 +95,19 @@ internal static class ConfigFilePolicySourceBuilder
                 continue;
             }
 
+            // Errors quote a MethodId value only through InvalidValue, which keeps it out of logs
             if (MethodIds.IsDefaults(methodId))
             {
-                throw new InvalidOperationException(
-                    $"MethodCache configuration '{methodSection.Path}' uses '{methodId}' as a method id. Set defaults for every method " +
-                    $"under '{root.Path}:Defaults' and a group's defaults under '{root.Path}:Groups:<name>'.");
+                const string defaultsAdvice = "a method id; '*' and 'group:<name>' hold defaults, which are set under Defaults and Groups:<name>";
+                throw string.IsNullOrWhiteSpace(idValue)
+                    ? new InvalidOperationException($"MethodCache configuration '{methodSection.Path}' is not {defaultsAdvice}.")
+                    : InvalidValue(methodSection, "MethodId", idValue, defaultsAdvice);
             }
 
             if (configured.TryGetValue(methodId, out var first))
             {
                 throw new InvalidOperationException(
-                    $"MethodCache configuration '{first.Path}' and '{methodSection.Path}' both configure '{methodId}'; keep one of them.");
+                    $"MethodCache configuration '{first.Path}' and '{methodSection.Path}' configure the same method; keep one of them.");
             }
 
             configured.Add(methodId, methodSection);
@@ -142,8 +144,7 @@ internal static class ConfigFilePolicySourceBuilder
         // The tag is set elsewhere, and this configuration puts the method in the group it is set for
         var section = policies.FirstOrDefault(policy => policy.Draft.MethodId == problem.MethodId)?.Section ?? root;
         return new InvalidOperationException(
-            $"MethodCache configuration '{section.Path}' lets the tag '{problem.Tag}' set in {problem.Where} reach the cached method " +
-            $"'{problem.MethodId}', but {problem.Reason}.");
+            $"MethodCache configuration '{section.Path}' lets a tag set in {problem.Where} reach its method, but {problem.Reason}.");
     }
 
     /// <summary>Rejects Group, Metadata and Notes outside a method's entry, since they describe one method.</summary>

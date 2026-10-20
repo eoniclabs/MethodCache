@@ -728,10 +728,35 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     effectivePolicy.Provenance.ToArray(),
                     resolvedAt,
                     currentVersion)
-                { Declaration = declaration, FieldSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(fieldSources) };
+                { Declaration = declaration, FieldSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(fieldSources) };
             }
         }
-        private static (CachePolicy Policy, Dictionary<string, string> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
+
+        // The settings SettingSources reports, by the CacheEntryOptions property they set; a layer that clears tags sets Tags
+        private static readonly (CachePolicyFields Fields, string Setting)[] ReportedSettings =
+        [
+            (CachePolicyFields.Duration, nameof(CacheEntryOptions.Duration)),
+            (CachePolicyFields.Tags | CachePolicyFields.ClearTags, nameof(CacheEntryOptions.Tags)),
+            (CachePolicyFields.SlidingExpiration, nameof(CacheEntryOptions.SlidingExpiration)),
+            (CachePolicyFields.RefreshAhead, nameof(CacheEntryOptions.RefreshAhead)),
+            (CachePolicyFields.Version, nameof(CacheEntryOptions.Version)),
+            (CachePolicyFields.FailSafe, nameof(CacheEntryOptions.FailSafe)),
+            (CachePolicyFields.FailSafeTimeout, nameof(CacheEntryOptions.FailSafeTimeout)),
+            (CachePolicyFields.FailSafeRetryAfter, nameof(CacheEntryOptions.FailSafeRetryAfter)),
+            (CachePolicyFields.Enabled, nameof(CacheEntryOptions.Enabled)),
+            (CachePolicyFields.Distributed, nameof(CacheEntryOptions.Distributed)),
+        ];
+
+        private static CacheSettingSource? SettingSourceOf(string? sourceId) => sourceId switch
+        {
+            PolicySourceIds.Attributes => CacheSettingSource.Attribute,
+            PolicySourceIds.StartupFluent => CacheSettingSource.Code,
+            PolicySourceIds.ConfigurationFiles => CacheSettingSource.Configuration,
+            PolicySourceIds.RuntimeOverrides => CacheSettingSource.RuntimeOverride,
+            _ => null
+        };
+
+        private static (CachePolicy Policy, Dictionary<string, CacheSettingSource> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
         {
             var canonicalTagParts = true;
             bool? enabled = null;
@@ -748,7 +773,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             TimeSpan? failSafeRetryAfter = null;
             int? version = null;
             List<PolicyContribution>? contributions = null;
-            var fieldSources = new Dictionary<string, string>(StringComparer.Ordinal);
+            var fieldSources = new Dictionary<string, CacheSettingSource>(StringComparer.Ordinal);
 
             foreach (var layer in layers)
             {
@@ -756,9 +781,17 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 var policy = layer.Policy;
                 var sourceId = policy.Provenance.LastOrDefault()?.SourceId;
                 if (sourceId == PolicySourceIds.Attributes) canonicalTagParts = policy.CanonicalTagParts;
-                if (sourceId != null)
-                    foreach (var field in Enum.GetValues<CachePolicyFields>())
-                        if (field != CachePolicyFields.None && fields.HasFlag(field)) fieldSources.TryAdd(field.ToString(), sourceId);
+                // Layers come highest first, so the first that sets a setting is the one it comes from
+                if (SettingSourceOf(sourceId) is { } settingSource)
+                {
+                    foreach (var (settingFields, setting) in ReportedSettings)
+                    {
+                        if ((fields & settingFields) != 0)
+                        {
+                            fieldSources.TryAdd(setting, settingSource);
+                        }
+                    }
+                }
 
                 if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
                 {
