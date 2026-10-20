@@ -6,7 +6,7 @@ internal static class CanonicalTagPart
 {
     internal static string Format(object? value) => value switch
     {
-        null => MethodCacheKeys.Null,
+        null => Generated.KeyParts.Null,
         string text => MethodCacheKeys.Part(text),
         bool flag => MethodCacheKeys.Part(flag),
         char character => MethodCacheKeys.Part(character),

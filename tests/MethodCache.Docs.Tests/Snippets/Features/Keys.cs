@@ -51,16 +51,14 @@ namespace MyApp
             return (versioned, overload);
         }
 
-        public static (string Versioned, string Overload) BuildByHand()
+        public static IReadOnlyList<CacheEntryInfo> ListMethod(IMethodCacheKeys keys, ICacheAdministrator admin)
         {
-            // begin-snippet: keys-by-hand
-            // The version, and the method id of an overload, are spelled out
-            var versioned = MethodCacheKeys.ForVersion(
-                typeof(IInvoiceService), nameof(IInvoiceService.GetAsync), 2, MethodCacheKeys.Part(42));
-            var overload = MethodCacheKeys.For(
-                typeof(IInvoiceService), "FindAsync(string)", MethodCacheKeys.Part("INV-7"));
+            // begin-snippet: keys-method-id
+            // "[MyApp]MyApp.IInvoiceService.FindAsync(string)": the arguments don't matter
+            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+            var entries = admin.ListEntries(methodId: methodId);
             // end-snippet
-            return (versioned, overload);
+            return entries;
         }
     }
 

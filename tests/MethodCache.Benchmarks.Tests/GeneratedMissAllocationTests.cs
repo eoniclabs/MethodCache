@@ -18,7 +18,7 @@ public class GeneratedMissAllocationTests
         {
             // Assembly scoping adds characters to the one key string allocated on a miss.
             // Charge exactly that string-size difference, preserving the original closure budget.
-            var key = MethodCacheKeys.For(typeof(IContractService), valueTask ? "ValueTask" : "Task", MethodCacheKeys.Part(Guid.Empty));
+            var key = string.Concat(MethodCacheKeys.Prefix(typeof(IContractService), valueTask ? "ValueTask" : "Task"), ":", MethodCacheKeys.Part(Guid.Empty));
             var assemblyLength = key.IndexOf(']') + 1;
             static int StringBytes(int length) => (22 + 2 * length + 7) & ~7;
             budget += StringBytes(key.Length) - StringBytes(key.Length - assemblyLength);

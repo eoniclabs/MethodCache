@@ -236,10 +236,10 @@ public class CancellationAndExpiryTests
     {
         var manager = CreateManager();
         var calls = 0;
-        ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> keys, CancellationToken _)
+        ValueTask<IReadOnlyDictionary<string, string>> Factory(IReadOnlyList<string> keys, CancellationToken _)
         {
             calls++;
-            return new ValueTask<IDictionary<string, string>>(keys.ToDictionary(k => k, k => "v" + k));
+            return new ValueTask<IReadOnlyDictionary<string, string>>(keys.ToDictionary(k => k, k => "v" + k));
         }
 
         await manager.GetOrCreateManyAsync(new[] { "a", "b" }, Factory, b => b.WithVersion(1));

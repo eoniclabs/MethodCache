@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Globalization;
 using System.Threading.Tasks;
 using MethodCache;
@@ -72,7 +73,7 @@ namespace TestNamespace
         var firstResult = await GetTaskResult<string>(firstCallTask);
 
         // Public key helpers resolve the same method-scoped entry.
-        var fastHit = await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetValueAsync", MethodCacheKeys.Part(rawKey)));
+        var fastHit = await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetValueAsync", MethodCacheKeys.Part(rawKey)));
         Assert.Equal(firstResult, fastHit);
 
         // A key without the service scope cannot read this entry.
@@ -166,11 +167,11 @@ namespace TestNamespace
             CultureInfo.CurrentCulture = previous;
         }
 
-        Assert.Equal("double", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByDoubleAsync", MethodCacheKeys.Part(-1.5))));
-        Assert.Equal("decimal", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByNullableAsync", MethodCacheKeys.Part(2.5m))));
-        Assert.Equal("level -1", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByLevelAsync", "-1")));
-        Assert.Equal("level -3", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByLevelAsync", "-3")));
-        Assert.Equal("nullable level", await cacheManager.TryGetFastAsync<string>(MethodCacheKeys.For(serviceType, "GetByNullableLevelAsync", "-5")));
+        Assert.Equal("double", await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetByDoubleAsync", MethodCacheKeys.Part(-1.5))));
+        Assert.Equal("decimal", await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetByNullableAsync", MethodCacheKeys.Part(2.5m))));
+        Assert.Equal("level -1", await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetByLevelAsync", "-1")));
+        Assert.Equal("level -3", await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetByLevelAsync", "-3")));
+        Assert.Equal("nullable level", await cacheManager.TryGetFastAsync<string>(TestKeys.For(serviceType, "GetByNullableLevelAsync", "-5")));
         // A structural struct key is tested through the generated call, rather than an unscoped raw ToString.
         var codeAgain = Activator.CreateInstance(testAssembly.Assembly.GetType("TestNamespace.Code")!, -7)!;
         Assert.Equal("code", await GetTaskResult<string>((Task)serviceType.GetMethod("GetByCodeAsync")!.Invoke(service, new[] { codeAgain })!));

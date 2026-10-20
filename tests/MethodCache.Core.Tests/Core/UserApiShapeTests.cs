@@ -31,6 +31,7 @@ public class UserApiShapeTests
             Assert.DoesNotContain(typeof(CacheEntryOptions.Builder).GetMethods(), m => m.Name == name);
         Assert.DoesNotContain(typeof(ICacheManager).Assembly.GetExportedTypes(), t => t.Name == "CacheContext");
         Assert.True(typeof(NoOpCacheManager).IsSealed);
+        Assert.True(typeof(MethodCacheMemoryOptions).IsSealed);
         Assert.Equal(new[] { "CacheNullValues", "JitterMaxDuration", "MaxExpiration", "MaxHttpBytes", "MaxItems", "Weigher", "WeightLimit" },
             typeof(MethodCacheMemoryOptions).GetProperties().Select(p => p.Name).Order().ToArray());
     }

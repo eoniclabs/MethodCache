@@ -196,8 +196,8 @@ namespace MethodCache
         /// <example>
         /// <code>
         /// await cacheManager.InvalidateByKeysAsync(
-        ///     MethodCacheKeys.For(typeof(IUserService), "GetUser", MethodCacheKeys.Part(123)),
-        ///     MethodCacheKeys.For(typeof(IUserService), "GetUser", MethodCacheKeys.Part(456))
+        ///     keys.For&lt;IUserService&gt;(users =&gt; users.GetUser(123)),
+        ///     keys.For&lt;IUserService&gt;(users =&gt; users.GetUser(456))
         /// );
         /// </code>
         /// </example>

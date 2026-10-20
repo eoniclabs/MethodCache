@@ -151,6 +151,6 @@ public class HttpReviewRegressionTests
         backend.FailStamp = true;
         var operation = clear ? storage.Core.ClearAsync(default).AsTask() : storage.Core.InvalidateTagsAsync(["users"], default).AsTask();
         await Assert.ThrowsAnyAsync<InvalidOperationException>(() => operation);
-        Assert.True(storage.Core.RecoveryQueues.Distributed > 0);
+        Assert.True(storage.Core.RecoveryQueues.Queued > 0);
     }
 }

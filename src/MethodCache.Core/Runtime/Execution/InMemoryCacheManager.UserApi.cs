@@ -14,7 +14,8 @@ internal partial class InMemoryCacheManager
         ArgumentNullException.ThrowIfNull(factory);
         cancellationToken.ThrowIfCancellationRequested();
         options ??= CacheEntryOptions.Default;
-        var cacheKey = options.GetCacheKey(key);
+        // A generated call's key is complete; an application key is framed with its version
+        var cacheKey = options.Runtime != null ? key : MethodCacheKeys.VersionedKey(key, options.Version);
         _telemetry?.ClaimCustomRequest();
         if (options.Enabled != false && options.Runtime == null && options.CacheWhen == null && TryGetFastNode<T>(cacheKey, out var cached, out var cachedNode))
         {
@@ -43,7 +44,7 @@ internal partial class InMemoryCacheManager
 
     /// <inheritdoc />
     public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
-        => TryGetPreparedAsync<T>(CacheManagerExtensions.GetCacheKey(key, version), cancellationToken);
+        => TryGetPreparedAsync<T>(MethodCacheKeys.StoredKey(key, version), cancellationToken);
 
     internal ValueTask<CacheLookupResult<T>> TryGetPreparedAsync<T>(string key, CancellationToken cancellationToken)
     {
@@ -78,7 +79,7 @@ internal partial class InMemoryCacheManager
     public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
-        return InvalidateTargetsAsync(ValidateTargets(keys).Select(key => CacheManagerExtensions.GetCacheKey(key, version)), false, cancellationToken);
+        return InvalidateTargetsAsync(ValidateTargets(keys).Select(key => MethodCacheKeys.StoredKey(key, version)), false, cancellationToken);
     }
 
     internal ValueTask<InvalidationResult> InvalidatePreparedKeysAsync(IEnumerable<string> keys, CancellationToken token)
@@ -110,13 +111,20 @@ internal partial class InMemoryCacheManager
 
     internal InvalidationQueues GetInvalidationQueues() => _distributed?.GetInvalidationQueues() ?? new(0, 0);
 
-    internal Task InvalidateMethodAsync(string methodId)
+    internal Task<InvalidationResult> InvalidateMethodAsync(string methodId)
     {
         using var activity = _distributed == null ? _telemetry?.BeginInvalidation("method") : null;
         InvalidateMethodLocally(methodId);
         _telemetry?.Invalidations("method", "local", 1);
-        return _distributed?.InvalidateMethodAsync(methodId) ?? Task.CompletedTask;
+        return _distributed?.InvalidateMethodAsync(methodId) ?? Task.FromResult(new InvalidationResult { Requested = 1, Local = 1 });
     }
+
+    /// <summary>
+    /// The id of the cached method an entry belongs to, as <see cref="CachedMethodInfo.MethodId"/> gives it; null for a
+    /// manual entry, which belongs to no method.
+    /// </summary>
+    internal static string? MethodIdOf(Core.Runtime.Memory.Node node)
+        => node.Policy is EntryPolicy { Source.MethodId: var id } && id != CacheKeyLookup.MethodName ? id : null;
 
     private void InvalidateMethodLocally(string methodId)
     {

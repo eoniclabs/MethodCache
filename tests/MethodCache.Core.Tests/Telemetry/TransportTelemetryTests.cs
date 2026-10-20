@@ -46,7 +46,7 @@ public class TransportTelemetryTests
         Assert.Contains(metrics.Distributed, row => row.Operation == "invalidate" && row.Tags.ContainsKey("error.type"));
         backplane.Fail = false;
         await provider.GetRequiredService<DistributedCacheLayer>().FlushPublicationsAsync();
-        Assert.Equal(0, provider.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Publication);
+        Assert.Equal(0, provider.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().PublicationQueued);
         Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["stage"], "published") && row.Value == 1);
     }
 

@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -181,9 +182,9 @@ namespace KeyFormat
 
         var userType = assembly.GetType("KeyFormat.IUserService")!;
         var orderType = assembly.GetType("KeyFormat.IOrderService")!;
-        Assert.Equal("user-7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "GetAsync", MethodCacheKeys.Part(7))));
-        Assert.Equal("order-7", await cache.TryGetFastAsync<string>(MethodCacheKeys.ForVersion(orderType, "GetAsync", 2, MethodCacheKeys.Part(7))));
-        Assert.Equal("all", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "AllAsync")));
+        Assert.Equal("user-7", await cache.TryGetFastAsync<string>(TestKeys.For(userType, "GetAsync", MethodCacheKeys.Part(7))));
+        Assert.Equal("order-7", await cache.TryGetFastAsync<string>(TestKeys.ForVersion(orderType, "GetAsync", 2, MethodCacheKeys.Part(7))));
+        Assert.Equal("all", await cache.TryGetFastAsync<string>(TestKeys.For(userType, "AllAsync")));
     }
 
     [Fact]
@@ -196,7 +197,7 @@ namespace KeyFormat
         calls.SetValue(null, 0);
 
         await Call<string>(users, "GetAsync", 3);
-        await cache.InvalidateByKeysAsync(MethodCacheKeys.For(assembly.GetType("KeyFormat.IUserService")!, "GetAsync", MethodCacheKeys.Part(3)));
+        await cache.InvalidateByKeysAsync(TestKeys.For(assembly.GetType("KeyFormat.IUserService")!, "GetAsync", MethodCacheKeys.Part(3)));
         await Call<string>(users, "GetAsync", 3);
 
         Assert.Equal(2, (int)calls.GetValue(null)!);
@@ -210,7 +211,7 @@ namespace KeyFormat
         var cache = provider.GetRequiredService<ICacheManager>();
 
         Assert.Equal("policy-5", await Call<string>(users, "PolicyAsync", 5));
-        Assert.Equal("policy-5", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(assembly.GetType("KeyFormat.IUserService")!, "PolicyAsync", MethodCacheKeys.Part(5))));
+        Assert.Equal("policy-5", await cache.TryGetFastAsync<string>(TestKeys.For(assembly.GetType("KeyFormat.IUserService")!, "PolicyAsync", MethodCacheKeys.Part(5))));
     }
 
     [Theory]
@@ -242,8 +243,8 @@ namespace KeyFormat
         Assert.Equal(4, await Call<int>(users, "CountAsync", query));
         Assert.Equal("point-1,2-acme", await Call<string>(users, "PointAsync", point, tenant));
 
-        Assert.Equal(4, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "CountAsync", "(a\\:b:4)")));
-        Assert.Equal("point-1,2-acme", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "PointAsync", "(1:2)", "acme")));
+        Assert.Equal(4, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "CountAsync", "(a\\:b:4)")));
+        Assert.Equal("point-1,2-acme", await cache.TryGetFastAsync<string>(TestKeys.For(userType, "PointAsync", "(1:2)", "acme")));
     }
 
     [Fact]
@@ -258,8 +259,8 @@ namespace KeyFormat
         var subRegion = await Call<string>(users, "RegionAsync", Activator.CreateInstance(assembly.GetType("KeyFormat.SubRegion")!, "se", "north"));
 
         Assert.NotEqual(region, subRegion);
-        Assert.Equal(region, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se")));
-        Assert.Equal(subRegion, await cache.TryGetFastAsync<string>(MethodCacheKeys.For(userType, "RegionAsync", "se/north")));
+        Assert.Equal(region, await cache.TryGetFastAsync<string>(TestKeys.For(userType, "RegionAsync", "se")));
+        Assert.Equal(subRegion, await cache.TryGetFastAsync<string>(TestKeys.For(userType, "RegionAsync", "se/north")));
     }
 
     [Fact]
@@ -324,12 +325,12 @@ namespace KeyFormat
         var queriesResult = await Call<int>(users, "QueriesAsync", queries);
         var filters = await Call<int>(users, "FiltersAsync", new Dictionary<string, int> { ["a"] = 1 });
 
-        Assert.Equal(ids, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
-        Assert.Equal(noIds, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "IdsAsync", MethodCacheKeys.Null)));
-        Assert.Equal(names, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "NamesAsync", "System.Collections.Generic.List`1[System.String]", "[2:a\\\\\\:b:\\\\0]", "2")));
-        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "KeyFormat.Tenant[]", "[2:acme:\\\\0]")));
-        Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "QueriesAsync", "[1:(x\\:1)]")));
-        Assert.Equal(filters, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "FiltersAsync", "[1:(a\\:1)]")));
+        Assert.Equal(ids, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "IdsAsync", "[3:1:2:3]")));
+        Assert.Equal(noIds, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "IdsAsync", TestKeys.Null)));
+        Assert.Equal(names, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "NamesAsync", "System.Collections.Generic.List`1[System.String]", "[2:a\\\\\\:b:\\\\0]", "2")));
+        Assert.Equal(pointsResult, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "PointsAsync", "[1:(1\\:2)]", "KeyFormat.Tenant[]", "[2:acme:\\\\0]")));
+        Assert.Equal(queriesResult, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "QueriesAsync", "[1:(x\\:1)]")));
+        Assert.Equal(filters, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "FiltersAsync", "[1:(a\\:1)]")));
     }
 
     [Fact]
@@ -372,7 +373,7 @@ namespace KeyFormat
         var derived = await Call<int>(users, "ListAsync", subclass);
 
         Assert.NotEqual(plain, derived);
-        Assert.Equal(plain, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ListAsync", "[2:1:2]")));
+        Assert.Equal(plain, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "ListAsync", "[2:1:2]")));
         var derivedKey = provider.GetRequiredService<MethodCache.Extensibility.ICacheKeyGenerator>().GenerateKey(
             MethodCacheKeys.Prefix(userType, "ListAsync"), [subclass], CacheRuntimePolicy.Empty("ListAsync"));
         Assert.Equal(derived, await cache.TryGetFastAsync<int>(derivedKey));
@@ -391,7 +392,7 @@ namespace KeyFormat
 
         var result = await Call<int>(users, "ScopesAsync", scopes, Activator.CreateInstance(scopeType, "us"));
 
-        Assert.Equal(result, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "ScopesAsync", "[2:eu:\\\\0]", "us")));
+        Assert.Equal(result, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "ScopesAsync", "[2:eu:\\\\0]", "us")));
     }
 
     [Fact]
@@ -408,7 +409,7 @@ namespace KeyFormat
         var result = await Call<int>(users, "RangesAsync", ranges);
 
         // A Range[] can hold a NamedRange, whose extra member an inline key would miss
-        Assert.Equal(0, await cache.TryGetFastAsync<int>(MethodCacheKeys.For(userType, "RangesAsync", "[1:(a\\:1)]")));
+        Assert.Equal(0, await cache.TryGetFastAsync<int>(TestKeys.For(userType, "RangesAsync", "[1:(a\\:1)]")));
         var prefix = MethodCacheKeys.Prefix(userType, "RangesAsync");
         var policy = CacheRuntimePolicy.FromPolicy("RangesAsync", CachePolicy.Empty, CachePolicyFields.None);
         var key = provider.GetRequiredService<ICacheKeyGenerator>().GenerateKey(prefix, new object[] { ranges }, policy);
@@ -451,9 +452,9 @@ namespace KeyFormat
 
         // The local time of the same instant was a hit, under the key MethodCacheKeys.Part writes, whatever the time zone
         Assert.Equal(1, (int)compiled.Assembly.GetType("KeyFormat.Reports")!.GetField("AtCalls")!.GetValue(null)!);
-        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "At", MethodCacheKeys.Part(utc))));
-        Assert.Equal("at", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "At", "2026-01-01T12:00:00.2500000Z")));
-        Assert.Equal("since", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(reportsType, "Since", MethodCacheKeys.Part(since))));
+        Assert.Equal("at", await cache.TryGetFastAsync<string>(TestKeys.For(reportsType, "At", MethodCacheKeys.Part(utc))));
+        Assert.Equal("at", await cache.TryGetFastAsync<string>(TestKeys.For(reportsType, "At", "2026-01-01T12:00:00.2500000Z")));
+        Assert.Equal("since", await cache.TryGetFastAsync<string>(TestKeys.For(reportsType, "Since", MethodCacheKeys.Part(since))));
     }
 
     [Fact]
@@ -495,10 +496,10 @@ namespace KeyFormat
         await (Task<string>)Type("IB").GetMethod("Get")!.Invoke(both, new object[] { 1 })!;
 
         // The keys docs/features/keys.md shows
-        Assert.Equal("id7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(int)", MethodCacheKeys.Part(7))));
-        Assert.Equal("code7", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("ICatalog"), "Find(string)", MethodCacheKeys.Part("7"))));
-        Assert.Equal("a1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IA.Get(int)", MethodCacheKeys.Part(1))));
-        Assert.Equal("b1", await cache.TryGetFastAsync<string>(MethodCacheKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IB.Get(int)", MethodCacheKeys.Part(1))));
+        Assert.Equal("id7", await cache.TryGetFastAsync<string>(TestKeys.For(Type("ICatalog"), "Find(int)", MethodCacheKeys.Part(7))));
+        Assert.Equal("code7", await cache.TryGetFastAsync<string>(TestKeys.For(Type("ICatalog"), "Find(string)", MethodCacheKeys.Part("7"))));
+        Assert.Equal("a1", await cache.TryGetFastAsync<string>(TestKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IA.Get(int)", MethodCacheKeys.Part(1))));
+        Assert.Equal("b1", await cache.TryGetFastAsync<string>(TestKeys.For(Type("IC"), "[KeyFormatHierarchy]KeyFormat.IB.Get(int)", MethodCacheKeys.Part(1))));
     }
 
     private async Task<(IServiceProvider Provider, Assembly Assembly)> BuildAsync()

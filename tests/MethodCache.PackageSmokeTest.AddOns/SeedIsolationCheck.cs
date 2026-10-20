@@ -66,7 +66,7 @@ internal static class SeedIsolationCheck
                 await Task.Yield();
             }
             UserService.Reset();
-            var key = MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetAsync), MethodCacheKeys.Part(7));
+            var key = instance.Services.GetRequiredService<IMethodCacheKeys>().For<IUserService>(users => users.GetAsync(7));
             if (phase is "origin" or "hit")
             {
                 var result = await instance.Users.GetAsync(7);

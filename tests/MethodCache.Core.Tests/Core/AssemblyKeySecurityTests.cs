@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Reflection;
 using System.Reflection.Emit;
 using Xunit;
@@ -57,8 +58,8 @@ public class AssemblyKeySecurityTests
             builder.DefineLiteral("Eu", 1);
             return Enum.ToObject(builder.CreateTypeInfo()!.AsType(), 1);
         }
-        Assert.NotEqual(MethodCacheKeys.KeyedMethodName("Read", Key("KeyLeft")),
-            MethodCacheKeys.KeyedMethodName("Read", Key("KeyRight")));
+        Assert.NotEqual(TestKeys.KeyedMethodName("Read", Key("KeyLeft")),
+            TestKeys.KeyedMethodName("Read", Key("KeyRight")));
     }
 
     private static Type Define(string assemblyName)

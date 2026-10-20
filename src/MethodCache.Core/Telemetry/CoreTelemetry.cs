@@ -134,8 +134,8 @@ internal sealed class CoreTelemetry : IDisposable
     private IEnumerable<Measurement<long>> ObserveQueues()
     {
         var queues = Volatile.Read(ref _disposed) == 0 ? Volatile.Read(ref _observeQueues)?.Invoke() ?? default : default;
-        yield return new Measurement<long>(queues?.Distributed ?? 0, new KeyValuePair<string, object?>("stage", "storage"));
-        yield return new Measurement<long>(queues?.Publication ?? 0, new KeyValuePair<string, object?>("stage", "publication"));
+        yield return new Measurement<long>(queues?.Queued ?? 0, new KeyValuePair<string, object?>("stage", "storage"));
+        yield return new Measurement<long>(queues?.PublicationQueued ?? 0, new KeyValuePair<string, object?>("stage", "publication"));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

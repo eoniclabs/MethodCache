@@ -36,7 +36,7 @@ public static partial class PolicyBackendContract
         await using var second = await create(new Origin(200), null);
         await SilenceAsync(first); await SilenceAsync(second);
         Assert.Equal(101, await first.GetRequiredService<IOrigin>().ReadAsync(1));
-        var key = MethodCacheKeys.For(typeof(IOrigin), nameof(IOrigin.ReadAsync), MethodCacheKeys.Part(1));
+        var key = second.GetRequiredService<IMethodCacheKeys>().For<IOrigin>(origin => origin.ReadAsync(1));
         var cache = second.GetRequiredService<ICacheManager>();
         var generated = await cache.TryGetAsync<int>(key, default);
         Assert.True(generated.Found);
@@ -218,7 +218,9 @@ public static partial class PolicyBackendContract
         });
         var reader = node.GetRequiredService<IOrigin>();
         Assert.Equal(101, await reader.ReadAsync(1)); Assert.Equal(102, await reader.ReadAsync(1));
-        Assert.Equal(2, custom.Calls); Assert.Equal(2, custom.LastOptions!.Version);
+        // The key carries the version, so the options don't repeat it
+        Assert.Equal(2, custom.Calls); Assert.Null(custom.LastOptions!.Version);
+        Assert.Contains(".ReadAsync:v2:1", custom.LastKey, StringComparison.Ordinal);
         Assert.False(custom.LastOptions.Distributed); Assert.Contains("native:1", custom.LastOptions.Tags);
         Assert.Equal(101, reader.Read(1)); Assert.Equal(102, reader.Read(1));
         Assert.Equal(2, custom.Calls); // sync must bypass an asynchronous custom manager
@@ -283,11 +285,12 @@ public static partial class PolicyBackendContract
     {
         private readonly NoOpCacheManager _noOp = new();
         internal int Calls;
+        internal string? LastKey;
         internal CacheEntryOptions? LastOptions;
         public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
             CacheEntryOptions? options = null, CancellationToken cancellationToken = default)
         {
-            Calls++; LastOptions = options;
+            Calls++; LastKey = key; LastOptions = options;
             await Task.Yield();
             return await _noOp.GetOrCreateAsync(key, state, factory, options, cancellationToken);
         }

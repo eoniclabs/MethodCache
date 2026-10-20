@@ -182,7 +182,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 
     var catalog = provider.GetRequiredService<IProductCatalog>();
     await catalog.GetProductAsync("KB-1");
-    var key = MethodCacheKeys.For(typeof(IProductCatalog), nameof(IProductCatalog.GetProductAsync), MethodCacheKeys.Part("KB-1"));
+    var key = provider.GetRequiredService<IMethodCacheKeys>().For<IProductCatalog>(c => c.GetProductAsync("KB-1"));
     var entry = admin.GetEntry(key);
     Ui.Step("Runtime override, then a call", $"entry {key} lives {Ui.Duration(entry?.TimeToLive)}");
     Ui.Check(entry?.TimeToLive is { TotalSeconds: > 50 and <= 60 }, "The runtime override applied to new entries at once");

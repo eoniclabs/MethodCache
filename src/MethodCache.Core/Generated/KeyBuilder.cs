@@ -85,7 +85,7 @@ public ref struct KeyBuilder
         return text;
     }
 
-    /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
+    /// <summary>Appends text as is, such as the key prefix of a cached method.</summary>
     internal void Append(string value)
     {
         EnsureWritable();
@@ -110,7 +110,7 @@ public ref struct KeyBuilder
         AppendSeparator();
         if (value is null)
         {
-            Append(MethodCacheKeys.Null.AsSpan());
+            Append(KeyParts.Null.AsSpan());
             return;
         }
 
@@ -132,7 +132,7 @@ public ref struct KeyBuilder
     {
         EnsureWritable();
         AppendSeparator();
-        Append(MethodCacheKeys.Null.AsSpan());
+        Append(KeyParts.Null.AsSpan());
     }
 
     /// <summary>Appends a separator and a <see cref="bool"/> argument.</summary>
