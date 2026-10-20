@@ -38,7 +38,7 @@ public class PrivateSharedCacheTests
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(1, innerHandler.RequestCount);
-        Assert.Equal("HIT", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.FreshHit, HttpCacheTestFactory.CacheStatus(response2));
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class PrivateSharedCacheTests
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(1, innerHandler.RequestCount);
-        Assert.Equal("HIT", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.FreshHit, HttpCacheTestFactory.CacheStatus(response2));
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class PrivateSharedCacheTests
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(1, innerHandler.RequestCount);
-        Assert.Equal("HIT", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.FreshHit, HttpCacheTestFactory.CacheStatus(response2));
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class PrivateSharedCacheTests
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal(1, innerHandler.RequestCount);
-        Assert.Equal("HIT", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.FreshHit, HttpCacheTestFactory.CacheStatus(response2));
     }
 }
 

@@ -55,6 +55,22 @@ internal static class HttpCacheTestFactory
     internal static TestHttpStore CreateInMemoryStorage(long maximumBytes = 100 * 1024 * 1024, TimeProvider? timeProvider = null)
         => new(timeProvider, maximumBytes: maximumBytes);
 
+    /// <summary>A response served fresh from the cache, by its Cache-Status member.</summary>
+    internal const string FreshHit = @"^MethodCache; hit; ttl=\d+$";
+
+    /// <summary>A stale response served while it revalidates in the background.</summary>
+    internal const string StaleWhileRevalidateHit = @"^MethodCache; hit; ttl=-\d+; detail=stale-while-revalidate$";
+
+    /// <summary>A stale response served because the origin failed without answering.</summary>
+    internal const string StaleIfOriginFailed = @"^MethodCache; fwd=stale; ttl=-\d+; detail=stale-if-error$";
+
+    /// <summary>This cache's member of the response's Cache-Status header (the last one), or <c>null</c> when it has none.</summary>
+    internal static string? CacheStatus(HttpResponseMessage response)
+        => response.Headers.TryGetValues("Cache-Status", out var values)
+            ? values.SelectMany(value => value.Split(',')).Select(member => member.Trim())
+                .LastOrDefault(member => member.StartsWith("MethodCache;", StringComparison.Ordinal))
+            : null;
+
     /// <summary>Waits for background work, such as a revalidation, without guessing how long it takes.</summary>
     public static async Task WaitUntilAsync(Func<bool> condition, string because)
     {

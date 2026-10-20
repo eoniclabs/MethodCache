@@ -87,8 +87,17 @@ public sealed class HttpCacheOptions
     public ISet<string> KeyHeaders { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Adds <c>X-Cache</c> (HIT, MISS, REVALIDATED, STALE, STALE-IF-ERROR), <c>X-Cache-Age</c> and
-    /// <c>X-Cache-TTL</c> to responses. Useful while developing. Default <c>false</c>.
+    /// Adds this cache's member to the RFC 9211 <c>Cache-Status</c> response header, after any members the origin's
+    /// own caches added. Useful while developing. Default <c>false</c>.
     /// </summary>
+    /// <remarks>
+    /// The member is named <c>MethodCache</c>. A response served from the cache reads <c>MethodCache; hit; ttl=42</c>,
+    /// where <c>ttl</c> is the remaining freshness in seconds, negative once stale. A request that went to the origin
+    /// reads, for example, <c>MethodCache; fwd=uri-miss; fwd-status=200; stored</c>: <c>fwd</c> says why
+    /// (<c>uri-miss</c>, <c>vary-miss</c>, <c>stale</c>, <c>request</c>, <c>method</c> or <c>bypass</c>),
+    /// <c>fwd-status</c> is the origin's status and <c>stored</c> that the response was cached. A stale response
+    /// carries <c>detail=stale-while-revalidate</c> or <c>detail=stale-if-error</c>. The <c>Age</c> header is set on
+    /// every response served from the cache, whatever this option says.
+    /// </remarks>
     public bool AddDiagnosticHeaders { get; set; }
 }
