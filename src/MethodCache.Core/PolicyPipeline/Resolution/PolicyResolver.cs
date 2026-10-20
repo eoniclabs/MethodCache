@@ -19,7 +19,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private readonly ILogger _logger;
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, bool> _warnedUnknown = new(StringComparer.Ordinal);
+    private readonly IReadOnlyDictionary<string, string[]>? _parameterNames;
     private readonly bool _knowsCachedMethods;
     private readonly List<Task> _watcherTasks = new();
     private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
@@ -41,9 +41,17 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     /// </summary>
     internal event Action<PolicyResolutionResult>? Changed;
 
-    public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations, ILogger<PolicyResolver>? logger = null)
+    /// <param name="registrations">The policy sources.</param>
+    /// <param name="logger">Logs a source that stops being watched.</param>
+    /// <param name="parameterNames">
+    /// The parameter names of each cached method, which tag templates from code, configuration and runtime overrides
+    /// are checked against; without them templates aren't checked.
+    /// </param>
+    public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations, ILogger<PolicyResolver>? logger = null,
+        IReadOnlyDictionary<string, string[]>? parameterNames = null)
     {
         _logger = (ILogger?)logger ?? NullLogger.Instance;
+        _parameterNames = parameterNames;
         if (registrations == null)
         {
             throw new ArgumentNullException(nameof(registrations));
@@ -199,33 +207,46 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 return;
             }
 
-            foreach (var registration in _registrations)
+            try
             {
-                if (registration.Source is IImmediatePolicySource immediate)
+                // In priority order, so the attribute and startup-code layers are in place when a reloading source
+                // checks its policies against them
+                foreach (var registration in _registrations)
                 {
-                    SubscribeImmediate(registration, immediate);
-                    continue;
-                }
-
-                var snapshots = await registration.Source.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-
-                foreach (var snapshot in snapshots)
-                {
-                    if (string.IsNullOrWhiteSpace(snapshot.MethodId))
+                    if (registration.Source is IImmediatePolicySource immediate)
                     {
+                        if (immediate is IUsesPolicyLoadChecks checkedSource)
+                        {
+                            checkedSource.UseChecks(ChecksFor(KeyOf(registration)));
+                        }
+
+                        SubscribeImmediate(registration, immediate);
                         continue;
                     }
 
-                    ApplySnapshot(registration, snapshot, raiseNotification: false);
+                    var snapshots = await registration.Source.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+
+                    foreach (var snapshot in snapshots)
+                    {
+                        if (string.IsNullOrWhiteSpace(snapshot.MethodId))
+                        {
+                            continue;
+                        }
+
+                        ApplySnapshot(registration, snapshot, raiseNotification: false);
+                    }
                 }
+
+                CheckLoadedPolicies();
+            }
+            catch
+            {
+                // A later call loads again from the start
+                Unsubscribe();
+                throw;
             }
 
             _initialized = true;
-
-            foreach (var methodId in _aggregators.Keys)
-            {
-                WarnIfUnknown(methodId);
-            }
 
             foreach (var registration in _registrations.Where(static r => r.Source is not IImmediatePolicySource))
             {
@@ -365,31 +386,174 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         var aggregator = _aggregators.GetOrAdd(methodId, static id => new PolicyAggregator(id));
         aggregator.SetLayer(layer);
         Refresh(methodId);
-        if (_initialized)
+    }
+
+    private static bool IsAttributeLayer(PolicyLayer layer) => layer.Key.Priority == PolicySourcePriority.Attributes;
+
+    /// <summary>The ids of the methods with <c>[Cache]</c>, which the generated attribute sources list.</summary>
+    private HashSet<string> CachedMethodIds()
+        => _aggregators.Where(static pair => !MethodIds.IsDefaults(pair.Key) && pair.Value.Layers.Any(IsAttributeLayer))
+            .Select(static pair => pair.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private PolicyLoadChecks ChecksFor(LayerKey key)
+        => new(
+            () => _knowsCachedMethods ? CachedMethodIds() : Array.Empty<string>(),
+            drafts => FindTagProblems(key, drafts.Select(draft => (draft.MethodId, draft.Policy, draft.Fields)), replaceAll: true).FirstOrDefault());
+
+    /// <summary>
+    /// The first tag template problem a runtime override for <paramref name="methodId"/> would cause, or
+    /// <see langword="null"/>.
+    /// </summary>
+    internal TagProblem? FindOverrideTagProblem(string methodId, CachePolicy policy, CachePolicyFields fields)
+    {
+        var registration = _registrations.FirstOrDefault(static r => r.Source is RuntimePolicySource);
+        return registration == null
+            ? null
+            : FindTagProblems(KeyOf(registration), [(methodId, policy, fields)], replaceAll: false).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Fails loading for a policy whose method isn't cached, usually a misspelled id or a method without
+    /// <c>[Cache]</c>, and for a tag template that doesn't fit a cached method it reaches. Configuration checks its own
+    /// policies as it reads them, so its errors name the configuration path; <c>[Cache]</c> is checked by the generator.
+    /// </summary>
+    private void CheckLoadedPolicies()
+    {
+        if (_knowsCachedMethods)
         {
-            WarnIfUnknown(methodId);
+            var cached = CachedMethodIds();
+            foreach (var (methodId, aggregator) in _aggregators.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
+            {
+                var layers = aggregator.Layers;
+                if (MethodIds.IsDefaults(methodId) || layers.Length == 0 || cached.Contains(methodId))
+                {
+                    continue;
+                }
+
+                var configures = layers.Any(static layer => layer.Key.Priority == PolicySourcePriority.StartupFluent)
+                    ? "mc.Method(...) configures a method that isn't cached. "
+                    : $"The policy source '{layers[^1].Policy.Provenance.LastOrDefault()?.SourceId}' configures a method that isn't cached. ";
+                throw new InvalidOperationException(configures + MethodIds.NotCached(methodId, cached));
+            }
+        }
+
+        if (FindTagProblems(replaced: null, [], replaceAll: false).FirstOrDefault() is { } problem)
+        {
+            throw new InvalidOperationException(
+                $"The tag '{problem.Tag}' set in {problem.Where} reaches the cached method '{problem.MethodId}', but {problem.Reason}.");
         }
     }
 
     /// <summary>
-    /// Warns once about a policy for a method that no <c>[Cache]</c> attribute marks, usually a typo in a method
-    /// name in appsettings or code, since such a policy never applies.
+    /// Checks every tag template that reaches a cached method from code, configuration or a runtime override against
+    /// the method's parameter names: its own layers, then its group's defaults, then the defaults for all methods, as
+    /// the policy resolves. With <paramref name="replaced"/>, that source's layers are replaced by
+    /// <paramref name="candidate"/> first: all of them with <paramref name="replaceAll"/>, otherwise only those of
+    /// the candidate's ids.
     /// </summary>
-    private void WarnIfUnknown(string methodId)
+    private IEnumerable<TagProblem> FindTagProblems(LayerKey? replaced,
+        IEnumerable<(string MethodId, CachePolicy Policy, CachePolicyFields Fields)> candidate, bool replaceAll)
     {
-        if (!_knowsCachedMethods ||
-            MethodIds.IsDefaults(methodId) ||
-            !_aggregators.TryGetValue(methodId, out var aggregator) ||
-            aggregator.Layers.Any(static layer => layer.Key.Priority == PolicySourcePriority.Attributes) ||
-            !_warnedUnknown.TryAdd(methodId, true))
+        if (_parameterNames == null)
         {
-            return;
+            yield break;
         }
 
-        _logger.LogWarning(
-            "MethodCache has a policy for '{MethodId}', but no cached method has that id, so the policy does nothing. " +
-            "Method ids have the form Namespace.IService.Method; check the spelling and that the method has [Cache].",
-            methodId);
+        var replacements = candidate.ToDictionary(
+            static item => item.MethodId,
+            item => new PolicyLayer(replaced!.Value, item.Policy, item.Fields, DateTimeOffset.MinValue),
+            StringComparer.Ordinal);
+
+        PolicyLayer[] LayersOf(string id)
+        {
+            var layers = _aggregators.TryGetValue(id, out var aggregator) ? aggregator.Layers : Array.Empty<PolicyLayer>();
+            if (replaced is not { } key || (!replaceAll && !replacements.ContainsKey(id)))
+            {
+                return layers;
+            }
+
+            var kept = layers.Where(layer => layer.Key != key).ToList();
+            if (replacements.TryGetValue(id, out var replacement))
+            {
+                kept.Add(replacement);
+                kept.Sort(static (left, right) => left.Key.CompareTo(right.Key));
+            }
+
+            return kept.ToArray();
+        }
+
+        foreach (var methodId in _aggregators.Keys.Concat(replacements.Keys).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            if (MethodIds.IsDefaults(methodId) || !_parameterNames.TryGetValue(methodId, out var parameterNames))
+            {
+                continue;
+            }
+
+            var own = LayersOf(methodId);
+            if (!own.Any(IsAttributeLayer))
+            {
+                continue;
+            }
+
+            // The group comes from the highest layer that sets it, as metadata merges
+            string? group = null;
+            foreach (var layer in own)
+            {
+                if (layer.Fields.HasFlag(CachePolicyFields.Metadata) && layer.Policy.Metadata.TryGetValue("group", out var value))
+                {
+                    group = value;
+                }
+            }
+
+            var reaching = own.Reverse().Select(layer => (Id: methodId, Layer: layer));
+            if (!string.IsNullOrWhiteSpace(group))
+            {
+                reaching = reaching.Concat(LayersOf(MethodIds.Group(group)).Reverse().Select(layer => (Id: MethodIds.Group(group), Layer: layer)));
+            }
+
+            reaching = reaching.Concat(LayersOf(MethodIds.AllMethods).Reverse().Select(static layer => (Id: MethodIds.AllMethods, Layer: layer)));
+            foreach (var (layerId, layer) in reaching)
+            {
+                if ((layer.Fields & (CachePolicyFields.Tags | CachePolicyFields.ClearTags)) == 0)
+                {
+                    continue;
+                }
+
+                if (!IsAttributeLayer(layer))
+                {
+                    foreach (var tag in layer.Policy.Tags)
+                    {
+                        if (TagTemplateRules.Check(tag, parameterNames) is { } reason)
+                        {
+                            yield return new TagProblem(methodId, layerId, tag, reason, Describe(layer, layerId), layer.Key == replaced);
+                        }
+                    }
+                }
+
+                // A layer that clears tags keeps the lower layers' tags off the method
+                if (layer.Fields.HasFlag(CachePolicyFields.ClearTags))
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    private static string Describe(PolicyLayer layer, string layerId)
+    {
+        var group = MethodIds.GroupName(layerId);
+        return layer.Key.Priority switch
+        {
+            PolicySourcePriority.StartupFluent when layerId == MethodIds.AllMethods => "mc.Defaults(...)",
+            PolicySourcePriority.StartupFluent when group != null => $"mc.Group(\"{group}\", ...)",
+            PolicySourcePriority.StartupFluent => "mc.Method(...)",
+            PolicySourcePriority.ConfigurationFiles when layerId == MethodIds.AllMethods => "the configuration's Defaults",
+            PolicySourcePriority.ConfigurationFiles when group != null => $"the configuration's Groups:{group}",
+            PolicySourcePriority.ConfigurationFiles => "the configuration's Methods",
+            PolicySourcePriority.RuntimeOverrides => "a runtime override",
+            _ => $"the policy source '{layer.Policy.Provenance.LastOrDefault()?.SourceId}'"
+        };
     }
 
     private void RemoveLayer(string methodId, LayerKey key, DateTimeOffset timestamp)

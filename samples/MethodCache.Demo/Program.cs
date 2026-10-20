@@ -165,7 +165,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 
     var admin = provider.GetRequiredService<ICacheAdministrator>();
     var runtime = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-    const string productMethod = "MethodCache.Demo.IProductCatalog.GetProductAsync";
+    const string productMethod = "[MethodCache.Demo]MethodCache.Demo.IProductCatalog.GetProductAsync";
 
     PrintPolicies(admin, "At startup:");
 
@@ -252,7 +252,7 @@ static void PrintPolicies(ICacheAdministrator admin, string title)
 static TimeSpan? DurationOf(ICacheAdministrator admin, string methodId) =>
     admin.GetMethods().FirstOrDefault(m => m.MethodId == methodId)?.Options.Duration;
 
-static string ShortName(string methodId) => methodId["MethodCache.Demo.".Length..];
+static string ShortName(string methodId) => methodId[(methodId.IndexOf(']') + 1 + "MethodCache.Demo.".Length)..];
 
 static async Task<bool> WaitForAsync(Func<bool> condition)
 {

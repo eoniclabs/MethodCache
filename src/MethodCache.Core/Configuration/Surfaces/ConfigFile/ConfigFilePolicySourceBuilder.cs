@@ -7,18 +7,28 @@ namespace MethodCache.Core.Configuration.Surfaces.ConfigFile;
 
 internal static class ConfigFilePolicySourceBuilder
 {
-    // The setting names of a method or the Defaults section; configuration keys are case-insensitive
-    private static readonly HashSet<string> PolicySettings = new(StringComparer.OrdinalIgnoreCase)
+    // The settings of the Defaults section; configuration keys are case-insensitive
+    private static readonly HashSet<string> DefaultsSettings = new(StringComparer.OrdinalIgnoreCase)
     {
         "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter",
-        "Tags", "Version", "Group", "Metadata", "Notes", "Enabled", "Distributed"
+        "Tags", "Version", "Enabled", "Distributed"
     };
 
-    private static readonly HashSet<string> MethodSettings = new(PolicySettings, StringComparer.OrdinalIgnoreCase) { "MethodId", "ClearTags" };
+    // A group's defaults, as mc.Group(...) sets them
+    private static readonly HashSet<string> GroupSettings = new(DefaultsSettings, StringComparer.OrdinalIgnoreCase) { "ClearTags" };
+
+    // Group, Metadata and Notes describe one method, so only a method's entry has them
+    private static readonly HashSet<string> MethodOnlySettings = new(StringComparer.OrdinalIgnoreCase) { "Group", "Metadata", "Notes" };
+
+    private static readonly HashSet<string> MethodSettings = new(GroupSettings.Concat(MethodOnlySettings), StringComparer.OrdinalIgnoreCase) { "MethodId" };
 
     private static readonly HashSet<string> CollectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Tags", "Metadata" };
 
-    private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Services" };
+    private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Groups", "Methods" };
+
+    // A Defaults setting and the FailSafe block setting that sets the same value
+    private static readonly (string Defaults, string Block)[] FailSafePairs =
+        [("FailSafe", "Duration"), ("FailSafeTimeout", "Timeout"), ("FailSafeRetryAfter", "RetryAfter")];
 
     private static readonly HashSet<string> FailSafeSettings = new(StringComparer.OrdinalIgnoreCase) { "Duration", "Timeout", "RetryAfter" };
 
@@ -33,50 +43,134 @@ internal static class ConfigFilePolicySourceBuilder
     }
 
     /// <summary>
-    /// Reads the cache policies in <paramref name="sectionName"/>. Throws <see cref="InvalidOperationException"/>
-    /// for values that are not valid, so a typo is reported instead of silently ignored.
+    /// Reads the cache policies in <paramref name="sectionName"/>, each with the section it comes from. Throws
+    /// <see cref="InvalidOperationException"/> for values that are not valid, so a typo is reported instead of
+    /// silently ignored. With <paramref name="checks"/>, a method that isn't cached and a tag template that doesn't
+    /// fit a cached method it reaches are rejected too.
     /// </summary>
-    public static IReadOnlyList<PolicyDraft> Parse(IConfiguration configuration, string sectionName)
+    public static IReadOnlyList<ConfiguredPolicy> Parse(IConfiguration configuration, string sectionName, PolicyLoadChecks? checks = null)
     {
         var root = configuration.GetSection(sectionName);
         if (!root.Exists())
         {
-            return Array.Empty<PolicyDraft>();
+            return Array.Empty<ConfiguredPolicy>();
         }
 
         RejectUnknownSettings(root, SectionSettings);
-        var descriptors = new List<PolicyDraft>();
+        var policies = new List<ConfiguredPolicy>();
 
         // Defaults reach every cached method, including ones configured only with [Cache], whose own values win
-        var defaults = ParseSection(root.GetSection("Defaults"), PolicySettings);
+        var defaultsSection = root.GetSection("Defaults");
+        RejectMethodOnlySettings(defaultsSection);
+        var defaults = ParseSection(defaultsSection, DefaultsSettings);
 
         // "FailSafe": { "Duration", "Timeout", "RetryAfter" } turns fail-safe on for every cached method
-        defaults.Apply(ParseFailSafeBlock(root.GetSection("FailSafe")), overwriteExisting: false);
+        var failSafeSection = root.GetSection("FailSafe");
+        RejectFailSafeSetTwice(defaultsSection, failSafeSection);
+        defaults.Apply(ParseFailSafeBlock(failSafeSection), overwriteExisting: false);
         if (defaults.HasChanges)
         {
-            descriptors.Add(defaults.Build(MethodIds.AllMethods));
+            policies.Add(new ConfiguredPolicy(defaults.Build(MethodIds.AllMethods), defaultsSection));
         }
 
-        var services = root.GetSection("Services");
-        RejectSingleValue(services);
-        foreach (var methodSection in services.GetChildren())
+        // "Groups": { "orders": { ... } } sets defaults for the methods in a group, as mc.Group("orders", ...) does
+        var groups = root.GetSection("Groups");
+        RejectSingleValue(groups);
+        foreach (var groupSection in groups.GetChildren())
         {
-            var methodId = methodSection["MethodId"];
-            if (string.IsNullOrWhiteSpace(methodId))
-            {
-                methodId = methodSection.Key;
-            }
+            RejectMethodOnlySettings(groupSection);
+            policies.Add(new ConfiguredPolicy(ParseSection(groupSection, GroupSettings).Build(MethodIds.Group(groupSection.Key)), groupSection));
+        }
 
+        var cachedMethods = checks?.CachedMethods ?? Array.Empty<string>();
+        var methods = root.GetSection("Methods");
+        RejectSingleValue(methods);
+        var configured = new Dictionary<string, IConfigurationSection>(StringComparer.Ordinal);
+        foreach (var methodSection in methods.GetChildren())
+        {
+            var idValue = methodSection["MethodId"];
+            var methodId = string.IsNullOrWhiteSpace(idValue) ? methodSection.Key : idValue;
             if (string.IsNullOrWhiteSpace(methodId))
             {
                 continue;
             }
 
-            var notes = methodSection["Notes"];
-            descriptors.Add(ParseSection(methodSection, MethodSettings).Build(methodId, notes));
+            if (MethodIds.IsDefaults(methodId))
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{methodSection.Path}' uses '{methodId}' as a method id. Set defaults for every method " +
+                    $"under '{root.Path}:Defaults' and a group's defaults under '{root.Path}:Groups:<name>'.");
+            }
+
+            if (configured.TryGetValue(methodId, out var first))
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{first.Path}' and '{methodSection.Path}' both configure '{methodId}'; keep one of them.");
+            }
+
+            configured.Add(methodId, methodSection);
+            if (cachedMethods.Count > 0 && !cachedMethods.Contains(methodId, StringComparer.Ordinal))
+            {
+                throw string.IsNullOrWhiteSpace(idValue)
+                    ? new InvalidOperationException(
+                        $"MethodCache configuration '{methodSection.Path}' configures a method that isn't cached. {MethodIds.NotCached(methodId, cachedMethods)}")
+                    : InvalidValue(methodSection, "MethodId", idValue,
+                        $"the id of a cached method{MethodIds.ClosestHint(methodId, cachedMethods)}. {MethodIds.CachedMethodAdvice}");
+            }
+
+            policies.Add(new ConfiguredPolicy(ParseSection(methodSection, MethodSettings).Build(methodId, methodSection["Notes"]), methodSection));
         }
 
-        return descriptors;
+        if (checks?.FindTagProblem(policies.Select(static policy => policy.Draft).ToArray()) is { } tagProblem)
+        {
+            throw TagError(root, policies, tagProblem);
+        }
+
+        return policies;
+    }
+
+    /// <summary>Explains a tag template that doesn't fit a cached method, naming the configuration that causes it.</summary>
+    private static InvalidOperationException TagError(IConfigurationSection root, List<ConfiguredPolicy> policies, TagProblem problem)
+    {
+        if (problem.FromChecked && policies.FirstOrDefault(policy => policy.Draft.MethodId == problem.LayerId) is { } tagged)
+        {
+            var tag = tagged.Section.GetSection("Tags").GetChildren().FirstOrDefault(item => item.Value == problem.Tag);
+            return InvalidValue(tagged.Section, tag == null ? "Tags" : $"Tags:{tag.Key}", problem.Tag,
+                $"a tag template that fits '{problem.MethodId}': {problem.Reason}");
+        }
+
+        // The tag is set elsewhere, and this configuration puts the method in the group it is set for
+        var section = policies.FirstOrDefault(policy => policy.Draft.MethodId == problem.MethodId)?.Section ?? root;
+        return new InvalidOperationException(
+            $"MethodCache configuration '{section.Path}' lets the tag '{problem.Tag}' set in {problem.Where} reach the cached method " +
+            $"'{problem.MethodId}', but {problem.Reason}.");
+    }
+
+    /// <summary>Rejects Group, Metadata and Notes outside a method's entry, since they describe one method.</summary>
+    private static void RejectMethodOnlySettings(IConfigurationSection section)
+    {
+        foreach (var child in section.GetChildren())
+        {
+            if (MethodOnlySettings.Contains(child.Key))
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{child.Path}' can't be set here: {child.Key} describes one method, so set it on the " +
+                    "method's entry under Methods. Defaults and Groups take the settings that change caching.");
+            }
+        }
+    }
+
+    /// <summary>Rejects a fail-safe value set both in Defaults and in the FailSafe block, which would otherwise hide one.</summary>
+    private static void RejectFailSafeSetTwice(IConfigurationSection defaults, IConfigurationSection block)
+    {
+        foreach (var (setting, blockSetting) in FailSafePairs)
+        {
+            if (defaults.GetSection(setting).Exists() && block.GetSection(blockSetting).Exists())
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration sets the same fail-safe value in '{defaults.Path}:{setting}' and '{block.Path}:{blockSetting}'; keep one of them.");
+            }
+        }
     }
 
     private static CachePolicyBuilder ParseSection(IConfigurationSection section, HashSet<string> settings)
@@ -190,11 +284,19 @@ internal static class ConfigFilePolicySourceBuilder
             builder.AddMetadata("group", groupValue);
         }
 
+        // Metadata only describes the method; Group is the one setting that puts it in a group
         var metadataSection = section.GetSection("Metadata");
         if (metadataSection.Exists())
         {
             foreach (var child in metadataSection.GetChildren())
             {
+                if (string.Equals(child.Key, "group", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"MethodCache configuration '{child.Path}' sets a group in Metadata, which only describes the method; " +
+                        $"set '{section.Path}:Group' to put the method in a group.");
+                }
+
                 if (!string.IsNullOrWhiteSpace(child.Key))
                 {
                     builder.AddMetadata(child.Key, child.Value);
@@ -344,3 +446,6 @@ internal static class ConfigFilePolicySourceBuilder
         return values;
     }
 }
+
+/// <summary>A policy read from configuration, and the section it comes from, which errors name.</summary>
+internal sealed record ConfiguredPolicy(PolicyDraft Draft, IConfigurationSection Section);

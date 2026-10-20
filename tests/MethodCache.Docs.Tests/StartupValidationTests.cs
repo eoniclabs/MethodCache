@@ -21,7 +21,7 @@ public class StartupValidationTests
         var builder = NewHostBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "soon"
         });
         builder.Services.AddMethodCache();
         builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
@@ -37,7 +37,7 @@ public class StartupValidationTests
         var builder = NewHostBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Services:Sample.Type.Method:Duration"] = "01:00:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "01:00:00"
         });
         builder.Services.AddMethodCache();
         builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
@@ -45,7 +45,7 @@ public class StartupValidationTests
         // A source added later, as Program.cs or WebApplicationFactory does
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:00:01"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:00:01"
         });
         using var host = builder.Build();
         await host.StartAsync();
@@ -61,13 +61,13 @@ public class StartupValidationTests
         var configuration = new ConfigurationManager();
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Services:Sample.Type.Method:Duration"] = "soon"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "soon"
         });
         var services = new ServiceCollection();
         services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Services:Sample.Type.Method:Duration"] = "00:10:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:10:00"
         });
         using var provider = services.BuildServiceProvider();
 

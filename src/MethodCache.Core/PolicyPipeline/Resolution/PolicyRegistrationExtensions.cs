@@ -12,7 +12,9 @@ internal static class PolicyRegistrationExtensions
         services.TryAddSingleton<PolicyResolver>(provider =>
         {
             var registrations = provider.GetServices<PolicySourceRegistration>();
-            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>());
+            // Read when the resolver is built, after AddMethodCache recorded every decorated method's parameters
+            var parameterNames = provider.GetService<MethodCacheServiceCollectionExtensions.GeneratedParameters>()?.Names;
+            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>(), parameterNames);
         });
 
         services.TryAddSingleton<IPolicyResolver>(provider => provider.GetRequiredService<PolicyResolver>());

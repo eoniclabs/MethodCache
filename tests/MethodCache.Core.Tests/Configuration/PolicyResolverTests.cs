@@ -145,14 +145,14 @@ public class PolicyResolverTests
     }
 
     [Fact]
-    public async Task PolicyForAMethodWithoutCache_IsReportedOnce()
+    public async Task ConfiguredMethodWithoutCache_FailsLoading_AndSuggestsTheClosestCachedMethod()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MethodCache:Defaults:Duration"] = "00:01:00",
-                [$"MethodCache:Services:{MethodId}:Duration"] = "00:02:00",
-                ["MethodCache:Services:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
+                [$"MethodCache:Methods:{MethodId}:Duration"] = "00:02:00",
+                ["MethodCache:Methods:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
             })
             .Build();
         var logger = new ListLogger();
@@ -163,11 +163,11 @@ public class PolicyResolverTests
             new PolicySourceRegistration(ConfigFilePolicySourceBuilder.FromConfiguration(configuration), PolicySourcePriority.ConfigurationFiles)
         }, logger);
 
-        await resolver.ResolveAsync(MethodId);
-        await resolver.ResolveAsync("My.IOrderService.GetOrdr");
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await resolver.ResolveAsync(MethodId));
 
-        var warning = Assert.Single(logger.Messages);
-        Assert.Contains("My.IOrderService.GetOrdr", warning);
+        Assert.Contains("'MethodCache:Methods:My.IOrderService.GetOrdr'", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"did you mean '{MethodId}'", error.Message, StringComparison.Ordinal);
+        Assert.Empty(logger.Messages);
 
         await resolver.DisposeAsync();
     }

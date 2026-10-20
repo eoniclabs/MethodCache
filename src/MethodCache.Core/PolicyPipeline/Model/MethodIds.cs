@@ -21,6 +21,10 @@ internal static class MethodIds
     /// <summary>Policies under this id are defaults for the methods in group <paramref name="name"/>.</summary>
     public static string Group(string name) => GroupPrefix + name;
 
+    /// <summary>The group whose defaults <paramref name="id"/> holds, or <see langword="null"/> for any other id.</summary>
+    public static string? GroupName(string id)
+        => id.StartsWith(GroupPrefix, StringComparison.Ordinal) ? id[GroupPrefix.Length..] : null;
+
     /// <summary>Whether <paramref name="id"/> holds defaults rather than one method's policy.</summary>
     public static bool IsDefaults(string id)
         => id == AllMethods || id.StartsWith(GroupPrefix, StringComparison.Ordinal);
@@ -65,12 +69,16 @@ internal static class MethodIds
 
     /// <summary>Explains that <paramref name="id"/> names no cached method, suggesting the closest cached id.</summary>
     public static string NotCached(string id, IReadOnlyCollection<string> cachedMethods)
-    {
-        var closest = Closest(id, cachedMethods);
-        var hint = closest == null ? string.Empty : $"; did you mean '{closest}'";
-        return $"'{id}' is not a cached method{hint}. A method id has the form {Format}. The method needs [Cache] on its " +
-               "interface (or [assembly: CacheInterface]), and its service must be registered before AddMethodCache.";
-    }
+        => $"'{id}' is not a cached method{ClosestHint(id, cachedMethods)}. {CachedMethodAdvice}";
+
+    /// <summary>Suggests the cached method closest to <paramref name="id"/>, as "; did you mean '...'", or nothing.</summary>
+    public static string ClosestHint(string id, IReadOnlyCollection<string> cachedMethods)
+        => Closest(id, cachedMethods) is { } closest ? $"; did you mean '{closest}'" : string.Empty;
+
+    /// <summary>What makes a method cached, for errors about a method that isn't.</summary>
+    public const string CachedMethodAdvice =
+        "A method id has the form " + Format + ". The method needs [Cache] on its interface (or [assembly: CacheInterface]), " +
+        "and its service must be registered before AddMethodCache.";
 
     /// <summary>The id in <paramref name="candidates"/> with the fewest edits from <paramref name="id"/>, ignoring case.</summary>
     public static string? Closest(string id, IEnumerable<string> candidates)

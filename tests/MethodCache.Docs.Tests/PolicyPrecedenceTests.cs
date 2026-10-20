@@ -48,11 +48,11 @@ public class PolicyPrecedenceTests
     [Fact]
     public async Task AppsettingsTags_AreAddedToTheAttributeTags_UnlessClearTagsIsTrue()
     {
-        await using var added = Build(new() { [$"MethodCache:Services:{GetId}:Tags:0"] = "orders" });
+        await using var added = Build(new() { [$"MethodCache:Methods:{GetId}:Tags:0"] = "orders" });
         await using var cleared = Build(new()
         {
-            [$"MethodCache:Services:{GetId}:Tags:0"] = "orders",
-            [$"MethodCache:Services:{GetId}:ClearTags"] = "true",
+            [$"MethodCache:Methods:{GetId}:Tags:0"] = "orders",
+            [$"MethodCache:Methods:{GetId}:ClearTags"] = "true",
         });
 
         Assert.Equal(new[] { "order:{id}", "orders" }, added.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId).Options.Tags);
@@ -62,7 +62,7 @@ public class PolicyPrecedenceTests
     [Fact]
     public async Task AppsettingsClearTags_ThatIsNotABoolean_IsRejected()
     {
-        await using var provider = Build(new() { [$"MethodCache:Services:{GetId}:ClearTags"] = "yes" });
+        await using var provider = Build(new() { [$"MethodCache:Methods:{GetId}:ClearTags"] = "yes" });
 
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == GetId));
         Assert.Contains("true or false", error.Message);

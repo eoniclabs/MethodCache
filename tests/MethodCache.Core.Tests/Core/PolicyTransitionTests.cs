@@ -115,12 +115,12 @@ public class PolicyTransitionTests
     public async Task ConfigReload_NewIdentity_CannotReadOldConfigurationWrites()
     {
         var configuration = new ConfigurationManager();
-        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Services:{MethodId}:Duration"] = "00:05:00" });
+        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Methods:{MethodId}:Duration"] = "00:05:00" });
         await using var writer = Node(new Reader(100));
         await using var receiver = Node(new Reader(200), b => b.FromConfiguration(configuration, "MethodCache"));
         Assert.Equal(101, await writer.GetRequiredService<IReader>().ReadAsync(1));
         Assert.Equal(101, await receiver.GetRequiredService<IReader>().ReadAsync(1));
-        configuration[$"MethodCache:Services:{MethodId}:Duration"] = "00:00:01";
+        configuration[$"MethodCache:Methods:{MethodId}:Duration"] = "00:00:01";
         ((IConfigurationRoot)configuration).Reload();
         _time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(201, await receiver.GetRequiredService<IReader>().ReadAsync(1));
@@ -160,13 +160,16 @@ public class PolicyTransitionTests
     }
 
     [Fact]
-    public async Task ConfiguredUnknownId_IsStillRejectedByRuntimeConfiguration()
+    public async Task ConfiguredUnknownId_FailsWhenThePoliciesLoad()
     {
         var settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        { ["MethodCache:Services:typo:Duration"] = "00:01:00" }).Build();
+        { ["MethodCache:Methods:typo:Duration"] = "00:01:00" }).Build();
         await using var node = Node(new Reader(100), b => b.FromConfiguration(settings, "MethodCache"));
         var runtime = node.GetRequiredService<IRuntimeCacheConfigurator>();
-        await Assert.ThrowsAsync<ArgumentException>(async () => await runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
+
+        Assert.Contains("'MethodCache:Methods:typo' configures a method that isn't cached", error.Message, StringComparison.Ordinal);
         Assert.Empty(runtime.GetOverrides());
     }
 

@@ -16,6 +16,12 @@ internal sealed partial class RuntimeCacheConfigurator
         var builder = new CacheEntryOptions.Builder();
         configure(builder);
         var draft = CachePolicyBuilderFactory.ForMethod(methodId, builder.Build()).Build(methodId);
+        if (_registry is PolicyRegistry registry && registry.Resolver.FindOverrideTagProblem(methodId, draft.Policy, draft.Fields) is { } problem)
+        {
+            throw new ArgumentException(
+                $"The tag '{problem.Tag}' in the override reaches the cached method '{problem.MethodId}', but {problem.Reason}.", nameof(configure));
+        }
+
         await _store.UpsertAsync(methodId, draft.Policy, draft.Fields, metadata).ConfigureAwait(false);
         await WaitForInvalidation(methodId, cancellationToken).ConfigureAwait(false);
     }

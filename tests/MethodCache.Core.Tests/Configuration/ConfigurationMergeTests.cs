@@ -197,7 +197,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     {
         var a = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"A:Services:{Id}:Duration"] = "00:05:00",
+            [$"A:Methods:{Id}:Duration"] = "00:05:00",
         }).Build();
         var b = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -221,7 +221,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"MethodCache:Services:{Id}:Duration"] = "00:05:00",
+            [$"MethodCache:Methods:{Id}:Duration"] = "00:05:00",
         }).Build();
         var services = new ServiceCollection();
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();

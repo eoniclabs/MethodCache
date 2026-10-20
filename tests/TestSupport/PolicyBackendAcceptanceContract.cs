@@ -62,8 +62,8 @@ public static partial class PolicyBackendContract
         var tags = new ConfigurationManager();
         tags.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"MethodCache:Services:{MethodId}:Tags:0"] = "a",
-            [$"MethodCache:Services:{MethodId}:Tags:1"] = "b"
+            [$"MethodCache:Methods:{MethodId}:Tags:0"] = "a",
+            [$"MethodCache:Methods:{MethodId}:Tags:1"] = "b"
         });
         await using var first = await create(a, builder =>
         {
@@ -93,7 +93,7 @@ public static partial class PolicyBackendContract
     private static ConfigurationManager Configuration(string duration)
     {
         var configuration = new ConfigurationManager();
-        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Services:{MethodId}:Duration"] = duration });
+        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Methods:{MethodId}:Duration"] = duration });
         return configuration;
     }
 
@@ -106,7 +106,7 @@ public static partial class PolicyBackendContract
         await SilenceAsync(first); await SilenceAsync(second);
         var readerA = first.GetRequiredService<IOrigin>(); var readerB = second.GetRequiredService<IOrigin>();
         Assert.Equal(101, await readerA.ReadAsync(1)); Assert.Equal(101, await readerB.ReadAsync(1));
-        ca[$"MethodCache:Services:{MethodId}:Duration"] = "1s"; ((IConfigurationRoot)ca).Reload();
+        ca[$"MethodCache:Methods:{MethodId}:Duration"] = "1s"; ((IConfigurationRoot)ca).Reload();
         await ConfirmReloadAsync(first);
         time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(TimeSpan.FromSeconds(1), Handle(first).Current.Duration);
@@ -114,7 +114,7 @@ public static partial class PolicyBackendContract
         Assert.Equal(102, await readerA.ReadAsync(2));
         Assert.NotEqual(Handle(first).Current.Identity, Handle(second).Current.Identity);
         time.Advance(TimeSpan.FromSeconds(2)); Assert.Equal(103, await readerA.ReadAsync(2));
-        cb[$"MethodCache:Services:{MethodId}:Duration"] = "1s"; ((IConfigurationRoot)cb).Reload();
+        cb[$"MethodCache:Methods:{MethodId}:Duration"] = "1s"; ((IConfigurationRoot)cb).Reload();
         await ConfirmReloadAsync(second);
         time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(Handle(first).Current.Identity, Handle(second).Current.Identity);

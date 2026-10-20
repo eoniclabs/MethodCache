@@ -13,11 +13,12 @@ namespace MethodCache.Core.PolicyPipeline.Sources;
 /// Policies from an <see cref="IConfiguration"/> section such as appsettings.json. When the configuration reloads,
 /// changed methods are published to the resolver, so edits take effect without a restart.
 /// </summary>
-internal sealed class ConfigFilePolicySource : IImmediatePolicySource
+internal sealed class ConfigFilePolicySource : IImmediatePolicySource, IUsesPolicyLoadChecks
 {
     private readonly IConfiguration _configuration;
     private readonly string _sectionName;
     private Dictionary<string, PolicyDraft> _policies = new(StringComparer.Ordinal);
+    private PolicyLoadChecks? _checks;
 
     public ConfigFilePolicySource(IConfiguration configuration, string sectionName)
     {
@@ -26,6 +27,12 @@ internal sealed class ConfigFilePolicySource : IImmediatePolicySource
     }
 
     public string SourceId => PolicySourceIds.ConfigurationFiles;
+
+    /// <summary>
+    /// Checks every load, at startup and on reload, for methods that aren't cached and tag templates that don't fit,
+    /// so a bad reload is rejected like an invalid value.
+    /// </summary>
+    public void UseChecks(PolicyLoadChecks checks) => Volatile.Write(ref _checks, checks);
 
     /// <summary>Raised when a reloaded configuration has invalid values; the previous policies stay in effect.</summary>
     internal event Action<Exception>? ReloadFailed;
@@ -184,7 +191,7 @@ internal sealed class ConfigFilePolicySource : IImmediatePolicySource
     private Dictionary<string, PolicyDraft> Load()
     {
         var policies = new Dictionary<string, PolicyDraft>(StringComparer.Ordinal);
-        foreach (var draft in ConfigFilePolicySourceBuilder.Parse(_configuration, _sectionName))
+        foreach (var (draft, _) in ConfigFilePolicySourceBuilder.Parse(_configuration, _sectionName, Volatile.Read(ref _checks)))
         {
             var fields = draft.Fields == CachePolicyFields.None ? CachePolicyMapper.DetectFields(draft.Policy) : draft.Fields;
             policies[draft.MethodId] = draft with { Fields = fields };
