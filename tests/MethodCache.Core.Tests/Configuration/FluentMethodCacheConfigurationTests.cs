@@ -5,6 +5,7 @@ using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Extensibility;
 using MethodCache.Policies;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -81,5 +82,23 @@ public class FluentMethodCacheConfigurationTests
 
         Assert.True(method.Policy.CacheWhen!("abc"));
         Assert.False(method.Policy.CacheWhen!(""));
+    }
+
+    [Theory]
+    [InlineData(false, "mc.Defaults(...)")]
+    [InlineData(true, "mc.Group(\"orders\", ...)")]
+    public void CacheWhenInDefaultsOrAGroup_FailsWhenThePoliciesLoad(bool inGroup, string where)
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc =>
+        {
+            if (inGroup) mc.Group("orders", o => o.CacheWhen<string>(value => value.Length > 0));
+            else mc.Defaults(o => o.CacheWhen<string>(value => value.Length > 0));
+        });
+        using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains($"CacheWhen is set in {where}", error.Message, StringComparison.Ordinal);
     }
 }
