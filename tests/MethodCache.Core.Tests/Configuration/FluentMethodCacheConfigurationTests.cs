@@ -54,4 +54,32 @@ public class FluentMethodCacheConfigurationTests
         Assert.True(method.Policy.CacheWhen!("value"));
         Assert.False(method.Policy.CacheWhen!(""));
     }
+
+    [Fact]
+    public void BuildMethodPolicies_TypedCacheWhenThenConfigure_TheLaterConfigureWins()
+    {
+        var configuration = new FluentMethodCacheConfiguration();
+        configuration.ForService<IOrderService>().Method(s => s.GetOrderAsync(default))
+            .CacheWhen(value => value.Length > 0)
+            .Configure(o => o.CacheWhen<string>(value => value.Length > 5));
+
+        var method = configuration.BuildMethodPolicies().Single(d => d.MethodId == MethodIds.For(typeof(IOrderService), nameof(IOrderService.GetOrderAsync)));
+
+        Assert.False(method.Policy.CacheWhen!("abc"));
+        Assert.True(method.Policy.CacheWhen!("abcdef"));
+    }
+
+    [Fact]
+    public void BuildMethodPolicies_ConfigureThenTypedCacheWhen_TheLaterTypedCallWins()
+    {
+        var configuration = new FluentMethodCacheConfiguration();
+        configuration.ForService<IOrderService>().Method(s => s.GetOrderAsync(default))
+            .Configure(o => o.CacheWhen<string>(value => value.Length > 5))
+            .CacheWhen(value => value.Length > 0);
+
+        var method = configuration.BuildMethodPolicies().Single(d => d.MethodId == MethodIds.For(typeof(IOrderService), nameof(IOrderService.GetOrderAsync)));
+
+        Assert.True(method.Policy.CacheWhen!("abc"));
+        Assert.False(method.Policy.CacheWhen!(""));
+    }
 }

@@ -302,4 +302,17 @@ public class RuntimeCacheConfiguratorTests
         Assert.Equal(PolicyChangeReason.Added, changes[0].Reason);
         Assert.Equal(PolicyChangeReason.Removed, changes[1].Reason);
     }
+
+    [Fact]
+    public async Task GetOverrides_OverrideThatClearsTags_ReportsClearsTags()
+    {
+        var store = new RuntimePolicyStore();
+        IRuntimeCacheConfigurator configurator = new RuntimeCacheConfigurator(store);
+
+        await configurator.UpsertAsync("Sample.Method", builder => builder.ClearTags().AddTags("incident"));
+
+        var options = Assert.Single(await configurator.GetOverridesAsync()).Options;
+        Assert.True(options.ClearsTags);
+        Assert.Equal(new[] { "incident" }, options.Tags);
+    }
 }

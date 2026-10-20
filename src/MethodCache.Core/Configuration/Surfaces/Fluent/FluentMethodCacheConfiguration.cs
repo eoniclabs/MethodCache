@@ -83,11 +83,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                         policyBuilder.AddMetadata("group", methodConfiguration.GroupName);
                     }
 
-                    if (methodConfiguration.CacheWhen != null)
-                    {
-                        policyBuilder.WithCacheWhen(methodConfiguration.CacheWhen);
-                    }
-
                     drafts.Add(policyBuilder.Build(methodKey));
                 }
             }
@@ -209,8 +204,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
 
             public string? GroupName => _groupName;
 
-            public Func<object?, bool>? CacheWhen { get; set; }
-
             public void WithVersion(int version)
             {
                 _configurations.Add(builder => builder.WithVersion(version));
@@ -260,8 +253,8 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             {
                 ArgumentNullException.ThrowIfNull(predicate);
 
-                // Results reach the cache as object; a null can only be a TResult that allows null.
-                _inner.CacheWhen = new TypedCachePredicate<TResult>(predicate).Accept;
+                // In the same ordered list as Configure, so whichever of the two is called last wins
+                _inner.Configure(builder => builder.CacheWhen(predicate));
                 return this;
             }
         }

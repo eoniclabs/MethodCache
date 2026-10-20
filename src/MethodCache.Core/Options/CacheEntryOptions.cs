@@ -85,6 +85,7 @@ namespace MethodCache
             policy.Duration, policy.SlidingExpiration, policy.RefreshAhead,
             Array.AsReadOnly(policy.Tags.ToArray()), policy.Version,
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
+            clearsTags: policy.Fields.HasFlag(Policies.CachePolicyFields.ClearTags),
             enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen)
         { Runtime = preparedKey ? policy : null };
 
