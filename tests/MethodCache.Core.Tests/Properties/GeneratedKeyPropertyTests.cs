@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using CsCheck;
 using MethodCache.Extensibility;
 using MethodCache.Generated;
@@ -19,11 +20,13 @@ public class GeneratedKeyPropertyTests
         Gen.Select(Gen.Int[0, 40], Gen.String[Gen.Char["a:\\\0\ud800\udfffé"], 0, 100]).Sample((count, text) =>
         {
             var array = Enumerable.Range(0, count).Select(index => index % 3 == 0 ? null : text).ToArray();
-            Assert.Equal(MethodCacheKeys.Sequence(array, static value => value!), KeyParts.Sequence(array, static value => value!));
-            Assert.Equal(MethodCacheKeys.Sequence(array.Select(static value => value), static value => value!),
-                KeyParts.Sequence(array.Select(static value => value), static value => value!));
+            // The array fast path, the lazy path and the written-out format agree
+            var expected = "[" + count.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + string.Concat(array.Select(static value => ":" + MethodCacheKeys.Part(MethodCacheKeys.Part(value)))) + "]";
+            Assert.Equal(expected, KeyParts.Sequence(array, static value => MethodCacheKeys.Part(value)));
+            Assert.Equal(expected, KeyParts.Sequence(array.Select(static value => value), static value => MethodCacheKeys.Part(value)));
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
-        Assert.Equal(MethodCacheKeys.Null, KeyParts.Sequence<string>(null, static value => value));
+        Assert.Equal(KeyParts.Null, KeyParts.Sequence<string>(null, static value => value));
         Assert.Throws<ArgumentNullException>(() => KeyParts.Sequence<string>(null, null!));
     }
 
@@ -83,13 +86,13 @@ public class GeneratedKeyPropertyTests
             key.AppendPart(offset);
             key.AppendPart(Number.Min);
             key.AppendNullPart();
-            Assert.Equal(MethodCacheKeys.For(typeof(IService), "Get",
+            Assert.Equal(TestKeys.For(typeof(IService), "Get",
                 MethodCacheKeys.Part(text), MethodCacheKeys.Part(number), MethodCacheKeys.Part((long)number),
                 MethodCacheKeys.Part((uint)number), MethodCacheKeys.Part((ulong)(uint)number), MethodCacheKeys.Part((byte)number),
                 MethodCacheKeys.Part((sbyte)number), MethodCacheKeys.Part((short)number), MethodCacheKeys.Part((ushort)number),
                 MethodCacheKeys.Part((float)number), MethodCacheKeys.Part((double)number), MethodCacheKeys.Part((decimal)number),
                 MethodCacheKeys.Part(number % 2 == 0), MethodCacheKeys.Part(':'), MethodCacheKeys.Part(guid),
-                MethodCacheKeys.Part(date), MethodCacheKeys.Part(offset), MethodCacheKeys.Part(Number.Min), MethodCacheKeys.Null), key.ToString());
+                MethodCacheKeys.Part(date), MethodCacheKeys.Part(offset), MethodCacheKeys.Part(Number.Min), TestKeys.Null), key.ToString());
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
     }
 }

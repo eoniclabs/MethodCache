@@ -32,4 +32,8 @@
     <ProjectReference Include="..\..\src\MethodCache.Analyzers\MethodCache.Analyzers.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../TestSupport/TestKeys.cs" Link="TestSupport/TestKeys.cs" />
+  </ItemGroup>
+
 </Project>

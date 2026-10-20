@@ -10,6 +10,12 @@ public sealed record CacheEntryInfo
     /// stored it with instead.
     /// </summary>
     public required string StoredKey { get; init; }
+    /// <summary>
+    /// The id of the cached method whose result this is, as <see cref="CachedMethodInfo.MethodId"/> gives it, such as
+    /// <c>[MyApp]MyApp.IUserService.GetUser</c>; <c>null</c> for a manual entry and an HTTP response. Pass it to
+    /// <see cref="ICacheAdministrator.ListEntries"/> to list one method's entries.
+    /// </summary>
+    public string? MethodId { get; init; }
     /// <summary>The full name of the cached value's type, or <c>null</c> when the value is null.</summary>
     public string? ValueType { get; init; }
     /// <summary>How long ago the value was stored.</summary>

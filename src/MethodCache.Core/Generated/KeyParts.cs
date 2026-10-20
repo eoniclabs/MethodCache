@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace MethodCache.Generated;
 
@@ -9,7 +10,11 @@ namespace MethodCache.Generated;
 public static class KeyParts
 {
     /// <summary>Formats a version-independent type identity including its assembly and generic arguments.</summary>
-    public static string TypeIdentity(Type type) => MethodCacheKeys.TypePart(type);
+    public static string TypeIdentity(Type type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        return Infrastructure.StableTypeIdentity.For(type);
+    }
 
     /// <summary>Formats a dynamic tag argument using the canonical scalar key-part rules.</summary>
     public static string TagPart(object? value) => Infrastructure.CanonicalTagPart.Format(value);
@@ -100,7 +105,8 @@ public static class KeyParts
     public static string Sequence<T>(IEnumerable<T>? values, Func<T, string> part)
     {
         ArgumentNullException.ThrowIfNull(part);
-        if (values is not T[] array) return MethodCacheKeys.Sequence(values, part);
+        if (values is null) return Null;
+        if (values is not T[] array) return Enumerated(values, part);
         if (array.Length == 0) return "[0]";
         // Format each element once, then write the final text directly instead of copying a builder's buffer.
         var count = array.Length.ToString(CultureInfo.InvariantCulture);
@@ -124,6 +130,19 @@ public static class KeyParts
             }
             destination[offset] = ']';
         });
+    }
+
+    private static string Enumerated<T>(IEnumerable<T> values, Func<T, string> part)
+    {
+        var builder = new StringBuilder();
+        var count = 0;
+        foreach (var value in values)
+        {
+            builder.Append(Separator).Append(MethodCacheKeys.Part(part(value)));
+            count++;
+        }
+
+        return string.Concat("[", count.ToString(CultureInfo.InvariantCulture), builder.ToString(), "]");
     }
 
     /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>

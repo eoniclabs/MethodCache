@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Globalization;
 using System.Text;
 using CsCheck;
@@ -179,7 +180,7 @@ public class CacheKeyPropertyTests
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
 
         static string Key(List<string>? list, string? tail, Func<string, string> part)
-            => MethodCacheKeys.For(typeof(CacheKeyPropertyTests), "M", MethodCacheKeys.Sequence(list, part), MethodCacheKeys.Part(tail));
+            => TestKeys.For(typeof(CacheKeyPropertyTests), "M", TestKeys.Sequence(list, part), MethodCacheKeys.Part(tail));
     }
 
     [Fact]
@@ -354,14 +355,14 @@ public class CacheKeyPropertyTests
     }
 
     private static string InlineKey(Kind[] signature, object?[] args)
-        => MethodCacheKeys.For(typeof(IInlineService), "Get", args.Select((a, i) => Part(signature[i], a)).ToArray());
+        => TestKeys.For(typeof(IInlineService), "Get", args.Select((a, i) => Part(signature[i], a)).ToArray());
 
     private static string Part(Kind kind, object? value) => kind switch
     {
         Kind.String => MethodCacheKeys.Part((string?)value),
         Kind.Char => MethodCacheKeys.Part((char)value!),
         Kind.Int => MethodCacheKeys.Part((int)value!),
-        Kind.NullableInt => value is int i ? MethodCacheKeys.Part(i) : MethodCacheKeys.Null,
+        Kind.NullableInt => value is int i ? MethodCacheKeys.Part(i) : TestKeys.Null,
         Kind.Long => MethodCacheKeys.Part((long)value!),
         Kind.Bool => MethodCacheKeys.Part((bool)value!),
         Kind.Double => MethodCacheKeys.Part((double)value!),

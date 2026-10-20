@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -87,7 +88,7 @@ namespace SinglePath
         Assert.Equal("South", await Invoke(service, "ByRegionAsync", region));
 
         Assert.Equal(1, (int)calls.GetValue(null)!);
-        var key = MethodCacheKeys.For(assembly.GetType("SinglePath.IShapes")!, "ByRegionAsync", "2");
+        var key = TestKeys.For(assembly.GetType("SinglePath.IShapes")!, "ByRegionAsync", "2");
         Assert.True(await (_provider!.GetRequiredService<ICacheManager>()).TryGetFastAsync<string>(key) == "South");
     }
 

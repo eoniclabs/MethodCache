@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Globalization;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
@@ -39,7 +40,7 @@ namespace MethodCache.Core.Tests.Core
         [Fact]
         public void For_JoinsPartsAfterThePrefix()
         {
-            var key = MethodCacheKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part(42), MethodCacheKeys.Part("abc"));
+            var key = TestKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part(42), MethodCacheKeys.Part("abc"));
 
             Assert.Equal(MethodCacheKeys.Prefix(typeof(IUserService), "Find") + ":42:abc", key);
         }
@@ -61,8 +62,8 @@ namespace MethodCache.Core.Tests.Core
         [Fact]
         public void Part_EscapesSeparatorsSoArgumentBoundariesStayUnique()
         {
-            var first = MethodCacheKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part("a:b"), MethodCacheKeys.Part("c"));
-            var second = MethodCacheKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part("a"), MethodCacheKeys.Part("b:c"));
+            var first = TestKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part("a:b"), MethodCacheKeys.Part("c"));
+            var second = TestKeys.For(typeof(IUserService), "Find", MethodCacheKeys.Part("a"), MethodCacheKeys.Part("b:c"));
 
             Assert.NotEqual(first, second);
             Assert.Equal("a\\:b", MethodCacheKeys.Part("a:b"));
@@ -270,27 +271,27 @@ namespace MethodCache.Core.Tests.Core
         [Fact]
         public void Sequence_WritesTheCountAndEachElement()
         {
-            Assert.Equal("[3:1:2:3]", MethodCacheKeys.Sequence(new[] { 1, 2, 3 }, static id => MethodCacheKeys.Part(id)));
+            Assert.Equal("[3:1:2:3]", TestKeys.Sequence(new[] { 1, 2, 3 }, static id => MethodCacheKeys.Part(id)));
             // Each element's text is escaped again, so even a formatter that writes ':' can't split an element in two
-            Assert.Equal("[2:a\\\\\\:b:\\\\0]", MethodCacheKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
+            Assert.Equal("[2:a\\\\\\:b:\\\\0]", TestKeys.Sequence(new[] { "a:b", null }, static s => MethodCacheKeys.Part(s)));
             Assert.NotEqual(
-                MethodCacheKeys.Sequence(new[] { "a", "b:c" }, static s => s),
-                MethodCacheKeys.Sequence(new[] { "a:b", "c" }, static s => s));
-            Assert.Equal("[0]", MethodCacheKeys.Sequence(Array.Empty<int>(), static id => MethodCacheKeys.Part(id)));
-            Assert.Equal(MethodCacheKeys.Null, MethodCacheKeys.Sequence<int>(null, static id => MethodCacheKeys.Part(id)));
+                TestKeys.Sequence(new[] { "a", "b:c" }, static s => s),
+                TestKeys.Sequence(new[] { "a:b", "c" }, static s => s));
+            Assert.Equal("[0]", TestKeys.Sequence(Array.Empty<int>(), static id => MethodCacheKeys.Part(id)));
+            Assert.Equal(TestKeys.Null, TestKeys.Sequence<int>(null, static id => MethodCacheKeys.Part(id)));
         }
 
         [Fact]
         public void Sequence_KeepsLookAlikeArgumentListsApart()
         {
-            static string Strings(params string?[]? values) => MethodCacheKeys.Sequence(values, static s => MethodCacheKeys.Part(s));
+            static string Strings(params string?[]? values) => TestKeys.Sequence(values, static s => MethodCacheKeys.Part(s));
 
             // An empty list and a list holding one empty string
             Assert.NotEqual(Strings(), Strings(""));
             // An element ending in "]" followed by another argument, and a shorter list followed by that text
             Assert.NotEqual(
-                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a]", "b")),
-                MethodCacheKeys.For(typeof(IUserService), "M", Strings("a"), MethodCacheKeys.Part("b]")));
+                TestKeys.For(typeof(IUserService), "M", Strings("a]", "b")),
+                TestKeys.For(typeof(IUserService), "M", Strings("a"), MethodCacheKeys.Part("b]")));
             Assert.NotEqual(Strings((string?)null), Strings("\\0"));
         }
 
@@ -331,10 +332,10 @@ namespace MethodCache.Core.Tests.Core
                 "Boolean(true)", true, "x", 'x', "Char(x)", guid, $"Guid({guid:N})", "a.b", "a(b", "a\"b", "", ":", "\\",
             };
 
-            var names = keys.Select(key => MethodCacheKeys.KeyedMethodName("Get", key)).ToList();
+            var names = keys.Select(key => TestKeys.KeyedMethodName("Get", key)).ToList();
 
             Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal("Get@ecb", MethodCacheKeys.KeyedMethodName("Get", "ecb"));
+            Assert.Equal("Get@ecb", TestKeys.KeyedMethodName("Get", "ecb"));
         }
 
         private static class RegionA { public enum Region { Eu } }

@@ -16,12 +16,12 @@ namespace MethodCache.Core.Tests.Core.Extensions
             void Configure(CacheEntryOptions.Builder options) => options.WithVersion(3);
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
             Assert.Equal(1, await cache.GetOrCreateAsync("logical", Load, Configure));
-            await cache.InvalidateByKeysAsync(CacheManagerExtensions.GetCacheKey("logical", 3));
+            await cache.InvalidateByKeysAsync(MethodCacheKeys.StoredKey("logical", 3));
             Assert.Equal(2, await cache.GetOrCreateAsync("logical", Load, Configure));
-            Assert.Equal("plain", CacheManagerExtensions.GetCacheKey("plain"));
-            Assert.Equal("\0\0hostile", CacheManagerExtensions.GetCacheKey("\0hostile"));
-            Assert.Throws<ArgumentOutOfRangeException>(() => CacheManagerExtensions.GetCacheKey("key", -1));
-            Assert.Throws<ArgumentException>(() => CacheManagerExtensions.GetCacheKey(" "));
+            Assert.Equal("plain", MethodCacheKeys.StoredKey("plain"));
+            Assert.Equal("\0\0hostile", MethodCacheKeys.StoredKey("\0hostile"));
+            Assert.Throws<ArgumentOutOfRangeException>(() => MethodCacheKeys.StoredKey("key", -1));
+            Assert.Throws<ArgumentException>(() => MethodCacheKeys.StoredKey(" "));
         }
 
         [Fact]
@@ -327,7 +327,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
                 token.ThrowIfCancellationRequested();
                 var draft = MethodCache.Core.Configuration.Surfaces.Fluent.CachePolicyBuilderFactory.FromOptions(options ?? new CacheEntryOptions.Builder().Build()).Build(CacheKeyLookup.MethodName);
                 var policy = options?.Runtime ?? CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
-                return new(GetOrCreateFastAsync(options?.GetCacheKey(key) ?? key, policy.MethodId, () => factory(state, token).AsTask(), policy, token));
+                return new(GetOrCreateFastAsync(MethodCacheKeys.StoredKey(key, options?.Version), policy.MethodId, () => factory(state, token).AsTask(), policy, token));
             }
             public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken token = default) => new(CacheLookupResult<T>.Miss);
             public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken token = default)

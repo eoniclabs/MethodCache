@@ -152,7 +152,7 @@ public class PolicyTransitionTests
         await using var first = Node(new Reader(100));
         Assert.Equal(101, await first.GetRequiredService<IReader>().ReadAsync(1));
         var identity = PolicyHandle.For(first.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), MethodId).Current.Identity;
-        var logicalKey = MethodCacheKeys.For(typeof(IReader), nameof(IReader.ReadAsync), MethodCacheKeys.Part(1));
+        var logicalKey = first.GetRequiredService<IMethodCacheKeys>().For<IReader>(reader => reader.ReadAsync(1));
         var forged = "\0policy:" + logicalKey.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + logicalKey + ":" + identity;
         await first.GetRequiredService<ICacheManager>().GetOrCreateAsync(forged, _ => ValueTask.FromResult(999));
         await using var receiver = Node(new Reader(200));

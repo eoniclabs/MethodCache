@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.ExceptionServices;
 using MethodCache.Core.Telemetry;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
@@ -53,6 +52,13 @@ namespace MethodCache
         }
 
         /// <summary>Invalidates one logical key, optionally in a versioned key family.</summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="key">The entry's key.</param>
+        /// <param name="version">
+        /// The version the entry was cached with, or <c>null</c> for an unversioned entry. A key from
+        /// <see cref="IMethodCacheKeys"/> already carries its version: pass <c>null</c> with it.
+        /// </param>
+        /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
         public static ValueTask<InvalidationResult> InvalidateKeyAsync(this ICacheManager cacheManager, string key,
             int? version = null, CancellationToken cancellationToken = default)
             => cacheManager.InvalidateKeysAsync([key], version, cancellationToken);
@@ -131,7 +137,7 @@ namespace MethodCache
                 {
                     // A real lookup: the fast path also reports entries due for an early refresh as missing,
                     // and with EnableFastPath off every entry, which would send cached keys to the factory
-                    var cached = bypass ? default : memory.TryGetFreshForLookup<T>(VersionedKey(key, options.Version));
+                    var cached = bypass ? default : memory.TryGetFreshForLookup<T>(MethodCacheKeys.VersionedKey(key, options.Version));
                     if (cached.Found) results[key] = cached.Value!;
                     else missingKeys.Add(key);
                 }
@@ -167,7 +173,7 @@ namespace MethodCache
             CacheEntryOptions options, CancellationToken cancellationToken)
         {
             var bypass = options.Enabled == false;
-            using var batch = bypass ? null : memory.BeginBulkLoad(keys.Select(key => VersionedKey(key, options.Version)),
+            using var batch = bypass ? null : memory.BeginBulkLoad(keys.Select(key => MethodCacheKeys.VersionedKey(key, options.Version)),
                 CreateRuntimePolicy(FluentMethodName, options));
             IReadOnlyDictionary<string, T>? produced = null;
             Exception? failure = null;
@@ -209,7 +215,7 @@ namespace MethodCache
 
                 try
                 {
-                    values[key] = await batch!.GetOrCreateAsync(cacheManager, VersionedKey(key, options.Version), load, CancellationToken.None)
+                    values[key] = await batch!.GetOrCreateAsync(cacheManager, MethodCacheKeys.VersionedKey(key, options.Version), load, CancellationToken.None)
                         .ConfigureAwait(false);
                 }
                 catch (Exception) when (failure != null)
@@ -343,7 +349,7 @@ namespace MethodCache
             var hits = new (bool Found, T? Value)[missingKeys.Count];
             var parallel = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentDistributedReads, CancellationToken = cancellationToken };
             await Parallel.ForEachAsync(Enumerable.Range(0, missingKeys.Count), parallel, async (index, ct) =>
-                hits[index] = await manager.TryGetDistributedAsync<T>(VersionedKey(missingKeys[index], options.Version), FluentMethodName, policy, ct).ConfigureAwait(false))
+                hits[index] = await manager.TryGetDistributedAsync<T>(MethodCacheKeys.VersionedKey(missingKeys[index], options.Version), FluentMethodName, policy, ct).ConfigureAwait(false))
                 .ConfigureAwait(false);
 
             var stillMissing = new List<string>(missingKeys.Count);
@@ -364,24 +370,6 @@ namespace MethodCache
             while (cacheManager is ICacheManagerDecorator decorator) cacheManager = decorator.InnerManager;
             return cacheManager as InMemoryCacheManager;
         }
-
-        /// <summary>Returns the internal key used by the fluent manual cache for a logical key and optional version.</summary>
-        /// <param name="key">The logical key supplied to the fluent cache.</param>
-        /// <param name="version">The non-negative version supplied to WithVersion, or null for an unversioned entry.</param>
-        /// <returns>The key the built-in manager stores the entry under, as <see cref="ICacheAdministrator"/> lists it.</returns>
-        /// <remarks>Reserved control characters separate identities. Treat the returned format as opaque.</remarks>
-        public static string GetCacheKey(string key, int? version = null)
-        {
-            ValidateKey(key);
-            if (version < 0) throw new ArgumentOutOfRangeException(nameof(version), "Version must be non-negative.");
-            return VersionedKey(key, version);
-        }
-
-        /// <summary>Separates versioned keys from unversioned user keys, escaping the reserved leading NUL.</summary>
-        private static string VersionedKey(string key, int? version)
-            => version.HasValue
-                ? string.Concat("\0v", version.Value.ToString(CultureInfo.InvariantCulture), ":", key)
-                : key[0] == '\0' ? "\0" + key : key;
 
         private static void ValidateKey(string key)
         {

@@ -198,7 +198,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         Assert.Equal("LocalMemory", metadata.RootElement.GetProperty("storage").GetString());
         var entry = await client.GetFromJsonAsync<Dictionary<string, object>>(Prefix + "/entry?key=users:1");
         Assert.Equal(
-            new[] { "age", "client", "description", "kind", "sizeBytes", "storage", "storedKey", "tags", "timeToLive", "valueType", "weight" },
+            new[] { "age", "client", "description", "kind", "methodId", "sizeBytes", "storage", "storedKey", "tags", "timeToLive", "valueType", "weight" },
             entry!.Keys.OrderBy(k => k, StringComparer.Ordinal));
     }
 

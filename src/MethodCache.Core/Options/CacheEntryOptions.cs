@@ -77,21 +77,25 @@ namespace MethodCache
             try { return CacheWhen?.Invoke(value) != false; }
             catch (Exception) { return false; }
         }
-        /// <summary>Returns the canonical key for these options, applying an explicit-key version exactly once.</summary>
-        /// <remarks>Custom managers use this before storage; generated calls already carry their complete key.</remarks>
-        public string GetCacheKey(string key) => Runtime != null ? key : CacheManagerExtensions.GetCacheKey(key, Version);
+        /// <summary>The policy of a generated call, whose key is already complete; null for options built by the application.</summary>
         internal CacheRuntimePolicy? Runtime { get; init; }
+
+        /// <summary>
+        /// Options for a call with a prepared key: a generated call's key already carries its version, so
+        /// <see cref="Version"/> stays unset and an application manager does not add it a second time. The administrator's
+        /// view of a method (<paramref name="preparedKey"/> false) keeps the version.
+        /// </summary>
         internal static CacheEntryOptions FromRuntime(CacheRuntimePolicy policy, bool preparedKey = true) => new(
             policy.Duration, policy.SlidingExpiration, policy.RefreshAhead,
-            Array.AsReadOnly(policy.Tags.ToArray()), policy.Version,
+            Array.AsReadOnly(policy.Tags.ToArray()), preparedKey ? null : policy.Version,
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
             enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen)
         { Runtime = preparedKey ? policy : null };
 
-
-
         /// <summary>
-        /// Gets the version that is added to the key, so changing it skips entries stored under the old one.
+        /// Gets the version that is added to the key, so changing it skips entries stored under the old one. A manager
+        /// stores the entry under <see cref="MethodCacheKeys.StoredKey"/> of its key and this version. It is
+        /// <c>null</c> in the options of a call from a cached method, whose key already carries the method's version.
         /// </summary>
         public int? Version { get; }
 
