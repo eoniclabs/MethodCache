@@ -18,13 +18,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             return this;
         }
 
-        public IFluentMethodCacheConfiguration WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
-        {
-            // Validate now, so a bad value fails at the call that set it
-            new CacheEntryOptions.Builder().WithFailSafe(duration, timeout, retryAfter);
-            return DefaultPolicy(options => options.WithFailSafe(duration, timeout, retryAfter));
-        }
-
         public IFluentServiceConfiguration<TService> ForService<TService>()
         {
             var serviceType = typeof(TService);
@@ -157,22 +150,9 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
             }
 
+            // A method that returns nothing to cache fails here; one without [Cache] when the policies load
             private FluentMethodConfiguration CreateMethodConfiguration(LambdaExpression expression)
-            {
-                var methodInfo = ExtractMethodInfo(expression);
-                return _inner.GetOrCreate(methodInfo);
-            }
-
-            private static MethodInfo ExtractMethodInfo(LambdaExpression expression)
-            {
-                if (expression == null) throw new ArgumentNullException(nameof(expression));
-
-                return expression.Body switch
-                {
-                    MethodCallExpression methodCall => methodCall.Method,
-                    _ => throw new ArgumentException("Expression must target a method call.", nameof(expression))
-                };
-            }
+                => _inner.GetOrCreate(MethodIds.CachedCall(expression, "method"));
         }
 
         private sealed class FluentMethodConfiguration
@@ -203,11 +183,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             }
 
             public string? GroupName => _groupName;
-
-            public void WithVersion(int version)
-            {
-                _configurations.Add(builder => builder.WithVersion(version));
-            }
 
             public CacheEntryOptions BuildOptions()
             {
@@ -240,12 +215,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             public IFluentMethodConfiguration<TResult> WithGroup(string groupName)
             {
                 _inner.WithGroup(groupName);
-                return this;
-            }
-
-            public IFluentMethodConfiguration<TResult> WithVersion(int version)
-            {
-                _inner.WithVersion(version);
                 return this;
             }
 

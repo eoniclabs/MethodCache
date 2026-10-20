@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -268,9 +269,9 @@ public class RuntimeCacheConfiguratorTests
         var methodId = $"{typeName}.{nameof(IRuntimeDocService.GetAsync)}";
 
         await configurator.UpsertAsync(methodId, (CacheEntryOptions.Builder builder) => builder.WithDuration(System.TimeSpan.FromMinutes(1)));
-        await configurator.RemoveAsync<IRuntimeDocService, string>(x => x.GetAsync(default));
+        await configurator.RemoveAsync<IRuntimeDocService>(x => x.GetAsync(default));
 
-        var snapshots = await configurator.GetOverridesAsync();
+        var snapshots = configurator.GetOverrides();
         Assert.Empty(snapshots);
     }
 
@@ -311,8 +312,98 @@ public class RuntimeCacheConfiguratorTests
 
         await configurator.UpsertAsync("Sample.Method", builder => builder.ClearTags().AddTags("incident"));
 
-        var options = Assert.Single(await configurator.GetOverridesAsync()).Options;
+        var options = Assert.Single(configurator.GetOverrides()).Options;
         Assert.True(options.ClearsTags);
         Assert.Equal(new[] { "incident" }, options.Tags);
+    }
+
+    [Fact]
+    public async Task TypedHelpers_ValueTaskTaskAndSyncMethods_UpsertAndRemoveTheirOverrides()
+    {
+        await using var provider = BuildShapes();
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+
+        await configurator.UpsertAsync<IRuntimeShapes>(s => s.GetValueAsync(Any<int>.Value), o => o.WithDuration(TimeSpan.FromMinutes(1)));
+        await configurator.UpsertAsync<IRuntimeShapes>(s => s.GetTaskAsync(Any<int>.Value), o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        await configurator.UpsertAsync<IRuntimeShapes>(s => s.Get(Any<int>.Value), o => o.WithDuration(TimeSpan.FromMinutes(3)));
+        await configurator.RemoveAsync<IRuntimeShapes>(s => s.GetTaskAsync(Any<int>.Value));
+
+        var overrides = configurator.GetOverrides();
+        Assert.Equal(new[] { ShapeId(nameof(IRuntimeShapes.Get)), ShapeId(nameof(IRuntimeShapes.GetValueAsync)) }, overrides.Select(o => o.MethodId));
+        Assert.Equal(new[] { TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(1) }, overrides.Select(o => o.Options.Duration!.Value));
+    }
+
+    [Theory]
+    [InlineData("Task")]
+    [InlineData("ValueTask")]
+    public async Task TypedHelpers_MethodWithoutAResult_ThrowsAndChangesNothing(string returnType)
+    {
+        await using var provider = BuildShapes();
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+
+        var error = returnType == "Task"
+            ? await Assert.ThrowsAsync<ArgumentException>(async () => await configurator.UpsertAsync<IRuntimeShapes>(s => s.SaveAsync(1), o => o.WithEnabled(false)))
+            : await Assert.ThrowsAsync<ArgumentException>(async () => await configurator.RemoveAsync<IRuntimeShapes>(s => s.SaveValueAsync(1)));
+
+        Assert.Contains($"returns {returnType} without a result", error.Message, StringComparison.Ordinal);
+        Assert.Equal("method", error.ParamName);
+        Assert.Empty(configurator.GetOverrides());
+    }
+
+    [Fact]
+    public async Task TypedHelpers_MethodWithoutCache_ThrowsWithTheIdFormat()
+    {
+        await using var provider = BuildShapes();
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await configurator.UpsertAsync<IRuntimeShapes>(s => s.NotCached(Any<int>.Value), o => o.WithEnabled(false)));
+
+        Assert.Contains($"'{ShapeId(nameof(IRuntimeShapes.NotCached))}' is not a cached method", error.Message, StringComparison.Ordinal);
+        Assert.Contains("[Assembly]Namespace.IService.Method", error.Message, StringComparison.Ordinal);
+        Assert.Empty(configurator.GetOverrides());
+    }
+
+    [Fact]
+    public async Task UpsertAsync_MisspelledId_SuggestsTheClosestCachedMethod()
+    {
+        await using var provider = BuildShapes();
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await configurator.UpsertAsync(ShapeId("GetValueAsyn"), o => o.WithEnabled(false)));
+
+        Assert.Contains($"did you mean '{ShapeId(nameof(IRuntimeShapes.GetValueAsync))}'", error.Message, StringComparison.Ordinal);
+    }
+
+    private static string ShapeId(string method)
+        => global::MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IRuntimeShapes), method);
+
+    private static ServiceProvider BuildShapes()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IRuntimeShapes, RuntimeShapes>();
+        services.AddMethodCache();
+        return services.BuildServiceProvider();
+    }
+
+    public interface IRuntimeShapes
+    {
+        [Cache] ValueTask<int> GetValueAsync(int id);
+        [Cache] Task<int> GetTaskAsync(int id);
+        [Cache] int Get(int id);
+        int NotCached(int id);
+        Task SaveAsync(int id);
+        ValueTask SaveValueAsync(int id);
+    }
+
+    public sealed class RuntimeShapes : IRuntimeShapes
+    {
+        public ValueTask<int> GetValueAsync(int id) => ValueTask.FromResult(id);
+        public Task<int> GetTaskAsync(int id) => Task.FromResult(id);
+        public int Get(int id) => id;
+        public int NotCached(int id) => id;
+        public Task SaveAsync(int id) => Task.CompletedTask;
+        public ValueTask SaveValueAsync(int id) => ValueTask.CompletedTask;
     }
 }

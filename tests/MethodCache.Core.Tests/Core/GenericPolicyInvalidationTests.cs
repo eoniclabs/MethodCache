@@ -24,12 +24,12 @@ public class GenericPolicyInvalidationTests
         Assert.Equal(1, await numbers.ReadAsync(1));
         Assert.Equal(1, await a.ReadAsync(1));
         Assert.Equal(1, await b.ReadAsync(1));
-        await provider.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync<IGeneric<int>, int>(s => s.ReadAsync(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
+        await provider.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync<IGeneric<int>>(s => s.ReadAsync(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
         Assert.Equal(2, await numbers.ReadAsync(1));
         Assert.Equal(2, await a.ReadAsync(1));
         Assert.Equal(2, await b.ReadAsync(1));
         Assert.Equal(3, provider.GetRequiredService<ICacheAdministrator>().ListEntries().Count);
-        Assert.Single(await provider.GetRequiredService<IRuntimeCacheConfigurator>().GetOverridesAsync());
+        Assert.Single(provider.GetRequiredService<IRuntimeCacheConfigurator>().GetOverrides());
     }
 
     public interface IGeneric<T> { [Cache] Task<int> ReadAsync(int id); }

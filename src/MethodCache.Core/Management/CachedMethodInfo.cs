@@ -3,7 +3,7 @@ namespace MethodCache;
 /// <summary>The effective cache policy of one method.</summary>
 public sealed record CachedMethodInfo
 {
-    /// <summary>The method id, such as <c>MyApp.IUserService.GetUserAsync</c>.</summary>
+    /// <summary>The method id, such as <c>[MyApp]MyApp.IUserService.GetUserAsync</c>.</summary>
     public required string MethodId { get; init; }
     /// <summary>The effective immutable method options, as resolved from attributes, configuration and overrides.</summary>
     public required CacheEntryOptions Options { get; init; }

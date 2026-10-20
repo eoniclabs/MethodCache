@@ -19,7 +19,7 @@ public class PolicyPrecedenceTests
         await using var provider = Build();
         var orders = provider.GetRequiredService<IPrecedenceOrders>();
         await provider.GetRequiredService<IRuntimeCacheConfigurator>()
-            .UpsertAsync<IPrecedenceOrders, Task<int>>(s => s.GetAsync(Any<int>.Value), o => o.AddTags("incident"));
+            .UpsertAsync<IPrecedenceOrders>(s => s.GetAsync(Any<int>.Value), o => o.AddTags("incident"));
 
         await orders.GetAsync(1);
         await orders.UpdateAsync(1);
@@ -35,7 +35,7 @@ public class PolicyPrecedenceTests
         await using var provider = Build();
         var orders = provider.GetRequiredService<IPrecedenceOrders>();
         await provider.GetRequiredService<IRuntimeCacheConfigurator>()
-            .UpsertAsync<IPrecedenceOrders, Task<int>>(s => s.GetAsync(Any<int>.Value), o => o.ClearTags().AddTags("incident"));
+            .UpsertAsync<IPrecedenceOrders>(s => s.GetAsync(Any<int>.Value), o => o.ClearTags().AddTags("incident"));
 
         await orders.GetAsync(1);
         await orders.UpdateAsync(1);

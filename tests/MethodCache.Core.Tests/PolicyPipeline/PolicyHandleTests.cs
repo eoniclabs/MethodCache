@@ -39,10 +39,10 @@ public class PolicyHandleTests
         Assert.Equal(TimeSpan.FromMinutes(5), handle.Current.Duration);
 
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-        await configurator.UpsertAsync<IOrders, string>(o => o.Get(0), b => b.WithDuration(TimeSpan.FromSeconds(30)));
+        await configurator.UpsertAsync<IOrders>(o => o.Get(0), b => b.WithDuration(TimeSpan.FromSeconds(30)));
         Assert.Equal(TimeSpan.FromSeconds(30), handle.Current.Duration);
 
-        await configurator.RemoveAsync<IOrders, string>(o => o.Get(0));
+        await configurator.RemoveAsync<IOrders>(o => o.Get(0));
         Assert.Equal(TimeSpan.FromMinutes(5), handle.Current.Duration);
     }
 
@@ -64,7 +64,7 @@ public class PolicyHandleTests
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get"), method.Current.KeyPrefix);
 
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-        await configurator.UpsertAsync<IOrders, Task<string>>(o => o.Get(0), b => b.WithVersion(2));
+        await configurator.UpsertAsync<IOrders>(o => o.Get(0), b => b.WithVersion(2));
         Assert.Equal(2, method.Current.Policy.Version);
 
         Assert.Equal(MethodCacheKeys.Prefix(typeof(IOrders), "Get", 2), method.Current.KeyPrefix);
