@@ -160,11 +160,15 @@ namespace MethodCache.Infrastructure
             if (value == null && type.IsValueType && Nullable.GetUnderlyingType(type) == null)
             {
                 // default(TStruct) is recorded as null
-                return RuntimeHelpers.GetUninitializedObject(type);
+                return Zero(type);
             }
 
             return value is DBNull ? null : value;
         }
+
+        // The container's own default-value code creates a struct the same way
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Only called for a value type, which needs no constructor.")]
+        private static object Zero(Type valueType) => RuntimeHelpers.GetUninitializedObject(valueType);
 
         private sealed class Plan(object container, ConstructorInfo constructor, ParameterInfo[] parameters, bool[] resolvable)
         {
