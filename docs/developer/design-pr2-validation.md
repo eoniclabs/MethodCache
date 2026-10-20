@@ -35,7 +35,8 @@ into both external database implementations.
 - The minimal entry format 5 timestamps, policy namespace and typed method message are implemented now
   in both adapters, because policy isolation cannot depend on future PR 4 changes.
 - `CacheEntryOptions.GetCacheKey` and `CanCache` let four-method custom managers honor prepared generated
-  keys, versioning, Enabled and typed predicates without private runtime knowledge. Admin/override options
+  keys, versioning, Enabled and typed predicates without private runtime knowledge. (`GetCacheKey` was later
+  replaced by `MethodCacheKeys.StoredKey`; generated calls now pass `Version = null`.) Admin/override options
   remain reusable for manual calls.
 
 ## Regression evidence

@@ -59,10 +59,11 @@ var list = await cache.GetOrCreateAsync(
 
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
 `InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
-A custom manager uses `options.GetCacheKey(key)` to apply versions once and `options.CanCache(value)` to evaluate the
-result predicate. Its lookup and key-invalidation methods normalize their logical keys with
-`CacheManagerExtensions.GetCacheKey(key, version)`, using the optional version unchanged when forwarding calls.
-Generated calls already carry complete keys; the same helper handles them without adding another version.
+A custom manager stores an entry under `MethodCacheKeys.StoredKey(key, options?.Version)` in `GetOrCreateAsync`, and
+looks it up or removes it under `MethodCacheKeys.StoredKey(key, version)` in `TryGetAsync` and `InvalidateKeysAsync`,
+so a key and version name the same entry in every method. `options.CanCache(value)` evaluates the result predicate.
+Generated calls pass a key that already carries the method's version and options with `Version = null`, so their
+key is stored as it is.
 Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
 synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
 
@@ -85,8 +86,9 @@ if (lookup.Found)
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
 shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
 version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
-`ICacheAdministrator` accepts the physical stored key from `CacheManagerExtensions.GetCacheKey(key, version)`;
-do not construct that internal format yourself.
+`ICacheAdministrator` takes the stored key, `MethodCacheKeys.StoredKey(key, version)`, which is what
+`CacheEntryInfo.StoredKey` shows; treat its format as opaque. To invalidate a versioned entry through `ICacheManager`,
+pass the key and its version, `InvalidateKeyAsync(key, version: 2)`, not the stored key.
 
 ## Many keys at once
 
@@ -112,6 +114,14 @@ var users = await cache.GetOrCreateManyAsync<User>(
     o => o.WithDuration(TimeSpan.FromHours(1)));
 ```
 <!-- endSnippet -->
+
+- The factory returns an `IReadOnlyDictionary` with a value for each key it gets, and the call returns one for every
+  key.
+- On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.
+- Each key behaves as `GetOrCreateAsync` would for it. When the factory throws, each key it was asked for gets its
+  fail-safe value; when a key has none, the factory's exception is thrown.
+- `cancellationToken` stops this caller's wait. A factory that ignores it finishes in the background, and its values
+  are cached unless they were invalidated while it ran.
 
 ## Things to know
 

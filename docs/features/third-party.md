@@ -33,7 +33,8 @@ builder.Services.AddMethodCache();
   parameter names, zero-allocation hits on .NET 10. Methods you don't list always reach the client, so writes
   are never cached by accident.
 - The attribute's settings (`Duration`, `Tags`, `Group`, `SlidingExpiration`, `RefreshAhead`, `Version`, `FailSafe`,
-  `FailSafeTimeout`) apply to every listed method. Give one method its own settings like any cached method:
+  `FailSafeTimeout`, `FailSafeRetryAfter`, `Enabled`, `Distributed`) apply to every listed method. Give one method its
+  own settings like any cached method:
 
 <!-- snippet: third-party-per-method -->
 ```cs
@@ -42,8 +43,9 @@ builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.
 ```
 <!-- endSnippet -->
 
-- The method id in `appsettings.json` and the admin endpoints is the interface's full name, a dot and the method name,
-  for example `FxVendor.IFxRatesClient.GetRateAsync`.
+- The method id in `appsettings.json` and the admin endpoints is the name of the assembly that declares the interface
+  (the vendor's, not yours) in brackets, the interface's full name, a dot and the method name, for example
+  `[FxVendor]FxVendor.IFxRatesClient.GetRateAsync`. `IMethodCacheKeys.MethodId` returns it for you.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
 - The attribute can live in a class library, such as your infrastructure project. Select its generated module

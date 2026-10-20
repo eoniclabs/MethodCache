@@ -40,15 +40,21 @@ explicit scopes:
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
 remain zero until the separate HTTP store is registered.
 
-`GetMethods()` returns immutable effective options, sources and L2 namespace kind. `ListEntries(storedKeyPrefix, tag, limit)`
-and `GetEntry(storedKey)` inspect live local entries without values; listing is a diagnostic scan, not a transaction.
+`GetMethods()` returns each method's `MethodId`, its effective `Options`, the `SettingSources` each setting comes from
+and `IsDistributedNamespaceShared`. `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
+inspect live local entries without values; listing is a diagnostic scan, not a transaction. `CacheEntryInfo.MethodId`
+names the method an entry belongs to (`null` for manual entries and HTTP responses), and `ListEntries(methodId: ...)`
+lists exactly that method's entries. `IMethodCacheKeys.MethodId` returns the id of a call ([Cache keys](keys.md)).
 `CacheEntryInfo.StoredKey` is the key as stored, which `GetEntry` and `RemoveEntryAsync` take. For a manual entry with a
 `Version` it includes the version, so it is not the key you pass to `ICacheManager`; there, use the key and version you
-cached it with. `RemoveEntryAsync`, `InvalidateTagsAsync` and `ClearAsync` complete once a configured distributed cache
-has confirmed the change, and throw `CacheInvalidationQueuedException` when it is applied in memory but still queued for
-the distributed cache. The cache retries on its own; don't repeat the call.
-`GetInvalidationQueues()` distinguishes storage recovery from pending backplane publication. A custom or NoOp manager
-has no built-in method administrator or fabricated storage statistics.
+cached it with. `InvalidateMethodAsync(methodId)` removes every entry of one method, on every instance; an id no
+cached method has throws an `ArgumentException`. `RemoveEntryAsync`, `InvalidateTagsAsync`, `InvalidateMethodAsync`
+and `ClearAsync` complete once a configured distributed cache has confirmed the change, and throw
+`CacheInvalidationQueuedException` when it is applied in memory but still queued for the distributed cache. Its
+`Result` holds the counts of the invalidation (`null` for `ClearAsync`). The cache retries on its own; don't repeat
+the call. `GetInvalidationQueues()` reports `Queued` (waiting for the distributed cache) and `PublicationQueued`
+(waiting for the backplane). A custom or NoOp manager has no built-in method administrator or fabricated storage
+statistics; with `AddHttpCaching` there is one for HTTP responses only.
 
 ## Admin endpoints
 
@@ -87,8 +93,10 @@ leave both stored products and the cache unchanged.
 `AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when L2 is unavailable,
 either recovery queue has work, or a configured backplane is unknown, connecting or disconnected. A successful L2
 probe does not prove that invalidation subscription is established. Reports include `managerCapability`,
-`statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `invalidationQueued` and
-`publicationQueued`, plus local storage statistics for the built-in manager. Backend exception text is omitted.
+`statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `queued` and
+`publicationQueued`, plus local storage statistics; the
+[package README](../../src/MethodCache.AspNetCore/README.md#health-check) lists every key. Backend exception text is
+omitted.
 
 An incompatible distributed schema or retention contract reports `Unhealthy` with an actionable safe reason,
 uses local memory only, and retains invalidations. A safe established retention differing from the configured
@@ -119,13 +127,16 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-Each completed cache call has one `methodcache.requests` outcome: `hit`, `miss`, `stale`, `revalidated`, `bypass` or
-`error`, with `kind=method/http` and a static method id/client name. A failed fast probe is not a separate miss.
+Each completed cache call has one `methodcache.requests` outcome, `methodcache.result`: `hit`, `miss`, `stale`,
+`revalidated`, `bypass` or `error`. `methodcache.kind` is `method`, `manual` or `http`, and `methodcache.method` (a
+method id) or `methodcache.http.client` (a client name) says which; manual calls by key carry neither. Every attribute
+is in the `methodcache.` namespace, apart from `error.type`. A failed fast probe is not a separate miss.
 Refreshes record their actual origin duration without another user request. Flight joiners and L2 hits do not record
 origin loads. A bulk call has one outcome and measures its actual batch factory, rather than the per-key publication
 of the already produced values.
 
-Histograms use seconds. Local entry/HTTP byte instruments are observable up-down counters. Invalidation counters count
+Histograms use seconds, with bucket boundaries from 5 ms to 10 s. Local entry/HTTP byte instruments are observable
+up-down counters. Invalidation counters count
 distinct targets at each stage, not operation totals; do not add stages together. See the
 [full instrument table](../../src/MethodCache.OpenTelemetry/README.md#metrics).
 

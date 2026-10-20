@@ -167,18 +167,19 @@ incompatible schemas without upgrading them; see the [SQL Server guide](src/Meth
 
 ### Invalidation
 
-Invalidate by tag with `[CacheInvalidate]`, or from code by tag, key or pattern:
+Invalidate by tag with `[CacheInvalidate]`, or from code by tag, by key or for a whole method:
 
 <!-- snippet: readme-invalidation -->
 ```cs
 await cache.InvalidateTagAsync("user:42");
-await cache.InvalidateKeyAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+await cache.InvalidateKeyAsync(keys.For<IUserService>(users => users.GetUserAsync(42)));
 await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
 ```
 <!-- endSnippet -->
 
 Generated keys look like `[MyApp]MyApp.IUserService.GetUserAsync:42` (a record argument as `(alice:2)`, an array or list as
-`[3:1:2:3]`), and `MethodCacheKeys` builds the same keys, so you never guess the format.
+`[3:1:2:3]`). `IMethodCacheKeys.For` returns the key of a call, so you never write one by hand, and
+`ICacheAdministrator.InvalidateMethodAsync` removes every entry of one method.
 
 ### Configuration without redeploying
 
@@ -189,23 +190,24 @@ unless an override calls `ClearTags()`.
 
 <!-- snippet: readme-configuration -->
 ```cs
-builder.Services.AddMethodCache(config =>
-    config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
+builder.Services.AddMethodCache(config => config
+    .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5)))
+    .FromConfiguration(builder.Configuration));   // the "MethodCache" section wins over code
 ```
 <!-- endSnippet -->
 
 ```json
 {
   "MethodCache": {
-    "Services": {
+    "Methods": {
       "[MyApp]MyApp.IUserService.GetUserAsync": { "Duration": "00:30:00" }
     }
   }
 }
 ```
 
-Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
+Each key under `"Methods"` is a method id, as the admin method list shows it, and `"Groups"` sets defaults for a
+`[Cache(Group = ...)]` group. Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
 policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
 
 ### Distributed cache
@@ -393,9 +395,7 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
 
 Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
 
-MessagePack keys preserve derived member data in nested base-class/interface slots and collection elements. Earlier keys for these arguments change; existing entries become cold misses and expire normally.
-
-Manual `TryGetAsync` reads a fresh entry, including a cached null, even when the fast path is disabled or refresh-ahead is due. This lookup does not start a factory or background refresh.
+Manual `TryGetAsync` reads a fresh entry, including a cached null, also when refresh-ahead is due. This lookup does not start a factory or background refresh.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 
@@ -411,9 +411,9 @@ Background HTTP revalidation preserves the request HTTP version, version policy 
 
 A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
 
-Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
+Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Registrations of one interface with different implementation types under the same service key each cache their own results too: their keys carry the implementation type. Two registrations of the same implementation type share their results. A constructor parameter marked `[ServiceKey]` receives the application's key. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
 
-Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags` or an invalid duration in `appsettings.json`. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
+Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; `CacheWhen` in defaults or a group; and a tag template that names no parameter of a method it applies to. `UseRedis` and `UseSqlServer` together throw in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

@@ -37,7 +37,7 @@ It needs no Docker, credentials or external API and runs as part of the same con
 
 | Scenario | Origin calls and result |
 |---|---|
-| `Cache-Control: max-age=60` | Two GETs make one origin call; the second response has `X-Cache: HIT` |
+| `Cache-Control: max-age=60` | Two GETs make one origin call; the second response has `Cache-Status: MethodCache; hit; ttl=...` |
 | ETag after expiry | Advance the clock 61 seconds; the origin returns 304, the caller receives the complete cached 200 response |
 | `no-store` | Two GETs both reach the origin and return different responses |
 | PUT to the cached URL | The next GET reaches the origin and returns the updated price |
@@ -50,7 +50,7 @@ from the HTTP cache. Freshness uses the registered demo clock and the origin's m
 `Microsoft.Extensions.TimeProvider.Testing` is only used to advance this demo's clock; production applications
 can register `TimeProvider.System` instead. The ASP.NET Core framework reference provides the local origin server.
 
-`X-Cache` is enabled for the example. See the [HTTP caching guide](../../docs/features/http-caching.md) and
+`AddDiagnosticHeaders` is on for the example, so responses carry a `Cache-Status` header. See the [HTTP caching guide](../../docs/features/http-caching.md) and
 [package README](../../src/MethodCache.HttpCaching/README.md) for private/shared caches, Vary, distributed
 storage and stale-response options.
 

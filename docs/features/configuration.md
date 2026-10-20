@@ -47,11 +47,20 @@ builder.Services.AddMethodCache(config =>
 - `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
+  Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
+  `appsettings.json`, which wins where both set a value; a method's own settings win over both.
+- `CacheWhen` is set for one method only. In `Defaults` or a group it fails at startup
+  ([Conditional caching](conditional-caching.md)).
 - `Any<T>.Value` stands for any argument when you point at a method.
 
-Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`,
-`FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and MessagePack
-packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`.
+Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`, `Distributed`,
+`Telemetry`, `FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and
+MessagePack packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`. Use one
+distributed cache: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)`, `UseMessagePack` or `UseJson`
+without a distributed cache logs a warning, since they have nothing to apply to. `builder.Services` is the service
+collection, for a package that adds its own `UseXxx` method.
+`Method` on a method without `[Cache]` fails at startup, and on a method that returns nothing (`void`, `Task`,
+`ValueTask`) throws an `ArgumentException`.
 All integration packages require the exact same Core package version; do not override this bound.
 CI uses strict restore (NU1608 as an error) to reject direct-version overrides. Configure services before `AddMethodCache`.
 Runtime overrides use the same immutable options builder as startup and manual cache calls.
@@ -60,7 +69,6 @@ Runtime overrides use the same immutable options builder as startup and manual c
 
 <!-- snippet: configuration-appsettings -->
 ```cs
-builder.Services.AddMethodCache();
 builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));   // the "MethodCache" section
 ```
 <!-- endSnippet -->
@@ -70,7 +78,10 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   "MethodCache": {
     "Defaults": { "Duration": "00:15:00" },
     "FailSafe": { "Duration": "01:00:00" },
-    "Services": {
+    "Groups": {
+      "user-data": { "SlidingExpiration": "00:10:00" }
+    },
+    "Methods": {
       "[MyApp]MyApp.IUserService.GetProfileAsync": {
         "Duration": "01:00:00",
         "SlidingExpiration": "00:10:00",
@@ -79,35 +90,46 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
         "Version": 1,
         "Notes": "Profiles change rarely"
       },
-      "MyApp.IAccountService.GetBalanceAsync": { "FailSafe": "off" }
+      "[MyApp]MyApp.IAccountService.GetBalanceAsync": { "FailSafe": "off" }
     }
   }
 }
 ```
 
-- Each key under `Services` is the **method id**: the escaped assembly simple name in brackets, the full interface name, a dot and the method name (for example `[MyApp]MyApp.IUserService.GetProfileAsync`). Assembly versions do not participate. A generic
-  interface is written with its type parameters (`MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its
-  parameter types (`MyApp.IUserService.FindAsync(int)`). Parameter types other than built-in ones are qualified by
-  namespace (`MyApp.IUsers.Find(MyApp.Request)`), so overloads taking `A.Request` and `B.Request` stay separate. Types
+- Each key under `Methods` is the **method id**: the escaped assembly simple name in brackets, the full interface name, a dot and the method name (for example `[MyApp]MyApp.IUserService.GetProfileAsync`). Assembly versions do not participate. A generic
+  interface is written with its type parameters (`[MyApp]MyApp.IRepository<T>.GetAsync`), and an overloaded method adds its
+  parameter types (`[MyApp]MyApp.IUserService.FindAsync(int)`). Parameter types other than built-in ones are qualified by
+  namespace (`[MyApp]MyApp.IUsers.Find(MyApp.Request)`), so overloads taking `A.Request` and `B.Request` stay separate. Types
   are named as reflection sees them: a tuple is `System.ValueTuple<int, string>` (element names dropped), `nint` is
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
-  list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)).
+  list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)),
+  and `IMethodCacheKeys.MethodId<T>(s => s.FindAsync(0))` returns the id of a call ([Cache keys](keys.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead` and `FailSafe` (each but `Duration` a time span or `"off"`), `FailSafeTimeout`,
-  `FailSafeRetryAfter`, `Tags`, `Version`, `Group`, `Enabled`, `Distributed`, `Metadata` and `Notes`, plus `ClearTags` (`true` or `false`) for a
-  method under `Services`: `true` makes its `Tags` replace the attribute's instead of adding to them. `Metadata` and `Notes` are recorded for
-  diagnostics and don't change caching. Names are case-insensitive; any other name is an error, so a misspelled
-  `"Durration"` is reported instead of ignored. The same goes for the section itself: it holds only `Defaults`,
-  `FailSafe` and `Services`.
+  `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled` and `Distributed`. A group under `Groups` and a method under
+  `Methods` can also set `ClearTags` (`true` or `false`): `true` makes their `Tags` replace the lower layers' instead of
+  adding to them. Only a method can set `Group`, `Metadata` and `Notes`; in `Defaults` or a group they are an error.
+  `Metadata` and `Notes` are recorded for diagnostics and never change caching; to put a method in a group, use
+  `Group`. Names are case-insensitive; any other name is an error, so a misspelled `"Durration"` is reported
+  instead of ignored. The same goes for the section itself: it holds only `Defaults`, `FailSafe`, `Groups` and
+  `Methods`. A leftover `Services` section from 1.0.0-rc.1 is reported as an unknown setting.
+- Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
+  `[Cache]` ([MC0010](../user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
+  fails at startup.
 - Durations use the same invariant grammar as attributes: positive unit values such as `"30s"` or `"1.5h"`,
   or `"hh:mm:ss"` (including `"d.hh:mm:ss"`). A bare number such as `"300"` is rejected rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
-  `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section.
+  `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section. Setting the same value in
+  that block and in `Defaults` (for example `FailSafe.Timeout` and `Defaults.FailSafeTimeout`) is an error.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
   `(` or `<`, so this is how environment variables, Kubernetes `env` or Linux App Service configure a method:
 
   ```bash
-  MethodCache__Services__0__MethodId="[MyApp]MyApp.IUserService.FindAsync(int)"
-  MethodCache__Services__0__Duration="00:02:00"
+  MethodCache__Methods__0__MethodId="[MyApp]MyApp.IUserService.FindAsync(int)"
+  MethodCache__Methods__0__Duration="00:02:00"
   ```
+
+  A method can be listed once. Listing it both by name and under an index, for example by name in
+  `appsettings.json` and under an index in an environment variable, fails at startup and names both paths. To
+  override one file's settings from another source, list the method under the same index in both.
 - `Defaults` applies to every cached method; the top-level `FailSafe` section is described in [Fail-safe](fail-safe.md).
 - Pass a section name as the second argument to read another section. Environment files such as
   `appsettings.Production.json` work as usual. The section is read when the host starts, so configuration sources
@@ -117,10 +139,12 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   by default).
 - Only methods with `[Cache]` (or listed in `[assembly: CacheInterface]`) have a decorator, so the file can change
   their policy but can't make other methods cached. A method id that matches no cached method, such as a misspelled
-  name, is logged as a warning at startup.
+  name or an id without its `[Assembly]` prefix, fails at startup and suggests the closest cached id. `*` and
+  `group:<name>` are not method ids; use `Defaults` and `Groups`.
 - An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
   `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
-  reloaded file has one, the reload is logged as an error and the previous policies stay.
+  reloaded file has one, the reload is logged as an error naming the setting's path, never its value, and the
+  previous policies stay.
 
 ## Runtime overrides
 
@@ -133,7 +157,7 @@ incident:
 var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 
 // One method, strongly typed, with who and why for the audit trail
-await configurator.UpsertAsync<IOrdersService, Order>(
+await configurator.UpsertAsync<IOrdersService>(
     s => s.GetAsync(Any<int>.Value),
     o => o.WithDuration(TimeSpan.FromMinutes(2)),
     new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(4) });
@@ -143,18 +167,20 @@ await configurator.UpsertAsync($"[{typeof(IUserService).Assembly.GetName().Name}
     o => o.WithDuration(TimeSpan.FromMinutes(10)));
 
 // Back to the lower layers
-await configurator.RemoveAsync<IOrdersService, Order>(s => s.GetAsync(Any<int>.Value));
+await configurator.RemoveAsync<IOrdersService>(s => s.GetAsync(Any<int>.Value));
 await configurator.ClearAsync();
 ```
 <!-- endSnippet -->
 
 | Method | What it does |
 |--------|--------------|
-| `UpsertAsync` | Adds or replaces the override for one method, by expression or method id |
+| `UpsertAsync` | Adds or replaces the override for one method, by expression (`UpsertAsync<IOrdersService>(s => s.GetAsync(0), ...)`) or method id |
 | `RemoveAsync` / `ClearAsync` | Removes one override, or all of them |
-| `GetOverridesAsync` | Returns immutable active overrides and their audit metadata |
+| `GetOverrides()` | Returns the active overrides, ordered by method id, with their options and audit metadata |
 
-All async operations take cancellation last. An unknown method id is rejected before storing anything.
+The async operations return `ValueTask` and take cancellation last. A method id or expression that reaches no cached
+method, or a method that returns nothing, throws an `ArgumentException` naming the closest cached id before
+anything is stored. A tag template that doesn't fit the method throws too.
 Runtime configuration changes methods; group and global defaults are configured at startup or through configuration files.
 Tags remain additive unless `ClearTags()` is used. `WithEnabled(false)` disables caching; `WithDistributed(false)`
 disables L2 reads and writes. Re-enabling or changing behavior retires the previous generation.
@@ -165,14 +191,15 @@ values. Overrides are private to the container, use a fresh private L2 namespace
 on restart. Removing an override restores the current shared declarative namespace after method invalidation.
 Invalidation messages retire data on other nodes; they never distribute policy.
 
-`RuntimeOverrideMetadata` retains owner, reason, ticket and expiry. Expired overrides stop applying.
+`RuntimeOverrideMetadata` retains owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
+when it passes.
 Configuration reload publishes local policy and generation changes before its notification returns. Other nodes reload
 their own configuration; the library does not distribute files. See [distributed guarantees](distributed-cache.md#policy-isolation).
 
 ## Seeing the effective policy
 
-`ICacheAdministrator.GetMethods()` shows effective immutable options, contributing sources, the source for each setting,
-and whether the L2 namespace is shared or private:
+`ICacheAdministrator.GetMethods()` shows each method's effective immutable options, where each setting comes from,
+and whether its L2 namespace is shared or private:
 
 <!-- snippet: configuration-diagnostics -->
 ```cs
@@ -186,9 +213,11 @@ foreach (var report in diagnostics.GetMethods())
 ```
 <!-- endSnippet -->
 
-`GetPolicy(methodId)` returns one method's report, and `FindBySource(sourceId)` the methods a layer configured. The
-source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtime-overrides`. The admin endpoint
-`GET /methodcache/methods` shows the same ([Monitoring](monitoring.md)).
+`SettingSources` is keyed by the `CacheEntryOptions` property name (`Duration`, `Tags`, `SlidingExpiration`,
+`RefreshAhead`, `Version`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Enabled`, `Distributed`), and each
+value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
+is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+([Monitoring](monitoring.md)).
 
 ## Validation
 
@@ -196,13 +225,16 @@ source ids are `attributes`, `startup-fluent`, `configuration-files` and `runtim
 |---------|------|---------|
 | `Duration` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
 | `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
-| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](../user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
+| `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
+| `Tags` | Not empty or whitespace; templates name parameters of the method | `[Cache]`: at build time. Code: `AddTags` throws an `ArgumentException` for an empty tag; templates at startup. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
 
-`CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. `CacheWhen<T>` is
-configured in code; a `CacheWhen<T>` for a type the method can't return, such as `CacheWhen<string>` on a method that
-returns `int`, throws an `InvalidOperationException` on the call instead of silently caching nothing. Cache callbacks
-and context predicates are not supported.
+`CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
+`With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
+`WithFailSafeRetryAfter`. `CacheWhen<T>` is configured in code for one method; a `CacheWhen<T>` for a type the method
+can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException` on the
+call instead of silently caching nothing. Cache callbacks and context predicates are not supported.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 

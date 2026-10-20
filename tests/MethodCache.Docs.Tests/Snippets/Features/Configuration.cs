@@ -44,7 +44,6 @@ namespace Docs.Configuration
         public static void FromConfiguration(WebApplicationBuilder builder)
         {
             // begin-snippet: configuration-appsettings
-            builder.Services.AddMethodCache();
             builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));   // the "MethodCache" section
             // end-snippet
         }

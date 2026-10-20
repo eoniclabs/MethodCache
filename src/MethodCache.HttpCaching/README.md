@@ -65,7 +65,7 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
     {
         options.EnableStaleIfError = true;           // serve the last response when the API is down
         options.EnableStaleWhileRevalidate = true;   // when the server sends stale-while-revalidate
-        options.AddDiagnosticHeaders = true;         // X-Cache: HIT, MISS, REVALIDATED, STALE or STALE-IF-ERROR
+        options.AddDiagnosticHeaders = true;         // Cache-Status: MethodCache; hit; ttl=42
     });
 ```
 <!-- endSnippet -->
@@ -81,16 +81,16 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `BackgroundRevalidationTimeout` | 10 seconds | Limit for a stale-while-revalidate refresh |
 | `EnableStaleIfError` | `false` | Serve stale when the request fails or returns 5xx, within `stale-if-error` or `MaxStaleIfError` |
 | `MaxStaleIfError` | 24 hours | How long a response may be stale and still be served on error, when the server sends no `stale-if-error` |
-| `MaxResponseSize` | 10 MB | Larger responses are not cached. A body without `Content-Length` is read up to this size, then streamed to the caller uncached; dispose the response to release it |
+| `MaxResponseBytes` | 10 MiB | Larger responses are not cached. A body without `Content-Length` is read up to this size, then streamed to the caller uncached; dispose the response to release it. Must be positive; `long.MaxValue` means no limit |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
-| `CacheableMethods` | GET, HEAD | POST, PUT, PATCH and DELETE are never cached, even if added. |
-| `AddDiagnosticHeaders` | `false` | Adds `X-Cache`, `X-Cache-Age` and `X-Cache-TTL` |
+| `AddDiagnosticHeaders` | `false` | Adds a `MethodCache` member to the RFC 9211 `Cache-Status` header, after any the origin's caches added: `MethodCache; hit; ttl=42` from the cache, or `MethodCache; fwd=uri-miss; fwd-status=200; stored` from the origin (`fwd` is `uri-miss`, `vary-miss`, `stale`, `request`, `method` or `bypass`). A stale response adds `detail=stale-while-revalidate` or `detail=stale-if-error`. `Age` is set either way |
 | `KeepCookies` | `false` | Preserve transport cookies and bypass all response caching; only-if-cached returns 504. Unsafe mutations still invalidate |
 | `Tags` | empty | Static tags in addition to the escaped client tag |
 | `AllowUnverifiedTransport` | `false` | Cache through a transport other than `SocketsHttpHandler` or `HttpClientHandler`. Only when it sends no automatic cookies or hidden caller identity |
 
-`no-cache` (from the server or in the request) always requires a successful revalidation, even with the stale
-options on. If reading a response body fails, the request fails; you never get a partly read body.
+Only GET and HEAD responses are cached. OPTIONS and TRACE go to the origin and change nothing; any other method,
+including one the cache doesn't know, invalidates the URL's cached responses when it succeeds. `no-cache` (from the
+server or in the request) always requires a successful revalidation, even with the stale options on. If reading a response body fails, the request fails; you never get a partly read body.
 
 See [HTTP caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/http-caching.md) for the freshness and revalidation rules, how
 writes invalidate, Core-owned storage, and how `AddHttpCaching()` handles cookies and transports.
@@ -125,7 +125,8 @@ shared with Core-only nodes and across entry formats. Graceful async disposal dr
 retries queued invalidations once through an open circuit breaker, and reports any lost count. Recovery is not
 durable across process exit. A failed generation read bypasses caching. An unconfirmed
 mutation throws `HttpCacheInvalidationException`; the origin may already have succeeded. Do not automatically
-repeat the origin mutation. Core owns bounded invalidation recovery after caller cancellation.
+repeat the origin mutation. A GET or HEAD whose answer replaces a stored response that can't be retired throws
+the same exception; it is safe to retry. Core owns bounded invalidation recovery after caller cancellation.
 
 `ICacheAdministrator` lists resident local HTTP representations, or a bounded register of at most 1024 historical
 L2 observations. `ObservedDistributed` is not verified presence or a global inventory. No bodies, credentials,
@@ -157,12 +158,12 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 
 | Instrument | Tags |
 |---|---|
-| `methodcache.requests` | `kind=http`, `name` (static client), `result` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error`) |
-| `methodcache.load.duration` (s) | `kind=http`, `name` for actual origin work, including background refresh |
+| `methodcache.requests` | `methodcache.kind=http`, `methodcache.http.client` (the static client name), `methodcache.result` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error`) |
+| `methodcache.load.duration` (s) | `methodcache.kind=http`, `methodcache.http.client` for actual origin work, including background refresh |
 | `methodcache.http.size` (By) | Actual resident HTTP storage cost |
 
 HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
 
 Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
 
-Named options are validated at host startup: sizes and freshness/retention durations must be non-negative (zero response size remains unlimited), and background revalidation timeout must be positive and at most 4,294,967,294 milliseconds. Stale-if-error respects the caller’s `max-age`, `min-fresh` and `max-stale` constraints.
+Named options are validated at host startup: `MaxResponseBytes` must be positive (`long.MaxValue` for no limit), freshness/retention durations must be non-negative, and background revalidation timeout must be positive and at most 4,294,967,294 milliseconds. Stale-if-error respects the caller’s `max-age`, `min-fresh` and `max-stale` constraints.

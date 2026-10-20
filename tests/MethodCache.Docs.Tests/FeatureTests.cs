@@ -99,6 +99,11 @@ public class FeatureTests(ITestOutputHelper output)
         var entry = Assert.Single(KeyExamples.ListMethod(provider.GetRequiredService<IMethodCacheKeys>(), provider.GetRequiredService<ICacheAdministrator>()));
         Assert.Equal(overload, entry.StoredKey);
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string)", entry.MethodId);
+
+        await KeyExamples.InvalidateMethod(provider.GetRequiredService<IMethodCacheKeys>(), provider.GetRequiredService<ICacheAdministrator>());
+        var remaining = provider.GetRequiredService<ICacheAdministrator>().ListEntries(storedKeyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.StoredKey).ToList();
+        Assert.DoesNotContain(overload, remaining);
+        Assert.Contains(versioned, remaining);
     }
 
     private sealed class Documents : IDocumentStore

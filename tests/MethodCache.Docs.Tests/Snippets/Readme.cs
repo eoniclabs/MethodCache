@@ -100,9 +100,9 @@ namespace Docs.Readme
         public static void Layers(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-configuration
-            builder.Services.AddMethodCache(config =>
-                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-            builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
+            builder.Services.AddMethodCache(config => config
+                .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5)))
+                .FromConfiguration(builder.Configuration));   // the "MethodCache" section wins over code
             // end-snippet
         }
 

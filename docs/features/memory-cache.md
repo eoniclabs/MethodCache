@@ -4,17 +4,18 @@
 
 The in-memory cache uses W-TinyLFU eviction: when it is full, it keeps the entries that are read often and
 evicts the rest, so a burst of one-off reads doesn't push out your hot data. Configure it with
-`MethodCacheMemoryOptions`:
+`mc.Memory(o => ...)`, which sets `MethodCacheMemoryOptions`:
 
 <!-- snippet: memory-options -->
 ```cs
-builder.Services.AddMethodCache(cache => cache.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-builder.Services.Configure<MethodCacheMemoryOptions>(o =>
-{
-    o.MaxItems = 50_000;                              // default 10,000
-    o.JitterMaxDuration = TimeSpan.FromSeconds(30);   // spread out entries created together
-    o.CacheNullValues = false;                        // a null result means "try again next time"
-});
+builder.Services.AddMethodCache(cache => cache
+    .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10)))
+    .Memory(o =>
+    {
+        o.MaxItems = 50_000;                              // default 10,000
+        o.JitterMaxDuration = TimeSpan.FromSeconds(30);   // spread out entries created together
+        o.CacheNullValues = false;                        // a null result means "try again next time"
+    }));
 ```
 <!-- endSnippet -->
 
@@ -52,11 +53,11 @@ Object sizes can't be measured reliably at runtime, so to bound the cache by mem
 
 <!-- snippet: memory-weigher -->
 ```cs
-builder.Services.Configure<MethodCacheMemoryOptions>(o =>
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
 {
     o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
     o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
-});
+}));
 ```
 <!-- endSnippet -->
 

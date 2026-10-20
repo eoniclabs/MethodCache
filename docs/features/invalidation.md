@@ -63,7 +63,7 @@ once the task has completed successfully.
 
 ## From code
 
-`ICacheManager` invalidates by tag, by key or by pattern:
+`ICacheManager` invalidates by tag or by key:
 
 <!-- snippet: invalidation-from-code -->
 ```cs
@@ -87,8 +87,11 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 - `IMethodCacheKeys.For` returns the key the generated decorator uses for that call, including overloads, versions,
   generic methods and keyed registrations; resolve `IMethodCacheKeys` from dependency injection. See
   [Building a key yourself](keys.md#building-a-key-yourself).
-- Invalidation matches exact tags. Attach a common tag to all entries in a group instead of using wildcard patterns.
-- The admin endpoints and `ICacheAdministrator` also invalidate by tag ([Monitoring](monitoring.md)).
+- Invalidation matches exact tags and keys; there are no wildcard patterns. Attach a common tag to all entries in a
+  group instead.
+- To remove every entry of one method, pass its id to `ICacheAdministrator.InvalidateMethodAsync`; get the id from
+  `IMethodCacheKeys.MethodId` ([Cache keys](keys.md#building-a-key-yourself)).
+- The admin endpoints and `ICacheAdministrator` also invalidate by tag and by method ([Monitoring](monitoring.md)).
 
 ## With several instances
 
