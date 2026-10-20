@@ -50,7 +50,7 @@ public class GeneratedTelemetryContractTests
         service.Update();
         Assert.Equal(3, service.Sync(42));
         Assert.Equal(3, inner.Calls);
-        var own = spans.Where(activity => activity.GetTagItem("name") is string method &&
+        var own = spans.Where(activity => activity.GetTagItem("methodcache.method") is string method &&
             method.Contains(nameof(IGeneratedTelemetryService), StringComparison.Ordinal)).ToArray();
         Assert.Equal(3, own.Length);
         Assert.All(own, activity => Assert.Equal("MethodCache.load", activity.OperationName));

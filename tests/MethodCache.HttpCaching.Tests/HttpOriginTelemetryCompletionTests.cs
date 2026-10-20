@@ -93,8 +93,8 @@ public class HttpOriginTelemetryCompletionTests
         Assert.Equal(success ? ActivityStatusCode.Unset : ActivityStatusCode.Error, loadActivity.Status);
         var duration = Assert.Single(durations);
         Assert.Equal(2, duration.Seconds);
-        Assert.Equal("http", Assert.Single(duration.Tags, tag => tag.Key == "kind").Value);
-        Assert.Equal("origin-probe", Assert.Single(duration.Tags, tag => tag.Key == "name").Value);
+        Assert.Equal("http", Assert.Single(duration.Tags, tag => tag.Key == "methodcache.kind").Value);
+        Assert.Equal("origin-probe", Assert.Single(duration.Tags, tag => tag.Key == "methodcache.http.client").Value);
         if (success) Assert.DoesNotContain(duration.Tags, tag => tag.Key == "error.type");
         else Assert.EndsWith(completion == "async-cancel" ? "TaskCanceledException" : "InvalidOperationException",
             (string)Assert.Single(duration.Tags, tag => tag.Key == "error.type").Value!);

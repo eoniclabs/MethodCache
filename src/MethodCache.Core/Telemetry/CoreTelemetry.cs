@@ -12,6 +12,34 @@ internal enum RequestResult : byte { Hit, Miss, Stale, Revalidated, Bypass, Erro
 internal readonly record struct CacheObservation(long LocalMethodEntries, long LocalHttpEntries,
     long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight);
 
+/// <summary>
+/// The attribute names on MethodCache's metrics and spans. They are part of the public contract: dashboards and
+/// alerts are built on them. All live under <c>methodcache.</c>, so they never collide with the application's or the
+/// collector's own attributes, or with a backend's built-in span fields such as <c>name</c> and <c>kind</c>.
+/// </summary>
+internal static class TelemetryAttributes
+{
+    /// <summary>What was cached: <c>method</c> (a generated method), <c>manual</c> (an <see cref="ICacheManager"/>
+    /// call by key) or <c>http</c> (an HttpClient response).</summary>
+    internal const string Kind = "methodcache.kind";
+    /// <summary>The method id of a generated method.</summary>
+    internal const string Method = "methodcache.method";
+    /// <summary>The HttpClient name of an HTTP request.</summary>
+    internal const string HttpClient = "methodcache.http.client";
+    /// <summary><c>true</c> on a <c>GetOrCreateManyAsync</c> batch, which reports one outcome for all its keys.</summary>
+    internal const string Bulk = "methodcache.bulk";
+    /// <summary>hit, miss, stale, revalidated, bypass or error.</summary>
+    internal const string Result = "methodcache.result";
+    /// <summary>key, tag, method or clear.</summary>
+    internal const string InvalidationType = "methodcache.invalidation.type";
+    /// <summary>Where an invalidation, or a queued one, is: local, distributed, queued, storage, publication and so on.</summary>
+    internal const string InvalidationStage = "methodcache.invalidation.stage";
+    /// <summary>The distributed cache operation: get, set, remove or invalidate.</summary>
+    internal const string Operation = "methodcache.operation";
+    /// <summary>The OpenTelemetry semantic-convention attribute for a failed operation's exception type.</summary>
+    internal const string ErrorType = "error.type";
+}
+
 // One instance per container. The container's IMeterFactory owns the meter; this service owns its source and callbacks.
 internal sealed class CoreTelemetry : IDisposable
 {
@@ -55,12 +83,46 @@ internal sealed class CoreTelemetry : IDisposable
         var meter = factory.Create(MethodCacheTelemetry.Name, version);
         Source = new ActivitySource(MethodCacheTelemetry.Name, version);
         _requests = meter.CreateCounter<long>("methodcache.requests", "{request}");
-        _loads = meter.CreateHistogram<double>("methodcache.load.duration", "s");
+        _loads = meter.CreateHistogram<double>("methodcache.load.duration", "s", description: null, tags: null, SecondsAdvice);
         _invalidations = meter.CreateCounter<long>("methodcache.invalidations", "{invalidation}");
-        _distributed = meter.CreateHistogram<double>("methodcache.distributed.duration", "s");
+        _distributed = meter.CreateHistogram<double>("methodcache.distributed.duration", "s", description: null, tags: null, SecondsAdvice);
         meter.CreateObservableUpDownCounter("methodcache.entries", ObserveEntries, "{entry}");
         meter.CreateObservableUpDownCounter("methodcache.http.size", () => Observe().LocalHttpBytes, "By");
         meter.CreateObservableUpDownCounter("methodcache.distributed.queue", ObserveQueues, "{invalidation}");
+    }
+
+    // Without advice an SDK falls back to its default buckets (0, 5, 10 ... 10000), made for milliseconds: every
+    // duration in seconds would land in the first one. These are the ones ASP.NET Core advises for
+    // http.server.request.duration.
+    private static readonly InstrumentAdvice<double> SecondsAdvice = new()
+    {
+        HistogramBucketBoundaries = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]
+    };
+
+    // ICacheManager calls by key reach telemetry with these names in place of a method id. They are not methods, so
+    // they are reported as kind=manual, the bulk one also as bulk=true, and with no method attribute.
+    internal const string ManualName = CacheKeyLookup.MethodName;
+    internal const string ManualBulkName = CacheKeyLookup.MethodName + ".Bulk";
+    private static readonly object BoxedTrue = true;
+    private static readonly KeyValuePair<string, object?> KindMethod = new(TelemetryAttributes.Kind, "method");
+    private static readonly KeyValuePair<string, object?> KindManual = new(TelemetryAttributes.Kind, "manual");
+    private static readonly KeyValuePair<string, object?> KindHttp = new(TelemetryAttributes.Kind, "http");
+    private static readonly KeyValuePair<string, object?> ManualBulk = new(TelemetryAttributes.Bulk, BoxedTrue);
+
+    /// <summary>
+    /// The kind attribute and the attribute that names what was cached: the method, the HTTP client, the bulk marker
+    /// for a manual batch, or none (<c>Key == null</c>) for a manual call.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static (KeyValuePair<string, object?> Kind, KeyValuePair<string, object?> Subject) Describe(string kind, string name)
+    {
+        if (kind == "http") return (KindHttp, new(TelemetryAttributes.HttpClient, name));
+        if (name.StartsWith(ManualName, StringComparison.Ordinal))
+        {
+            if (name.Length == ManualName.Length) return (KindManual, default);
+            if (string.Equals(name, ManualBulkName, StringComparison.Ordinal)) return (KindManual, ManualBulk);
+        }
+        return (KindMethod, new(TelemetryAttributes.Method, name));
     }
 
     internal bool RequestsEnabled => _requests.Enabled;
@@ -127,54 +189,60 @@ internal sealed class CoreTelemetry : IDisposable
     private IEnumerable<Measurement<long>> ObserveEntries()
     {
         var current = Observe();
-        yield return new Measurement<long>(current.LocalMethodEntries, new KeyValuePair<string, object?>("kind", "method"));
-        yield return new Measurement<long>(current.LocalHttpEntries, new KeyValuePair<string, object?>("kind", "http"));
+        yield return new Measurement<long>(current.LocalMethodEntries, KindMethod);
+        yield return new Measurement<long>(current.LocalHttpEntries, KindHttp);
     }
 
     private IEnumerable<Measurement<long>> ObserveQueues()
     {
         var queues = Volatile.Read(ref _disposed) == 0 ? Volatile.Read(ref _observeQueues)?.Invoke() ?? default : default;
-        yield return new Measurement<long>(queues?.Distributed ?? 0, new KeyValuePair<string, object?>("stage", "storage"));
-        yield return new Measurement<long>(queues?.Publication ?? 0, new KeyValuePair<string, object?>("stage", "publication"));
+        yield return new Measurement<long>(queues?.Distributed ?? 0, new KeyValuePair<string, object?>(TelemetryAttributes.InvalidationStage, "storage"));
+        yield return new Measurement<long>(queues?.Publication ?? 0, new KeyValuePair<string, object?>(TelemetryAttributes.InvalidationStage, "publication"));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void Request(string kind, string name, RequestResult result)
     {
-        if (_requests.Enabled)
-            _requests.Add(1, new("kind", kind), new("name", name), new("result", ResultName(result)));
+        if (!_requests.Enabled) return;
+        var (kindTag, subject) = Describe(kind, name);
+        var resultTag = new KeyValuePair<string, object?>(TelemetryAttributes.Result, ResultName(result));
+        if (subject.Key == null) _requests.Add(1, kindTag, resultTag);
+        else _requests.Add(1, kindTag, subject, resultTag);
     }
 
     internal void Invalidations(string type, string stage, long targets)
     {
         if (targets != 0 && _invalidations.Enabled)
-            _invalidations.Add(targets, new("type", type), new("stage", stage));
+            _invalidations.Add(targets, new(TelemetryAttributes.InvalidationType, type), new(TelemetryAttributes.InvalidationStage, stage));
     }
 
     internal TelemetryOperation? BeginLoad(string kind, string name, string? key = null, IReadOnlyCollection<string>? tags = null)
     {
         if (!_loads.Enabled && !Source.HasListeners()) return null;
+        var (kindTag, subject) = Describe(kind, name);
         var activity = Source.StartActivity("MethodCache.load", ActivityKind.Internal);
-        activity?.SetTag("kind", kind).SetTag("name", name);
+        activity?.SetTag(kindTag.Key, kindTag.Value);
+        if (subject.Key != null) activity?.SetTag(subject.Key, subject.Value);
         RecordIdentities(activity, key, tags);
-        return new TelemetryOperation(_loads.Enabled ? _loads : null, _time, activity,
-            new("kind", kind), new("name", name));
+        return new TelemetryOperation(_loads.Enabled ? _loads : null, _time, activity, kindTag, subject);
     }
 
     internal TelemetryOperation? BeginDistributed(string operation)
     {
         if (!_distributed.Enabled && !Source.HasListeners()) return null;
-        var activity = Source.StartActivity("MethodCache.distributed", ActivityKind.Client);
-        activity?.SetTag("operation", operation);
+        // Internal, not Client: the Redis and SqlClient instrumentations add the client spans (with db.* attributes)
+        // under it, one for each command it sends
+        var activity = Source.StartActivity("MethodCache.distributed", ActivityKind.Internal);
+        activity?.SetTag(TelemetryAttributes.Operation, operation);
         return new TelemetryOperation(_distributed.Enabled ? _distributed : null, _time, activity,
-            new("operation", operation));
+            new(TelemetryAttributes.Operation, operation));
     }
 
     internal Activity? BeginInvalidation(string type, string[]? keys = null, string[]? tags = null)
     {
         if (!Source.HasListeners()) return null;
         var activity = Source.StartActivity("MethodCache.invalidate", ActivityKind.Internal);
-        activity?.SetTag("type", type);
+        activity?.SetTag(TelemetryAttributes.InvalidationType, type);
         if (activity?.IsAllDataRequested == true)
         {
             if (_recordKeys && keys != null) activity.SetTag("methodcache.keys", keys.Select(RecordedKey).ToArray());
@@ -237,7 +305,7 @@ internal sealed class TelemetryOperation : IDisposable
     {
         var type = error.GetType().FullName ?? error.GetType().Name;
         _errorType = type;
-        _activity?.SetTag("error.type", type).SetStatus(ActivityStatusCode.Error);
+        _activity?.SetTag(TelemetryAttributes.ErrorType, type).SetStatus(ActivityStatusCode.Error);
     }
     /// <inheritdoc />
     public void Dispose()
@@ -251,12 +319,12 @@ internal sealed class TelemetryOperation : IDisposable
             if (_second.Key == null)
             {
                 if (_errorType == null) _duration.Record(seconds, _first);
-                else _duration.Record(seconds, _first, new("error.type", _errorType));
+                else _duration.Record(seconds, _first, new(TelemetryAttributes.ErrorType, _errorType));
             }
             else
             {
                 if (_errorType == null) _duration.Record(seconds, _first, _second);
-                else _duration.Record(seconds, _first, _second, new("error.type", _errorType));
+                else _duration.Record(seconds, _first, _second, new(TelemetryAttributes.ErrorType, _errorType));
             }
         }
         _activity?.Dispose();

@@ -289,8 +289,8 @@ public static class OpenTelemetryCheck
             if (instrument.Name != "methodcache.requests") return;
             foreach (var tag in tags)
             {
-                if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
-                if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
+                if (tag.Key == "methodcache.result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
+                if (tag.Key == "methodcache.result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
             }
         });
         meters.Start();
