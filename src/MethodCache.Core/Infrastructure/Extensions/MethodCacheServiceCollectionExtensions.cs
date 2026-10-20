@@ -51,6 +51,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<PolicySourceRegistration>(_ => new PolicySourceRegistration(
                 new FluentPolicySource(builder.Configuration.BuildMethodPolicies()), PolicySourcePriority.StartupFluent));
             var validation = GetRegistrationValidation(services);
+            validation.ConfiguresDistributed |= builder.ConfiguresDistributed;
             validation.CachedTypes.UnionWith(modules.SelectMany(static m => m.DeclaredServices));
             validation.Accepted.UnionWith(GetDecoratedRegistrations(services));
             return services;
@@ -122,7 +123,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
                 sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>()));
             services.TryAddSingleton(new GeneratedParameters());
-            services.TryAddSingleton(static provider => new RegistrationValidationState(provider.GetService<RegistrationValidation>()));
+            services.TryAddSingleton(static provider => new RegistrationValidationState(
+                provider.GetService<RegistrationValidation>(), provider.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Registration")));
             AddDefaultCacheManager(services);
             services.TryAddSingleton<ICacheKeyGenerator, FastHashKeyGenerator>();
             services.TryAddSingleton(static sp => new DecoratorServices(
@@ -212,6 +214,23 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(cacheFactory);
+
+            // UseRedis and UseSqlServer both end here. A second provider would take over storage while the first
+            // one's backplane stayed, so it is rejected; the same provider again only adds to its options.
+            var provider = cacheFactory.Method.Module.Assembly;
+            if (services.Select(static d => d.ImplementationInstance).OfType<DistributedCacheProvider>().FirstOrDefault() is { } existing)
+            {
+                if (existing.Assembly != provider)
+                {
+                    throw new InvalidOperationException(
+                        $"MethodCache can use one distributed cache (L2), but two were added: one from {existing.Assembly.GetName().Name} " +
+                        $"and one from {provider.GetName().Name}. Call only one of UseRedis or UseSqlServer.");
+                }
+            }
+            else
+            {
+                services.AddSingleton(new DistributedCacheProvider(provider));
+            }
 
             services.AddKeyedSingleton<IDistributedCache>(OwnDistributedCacheKey, (sp, _) => cacheFactory(sp));
             return services.AddMethodCacheDistributedCache(configure);
@@ -675,10 +694,17 @@ namespace Microsoft.Extensions.DependencyInjection
             }
         }
 
+        /// <summary>The distributed cache provider (L2) registered, named by the assembly that registered it.</summary>
+        private sealed record DistributedCacheProvider(Assembly Assembly);
+
         internal sealed class RegistrationValidation(IServiceCollection services)
         {
             internal HashSet<Type> CachedTypes { get; } = [];
             internal HashSet<ServiceDescriptor> Accepted { get; } = [];
+
+            /// <summary>Whether <c>mc.Distributed(...)</c> was called.</summary>
+            internal bool ConfiguresDistributed { get; set; }
+
             internal void Validate()
             {
                 foreach (var descriptor in services)
@@ -687,16 +713,41 @@ namespace Microsoft.Extensions.DependencyInjection
                         !Accepted.Contains(descriptor))
                         throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache.");
             }
+
+            /// <summary>
+            /// The settings that only apply to a distributed cache, when none is registered: <c>mc.Distributed(...)</c>
+            /// and a serializer chosen with <c>mc.UseMessagePack()</c> or <c>mc.UseJson()</c>. Null when there are none.
+            /// </summary>
+            internal string? UnusedDistributedSettings()
+            {
+                if (services.Any(static d => d.ServiceType == typeof(DistributedCacheLayer))) return null;
+                var serializer = services.Any(static d => d.IsKeyedService && d.ServiceType == typeof(ISerializer) && Equals(d.ServiceKey, OwnDistributedCacheKey));
+                return (ConfiguresDistributed, serializer) switch
+                {
+                    (true, true) => "Distributed(...) and the serializer chosen with UseMessagePack or UseJson do",
+                    (true, false) => "Distributed(...) does",
+                    (false, true) => "The serializer chosen with UseMessagePack or UseJson does",
+                    _ => null
+                };
+            }
         }
-        internal sealed class RegistrationValidationState(RegistrationValidation? specification)
+        internal sealed class RegistrationValidationState(RegistrationValidation? specification, ILogger? logger = null)
         {
             private readonly object _gate = new();
             private bool _validated;
+            private bool _warned;
             internal void Validate()
             {
                 lock (_gate)
                 {
                     if (_validated) return;
+                    if (!_warned)
+                    {
+                        _warned = true;
+                        if (specification?.UnusedDistributedSettings() is { } unused)
+                            logger?.LogWarning("{Settings} nothing without a distributed cache: add UseRedis(...) or UseSqlServer(...) to AddMethodCache, or remove it.", unused);
+                    }
+
                     specification?.Validate();
                     _validated = true;
                 }
