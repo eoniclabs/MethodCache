@@ -84,7 +84,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         user.DefaultRequestHeaders.Add(AuthHeader, "someone");
 
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/methodcache/entries")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await user.DeleteAsync("/methodcache/entries")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsJsonAsync("/methodcache/clear", new { })).StatusCode);
         Assert.Equal(3, (await _app.Services.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).LocalMethodEntries);
     }
 
@@ -105,9 +105,9 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Entries_FilterByPrefixAndTag_WithoutValues()
+    public async Task Entries_FilterByStoredKeyPrefixAndTag_WithoutValues()
     {
-        var byPrefix = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?prefix=users:");
+        var byPrefix = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?storedKeyPrefix=users:");
         var byTag = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?tag=orders");
 
         Assert.Equal(new[] { "users:1", "users:2" }, byPrefix!.Select(e => e.StoredKey));
@@ -130,10 +130,10 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Entry_CanBeReadAndRemoved()
     {
-        var found = await _client.GetAsync("/methodcache/entry?key=users:1");
-        var removed = await _client.DeleteAsync("/methodcache/entry?key=users:1");
-        var gone = await _client.GetAsync("/methodcache/entry?key=users:1");
-        var removedAgain = await _client.DeleteAsync("/methodcache/entry?key=users:1");
+        var found = await _client.GetAsync("/methodcache/entry?storedKey=users:1");
+        var removed = await _client.DeleteAsync("/methodcache/entry?storedKey=users:1");
+        var gone = await _client.GetAsync("/methodcache/entry?storedKey=users:1");
+        var removedAgain = await _client.DeleteAsync("/methodcache/entry?storedKey=users:1");
 
         Assert.Equal(HttpStatusCode.OK, found.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
@@ -162,11 +162,22 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Clear_RemovesEverything()
     {
-        var response = await _client.DeleteAsync("/methodcache/entries");
+        var response = await _client.PostAsJsonAsync("/methodcache/clear", new { });
         var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(0, stats!.LocalMethodEntries);
+    }
+
+    [Fact]
+    public async Task DeleteEntries_IsNoLongerARoute_AndRemovesNothing()
+    {
+        // DELETE entries?tag=orders, the natural guess after GET entries?tag=orders, used to empty the whole cache
+        var response = await _client.DeleteAsync("/methodcache/entries?tag=orders");
+        var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.Equal(3, stats!.LocalMethodEntries);
     }
 
     [Fact]

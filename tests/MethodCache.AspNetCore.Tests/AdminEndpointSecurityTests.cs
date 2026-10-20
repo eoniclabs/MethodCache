@@ -84,7 +84,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         Assert.Equal(
             new[]
             {
-                "DELETE /ops/cache/entries",
+                "POST /ops/cache/clear",
                 "GET /ops/cache/entries",
                 "DELETE /ops/cache/entry",
                 "GET /ops/cache/entry",
@@ -134,8 +134,15 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("GET", "/entry")]                 // key missing
-    [InlineData("DELETE", "/entry")]              // key missing
+    [InlineData("GET", "/entry")]                 // storedKey missing
+    [InlineData("DELETE", "/entry")]              // storedKey missing
+    [InlineData("GET", "/entry?storedKey=")]
+    [InlineData("DELETE", "/entry?key=users:1")]  // the old name of storedKey
+    [InlineData("GET", "/entries?prefix=users:")] // the old name of storedKeyPrefix
+    [InlineData("GET", "/entries?tags=users")]
+    [InlineData("GET", "/stats?verbose=true")]
+    [InlineData("POST", "/clear?tag=users")]      // clear takes no filter; it must not look as if it did
+    [InlineData("POST", "/invalidate?tag=users")]
     [InlineData("GET", "/entries?limit=0")]
     [InlineData("GET", "/entries?limit=-1")]
     [InlineData("GET", "/entries?limit=1001")]
@@ -166,20 +173,85 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("application/x-www-form-urlencoded", "tags=users")]
-    [InlineData("text/plain", "{\"tags\":[\"users\"]}")]
-    [InlineData("multipart/form-data; boundary=x", "--x\r\nContent-Disposition: form-data; name=\"tags\"\r\n\r\nusers\r\n--x--")]
-    public async Task Invalidate_AcceptsOnlyJson_SoAPlainCrossSiteFormCannotCallIt(string contentType, string body)
+    [InlineData("/invalidate", "application/x-www-form-urlencoded", "tags=users")]
+    [InlineData("/invalidate", "text/plain", "{\"tags\":[\"users\"]}")]
+    [InlineData("/invalidate", "multipart/form-data; boundary=x", "--x\r\nContent-Disposition: form-data; name=\"tags\"\r\n\r\nusers\r\n--x--")]
+    [InlineData("/clear", "application/x-www-form-urlencoded", "")]
+    [InlineData("/clear", "text/plain", "{}")]
+    [InlineData("/clear", "multipart/form-data; boundary=x", "--x--")]
+    public async Task PostEndpoints_AcceptOnlyJson_SoAPlainCrossSiteFormCannotCallThem(string path, string contentType, string body)
     {
         // A browser sends these content types cross-site without a CORS preflight; application/json needs one
         using var client = Client("root", "Admin");
         using var content = new StringContent(body, Encoding.UTF8);
         content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
 
-        var response = await client.PostAsync(Prefix + "/invalidate", content);
+        var response = await client.PostAsync(Prefix + path, content);
 
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
         Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
+    }
+
+    [Fact]
+    public async Task Clear_WithoutABody_IsRejected_SoACrossSiteRequestCannotCallIt()
+    {
+        // A cross-site fetch without a body (and so without a content type) needs no CORS preflight either
+        using var client = Client("root", "Admin");
+
+        var response = await client.PostAsync(Prefix + "/clear", content: null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
+    }
+
+    [Theory]
+    [InlineData("{\"tags\":[\"users\"]}")]
+    [InlineData("{\"storedKeyPrefix\":\"users:\"}")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    public async Task Clear_WithAFilterOrOtherBody_IsRejected_RatherThanClearingEverything(string body)
+    {
+        // Clear takes no filter: { "tags": [...] } must not be read as a filtered removal that empties the whole cache
+        using var client = Client("root", "Admin");
+
+        var response = await client.PostAsync(Prefix + "/clear", new StringContent(body, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
+    }
+
+    [Fact]
+    public async Task QueryParameterNames_IgnoreCase_LikeQueryBinding()
+    {
+        using var client = Client("root", "Admin");
+
+        var response = await client.GetAsync(Prefix + "/entry?StoredKey=users:1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Clear_WithAJsonBody_RemovesEverything()
+    {
+        using var client = Client("root", "Admin");
+
+        var response = await client.PostAsJsonAsync(Prefix + "/clear", new { });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(0, (await Administrator.GetStatsAsync()).LocalMethodEntries);
+    }
+
+    [Fact]
+    public async Task UnknownQueryParameter_IsNamedInTheProblem()
+    {
+        using var client = Client("root", "Admin");
+
+        var response = await client.GetAsync(Prefix + "/entries?prefix=users:");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = problem.RootElement.GetProperty("errors");
+        Assert.Contains("storedKeyPrefix", errors.GetProperty("prefix")[0].GetString());
     }
 
     [Fact]
@@ -188,7 +260,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         using var client = Client("root", "Admin");
 
         var list = await client.GetStringAsync(Prefix + "/entries");
-        var one = await client.GetStringAsync(Prefix + "/entry?key=users:1");
+        var one = await client.GetStringAsync(Prefix + "/entry?storedKey=users:1");
 
         Assert.Contains("users:1", list);
         Assert.DoesNotContain(SecretValue, list);
@@ -196,7 +268,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
         using var metadata = JsonDocument.Parse(one);
         Assert.Equal("Method", metadata.RootElement.GetProperty("kind").GetString());
         Assert.Equal("LocalMemory", metadata.RootElement.GetProperty("storage").GetString());
-        var entry = await client.GetFromJsonAsync<Dictionary<string, object>>(Prefix + "/entry?key=users:1");
+        var entry = await client.GetFromJsonAsync<Dictionary<string, object>>(Prefix + "/entry?storedKey=users:1");
         Assert.Equal(
             new[] { "age", "client", "description", "kind", "sizeBytes", "storage", "storedKey", "tags", "timeToLive", "valueType", "weight" },
             entry!.Keys.OrderBy(k => k, StringComparer.Ordinal));
@@ -210,7 +282,7 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
     {
         using var client = Client("root", "Admin");
 
-        var response = await client.DeleteAsync(Prefix + "/entry?key=" + Uri.EscapeDataString(key));
+        var response = await client.DeleteAsync(Prefix + "/entry?storedKey=" + Uri.EscapeDataString(key));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(2, (await Administrator.GetStatsAsync()).LocalMethodEntries);
