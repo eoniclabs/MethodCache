@@ -5,7 +5,7 @@ namespace MethodCache.Redis;
 /// <summary>
 /// Options for using Redis as MethodCache's distributed cache.
 /// </summary>
-public class RedisOptions
+public sealed class RedisOptions
 {
     /// <summary>
     /// The StackExchange.Redis configuration string, for example <c>localhost:6379</c>. MethodCache opens its own

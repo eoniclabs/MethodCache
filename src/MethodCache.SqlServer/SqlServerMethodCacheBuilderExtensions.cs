@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Registers SQL Server as MethodCache's distributed cache.
 /// </summary>
-public static class MethodCacheSqlServerServiceCollectionExtensions
+public static class SqlServerMethodCacheBuilderExtensions
 {
     /// <summary>
     /// Uses SQL Server as MethodCache's distributed cache: results are shared between instances, and invalidations

@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Registers Redis as MethodCache's distributed cache.
 /// </summary>
-public static class MethodCacheRedisServiceCollectionExtensions
+public static class RedisMethodCacheBuilderExtensions
 {
     /// <summary>
     /// Uses Redis as MethodCache's distributed cache: results are shared between instances, and invalidations

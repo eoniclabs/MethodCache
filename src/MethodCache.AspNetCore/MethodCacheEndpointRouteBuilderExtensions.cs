@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Microsoft.AspNetCore.Builder;
 
 /// <summary>Maps HTTP endpoints for inspecting and changing the cache at runtime.</summary>
-public static class MethodCacheAdminEndpoints
+public static class MethodCacheEndpointRouteBuilderExtensions
 {
     private const int MaxListLimit = 1000;
 

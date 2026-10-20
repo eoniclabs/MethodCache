@@ -7,7 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Registers MessagePack serialization for MethodCache.
 /// </summary>
-public static class MethodCacheMessagePackServiceCollectionExtensions
+public static class MessagePackMethodCacheBuilderExtensions
 {
     /// <summary>
     /// Stores cached values in the distributed cache (Redis or SQL Server) as MessagePack instead of JSON, with the

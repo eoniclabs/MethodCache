@@ -53,7 +53,7 @@ public class SqlServerServiceCollectionExtensionsTests
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
-        var cacheOptions = MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(provider.GetRequiredService<IOptions<SqlServerOptions>>().Value);
+        var cacheOptions = SqlServerMethodCacheBuilderExtensions.CacheOptions(provider.GetRequiredService<IOptions<SqlServerOptions>>().Value);
         cacheOptions.ConnectionString.Should().Be(ConnectionString);
         cacheOptions.SchemaName.Should().Be("cache");
         cacheOptions.TableName.Should().Be("Entries");
