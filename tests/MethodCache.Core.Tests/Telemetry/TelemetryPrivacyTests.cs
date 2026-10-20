@@ -122,7 +122,7 @@ public class TelemetryPrivacyTests
     }
 
     [Fact]
-    public async Task InvalidConfigurationReload_LogsOnlyTheErrorType_AndRetainsPreviousPolicy()
+    public async Task InvalidConfigurationReload_LogsThePathButNotTheValue_AndRetainsPreviousPolicy()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -140,7 +140,7 @@ public class TelemetryPrivacyTests
         configuration.Reload();
         var message = Assert.Single(logs.Messages);
         Assert.DoesNotContain(Canary, message);
-        Assert.Contains(typeof(InvalidOperationException).FullName!, message);
+        Assert.Contains("Sample.Read:Duration' is not a positive time span", message);
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
     }
 

@@ -283,6 +283,7 @@ MethodCache.MethodCacheBuilder.Memory(System.Action<MethodCache.MethodCacheMemor
 MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.ValueTask<TResult>>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.MethodCacheBuilder.Method<TService, TResult>(System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! method) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.MethodCacheBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 MethodCache.MethodCacheBuilder.UseJson() -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.JsonSerializerOptions! options) -> MethodCache.MethodCacheBuilder!
 MethodCache.MethodCacheBuilder.UseJson(System.Text.Json.Serialization.JsonSerializerContext! context) -> MethodCache.MethodCacheBuilder!

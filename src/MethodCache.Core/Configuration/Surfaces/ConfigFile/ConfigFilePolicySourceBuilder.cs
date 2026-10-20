@@ -323,7 +323,8 @@ internal static class ConfigFilePolicySourceBuilder
     }
 
     private static InvalidOperationException InvalidValue(IConfigurationSection section, string name, string value, string expected)
-        => new($"MethodCache configuration '{section.Path}:{name}' has value '{value}', which is not {expected}.");
+        => ConfigurationValueError.Create($"{section.Path}:{name}", $"is not {expected}",
+            $"MethodCache configuration '{section.Path}:{name}' has value '{value}', which is not {expected}.");
 
     private static List<string>? ReadValues(IConfigurationSection section)
     {

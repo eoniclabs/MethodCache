@@ -65,7 +65,8 @@ internal sealed class MethodCacheKeyRecorder(
                 "and keyed services with their key, before AddMethodCache.");
         }
 
-        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(found.KeySuffix));
+        // Of several registrations under one service key, the last one: the one GetService and GetKeyedService return
+        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(found.RecordingSuffix(root)));
         try
         {
             return found.Registration.Decorate(new MethodCacheServiceCollectionExtensions.RegistrationServiceProvider(root, services), null!);
