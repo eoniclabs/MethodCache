@@ -115,7 +115,7 @@ public class AdminDistributedRemovalTests
             _ => await client.PostAsync("/methodcache/invalidate", new StringContent("{\"tags\":[\"users\"]}", System.Text.Encoding.UTF8, "application/json"))
         };
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Distributed > 0);
+        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Queued > 0);
     }
 
     private sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>

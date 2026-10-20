@@ -25,7 +25,7 @@ public class DistributedScopeFailureTests
         Assert.False((await layer.TryGetAsync<int>("key")).Found);
         Assert.False(await layer.CheckAvailableAsync(default));
         Assert.Equal(1, attempts);
-        Assert.Equal(1, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(1, layer.GetInvalidationQueues().Queued);
     }
 
     [Fact]
@@ -39,10 +39,10 @@ public class DistributedScopeFailureTests
             .Returns(call => unavailable ? ValueTask.FromException<TimeSpan>(new IOException("offline")) : new ValueTask<TimeSpan>(call.Arg<TimeSpan>()));
         await using var layer = new DistributedCacheLayer(backend, new JsonCacheSerializer(), new DistributedCacheOptions(), timeProvider: clock);
         await layer.WriteAsync("key", 2, null, layer.Now, TimeSpan.FromMinutes(1), replaces: true);
-        Assert.Equal(1, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(1, layer.GetInvalidationQueues().Queued);
         unavailable = false;
         await layer.FlushAsync(force: true);
-        Assert.Equal(0, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(0, layer.GetInvalidationQueues().Queued);
         await backend.Received().WriteInvalidationStampAsync(Arg.Any<string>(), Arg.Any<long>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
     }
     [Fact]

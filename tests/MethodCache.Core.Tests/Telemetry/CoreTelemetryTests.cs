@@ -97,9 +97,9 @@ public class CoreTelemetryTests
         await using var layer = new MethodCache.Core.Runtime.Distributed.DistributedCacheLayer(backend,
             new MethodCache.Extensibility.JsonCacheSerializer(), new DistributedCacheOptions(), telemetry: provider.GetRequiredService<CoreTelemetry>());
         await layer.WriteAsync("write", 42, null, layer.Now, TimeSpan.FromMinutes(1));
-        Assert.Equal(1, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(1, layer.GetInvalidationQueues().Queued);
         await layer.FlushAsync(force: true);
-        Assert.Equal(0, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(0, layer.GetInvalidationQueues().Queued);
         Assert.Empty(invalidations);
     }
 

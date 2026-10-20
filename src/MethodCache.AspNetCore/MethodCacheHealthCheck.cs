@@ -46,8 +46,8 @@ internal sealed class MethodCacheHealthCheck : IHealthCheck
                 data["observedDistributedEntries"] = stats.ObservedDistributedEntries;
             }
             var queues = transport?.GetInvalidationQueues() ?? admin?.GetInvalidationQueues() ?? new InvalidationQueues(0, 0);
-            data["invalidationQueued"] = queues.Distributed;
-            data["publicationQueued"] = queues.Publication;
+            data["queued"] = queues.Queued;
+            data["publicationQueued"] = queues.PublicationQueued;
             var state = transport?.BackplaneStatus ?? BackplaneState.NotConfigured;
             data["backplaneStatus"] = StateName(state);
             bool? distributed = transport != null
@@ -56,7 +56,7 @@ internal sealed class MethodCacheHealthCheck : IHealthCheck
             if (distributed.HasValue) data["distributedCacheAvailable"] = distributed.Value;
             if (transport?.HasIncompatibleScope == true)
                 return HealthCheckResult.Unhealthy("The distributed cache scope has an incompatible schema or retention contract. This node uses memory only; repair the configuration and restart, or use a new KeyPrefix.", data: data);
-            var degraded = distributed == false || queues.Distributed != 0 || queues.Publication != 0 ||
+            var degraded = distributed == false || queues.Queued != 0 || queues.PublicationQueued != 0 ||
                 state is BackplaneState.Unknown or BackplaneState.Connecting or BackplaneState.Disconnected;
             if (!degraded && transport?.HasRetentionMismatch == true)
                 return HealthCheckResult.Degraded("TagRetention differs from the established scope contract; MethodCache uses the established retention.", data: data);

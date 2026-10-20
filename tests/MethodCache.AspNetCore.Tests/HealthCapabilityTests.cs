@@ -89,7 +89,7 @@ public class HealthCapabilityTests
         Assert.Equal(1, removed.PublicationQueued);
         var result = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
         var data = Assert.Single(result.Entries).Value.Data;
-        Assert.Equal(0, data["invalidationQueued"]);
+        Assert.Equal(0, data["queued"]);
         Assert.Equal(1, data["publicationQueued"]);
         Assert.Equal(true, data["distributedCacheAvailable"]);
         Assert.Equal(HealthStatus.Degraded, result.Status);

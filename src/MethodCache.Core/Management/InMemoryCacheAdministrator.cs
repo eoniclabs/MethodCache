@@ -116,7 +116,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
     {
         cancellationToken.ThrowIfCancellationRequested();
         await _cache.ClearAsync().ConfigureAwait(false);
-        if (_cache.GetInvalidationQueues().Distributed != 0)
+        if (_cache.GetInvalidationQueues().Queued != 0)
             throw new CacheInvalidationQueuedException("Cache clear is queued for distributed recovery.");
     }
 
