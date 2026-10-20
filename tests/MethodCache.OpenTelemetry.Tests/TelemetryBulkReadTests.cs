@@ -60,7 +60,7 @@ public sealed class TelemetryBulkReadTests : IDisposable
             (keys, _) =>
             {
                 requested.AddRange(keys);
-                return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, _ => "from factory"));
+                return ValueTask.FromResult<IReadOnlyDictionary<string, string>>(keys.ToDictionary(key => key, _ => "from factory"));
             },
             options => options.WithDuration(Duration));
 

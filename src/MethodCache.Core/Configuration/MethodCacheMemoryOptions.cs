@@ -5,7 +5,7 @@ namespace MethodCache
     /// <summary>
     /// Configuration options for the in-memory cache.
     /// </summary>
-    public class MethodCacheMemoryOptions
+    public sealed class MethodCacheMemoryOptions
     {
         private long _maxItems = 10000;
 

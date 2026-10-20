@@ -19,10 +19,10 @@ public class TelemetryRequestTests
         await cache.GetOrCreateManyAsync<int>(["a", "b"], (keys, _) =>
         {
             clock.Advance(TimeSpan.FromMilliseconds(2));
-            return ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 7));
+            return ValueTask.FromResult<IReadOnlyDictionary<string, int>>(keys.ToDictionary(key => key, _ => 7));
         });
         await cache.GetOrCreateManyAsync<int>(["a", "b"], (_, _) => throw new Exception("must hit"));
-        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _) => ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
+        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _) => ValueTask.FromResult<IReadOnlyDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<int>(["d"], (_, _) => throw new InvalidOperationException("failed")));
         Assert.Equal(new[] { "bypass", "error", "hit", "miss" }, recorded.Requests.Order(StringComparer.Ordinal));
         Assert.Equal(3, recorded.Loads.Count);

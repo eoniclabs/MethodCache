@@ -13,7 +13,7 @@ public class BulkInvalidationReviewTests
         using var cache = new InMemoryCacheManager();
         var decorated = new CountingDecorator(cache);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var candidates = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var candidates = new TaskCompletionSource<IReadOnlyDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var batch = decorated.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {
             started.SetResult();
@@ -35,7 +35,7 @@ public class BulkInvalidationReviewTests
             (_, _) => throw new InvalidOperationException("source failed")));
         await cache.InvalidateByKeysAsync("key");
         var fresh = await cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
-            ValueTask.FromResult<IDictionary<string, string>>(new Dictionary<string, string> { ["key"] = "new" }));
+            ValueTask.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string> { ["key"] = "new" }));
         Assert.Equal("new", fresh["key"]);
     }
 
@@ -47,11 +47,11 @@ public class BulkInvalidationReviewTests
     {
         using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var result = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var result = new TaskCompletionSource<IReadOnlyDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var load = cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {
             started.SetResult();
-            return new ValueTask<IDictionary<string, string>>(result.Task);
+            return new ValueTask<IReadOnlyDictionary<string, string>>(result.Task);
         }, o => o.AddTags("tag")).AsTask();
         await started.Task;
 

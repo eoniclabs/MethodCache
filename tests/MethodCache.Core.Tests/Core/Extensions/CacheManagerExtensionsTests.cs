@@ -106,18 +106,18 @@ namespace MethodCache.Core.Tests.Core.Extensions
             await cacheManager.GetOrCreateAsync("user:existing", static _ => new ValueTask<string>("cached"));
 
             var factoryCalls = 0;
-            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
+            ValueTask<IReadOnlyDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
             {
                 factoryCalls++;
                 Assert.Equal(new[] { "user:missing", "user:another" }, missing);
 
-                IDictionary<string, string> results = new Dictionary<string, string>
+                IReadOnlyDictionary<string, string> results = new Dictionary<string, string>
                 {
                     ["user:missing"] = "value-missing",
                     ["user:another"] = "value-another"
                 };
 
-                return new ValueTask<IDictionary<string, string>>(results);
+                return new ValueTask<IReadOnlyDictionary<string, string>>(results);
             }
 
             // Act
@@ -142,14 +142,14 @@ namespace MethodCache.Core.Tests.Core.Extensions
         {
             var cacheManager = new CapturingCacheManager();
 
-            ValueTask<IDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
+            ValueTask<IReadOnlyDictionary<string, string>> Factory(IReadOnlyList<string> missing, CancellationToken token)
             {
-                IDictionary<string, string> results = new Dictionary<string, string>
+                IReadOnlyDictionary<string, string> results = new Dictionary<string, string>
                 {
                     ["report:1"] = "cached-report"
                 };
 
-                return new ValueTask<IDictionary<string, string>>(results);
+                return new ValueTask<IReadOnlyDictionary<string, string>>(results);
             }
 
             await cacheManager.GetOrCreateManyAsync(
@@ -164,6 +164,31 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
+        public async Task GetOrCreateManyAsync_ReusedOptions_ApplyToEveryCall()
+        {
+            using var cache = new InMemoryCacheManager(Microsoft.Extensions.Options.Options.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false }));
+            var options = new CacheEntryOptions.Builder().WithVersion(2).AddTags("reports").Build();
+            var calls = 0;
+            ValueTask<IReadOnlyDictionary<string, int>> Factory(IReadOnlyList<string> missing, CancellationToken token)
+            {
+                calls++;
+                return new(missing.ToDictionary(key => key, _ => calls));
+            }
+
+            var first = await cache.GetOrCreateManyAsync(["a", "b"], Factory, options);
+            var second = await cache.GetOrCreateManyAsync(["a", "b"], Factory, options);
+            await cache.InvalidateTagsAsync(["reports"], CancellationToken.None);
+            var third = await cache.GetOrCreateManyAsync(["a"], Factory, options);
+
+            Assert.Equal(1, first["a"]);
+            Assert.Equal(1, second["b"]);
+            Assert.Equal(2, third["a"]);
+            Assert.False((await cache.TryGetAsync<int>("b", version: 2)).Found);
+            Assert.Equal(2, (await cache.TryGetAsync<int>("a", version: 2)).Value);
+            await Assert.ThrowsAsync<ArgumentNullException>(() => cache.GetOrCreateManyAsync(["a"], Factory, (CacheEntryOptions)null!).AsTask());
+        }
+
+        [Fact]
         public async Task GetOrCreateManyAsync_ThrowsWhenFactoryOmitsKey()
         {
             var cacheManager = new MockCacheManager();
@@ -171,7 +196,7 @@ namespace MethodCache.Core.Tests.Core.Extensions
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 await cacheManager.GetOrCreateManyAsync(
                     new[] { "missing" },
-                    (missing, _) => new ValueTask<IDictionary<string, string>>(new Dictionary<string, string>())));
+                    (missing, _) => new ValueTask<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>())));
         }
 
         [Fact]

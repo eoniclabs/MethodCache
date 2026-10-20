@@ -164,21 +164,23 @@ namespace MethodCache
             /// they are added to the tags of its <c>[Cache]</c> attribute and of the other layers, so
             /// <c>[CacheInvalidate]</c> still reaches the entry; call <see cref="ClearTags"/> first to replace them.
             /// </summary>
+            /// <exception cref="ArgumentNullException"><paramref name="tags"/> is <c>null</c>.</exception>
+            /// <exception cref="ArgumentException">
+            /// A tag is <c>null</c>, empty or whitespace, which <see cref="ICacheManager.InvalidateTagsAsync"/> rejects
+            /// too, so no invalidation could ever reach it. No tag is added then.
+            /// </exception>
             public Builder AddTags(params string[] tags)
             {
-                if (tags == null)
-                {
-                    throw new ArgumentNullException(nameof(tags));
-                }
-
+                ArgumentNullException.ThrowIfNull(tags);
                 foreach (var tag in tags)
                 {
-                    if (!string.IsNullOrWhiteSpace(tag))
+                    if (string.IsNullOrWhiteSpace(tag))
                     {
-                        _tags.Add(tag);
+                        throw new ArgumentException("A cache tag cannot be null or whitespace.", nameof(tags));
                     }
                 }
 
+                _tags.AddRange(tags);
                 return this;
             }
 

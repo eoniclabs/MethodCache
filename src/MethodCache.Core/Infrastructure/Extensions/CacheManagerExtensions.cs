@@ -62,27 +62,48 @@ namespace MethodCache
             => cacheManager.InvalidateTagsAsync([tag], cancellationToken);
 
         /// <summary>
-        /// Gets multiple cache values or creates them using the provided batch factory.
+        /// Gets the values cached under <paramref name="keys"/>, and runs <paramref name="factory"/> once for the keys
+        /// that are not cached, caching its results with the options set in <paramref name="configure"/>.
         /// </summary>
         /// <remarks>
         /// Keys missing from memory are looked up in the distributed cache first, so the factory receives only the
-        /// keys neither holds. A concurrent writer may still supply the final value for a key the factory produced;
-        /// the returned dictionary uses the value the cache keeps.
+        /// keys neither holds, and must return a value for each of them. A concurrent writer may still supply the final
+        /// value for a key the factory produced; the returned dictionary uses the value the cache keeps.
+        /// <paramref name="configure"/> builds new options on every call; on a hot path, build them once and pass the
+        /// <see cref="CacheEntryOptions"/> instead.
         /// </remarks>
-        public static async ValueTask<IDictionary<string, T>> GetOrCreateManyAsync<T>(
+        public static ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyAsync<T>(
             this ICacheManager cacheManager,
             IEnumerable<string> keys,
-            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
             Action<CacheEntryOptions.Builder>? configure = null,
             CancellationToken cancellationToken = default)
+            => GetOrCreateManyAsync(cacheManager, keys, factory, BuildOptions(configure), cancellationToken);
+
+        /// <summary>
+        /// Gets the values cached under <paramref name="keys"/>, and runs <paramref name="factory"/> once for the keys
+        /// that are not cached, caching its results with <paramref name="options"/>, which can be built once and
+        /// reused for every call.
+        /// </summary>
+        /// <remarks>
+        /// Keys missing from memory are looked up in the distributed cache first, so the factory receives only the
+        /// keys neither holds, and must return a value for each of them. A concurrent writer may still supply the final
+        /// value for a key the factory produced; the returned dictionary uses the value the cache keeps.
+        /// </remarks>
+        public static async ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyAsync<T>(
+            this ICacheManager cacheManager,
+            IEnumerable<string> keys,
+            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
+            CacheEntryOptions options,
+            CancellationToken cancellationToken = default)
         {
-            if (cacheManager == null) throw new ArgumentNullException(nameof(cacheManager));
-            if (keys == null) throw new ArgumentNullException(nameof(keys));
-            if (factory == null) throw new ArgumentNullException(nameof(factory));
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            ArgumentNullException.ThrowIfNull(keys);
+            ArgumentNullException.ThrowIfNull(factory);
+            ArgumentNullException.ThrowIfNull(options);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var options = BuildOptions(configure);
             var keyList = keys.Distinct(StringComparer.Ordinal).ToArray();
             foreach (var key in keyList) ValidateKey(key);
             if (FindMemoryManager(cacheManager) == null)
@@ -134,7 +155,7 @@ namespace MethodCache
                     using var batch = options.Enabled == false ? null : FindMemoryManager(cacheManager)?.BeginBulkLoad(
                         missingKeys.Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
                             .Select(key => VersionedKey(key, options.Version)), policy);
-                    IDictionary<string, T> produced;
+                    IReadOnlyDictionary<string, T> produced;
                     using (var origin = telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
                     {
                         try { produced = await factory(missingKeys, cancellationToken).ConfigureAwait(false); }
@@ -170,8 +191,8 @@ namespace MethodCache
             finally { telemetry?.Request("method", BulkMethodName, outcome); }
         }
 
-        private static async ValueTask<IDictionary<string, T>> GetOrCreateManyCustomAsync<T>(ICacheManager manager,
-            string[] keys, Func<IReadOnlyList<string>, CancellationToken, ValueTask<IDictionary<string, T>>> factory,
+        private static async ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyCustomAsync<T>(ICacheManager manager,
+            string[] keys, Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
             CacheEntryOptions options, CancellationToken token)
         {
             var results = new Dictionary<string, T>(StringComparer.Ordinal);
@@ -194,7 +215,7 @@ namespace MethodCache
                 else missing.Add(keys[i]);
             if (missing.Count == 0) return results;
 
-            var produced = new TaskCompletionSource<IDictionary<string, T>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var produced = new TaskCompletionSource<IReadOnlyDictionary<string, T>>(TaskCreationOptions.RunContinuationsAsynchronously);
             Observe(produced.Task);
             var entered = new bool[missing.Count];
             var arrivals = new TaskCompletionSource[missing.Count];
@@ -227,7 +248,7 @@ namespace MethodCache
             catch (Exception error) { produced.TrySetException(error); throw; }
         }
 
-        private static T Candidate<T>(IDictionary<string, T> values, string key)
+        private static T Candidate<T>(IReadOnlyDictionary<string, T> values, string key)
             => values.TryGetValue(key, out var value) ? value : throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
 
         private static void Observe(Task task)

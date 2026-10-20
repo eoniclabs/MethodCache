@@ -51,7 +51,7 @@ public class FourMethodManagerTests
         var inner = provider.GetRequiredService<ICacheManager>();
         var wrapper = new PublicForwarder(inner);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var candidates = new TaskCompletionSource<IDictionary<string, int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var candidates = new TaskCompletionSource<IReadOnlyDictionary<string, int>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var bulk = wrapper.GetOrCreateManyAsync<int>(["bulk", "bulk"], (missing, _) =>
         {
             Assert.Equal(new[] { "bulk" }, missing);
