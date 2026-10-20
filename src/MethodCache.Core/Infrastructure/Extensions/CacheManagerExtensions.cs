@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using MethodCache.Core.Telemetry;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Extensibility;
@@ -66,11 +67,16 @@ namespace MethodCache
         /// that are not cached, caching its results with the options set in <paramref name="configure"/>.
         /// </summary>
         /// <remarks>
-        /// Keys missing from memory are looked up in the distributed cache first, so the factory receives only the
-        /// keys neither holds, and must return a value for each of them. A concurrent writer may still supply the final
-        /// value for a key the factory produced; the returned dictionary uses the value the cache keeps.
-        /// <paramref name="configure"/> builds new options on every call; on a hot path, build them once and pass the
-        /// <see cref="CacheEntryOptions"/> instead.
+        /// <para>Each key behaves as <c>GetOrCreateAsync</c> would for it. Keys missing from memory are looked up in the
+        /// distributed cache first, so the factory receives only the keys neither holds, and must return a value for each
+        /// of them. A concurrent writer may still supply the final value for a key the factory produced; the returned
+        /// dictionary uses the value the cache keeps.</para>
+        /// <para>When the factory throws, every key it was asked for gets its fail-safe value, as with
+        /// <c>GetOrCreateAsync</c>; when a key has none, the factory's exception is thrown.
+        /// <paramref name="cancellationToken"/> cancels this caller's wait: a factory that does not observe it finishes in
+        /// the background, and its values are cached unless they were invalidated while it ran.</para>
+        /// <para><paramref name="configure"/> builds new options on every call; on a hot path, build them once and pass
+        /// the <see cref="CacheEntryOptions"/> instead.</para>
         /// </remarks>
         public static ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyAsync<T>(
             this ICacheManager cacheManager,
@@ -86,9 +92,14 @@ namespace MethodCache
         /// reused for every call.
         /// </summary>
         /// <remarks>
-        /// Keys missing from memory are looked up in the distributed cache first, so the factory receives only the
-        /// keys neither holds, and must return a value for each of them. A concurrent writer may still supply the final
-        /// value for a key the factory produced; the returned dictionary uses the value the cache keeps.
+        /// <para>Each key behaves as <c>GetOrCreateAsync</c> would for it. Keys missing from memory are looked up in the
+        /// distributed cache first, so the factory receives only the keys neither holds, and must return a value for each
+        /// of them. A concurrent writer may still supply the final value for a key the factory produced; the returned
+        /// dictionary uses the value the cache keeps.</para>
+        /// <para>When the factory throws, every key it was asked for gets its fail-safe value, as with
+        /// <c>GetOrCreateAsync</c>; when a key has none, the factory's exception is thrown.
+        /// <paramref name="cancellationToken"/> cancels this caller's wait: a factory that does not observe it finishes in
+        /// the background, and its values are cached unless they were invalidated while it ran.</para>
         /// </remarks>
         public static async ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyAsync<T>(
             this ICacheManager cacheManager,
@@ -106,89 +117,110 @@ namespace MethodCache
 
             var keyList = keys.Distinct(StringComparer.Ordinal).ToArray();
             foreach (var key in keyList) ValidateKey(key);
-            if (FindMemoryManager(cacheManager) == null)
+            var memory = FindMemoryManager(cacheManager);
+            if (memory == null)
                 return await GetOrCreateManyCustomAsync(cacheManager, keyList, factory, options, cancellationToken).ConfigureAwait(false);
-            var telemetry = FindMemoryManager(cacheManager)!.Telemetry;
+            var telemetry = memory.Telemetry;
             var outcome = RequestResult.Hit;
             try
             {
-                var results = new Dictionary<string, T>(keyList.Length);
+                var bypass = options.Enabled == false;
+                var results = new Dictionary<string, T>(keyList.Length, StringComparer.Ordinal);
                 var missingKeys = new List<string>();
-                HashSet<string>? skipCacheKeys = options.Enabled == false ? new HashSet<string>(keyList, StringComparer.Ordinal) : null;
-
                 foreach (var key in keyList)
                 {
-                    if (string.IsNullOrWhiteSpace(key))
-                    {
-                        throw new ArgumentException("Keys must not contain null or whitespace entries.", nameof(keys));
-                    }
-
-                    if (options.Enabled != false)
-                    {
-                        // A real lookup: the fast path also reports entries due for an early refresh as missing,
-                        // and with EnableFastPath off every entry, which would send cached keys to the factory
-                        var cached = FindMemoryManager(cacheManager) is { } local
-                            ? local.TryGetFreshForLookup<T>(VersionedKey(key, options.Version))
-                            : await cacheManager.TryGetAsync<T>(key, options.Version, cancellationToken).ConfigureAwait(false);
-                        if (cached.Found)
-                        {
-                            results[key] = cached.Value!;
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        skipCacheKeys!.Add(key);
-                    }
-
-                    missingKeys.Add(key);
+                    // A real lookup: the fast path also reports entries due for an early refresh as missing,
+                    // and with EnableFastPath off every entry, which would send cached keys to the factory
+                    var cached = bypass ? default : memory.TryGetFreshForLookup<T>(VersionedKey(key, options.Version));
+                    if (cached.Found) results[key] = cached.Value!;
+                    else missingKeys.Add(key);
                 }
 
-                if (missingKeys.Count > 0 && FindMemoryManager(cacheManager) is { } manager)
+                if (missingKeys.Count > 0 && !bypass)
                 {
-                    missingKeys = await TakeDistributedHitsAsync(manager, missingKeys, skipCacheKeys, results, options, cancellationToken).ConfigureAwait(false);
+                    missingKeys = await TakeDistributedHitsAsync(memory, missingKeys, results, options, cancellationToken).ConfigureAwait(false);
                 }
 
                 if (missingKeys.Count > 0)
                 {
-                    var policy = CreateRuntimePolicy(FluentMethodName, options);
-                    using var batch = options.Enabled == false ? null : FindMemoryManager(cacheManager)?.BeginBulkLoad(
-                        missingKeys.Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
-                            .Select(key => VersionedKey(key, options.Version)), policy);
-                    IReadOnlyDictionary<string, T> produced;
-                    using (var origin = telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
-                    {
-                        try { produced = await factory(missingKeys, cancellationToken).ConfigureAwait(false); }
-                        catch (Exception error) { origin?.Fail(error); throw; }
-                    }
-                    outcome = options.Enabled == false ? RequestResult.Bypass : RequestResult.Miss;
-
-                    foreach (var key in missingKeys)
-                    {
-                        if (!produced.TryGetValue(key, out var value))
-                        {
-                            throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
-                        }
-
-                        if (skipCacheKeys != null && skipCacheKeys.Contains(key))
-                        {
-                            results[key] = value!;
-                            continue;
-                        }
-
-                        // A distributed hit or a concurrent publisher can win over this batch's candidate value.
-                        var cacheKey = VersionedKey(key, options.Version);
-                        results[key] = await (batch != null
-                            ? batch.GetOrCreateAsync(cacheManager, cacheKey, () => Task.FromResult(value!), cancellationToken)
-                            : cacheManager.GetOrCreateFastAsync(cacheKey, FluentMethodName, () => Task.FromResult(value!), policy, cancellationToken))
-                            .ConfigureAwait(false);
-                    }
+                    // Like a single load, the batch goes on when this caller stops waiting
+                    var load = LoadBatchAsync(cacheManager, memory, missingKeys, factory, options, cancellationToken);
+                    Observe(load);
+                    var (loaded, stale) = await load.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    foreach (var pair in loaded) results[pair.Key] = pair.Value;
+                    outcome = bypass ? RequestResult.Bypass : stale ? RequestResult.Stale : RequestResult.Miss;
                 }
 
                 return results;
             }
             catch { outcome = RequestResult.Error; throw; }
             finally { telemetry?.Request("method", BulkMethodName, outcome); }
+        }
+
+        /// <summary>
+        /// Runs the batch factory for keys missing from the built-in manager and publishes its values. Reports whether
+        /// the factory failed and the keys got their fail-safe values instead.
+        /// </summary>
+        private static async Task<(Dictionary<string, T> Values, bool Stale)> LoadBatchAsync<T>(ICacheManager cacheManager,
+            InMemoryCacheManager memory, List<string> keys,
+            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
+            CacheEntryOptions options, CancellationToken cancellationToken)
+        {
+            var bypass = options.Enabled == false;
+            using var batch = bypass ? null : memory.BeginBulkLoad(keys.Select(key => VersionedKey(key, options.Version)),
+                CreateRuntimePolicy(FluentMethodName, options));
+            IReadOnlyDictionary<string, T>? produced = null;
+            Exception? failure = null;
+            using (var origin = memory.Telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
+            {
+                try { produced = await factory(keys, cancellationToken).ConfigureAwait(false); }
+                catch (Exception error)
+                {
+                    origin?.Fail(error);
+                    // As for a single load: no fallback for a caller that cancelled, nor without caching
+                    if (bypass || (error is OperationCanceledException && cancellationToken.IsCancellationRequested)) throw;
+                    failure = error;
+                }
+            }
+
+            var values = new Dictionary<string, T>(keys.Count, StringComparer.Ordinal);
+            if (bypass)
+            {
+                foreach (var key in keys) values[key] = Candidate(produced!, key);
+                return (values, false);
+            }
+
+            // Each key takes the single-key load path, so a distributed hit or a concurrent writer can still win over the
+            // batch's value, an invalidation during the batch keeps its value out of the cache, and a failed batch gives
+            // each key its fail-safe value. Not with the caller's token: publication outlives a caller that stopped waiting.
+            var unserved = false;
+            foreach (var key in keys)
+            {
+                Func<Task<T>> load;
+                if (failure == null)
+                {
+                    var value = Candidate(produced!, key);
+                    load = () => Task.FromResult(value);
+                }
+                else
+                {
+                    load = () => Task.FromException<T>(failure);
+                }
+
+                try
+                {
+                    values[key] = await batch!.GetOrCreateAsync(cacheManager, VersionedKey(key, options.Version), load, CancellationToken.None)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception) when (failure != null)
+                {
+                    // No fail-safe value for this key; the others still get theirs
+                    unserved = true;
+                }
+            }
+
+            if (unserved) ExceptionDispatchInfo.Throw(failure!);
+            return (values, failure != null);
         }
 
         private static async ValueTask<IReadOnlyDictionary<string, T>> GetOrCreateManyCustomAsync<T>(ICacheManager manager,
@@ -198,7 +230,7 @@ namespace MethodCache
             var results = new Dictionary<string, T>(StringComparer.Ordinal);
             if (options.Enabled == false)
             {
-                var bypass = await factory(keys, token).ConfigureAwait(false);
+                var bypass = await RunFactoryAsync(factory, keys, token).WaitAsync(token).ConfigureAwait(false);
                 foreach (var key in keys) results[key] = Candidate(bypass, key);
                 return results;
             }
@@ -215,22 +247,26 @@ namespace MethodCache
                 else missing.Add(keys[i]);
             if (missing.Count == 0) return results;
 
+            // Every missing key loads through the manager, so its own single-flight, fail-safe and invalidation rules
+            // apply per key; the loads it starts wait for one batch instead of each running the factory.
             var produced = new TaskCompletionSource<IReadOnlyDictionary<string, T>>(TaskCreationOptions.RunContinuationsAsynchronously);
             Observe(produced.Task);
             var entered = new bool[missing.Count];
             var arrivals = new TaskCompletionSource[missing.Count];
             var pending = new Task<T>[missing.Count];
+            Task<IReadOnlyDictionary<string, T>>? batch = null;
             try
             {
                 for (var i = 0; i < missing.Count; i++)
                 {
                     var index = i;
                     arrivals[i] = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    pending[i] = manager.GetOrCreateAsync(missing[i], async ct =>
+                    pending[i] = manager.GetOrCreateAsync(missing[i], async _ =>
                     {
                         entered[index] = true;
                         arrivals[index].TrySetResult();
-                        return Candidate(await produced.Task.WaitAsync(ct).ConfigureAwait(false), missing[index]);
+                        // Like a single load's factory, the batch alone decides whether the caller's token stops it
+                        return Candidate(await produced.Task.ConfigureAwait(false), missing[index]);
                     }, options, token).AsTask();
                     Observe(pending[i]);
                     _ = pending[i].ContinueWith(static (_, state) => ((TaskCompletionSource)state!).TrySetResult(), arrivals[i],
@@ -239,13 +275,50 @@ namespace MethodCache
                 await Task.WhenAll(arrivals.Select(static arrival => arrival.Task)).WaitAsync(token).ConfigureAwait(false);
                 foreach (var load in pending.Where(static load => load.IsFaulted || load.IsCanceled)) await load.ConfigureAwait(false);
                 var required = missing.Where((_, index) => entered[index]).ToArray();
-                var candidates = required.Length == 0 ? new Dictionary<string, T>() : await factory(required, token).ConfigureAwait(false);
-                produced.TrySetResult(candidates);
-                var published = await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false);
+                batch = required.Length == 0
+                    ? Task.FromResult<IReadOnlyDictionary<string, T>>(new Dictionary<string, T>())
+                    : RunFactoryAsync(factory, required, token);
+                // The loads get the batch's outcome also after this caller stopped waiting
+                _ = ForwardAsync(batch, produced);
+
+                Exception? failure = null;
+                try { await batch.WaitAsync(token).ConfigureAwait(false); }
+                catch (Exception error) when (!(error is OperationCanceledException && token.IsCancellationRequested))
+                {
+                    // The manager may still give each key its fail-safe value, as it would for GetOrCreateAsync
+                    failure = error;
+                }
+
+                T[] published;
+                try { published = await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false); }
+                catch (Exception) when (failure != null && !token.IsCancellationRequested)
+                {
+                    ExceptionDispatchInfo.Throw(failure);
+                    throw;
+                }
+
                 for (var i = 0; i < missing.Count; i++) results[missing[i]] = published[i];
                 return results;
             }
-            catch (Exception error) { produced.TrySetException(error); throw; }
+            catch (Exception error) when (batch == null)
+            {
+                // The batch never ran: release the loads waiting for it
+                if (error is OperationCanceledException && token.IsCancellationRequested) produced.TrySetCanceled(token);
+                else produced.TrySetException(error);
+                throw;
+            }
+        }
+
+        private static async Task<IReadOnlyDictionary<string, T>> RunFactoryAsync<T>(
+            Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
+            IReadOnlyList<string> keys, CancellationToken token)
+            => await factory(keys, token).ConfigureAwait(false);
+
+        private static async Task ForwardAsync<T>(Task<T> source, TaskCompletionSource<T> target)
+        {
+            try { target.TrySetResult(await source.ConfigureAwait(false)); }
+            catch (OperationCanceledException cancelled) { target.TrySetCanceled(cancelled.CancellationToken); }
+            catch (Exception error) { target.TrySetException(error); }
         }
 
         private static T Candidate<T>(IReadOnlyDictionary<string, T> values, string key)
@@ -262,37 +335,25 @@ namespace MethodCache
         private static async Task<List<string>> TakeDistributedHitsAsync<T>(
             InMemoryCacheManager manager,
             List<string> missingKeys,
-            HashSet<string>? skipCacheKeys,
             Dictionary<string, T> results,
             CacheEntryOptions options,
             CancellationToken cancellationToken)
         {
-            var lookups = missingKeys.Distinct(StringComparer.Ordinal)
-                .Where(key => skipCacheKeys == null || !skipCacheKeys.Contains(key))
-                .ToList();
-            if (lookups.Count == 0)
-            {
-                return missingKeys;
-            }
-
             var policy = CreateRuntimePolicy(FluentMethodName, options);
-            var hits = new (bool Found, T? Value)[lookups.Count];
+            var hits = new (bool Found, T? Value)[missingKeys.Count];
             var parallel = new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentDistributedReads, CancellationToken = cancellationToken };
-            await Parallel.ForEachAsync(Enumerable.Range(0, lookups.Count), parallel, async (index, ct) =>
-                hits[index] = await manager.TryGetDistributedAsync<T>(VersionedKey(lookups[index], options.Version), FluentMethodName, policy, ct).ConfigureAwait(false))
+            await Parallel.ForEachAsync(Enumerable.Range(0, missingKeys.Count), parallel, async (index, ct) =>
+                hits[index] = await manager.TryGetDistributedAsync<T>(VersionedKey(missingKeys[index], options.Version), FluentMethodName, policy, ct).ConfigureAwait(false))
                 .ConfigureAwait(false);
 
-            HashSet<string>? found = null;
-            for (var i = 0; i < lookups.Count; i++)
+            var stillMissing = new List<string>(missingKeys.Count);
+            for (var i = 0; i < missingKeys.Count; i++)
             {
-                if (hits[i].Found)
-                {
-                    results[lookups[i]] = hits[i].Value!;
-                    (found ??= new HashSet<string>(StringComparer.Ordinal)).Add(lookups[i]);
-                }
+                if (hits[i].Found) results[missingKeys[i]] = hits[i].Value!;
+                else stillMissing.Add(missingKeys[i]);
             }
 
-            return found == null ? missingKeys : missingKeys.Where(key => !found.Contains(key)).ToList();
+            return stillMissing;
         }
 
         /// <summary>
