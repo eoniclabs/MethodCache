@@ -160,8 +160,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
                 MethodId = result.MethodId,
                 Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
                 IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
-                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
-                    new Dictionary<string, string>(result.FieldSources, StringComparer.Ordinal))
+                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(
+                    new Dictionary<string, CacheSettingSource>(result.FieldSources, StringComparer.Ordinal))
             })
             .ToArray();
     }

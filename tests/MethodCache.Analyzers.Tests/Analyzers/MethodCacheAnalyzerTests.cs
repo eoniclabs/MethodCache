@@ -15,7 +15,7 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         {
             var ids = new MethodCacheAnalyzer().SupportedDiagnostics.Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal);
 
-            Assert.Equal(new[] { "MC0001", "MC0004", "MC0021" }, ids);
+            Assert.Equal(new[] { "MC0001", "MC0004", "MC0021", "MC0023" }, ids);
         }
 
         [Theory]
@@ -36,6 +36,36 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         [Fact]
         public async Task ExplicitNegativeVersion_IsAnError()
             => Assert.Equal("MC0021", Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Version = -1)] int Read(); }")).Id);
+
+        [Theory]
+        [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "RefreshAhead = \"1m\" is not shorter than Duration = \"1m\"")]
+        [InlineData("RefreshAhead = \"00:05:00\", Duration = \"2m\"", "RefreshAhead = \"00:05:00\" is not shorter than Duration = \"2m\"")]
+        public async Task RefreshAheadNotShorterThanDuration_IsAnError(string settings, string message)
+        {
+            var diagnostic = Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
+
+            Assert.Equal("MC0023", diagnostic.Id);
+            Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+            Assert.StartsWith(message, diagnostic.GetMessage(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task RefreshAheadNotShorterThanDuration_OnCacheInterface_IsAnError()
+        {
+            var source = """
+                using MethodCache;
+                [assembly: CacheInterface(typeof(System.IFormatProvider), "GetFormat", Duration = "1m", RefreshAhead = "1h")]
+                """;
+
+            Assert.Equal("MC0023", Assert.Single(await AnalyzeAsync(source)).Id);
+        }
+
+        [Theory]
+        [InlineData("Duration = \"1m\", RefreshAhead = \"30s\"")]
+        [InlineData("Duration = \"1m\", RefreshAhead = \"off\"")]
+        [InlineData("RefreshAhead = \"1h\"")]
+        public async Task RefreshAheadShorterThanDuration_OrWithoutADuration_IsAccepted(string settings)
+            => Assert.Empty(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
 
         [Fact]
         public async Task ArrayValuedTags_DoNotCrashDurationValidation()
@@ -270,6 +300,7 @@ using MethodCache;
         [Theory]
         [InlineData("Duration = \"0s\"", "MC0004")]
         [InlineData("Version = -1", "MC0021")]
+        [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
         public async Task GeneratorAndAnalyzer_ReportInvalidSettingOnce(string setting, string id)
         {
             var input = CreateCompilation("using MethodCache; public interface IReader { [Cache(" + setting + ")] int Read(); }");

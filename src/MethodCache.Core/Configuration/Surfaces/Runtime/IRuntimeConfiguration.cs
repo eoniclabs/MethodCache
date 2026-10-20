@@ -19,7 +19,7 @@ internal interface IRuntimeConfiguration : IRuntimeCacheConfigurator
     /// <summary>
     /// Applies or replaces the runtime policy for the specified method using a fluent builder.
     /// </summary>
-    /// <param name="methodId">Fully qualified method id (e.g. <c>MyApp.Services.IUserService.GetUserAsync</c>).</param>
+    /// <param name="methodId">The method id (e.g. <c>[MyApp]MyApp.Services.IUserService.GetUserAsync</c>).</param>
     /// <param name="configure">Builder used to configure the cache entry.</param>
     /// <param name="metadata">Optional runtime override metadata (owner/reason/expiry).</param>
     Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure, RuntimeOverrideMetadata? metadata = null);

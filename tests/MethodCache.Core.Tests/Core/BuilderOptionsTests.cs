@@ -67,6 +67,28 @@ public class BuilderOptionsTests
     }
 
     [Fact]
+    public void FailSafeSetters_EachSetOneValue_ZeroTurnsFailSafeOff_AndInvalidValuesThrow()
+    {
+        var timeoutOnly = new CacheEntryOptions.Builder().WithFailSafeTimeout(TimeSpan.FromSeconds(1)).Build();
+        var all = new CacheEntryOptions.Builder()
+            .WithFailSafe(TimeSpan.FromHours(1))
+            .WithFailSafeTimeout(TimeSpan.FromMilliseconds(200))
+            .WithFailSafeRetryAfter(TimeSpan.FromSeconds(5))
+            .Build();
+
+        Assert.Null(timeoutOnly.FailSafe);
+        Assert.Equal(TimeSpan.FromSeconds(1), timeoutOnly.FailSafeTimeout);
+        Assert.Null(timeoutOnly.FailSafeRetryAfter);
+        Assert.Equal((TimeSpan.FromHours(1), TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(5)),
+            (all.FailSafe!.Value, all.FailSafeTimeout!.Value, all.FailSafeRetryAfter!.Value));
+        Assert.Equal(TimeSpan.Zero, new CacheEntryOptions.Builder().WithFailSafe(TimeSpan.Zero).Build().FailSafe);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CacheEntryOptions.Builder().WithFailSafe(TimeSpan.FromSeconds(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CacheEntryOptions.Builder().WithFailSafeTimeout(TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CacheEntryOptions.Builder().WithFailSafeRetryAfter(TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CacheEntryOptions.Builder().WithFailSafeRetryAfter(TimeSpan.FromSeconds(-1)));
+    }
+
+    [Fact]
     public async Task CacheWhen_ForAnotherResultType_Throws()
     {
         using (var cache = NewMemoryManager())

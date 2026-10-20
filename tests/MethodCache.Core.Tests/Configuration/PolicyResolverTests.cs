@@ -145,14 +145,14 @@ public class PolicyResolverTests
     }
 
     [Fact]
-    public async Task PolicyForAMethodWithoutCache_IsReportedOnce()
+    public async Task ConfiguredMethodWithoutCache_FailsLoading_AndSuggestsTheClosestCachedMethod()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MethodCache:Defaults:Duration"] = "00:01:00",
-                [$"MethodCache:Services:{MethodId}:Duration"] = "00:02:00",
-                ["MethodCache:Services:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
+                [$"MethodCache:Methods:{MethodId}:Duration"] = "00:02:00",
+                ["MethodCache:Methods:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
             })
             .Build();
         var logger = new ListLogger();
@@ -163,13 +163,47 @@ public class PolicyResolverTests
             new PolicySourceRegistration(ConfigFilePolicySourceBuilder.FromConfiguration(configuration), PolicySourcePriority.ConfigurationFiles)
         }, logger);
 
-        await resolver.ResolveAsync(MethodId);
-        await resolver.ResolveAsync("My.IOrderService.GetOrdr");
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await resolver.ResolveAsync(MethodId));
 
-        var warning = Assert.Single(logger.Messages);
-        Assert.Contains("My.IOrderService.GetOrdr", warning);
+        Assert.Contains("'MethodCache:Methods:My.IOrderService.GetOrdr'", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"did you mean '{MethodId}'", error.Message, StringComparison.Ordinal);
+        Assert.Empty(logger.Messages);
 
         await resolver.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PolicyFromAnotherSourceForAMethodWithoutCache_FailsLoading()
+    {
+        var snapshot = PolicySnapshotBuilder.FromPolicy("custom", "My.IOrderService.GetOrdr",
+            CachePolicy.Empty with { Duration = TimeSpan.FromMinutes(1) }, CachePolicyFields.Duration, DateTimeOffset.UtcNow, new Dictionary<string, string?>());
+        await using var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateAttributeSource(TimeSpan.FromMinutes(5)), PolicySourcePriority.Attributes),
+            new PolicySourceRegistration(new TestPolicySource("custom", new[] { snapshot }), 60)
+        });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await resolver.ResolveAsync(MethodId));
+
+        Assert.StartsWith("The policy source 'custom' configures a method that isn't cached. 'My.IOrderService.GetOrdr' is not a cached method", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("custom", 60, "the policy source 'custom'")]
+    [InlineData(PolicySourceIds.ConfigurationFiles, PolicySourcePriority.ConfigurationFiles, "configuration")]
+    [InlineData(PolicySourceIds.RuntimeOverrides, PolicySourcePriority.RuntimeOverrides, "a runtime override")]
+    public async Task TagThatNamesNoParameter_FailsLoading_NamingWhereItIsSet(string sourceId, int priority, string where)
+    {
+        await using var resolver = new PolicyResolver(new[]
+        {
+            new PolicySourceRegistration(CreateAttributeSource(TimeSpan.FromMinutes(5)), PolicySourcePriority.Attributes),
+            new PolicySourceRegistration(CreateSource(sourceId, TimeSpan.FromMinutes(1), new[] { "order:{orderId}" }), priority)
+        }, parameterNames: new Dictionary<string, string[]> { [MethodId] = new[] { "id" } });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await resolver.ResolveAsync(MethodId));
+
+        Assert.Equal($"The tag 'order:{{orderId}}' set in {where} reaches the cached method '{MethodId}', but {{orderId}} names no parameter " +
+                     "of the method, whose parameters are id, so it would stay literal text (MC0010).", error.Message);
     }
 
     [Fact]

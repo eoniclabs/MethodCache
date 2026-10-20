@@ -40,7 +40,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddMethodCache(builder => builder.FromAssemblyOf<ConfigurationMergeTests>());
         await using var provider = services.BuildServiceProvider();
         var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => configurator.UpsertAsync(Id, options => options.WithDuration(TimeSpan.FromMinutes(2))));
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(async () => await configurator.UpsertAsync(Id, options => options.WithDuration(TimeSpan.FromMinutes(2))));
         Assert.Same(failure, actual);
         await configurator.UpsertAsync(Id, options => options.WithDuration(TimeSpan.FromMinutes(2)));
         Assert.Equal(1, attempts);
@@ -183,7 +183,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();
         services.AddMethodCache(c => c.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
         services.AddMethodCache(c => c.Defaults(o => o.AddTags("from-second-call")));
-        services.AddMethodCache(c => c.Method((IConfigMergeService x) => x.Get(0)).WithVersion(1));
+        services.AddMethodCache(c => c.Method((IConfigMergeService x) => x.Get(0)).Configure(o => o.WithVersion(1)));
         await using var sp = services.BuildServiceProvider();
 
         var policy = sp.GetRequiredService<IPolicyRegistry>().GetPolicy(Id).Policy;
@@ -197,7 +197,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     {
         var a = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"A:Services:{Id}:Duration"] = "00:05:00",
+            [$"A:Methods:{Id}:Duration"] = "00:05:00",
         }).Build();
         var b = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -221,7 +221,7 @@ public class ConfigurationMergeTests(ITestOutputHelper output)
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"MethodCache:Services:{Id}:Duration"] = "00:05:00",
+            [$"MethodCache:Methods:{Id}:Duration"] = "00:05:00",
         }).Build();
         var services = new ServiceCollection();
         services.AddSingleton<IConfigMergeService, ConfigMergeService>();

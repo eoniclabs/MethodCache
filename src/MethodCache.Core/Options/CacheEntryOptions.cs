@@ -89,6 +89,7 @@ namespace MethodCache
             policy.Duration, policy.SlidingExpiration, policy.RefreshAhead,
             Array.AsReadOnly(policy.Tags.ToArray()), preparedKey ? null : policy.Version,
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
+            clearsTags: policy.Fields.HasFlag(Policies.CachePolicyFields.ClearTags),
             enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen)
         { Runtime = preparedKey ? policy : null };
 
@@ -237,32 +238,51 @@ namespace MethodCache
 
             /// <summary>
             /// Keeps expired values for <paramref name="duration"/> and returns them when reloading throws, so a failing
-            /// dependency degrades to slightly stale data instead of errors. With <paramref name="timeout"/>, a reload
-            /// that takes longer also returns the old value and finishes in the background. After a fallback the old
-            /// value is reused for <paramref name="retryAfter"/> (default 30 seconds) before the method is tried again.
-            /// <see cref="TimeSpan.Zero"/> as <paramref name="duration"/> turns fail-safe off, for example for one
-            /// method when it is on for all of them.
+            /// dependency degrades to slightly stale data instead of errors. <see cref="TimeSpan.Zero"/> turns fail-safe
+            /// off, for example for one method when it is on for all of them. <see cref="WithFailSafeTimeout"/> and
+            /// <see cref="WithFailSafeRetryAfter"/> tune it.
             /// </summary>
-            public Builder WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
+            /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration"/> is negative.</exception>
+            public Builder WithFailSafe(TimeSpan duration)
             {
                 if (duration < TimeSpan.Zero)
                 {
                     throw new ArgumentOutOfRangeException(nameof(duration), duration, "Fail-safe duration cannot be negative; use TimeSpan.Zero to turn fail-safe off.");
                 }
 
+                _failSafe = duration;
+                return this;
+            }
+
+            /// <summary>
+            /// With fail-safe on, a reload that takes longer than <paramref name="timeout"/> returns the old value and
+            /// finishes in the background.
+            /// </summary>
+            /// <exception cref="ArgumentOutOfRangeException"><paramref name="timeout"/> is zero or negative.</exception>
+            public Builder WithFailSafeTimeout(TimeSpan timeout)
+            {
                 if (timeout <= TimeSpan.Zero)
                 {
                     throw new ArgumentOutOfRangeException(nameof(timeout), timeout, "Fail-safe timeout must be positive.");
                 }
 
+                _failSafeTimeout = timeout;
+                return this;
+            }
+
+            /// <summary>
+            /// After fail-safe returned an old value, reuses it for <paramref name="retryAfter"/> (30 seconds unless
+            /// set) before the method is called again.
+            /// </summary>
+            /// <exception cref="ArgumentOutOfRangeException"><paramref name="retryAfter"/> is zero or negative.</exception>
+            public Builder WithFailSafeRetryAfter(TimeSpan retryAfter)
+            {
                 if (retryAfter <= TimeSpan.Zero)
                 {
                     throw new ArgumentOutOfRangeException(nameof(retryAfter), retryAfter, "Fail-safe retry interval must be positive.");
                 }
 
-                _failSafe = duration;
-                _failSafeTimeout = timeout ?? _failSafeTimeout;
-                _failSafeRetryAfter = retryAfter ?? _failSafeRetryAfter;
+                _failSafeRetryAfter = retryAfter;
                 return this;
             }
 

@@ -53,11 +53,11 @@ internal sealed class RuntimePolicyStore : IDisposable
     private const string MetadataTicketKey = "runtime.ticket";
     private const string MetadataExpiresAtKey = "runtime.expiresAt";
 
-    internal IReadOnlyCollection<RuntimeOverride> DescribeOverrides()
+    internal IReadOnlyList<RuntimeOverride> DescribeOverrides()
     {
         RemoveExpiredPolicies();
         lock (_changesSync)
-            return _policies.Select(pair => new RuntimeOverride
+            return _policies.OrderBy(static pair => pair.Key, StringComparer.Ordinal).Select(pair => new RuntimeOverride
             {
                 MethodId = pair.Key,
                 Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromPolicy(pair.Key, pair.Value.Policy, pair.Value.Fields), preparedKey: false),

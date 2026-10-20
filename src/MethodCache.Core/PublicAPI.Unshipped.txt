@@ -56,7 +56,9 @@ MethodCache.CacheEntryOptions.Builder.Build() -> MethodCache.CacheEntryOptions!
 MethodCache.CacheEntryOptions.Builder.Builder() -> void
 MethodCache.CacheEntryOptions.Builder.CacheWhen<T>(System.Func<T, bool>! predicate) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
-MethodCache.CacheEntryOptions.Builder.WithFailSafe(System.TimeSpan duration, System.TimeSpan? timeout = null, System.TimeSpan? retryAfter = null) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.WithFailSafe(System.TimeSpan duration) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.WithFailSafeRetryAfter(System.TimeSpan retryAfter) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.WithFailSafeTimeout(System.TimeSpan timeout) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithRefreshAhead(System.TimeSpan window) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithDistributed(bool distributed) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.CacheEntryOptions.Builder!
@@ -112,6 +114,11 @@ MethodCache.CacheLookupResult<T>.CacheLookupResult() -> void
 MethodCache.CacheLookupResult<T>.Found.get -> bool
 MethodCache.CacheLookupResult<T>.Value.get -> T?
 MethodCache.CacheManagerExtensions
+MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Attribute = 0 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Code = 1 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.Configuration = 2 -> MethodCache.CacheSettingSource
+MethodCache.CacheSettingSource.RuntimeOverride = 3 -> MethodCache.CacheSettingSource
 MethodCache.CacheStats
 MethodCache.CacheStats.Evictions.get -> long
 MethodCache.CacheStats.Evictions.init -> void
@@ -134,7 +141,7 @@ MethodCache.CachedMethodInfo.MethodId.get -> string!
 MethodCache.CachedMethodInfo.MethodId.init -> void
 MethodCache.CachedMethodInfo.Options.get -> MethodCache.CacheEntryOptions!
 MethodCache.CachedMethodInfo.Options.init -> void
-MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, MethodCache.CacheSettingSource>!
 MethodCache.CachedMethodInfo.SettingSources.init -> void
 MethodCache.DistributedCacheOptions
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.get -> System.TimeSpan
@@ -247,12 +254,11 @@ MethodCache.IFluentMethodConfiguration<TResult>
 MethodCache.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, bool>! predicate) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration<TResult>!
-MethodCache.IFluentMethodConfiguration<TResult>.WithVersion(int version) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IRuntimeCacheConfigurator
-MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.GetOverridesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyCollection<MethodCache.RuntimeOverride!>!>!
-MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.IRuntimeCacheConfigurator.GetOverrides() -> System.Collections.Generic.IReadOnlyList<MethodCache.RuntimeOverride!>!
+MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.InvalidationQueues
 MethodCache.InvalidationQueues.InvalidationQueues() -> void
 MethodCache.InvalidationQueues.PublicationQueued.get -> int
@@ -385,10 +391,6 @@ static MethodCache.MethodCacheKeys.Part(uint value) -> string!
 static MethodCache.MethodCacheKeys.Part(ulong value) -> string!
 static MethodCache.MethodCacheKeys.Part(ushort value) -> string!
 static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, System.Threading.Tasks.Task<TResult>!>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService, TResult>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService, TResult>!>! methodExpression, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.MethodCacheBuilder!>! configureBuilder) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 MethodCache.Generated.KeyBuilder.AppendPart<T>(T value, System.Func<T, string!>! format) -> void
@@ -403,6 +405,8 @@ MethodCache.CacheInterfaceAttribute.FailSafeRetryAfter.set -> void
 static MethodCache.CacheManagerExtensions.GetOrCreateAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<T>>! factory, MethodCache.CacheEntryOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
 static MethodCache.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyDictionary<string!, T>!>>! factory, MethodCache.CacheEntryOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyDictionary<string!, T>!>
 static MethodCache.CacheManagerExtensions.GetOrCreateManyAsync<T>(this MethodCache.ICacheManager! cacheManager, System.Collections.Generic.IEnumerable<string!>! keys, System.Func<System.Collections.Generic.IReadOnlyList<string!>!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyDictionary<string!, T>!>>! factory, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyDictionary<string!, T>!>
+static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService!, object?>!>! method, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService!, object?>!>! method, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.CachedMethodInfo.IsDistributedNamespaceShared.get -> bool
 MethodCache.CachedMethodInfo.IsDistributedNamespaceShared.init -> void
 MethodCache.ICacheAdministrator.GetStatsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<MethodCache.CacheStats!>

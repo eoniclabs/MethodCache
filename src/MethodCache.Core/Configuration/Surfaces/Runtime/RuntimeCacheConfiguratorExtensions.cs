@@ -5,46 +5,40 @@ namespace MethodCache;
 
 /// <summary>
 /// Names the method to override with an expression instead of its id, for example
-/// <c>configurator.UpsertAsync&lt;IUserService, User&gt;(s =&gt; s.GetUserAsync(0), o =&gt; o.WithDuration(...))</c>.
+/// <c>configurator.UpsertAsync&lt;IUserService&gt;(s =&gt; s.GetUserAsync(Any&lt;int&gt;.Value), o =&gt; o.WithDuration(...))</c>.
 /// The arguments in the expression are ignored.
 /// </summary>
 public static class RuntimeCacheConfiguratorExtensions
 {
-    /// <summary>Removes the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
-    public static Task RemoveAsync<TService, TResult>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, Task<TResult>>> methodExpression, CancellationToken cancellationToken = default)
-        => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
-
-    /// <summary>Removes the runtime override of the method <paramref name="methodExpression"/> calls.</summary>
-    public static Task RemoveAsync<TService, TResult>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, TResult>> methodExpression, CancellationToken cancellationToken = default)
-        => configurator.RemoveAsync(BuildMethodId(methodExpression), cancellationToken);
-
-    /// <summary>Applies or replaces the runtime override of the async method <paramref name="methodExpression"/> calls.</summary>
-    public static Task UpsertAsync<TService, TResult>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, Task<TResult>>> methodExpression,
-        Action<CacheEntryOptions.Builder> configure,
+    /// <summary>
+    /// Applies or replaces the runtime override of the cached method <paramref name="method"/> calls, which returns
+    /// <c>T</c>, <c>Task&lt;T&gt;</c> or <c>ValueTask&lt;T&gt;</c>.
+    /// </summary>
+    /// <param name="configurator">The configurator.</param>
+    /// <param name="method">Calls the method, such as <c>s =&gt; s.GetUserAsync(Any&lt;int&gt;.Value)</c>.</param>
+    /// <param name="configure">Sets the settings the override changes; the others keep their values from the lower layers.</param>
+    /// <param name="metadata">Who made the override and why, and when it is removed automatically.</param>
+    /// <param name="cancellationToken">Cancels waiting for the method's previous values to be invalidated.</param>
+    /// <exception cref="ArgumentException"><paramref name="method"/> does not call a method, or calls one that is not cached.</exception>
+    public static ValueTask UpsertAsync<TService>(this IRuntimeCacheConfigurator configurator,
+        Expression<Func<TService, object?>> method, Action<CacheEntryOptions.Builder> configure,
         RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default)
-        => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
-
-    /// <summary>Applies or replaces the runtime override of the method <paramref name="methodExpression"/> calls.</summary>
-    public static Task UpsertAsync<TService, TResult>(
-        this IRuntimeCacheConfigurator configurator,
-        Expression<Func<TService, TResult>> methodExpression,
-        Action<CacheEntryOptions.Builder> configure,
-        RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default)
-        => configurator.UpsertAsync(BuildMethodId(methodExpression), configure, metadata, cancellationToken);
-
-    private static string BuildMethodId(LambdaExpression expression)
+        where TService : class
     {
-        if (expression?.Body is not MethodCallExpression call)
-        {
-            throw new ArgumentException("Expression must target a method call.", nameof(expression));
-        }
+        ArgumentNullException.ThrowIfNull(configurator);
+        return configurator.UpsertAsync(MethodIds.ForCachedCall(method), configure, metadata, cancellationToken);
+    }
 
-        return MethodIds.For(call.Method);
+    /// <summary>Removes the runtime override of the cached method <paramref name="method"/> calls.</summary>
+    /// <param name="configurator">The configurator.</param>
+    /// <param name="method">Calls the method, such as <c>s =&gt; s.GetUserAsync(Any&lt;int&gt;.Value)</c>.</param>
+    /// <param name="cancellationToken">Cancels waiting for the override's values to be invalidated.</param>
+    /// <exception cref="ArgumentException"><paramref name="method"/> does not call a method, or calls one that is not cached.</exception>
+    public static ValueTask RemoveAsync<TService>(this IRuntimeCacheConfigurator configurator,
+        Expression<Func<TService, object?>> method, CancellationToken cancellationToken = default)
+        where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(configurator);
+        return configurator.RemoveAsync(MethodIds.ForCachedCall(method), cancellationToken);
     }
 }

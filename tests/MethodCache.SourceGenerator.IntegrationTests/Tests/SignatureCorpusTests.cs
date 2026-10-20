@@ -730,11 +730,7 @@ public class SignatureCorpusTests
             public class Svc : ISvc { public Task<int> Get(int a, int A) { Counter.Hit(); return Task.FromResult(a + A); } }
             """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:2\"); await s.Get(1, 2)",
             Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.AddTags(\"runtime:{A}\")));"),
-        ["runtime tags retain ambiguous placeholders"] = new("""
-            public interface ISvc { [Cache(Tags = new[] { "attribute:{name}" })] Task<int> Get(int name, int Name); }
-            public class Svc : ISvc { public Task<int> Get(int name, int Name) { Counter.Hit(); return Task.FromResult(name + Name); } }
-            """, "ISvc", "await s.Get(1, 2)", "await provider.GetRequiredService<ICacheManager>().InvalidateTagAsync(\"runtime:{NAME}\"); await s.Get(1, 2)",
-            Registrations: "services.AddMethodCache(c => c.Method((ISvc x) => x.Get(default, default)).Configure(o => o.AddTags(\"runtime:{NAME}\")));"),
+        // A startup tag whose placeholder matches several parameters only by ignoring case now fails startup (MC0017 rules)
 
         ["application types shadow framework and cache infrastructure"] = new("""
             public class Task { }

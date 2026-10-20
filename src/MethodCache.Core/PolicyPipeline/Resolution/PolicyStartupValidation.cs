@@ -5,7 +5,8 @@ namespace MethodCache.Core.PolicyPipeline.Resolution;
 
 /// <summary>
 /// Loads the cache policies at host startup (through <c>ValidateOnStart</c>), so invalid startup code or
-/// appsettings fail <c>StartAsync</c> and unknown method ids are logged then, instead of on the first cached call.
+/// appsettings, a policy for a method that isn't cached and a tag template that doesn't fit its method fail
+/// <c>StartAsync</c> instead of the first cached call.
 /// Without a generic host, the first cached call loads them and fails the same way.
 /// </summary>
 internal sealed class PolicyStartupValidation

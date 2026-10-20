@@ -45,7 +45,7 @@ public class PolicyTransitionTests
         Assert.Equal(before.Identity, after.Identity);
         Assert.False(after.PrivateIdentity);
         Assert.Equal(101, await first.GetRequiredService<IReader>().ReadAsync(1));
-        Assert.Equal("review", (await first.GetRequiredService<IRuntimeCacheConfigurator>().GetOverridesAsync()).Single().Metadata!.Owner);
+        Assert.Equal("review", first.GetRequiredService<IRuntimeCacheConfigurator>().GetOverrides().Single().Metadata!.Owner);
     }
 
     [Fact]
@@ -105,22 +105,22 @@ public class PolicyTransitionTests
     {
         await using var node = Node(new Reader(100));
         var runtime = node.GetRequiredService<IRuntimeCacheConfigurator>();
-        await Assert.ThrowsAsync<ArgumentException>(() => runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
-        await Assert.ThrowsAsync<ArgumentException>(() => runtime.RemoveAsync("typo"));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runtime.UpsertAsync(MethodId, o => o.WithEnabled(false), cancellationToken: new CancellationToken(true)));
-        Assert.Empty(await runtime.GetOverridesAsync());
+        await Assert.ThrowsAsync<ArgumentException>(async () => await runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await runtime.RemoveAsync("typo"));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await runtime.UpsertAsync(MethodId, o => o.WithEnabled(false), cancellationToken: new CancellationToken(true)));
+        Assert.Empty(runtime.GetOverrides());
     }
 
     [Fact]
     public async Task ConfigReload_NewIdentity_CannotReadOldConfigurationWrites()
     {
         var configuration = new ConfigurationManager();
-        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Services:{MethodId}:Duration"] = "00:05:00" });
+        configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"MethodCache:Methods:{MethodId}:Duration"] = "00:05:00" });
         await using var writer = Node(new Reader(100));
         await using var receiver = Node(new Reader(200), b => b.FromConfiguration(configuration, "MethodCache"));
         Assert.Equal(101, await writer.GetRequiredService<IReader>().ReadAsync(1));
         Assert.Equal(101, await receiver.GetRequiredService<IReader>().ReadAsync(1));
-        configuration[$"MethodCache:Services:{MethodId}:Duration"] = "00:00:01";
+        configuration[$"MethodCache:Methods:{MethodId}:Duration"] = "00:00:01";
         ((IConfigurationRoot)configuration).Reload();
         _time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(201, await receiver.GetRequiredService<IReader>().ReadAsync(1));
@@ -160,14 +160,17 @@ public class PolicyTransitionTests
     }
 
     [Fact]
-    public async Task ConfiguredUnknownId_IsStillRejectedByRuntimeConfiguration()
+    public async Task ConfiguredUnknownId_FailsWhenThePoliciesLoad()
     {
         var settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        { ["MethodCache:Services:typo:Duration"] = "00:01:00" }).Build();
+        { ["MethodCache:Methods:typo:Duration"] = "00:01:00" }).Build();
         await using var node = Node(new Reader(100), b => b.FromConfiguration(settings, "MethodCache"));
         var runtime = node.GetRequiredService<IRuntimeCacheConfigurator>();
-        await Assert.ThrowsAsync<ArgumentException>(() => runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
-        Assert.Empty(await runtime.GetOverridesAsync());
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await runtime.UpsertAsync("typo", o => o.WithEnabled(false)));
+
+        Assert.Contains("'MethodCache:Methods:typo' configures a method that isn't cached", error.Message, StringComparison.Ordinal);
+        Assert.Empty(runtime.GetOverrides());
     }
 
     [Theory]
@@ -191,8 +194,8 @@ public class PolicyTransitionTests
             1 => o => o.WithSlidingExpiration(TimeSpan.FromSeconds(1)),
             2 => o => o.WithRefreshAhead(TimeSpan.FromSeconds(1)),
             3 => o => o.WithFailSafe(TimeSpan.FromSeconds(5)),
-            4 => o => o.WithFailSafe(TimeSpan.Zero, timeout: TimeSpan.FromSeconds(1)),
-            5 => o => o.WithFailSafe(TimeSpan.Zero, retryAfter: TimeSpan.FromSeconds(1)),
+            4 => o => o.WithFailSafeTimeout(TimeSpan.FromSeconds(1)),
+            5 => o => o.WithFailSafeRetryAfter(TimeSpan.FromSeconds(1)),
             6 => o => o.AddTags("changed"),
             7 => o => o.WithVersion(2),
             8 => o => o.WithDistributed(false),

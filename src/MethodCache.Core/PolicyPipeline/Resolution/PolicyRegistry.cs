@@ -15,6 +15,8 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     internal void ForgetInvalidation(string methodId, Task completed)
         => _invalidations.TryRemove(new KeyValuePair<string, Task>(methodId, completed));
 
+    internal PolicyResolver Resolver => _resolver;
+
     public PolicyRegistry(PolicyResolver resolver, Func<string, Task>? invalidate = null)
     {
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));

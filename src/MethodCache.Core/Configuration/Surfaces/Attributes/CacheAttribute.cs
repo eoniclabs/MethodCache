@@ -79,7 +79,7 @@ namespace MethodCache
         /// <summary>
         /// Gets or sets how long an expired value is kept and returned when calling the method again throws, as a
         /// TimeSpan string, or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
-        /// methods. Unset uses the group or the central setting (<c>config.WithFailSafe(...)</c>).
+        /// methods. Unset uses the group or the central setting (<c>mc.Defaults(o =&gt; o.WithFailSafe(...))</c>).
         /// </summary>
         /// <example>
         /// <code>
