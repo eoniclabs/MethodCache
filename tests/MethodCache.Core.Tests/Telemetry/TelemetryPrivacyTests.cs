@@ -53,7 +53,19 @@ public class TelemetryPrivacyTests
         if (keys) Assert.Contains(spans, activity => activity.GetTagItem("methodcache.keys") != null);
         if (tags) Assert.Contains(spans, activity => activity.GetTagItem("methodcache.tags") != null);
         Assert.All(metrics.Longs, row => Assert.All(row.Tags, tag => Assert.DoesNotContain(Canary, tag.Value?.ToString() ?? "")));
+        // Only the documented attributes: metrics never carry keys or tags, spans only when opted in
+        Assert.All(metrics.Longs, row => Assert.All(row.Tags.Keys, key => Assert.Contains(key, MetricAttributes)));
+        Assert.All(metrics.Loads, row => Assert.All(row.Tags.Keys, key => Assert.Contains(key, MetricAttributes)));
+        Assert.All(spans, span => Assert.All(span.TagObjects, tag => Assert.Contains(tag.Key, MetricAttributes.Concat(OptInSpanAttributes))));
     }
+
+    private static readonly string[] MetricAttributes =
+    [
+        "methodcache.kind", "methodcache.method", "methodcache.http.client", "methodcache.bulk", "methodcache.result",
+        "methodcache.invalidation.type", "methodcache.invalidation.stage", "methodcache.operation", "error.type"
+    ];
+
+    private static readonly string[] OptInSpanAttributes = ["methodcache.key", "methodcache.keys", "methodcache.tags"];
 
     private static IEnumerable<string> Strings(object? value)
     {

@@ -20,7 +20,7 @@ public class ContentOwnershipTests
     {
         using var body = new MemoryStream(new byte[1000]);
         var original = new NonClosingContent(body);
-        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { MaxResponseSize = 100 }, new Origin(Fresh(original))));
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new HttpCacheOptions { MaxResponseBytes = 100 }, new Origin(Fresh(original))));
         var response = await client.GetAsync("https://example.test/content", HttpCompletionOption.ResponseHeadersRead);
         Assert.True(body.CanRead);
         response.Dispose();
@@ -44,7 +44,7 @@ public class ContentOwnershipTests
     {
         var original = new OwnedContent(new MemoryStream(new byte[size]));
         using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(
-            new HttpCacheOptions { MaxResponseSize = limit }, new Origin(Fresh(original))));
+            new HttpCacheOptions { MaxResponseBytes = limit }, new Origin(Fresh(original))));
         var response = await client.GetAsync("https://example.test/content", HttpCompletionOption.ResponseHeadersRead);
         Assert.Equal(new byte[size], await response.Content.ReadAsByteArrayAsync());
         response.Dispose();

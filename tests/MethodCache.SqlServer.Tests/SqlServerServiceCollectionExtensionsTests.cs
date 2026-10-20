@@ -53,7 +53,7 @@ public class SqlServerServiceCollectionExtensionsTests
         services.Configure<DistributedCacheOptions>(options => options.KeyPrefix = "app:");
         using var provider = services.BuildServiceProvider();
 
-        var cacheOptions = MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(provider.GetRequiredService<IOptions<SqlServerOptions>>().Value);
+        var cacheOptions = SqlServerMethodCacheBuilderExtensions.CacheOptions(provider.GetRequiredService<IOptions<SqlServerOptions>>().Value);
         cacheOptions.ConnectionString.Should().Be(ConnectionString);
         cacheOptions.SchemaName.Should().Be("cache");
         cacheOptions.TableName.Should().Be("Entries");
@@ -86,5 +86,43 @@ public class SqlServerServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var act = () => provider.GetRequiredService<IOptions<SqlServerOptions>>().Value;
         act.Should().Throw<OptionsValidationException>();
+    }
+
+    [Theory]
+    [InlineData("connection", "SqlServerOptions.ConnectionString is required.")]
+    [InlineData("tables", "SQL Server cache, schema-version and invalidations tables need distinct names.")]
+    [InlineData("retention", "SqlServerOptions.BackplaneRetention must be at least one minute.")]
+    public void UseSqlServer_InvalidOptions_FailWithTheMessageThatSaysWhatIsWrong(string problem, string message)
+    {
+        var services = new ServiceCollection();
+
+        services.AddMethodCache(mc => mc.UseSqlServer(options => Break(options, problem)));
+        using var provider = services.BuildServiceProvider();
+        var act = () => provider.GetRequiredService<IOptions<SqlServerOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>().Which.Failures.Should().Equal(message);
+    }
+
+    [Fact]
+    public void UseSqlServer_InvalidOptions_FailStartupWithTheMessageThatSaysWhatIsWrong()
+    {
+        var services = new ServiceCollection();
+
+        services.AddMethodCache(mc => mc.UseSqlServer(options => Break(options, "retention")));
+        using var provider = services.BuildServiceProvider();
+        var error = Assert.ThrowsAny<Exception>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+
+        error.Message.Should().Contain("SqlServerOptions.BackplaneRetention must be at least one minute.");
+    }
+
+    private static void Break(SqlServerOptions options, string problem)
+    {
+        options.ConnectionString = ConnectionString;
+        switch (problem)
+        {
+            case "connection": options.ConnectionString = ""; break;
+            case "tables": options.InvalidationsTableName = options.TableName; break;
+            case "retention": options.BackplaneRetention = TimeSpan.FromSeconds(30); break;
+        }
     }
 }

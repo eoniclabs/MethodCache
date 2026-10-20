@@ -2,6 +2,8 @@
   <!--
     Packages require .NET 10 and the .NET 10 SDK. If a compiler cannot load the generator or analyzers,
     CS9057 must fail the build rather than silently skipping generated caching.
+    A .targets file, not a .props file: NuGet imports it after the project's own properties, so this appends to the
+    project's WarningsAsErrors instead of being replaced by a project that sets it without $(WarningsAsErrors).
   -->
   <PropertyGroup>
     <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>

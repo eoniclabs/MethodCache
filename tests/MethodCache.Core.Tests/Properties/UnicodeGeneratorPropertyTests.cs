@@ -2,7 +2,6 @@ using CsCheck;
 using MethodCache.Core.Tests.Core;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
-using MethodCache.Serialization.MessagePack;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Properties;
@@ -16,7 +15,6 @@ public class UnicodeGeneratorPropertyTests
 
     [Theory]
     [InlineData(typeof(JsonKeyGenerator))]
-    [InlineData(typeof(MessagePackKeyGenerator))]
     public void KeyProvider_LoneSurrogates_DoNotAlias(Type generatorType)
     {
         var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;
@@ -27,7 +25,6 @@ public class UnicodeGeneratorPropertyTests
     [Theory]
     [InlineData(typeof(FastHashKeyGenerator))]
     [InlineData(typeof(JsonKeyGenerator))]
-    [InlineData(typeof(MessagePackKeyGenerator))]
     public void KeyGenerators_PreserveOrdinalUtf16AcrossArgumentsProvidersAndNestedValues(Type generatorType)
     {
         var generator = (ICacheKeyGenerator)Activator.CreateInstance(generatorType)!;

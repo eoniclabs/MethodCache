@@ -64,12 +64,12 @@ public class CoreHttpAcceptanceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BypassMutation_EmptyCacheableMethods_RetiresAllOtherReaders(bool cookies)
+    public async Task BypassMutation_RetiresAllOtherReaders(bool cookies)
     {
         var time = new FakeTimeProvider(); using var store = new TestHttpStore(time);
         var origin = new Origin();
         using var reader = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, store, time));
-        var options = new HttpCacheOptions { KeepCookies = cookies }; options.CacheableMethods.Clear();
+        var options = new HttpCacheOptions { KeepCookies = cookies };
         using var writer = new HttpClient(HttpCacheTestFactory.CreateHandler(options, origin, store, time));
         Assert.Equal("value", await reader.GetStringAsync("https://example.test/a")); origin.Value = "new";
         using (await writer.PostAsync("https://example.test/a", new StringContent("update"))) { }

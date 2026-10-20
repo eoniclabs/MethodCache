@@ -78,7 +78,7 @@
     <None Include="..\MethodCache.SourceGenerator\bin\$(Configuration)\netstandard2.0\MethodCache.SourceGenerator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\MethodCache.Analyzers\bin\$(Configuration)\netstandard2.0\MethodCache.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\MethodCache.CodeFixes\bin\$(Configuration)\netstandard2.0\MethodCache.CodeFixes.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="build\MethodCache.props" Pack="true" PackagePath="build;buildTransitive" />
+    <None Include="build\MethodCache.targets" Pack="true" PackagePath="build;buildTransitive" />
   </ItemGroup>
 
   <ItemGroup>

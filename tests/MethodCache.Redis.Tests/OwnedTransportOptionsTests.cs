@@ -21,6 +21,58 @@ public class OwnedTransportOptionsTests
     }
 
     [Fact]
+    public void UseRedis_WithoutConfigurationOrFactory_FailsStartupWithAClearMessage()
+    {
+        // A configuration section that is missing in this environment binds nothing
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UseRedis(_ => { }));
+        using var provider = services.BuildServiceProvider();
+
+        var error = StartupFailure(provider);
+
+        Assert.Contains("RedisOptions.Configuration", error.Message);
+        Assert.Contains("RedisOptions.ConnectionMultiplexerFactory", error.Message);
+        Assert.Single(error.Failures);
+    }
+
+    [Fact]
+    public void RedisOptions_HaveNoDefaultConfiguration()
+    {
+        Assert.Null(new RedisOptions().Configuration);
+    }
+
+    [Fact]
+    public void InvalidConfiguration_FailsStartupWithoutRepeatingTheString()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UseRedis(options => options.Configuration = "password=secret-canary,unknownMethodCacheSetting=true"));
+        using var provider = services.BuildServiceProvider();
+
+        var error = StartupFailure(provider);
+
+        Assert.Contains("not a valid StackExchange.Redis configuration string", error.Message);
+        Assert.DoesNotContain("secret-canary", error.Message);
+    }
+
+    // What the host runs at startup; more than one validator may report the same options
+    private static OptionsValidationException StartupFailure(IServiceProvider provider)
+    {
+        var error = Assert.ThrowsAny<Exception>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        return error as OptionsValidationException
+            ?? Assert.IsType<OptionsValidationException>(Assert.IsType<AggregateException>(error).InnerExceptions[0]);
+    }
+
+    [Fact]
+    public void ConnectionFactoryWithoutConfiguration_PassesStartupValidation()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UseRedis(options => options.ConnectionMultiplexerFactory = _ => Substitute.For<IConnectionMultiplexer>()));
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IStartupValidator>().Validate();
+    }
+
+    [Fact]
     public async Task Backplane_UsesFinalCorePrefix_AndLeavesApplicationServiceAlone()
     {
         var multiplexer = Substitute.For<IConnectionMultiplexer>();

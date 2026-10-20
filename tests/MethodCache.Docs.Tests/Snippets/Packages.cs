@@ -45,7 +45,7 @@ namespace Docs.Packages
                 {
                     options.EnableStaleIfError = true;           // serve the last response when the API is down
                     options.EnableStaleWhileRevalidate = true;   // when the server sends stale-while-revalidate
-                    options.AddDiagnosticHeaders = true;         // X-Cache: HIT, MISS, REVALIDATED, STALE or STALE-IF-ERROR
+                    options.AddDiagnosticHeaders = true;         // Cache-Status: MethodCache; hit; ttl=42
                 });
             // end-snippet
         }

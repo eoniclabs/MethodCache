@@ -75,6 +75,40 @@ public class CoreInstrumentationTests
     }
 
     [Fact]
+    public async Task Exporter_BucketsLoadDurationsInSeconds()
+    {
+        // Without advice the SDK uses 0, 5, 10 ... 10000, made for milliseconds, and every load lands in the first bucket
+        var clock = new FakeTimeProvider();
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(clock);
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+        var exported = new List<Metric>();
+        using var sdk = Sdk.CreateMeterProviderBuilder().AddMethodCacheInstrumentation().AddInMemoryExporter(exported).Build();
+
+        await provider.GetRequiredService<ICacheManager>().GetOrCreateAsync("key", _ =>
+        {
+            clock.Advance(TimeSpan.FromMilliseconds(30));
+            return ValueTask.FromResult(7);
+        });
+
+        Assert.True(sdk.ForceFlush());
+        var duration = Assert.Single(exported, metric => metric.Name == "methodcache.load.duration");
+        var bounds = new List<double>();
+        double? recordedIn = null;
+        Inspect(duration, point =>
+        {
+            foreach (var bucket in point.GetHistogramBuckets())
+            {
+                bounds.Add(bucket.ExplicitBound);
+                if (bucket.BucketCount == 1) recordedIn = bucket.ExplicitBound;
+            }
+        });
+        Assert.Equal(new[] { 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, double.PositiveInfinity }, bounds);
+        Assert.Equal(0.05, recordedIn);
+    }
+
+    [Fact]
     public async Task Exporter_ReceivesExactlyOneOutcomePerCaller_NoSpansForPureHits()
     {
         var exported = new List<Metric>();
@@ -92,7 +126,7 @@ public class CoreInstrumentationTests
         Inspect(metric, point =>
         {
             string? result = null;
-            foreach (var tag in point.Tags) if (tag.Key == "result") result = (string?)tag.Value;
+            foreach (var tag in point.Tags) if (tag.Key == "methodcache.result") result = (string?)tag.Value;
             outcomes[result!] = point.GetSumLong();
         });
         Assert.Equal(100, outcomes["hit"]);
@@ -178,7 +212,7 @@ public class CoreInstrumentationTests
             Inspect(metric, point =>
             {
                 foreach (var tag in point.Tags)
-                    if (tag.Key == "result") { if (Equals(tag.Value, "hit")) hits += point.GetSumLong(); else if (Equals(tag.Value, "miss")) misses += point.GetSumLong(); }
+                    if (tag.Key == "methodcache.result") { if (Equals(tag.Value, "hit")) hits += point.GetSumLong(); else if (Equals(tag.Value, "miss")) misses += point.GetSumLong(); }
             });
         Assert.Equal(2, hits);
         Assert.Equal(1, misses);
@@ -196,7 +230,7 @@ public class CoreInstrumentationTests
         long methods = -1;
         Inspect(metric, point =>
         {
-            foreach (var tag in point.Tags) if (tag.Key == "kind" && Equals(tag.Value, "method")) methods = point.GetSumLong();
+            foreach (var tag in point.Tags) if (tag.Key == "methodcache.kind" && Equals(tag.Value, "method")) methods = point.GetSumLong();
         });
         Assert.Equal(1, methods);
         var stats = await provider.GetRequiredService<ICacheAdministrator>().GetStatsAsync();

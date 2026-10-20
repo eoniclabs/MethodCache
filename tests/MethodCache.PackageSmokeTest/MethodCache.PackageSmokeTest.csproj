@@ -14,7 +14,17 @@
     <MethodCachePackageVersion Condition="'$(MethodCachePackageVersion)' == ''">*-*</MethodCachePackageVersion>
     <!-- A private package folder, so a re-pack with the same version is never served from the global cache -->
     <RestorePackagesPath>$(MSBuildProjectDirectory)/obj/packages</RestorePackagesPath>
+    <!-- Set, not appended to, as many apps do: the package must add CS9057 to this list, not lose it to it -->
+    <WarningsAsErrors>NU1903;NU1904;MethodCacheSmokeOwnWarning</WarningsAsErrors>
   </PropertyGroup>
+
+  <!-- A generator the compiler can't load (CS9057) must fail the build, and the app's own list must stay -->
+  <Target Name="CheckMethodCacheWarningsAsErrors" BeforeTargets="CoreCompile">
+    <Error Condition="!$([System.String]::Copy(';$(WarningsAsErrors);').Contains(';CS9057;'))"
+           Text="The MethodCache package did not make CS9057 an error: WarningsAsErrors is '$(WarningsAsErrors)'." />
+    <Error Condition="!$([System.String]::Copy(';$(WarningsAsErrors);').Contains(';MethodCacheSmokeOwnWarning;'))"
+           Text="The MethodCache package replaced the project's own WarningsAsErrors: it is '$(WarningsAsErrors)'." />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="MethodCache" Version="$(MethodCachePackageVersion)" />

@@ -1,5 +1,5 @@
 #nullable enable
-Microsoft.AspNetCore.Builder.MethodCacheAdminEndpoints
+Microsoft.AspNetCore.Builder.MethodCacheEndpointRouteBuilderExtensions
 Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions
-static Microsoft.AspNetCore.Builder.MethodCacheAdminEndpoints.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.AspNetCore.Builder.MethodCacheEndpointRouteBuilderExtensions.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, string! name = "methodcache", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!

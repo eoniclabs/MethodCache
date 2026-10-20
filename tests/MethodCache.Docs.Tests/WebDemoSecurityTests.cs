@@ -27,9 +27,9 @@ public class WebDemoSecurityTests
     [InlineData("GET", "/methodcache/stats", HttpStatusCode.OK)]
     [InlineData("GET", "/methodcache/methods", HttpStatusCode.OK)]
     [InlineData("GET", "/methodcache/entries", HttpStatusCode.OK)]
-    [InlineData("GET", "/methodcache/entry?key=missing", HttpStatusCode.NotFound)]
-    [InlineData("DELETE", "/methodcache/entry?key=missing", HttpStatusCode.NotFound)]
-    [InlineData("DELETE", "/methodcache/entries", HttpStatusCode.NoContent)]
+    [InlineData("GET", "/methodcache/entry?storedKey=missing", HttpStatusCode.NotFound)]
+    [InlineData("DELETE", "/methodcache/entry?storedKey=missing", HttpStatusCode.NotFound)]
+    [InlineData("POST", "/methodcache/clear", HttpStatusCode.NoContent)]
     [InlineData("POST", "/methodcache/invalidate", HttpStatusCode.NoContent)]
     public async Task AdminEndpoints_ProductionChallengesAnonymous_DevelopmentAllowsAnonymous(
         string method, string path, HttpStatusCode developmentStatus)
@@ -39,7 +39,8 @@ public class WebDemoSecurityTests
             await using var factory = CreateFactory(environment);
             using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             using var request = new HttpRequestMessage(new HttpMethod(method), path);
-            if (method == "POST") request.Content = JsonContent.Create(new { tags = new[] { "products" } });
+            if (method == "POST")
+                request.Content = path.EndsWith("/clear", StringComparison.Ordinal) ? JsonContent.Create(new { }) : JsonContent.Create(new { tags = new[] { "products" } });
 
             using var response = await client.SendAsync(request);
 

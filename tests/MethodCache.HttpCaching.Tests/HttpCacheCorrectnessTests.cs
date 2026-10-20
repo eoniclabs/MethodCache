@@ -130,6 +130,51 @@ public class HttpCacheCorrectnessTests
         Assert.Equal(new Uri(Url), hit.RequestMessage!.RequestUri);
     }
 
+    [Theory]
+    [InlineData("OPTIONS")]
+    [InlineData("TRACE")]
+    public async Task OtherSafeMethods_AreNotCached_AndDoNotInvalidate(string method)
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Cacheable("v1"), Cacheable("a"), Cacheable("b"));
+
+        Assert.Equal("v1", await client.GetStringAsync(Url));
+        await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), Url));
+        await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), Url));
+
+        Assert.Equal("v1", await client.GetStringAsync(Url));
+        Assert.Equal(3, inner.RequestCount);
+    }
+
+    [Theory]
+    [InlineData("QUERY")]
+    [InlineData("PROPFIND")]
+    public async Task MethodOfUnknownSafety_IsNotCached_AndInvalidates(string method)
+    {
+        // RFC 9111 section 4.4: methods whose safety is unknown invalidate like unsafe ones
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Cacheable("v1"), Cacheable("a"), Cacheable("b"), Cacheable("v2"));
+
+        Assert.Equal("v1", await client.GetStringAsync(Url));
+        await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), Url));
+        await client.SendAsync(new HttpRequestMessage(new HttpMethod(method), Url));
+
+        Assert.Equal("v2", await client.GetStringAsync(Url));
+        Assert.Equal(4, inner.RequestCount);
+    }
+
+    [Fact]
+    public async Task HeadResponses_AreCached()
+    {
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
+        inner.SetResponses(Cacheable("a"), Cacheable("b"));
+
+        await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, Url));
+        await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, Url));
+
+        Assert.Equal(1, inner.RequestCount);
+    }
+
     [Fact]
     public async Task OptionsRequests_AreNotCached()
     {
@@ -279,11 +324,9 @@ public class HttpCacheCorrectnessTests
     }
 
     [Fact]
-    public async Task UnsafeMethodInCacheableMethods_IsNotCached_AndStillInvalidates()
+    public async Task CacheablePostResponses_AreNeverCached_AndStillInvalidate()
     {
-        var options = new HttpCacheOptions();
-        options.CacheableMethods.Add(HttpMethod.Post);
-        var (client, inner) = HttpCacheTestFactory.CreateClient(options);
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions());
         inner.SetResponses(Cacheable("v1"), Cacheable("posted"), Cacheable("posted again"), Cacheable("v2"));
 
         Assert.Equal("v1", await client.GetStringAsync(Url));
@@ -385,9 +428,9 @@ public class HttpCacheCorrectnessTests
     }
 
     [Fact]
-    public async Task ResponsesLargerThanMaxResponseSize_AreNotCached()
+    public async Task ResponsesLargerThanMaxResponseBytes_AreNotCached()
     {
-        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { MaxResponseSize = 4 });
+        var (client, inner) = HttpCacheTestFactory.CreateClient(new HttpCacheOptions { MaxResponseBytes = 4 });
         inner.SetResponses(Cacheable("too large"), Cacheable("too large"));
 
         await client.GetStringAsync(Url);

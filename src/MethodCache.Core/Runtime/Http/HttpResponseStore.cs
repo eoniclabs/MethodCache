@@ -308,7 +308,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static async Task ConfirmAsync(Task<bool>[] operations)
     {
         if ((await Task.WhenAll(operations).ConfigureAwait(false)).Any(static confirmed => !confirmed))
-            throw new CacheInvalidationQueuedException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
+            throw new CacheInvalidationQueuedException("HTTP cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
     }
 
     private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending, bool shutdown = false)

@@ -29,6 +29,12 @@ public static class MethodCacheHttpClientBuilderExtensions
     /// Requires AddMethodCache. Core stores responses in its separate HTTP memory budget, or exclusively in
     /// MethodCache's native Redis/SQL Server transport when configured. KeepCookies preserves transport cookies
     /// and bypasses response caching completely.
+    /// <para>
+    /// A client has at most one cache: calling this for every client (in <c>ConfigureHttpClientDefaults</c>) and again
+    /// for one client, or twice for one client, adds the cache once and applies every <paramref name="configure"/>.
+    /// With caching added for every client, set one client's options with
+    /// <c>services.Configure&lt;HttpCacheOptions&gt;("name", ...)</c>.
+    /// </para>
     /// </remarks>
     public static IHttpClientBuilder AddHttpCaching(this IHttpClientBuilder builder, Action<HttpCacheOptions>? configure = null)
     {
@@ -60,11 +66,12 @@ public static class MethodCacheHttpClientBuilderExtensions
         var options = services.AddOptions<HttpCacheOptions>(name)
             .Validate(static options => options.Tags.Count <= 125 && options.Tags.All(static tag => !string.IsNullOrWhiteSpace(tag) && tag.Length <= 1024),
                 "HTTP static tags must be nonempty, at most 1024 code units each, with at most 125 custom tags.")
-            .Validate(static options => options.MaxResponseSize >= 0 &&
-                (options.DefaultMaxAge == null || options.DefaultMaxAge >= TimeSpan.Zero) &&
+            .Validate(static options => options.MaxResponseBytes > 0,
+                "HttpCacheOptions.MaxResponseBytes must be positive; set long.MaxValue for no limit.")
+            .Validate(static options => (options.DefaultMaxAge == null || options.DefaultMaxAge >= TimeSpan.Zero) &&
                 options.MaxHeuristicFreshness >= TimeSpan.Zero && options.StaleRetention >= TimeSpan.Zero &&
                 options.MaxStaleIfError >= TimeSpan.Zero,
-                "HTTP response size and freshness/retention durations must be non-negative; zero response size means no limit.")
+                "HTTP freshness and retention durations must be non-negative.")
             .Validate(static options => options.BackgroundRevalidationTimeout > TimeSpan.Zero &&
                 options.BackgroundRevalidationTimeout <= TimeSpan.FromMilliseconds(uint.MaxValue - 1),
                 "HTTP background revalidation timeout must be positive and fit the platform timer range.")

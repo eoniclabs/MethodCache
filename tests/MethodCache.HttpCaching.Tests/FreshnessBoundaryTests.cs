@@ -34,8 +34,7 @@ public class FreshnessBoundaryTests
         return response;
     }
 
-    private static string? XCache(HttpResponseMessage response) =>
-        response.Headers.TryGetValues("X-Cache", out var values) ? values.FirstOrDefault() : null;
+    private static string? Status(HttpResponseMessage response) => HttpCacheTestFactory.CacheStatus(response);
 
     [Theory]
     [InlineData("max-age=0", false)]
@@ -162,7 +161,7 @@ public class FreshnessBoundaryTests
 
         _time.Advance(TimeSpan.FromSeconds(60) - OneTick);
         var fresh = await client.GetAsync(Url);
-        Assert.Equal("HIT", XCache(fresh));
+        Assert.Equal("MethodCache; hit; ttl=0", Status(fresh));
         Assert.Equal("v1", await fresh.Content.ReadAsStringAsync());
 
         _time.Advance(OneTick);
@@ -186,7 +185,7 @@ public class FreshnessBoundaryTests
         _time.Advance(TimeSpan.FromSeconds(90) - OneTick);
         var stale = await client.GetAsync(Url);
 
-        Assert.Equal("STALE", XCache(stale));
+        Assert.Equal("MethodCache; hit; ttl=-30; detail=stale-while-revalidate", Status(stale));
         Assert.Equal("v1", await stale.Content.ReadAsStringAsync());
         await HttpCacheTestFactory.WaitUntilAsync(() => state.RevalidationsInFlight.IsEmpty, "the background revalidation has finished");
         Assert.Equal(2, inner.RequestCount);
@@ -206,7 +205,7 @@ public class FreshnessBoundaryTests
         _time.Advance(TimeSpan.FromSeconds(90));
         var response = await client.GetAsync(Url);
 
-        Assert.Equal("MISS", XCache(response));
+        Assert.Equal("MethodCache; fwd=stale; fwd-status=200; stored", Status(response));
         Assert.Equal("v2", await response.Content.ReadAsStringAsync());
     }
 
@@ -224,7 +223,7 @@ public class FreshnessBoundaryTests
 
         _time.Advance(TimeSpan.FromSeconds(90) - OneTick);
         var stale = await client.GetAsync(Url);
-        Assert.Equal("STALE-IF-ERROR", XCache(stale));
+        Assert.Equal("MethodCache; fwd=stale; ttl=-30; detail=stale-if-error", Status(stale));
         Assert.Equal("v1", await stale.Content.ReadAsStringAsync());
 
         _time.Advance(OneTick);
@@ -246,7 +245,7 @@ public class FreshnessBoundaryTests
 
         await client.GetAsync(Url);
         _time.Advance(TimeSpan.FromSeconds(61));
-        Assert.Equal("STALE", XCache(await client.GetAsync(Url)));
+        Assert.Equal("MethodCache; hit; ttl=-1; detail=stale-while-revalidate", Status(await client.GetAsync(Url)));
         await origin.SecondRequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         _time.Advance(TimeSpan.FromMinutes(1) - OneTick);

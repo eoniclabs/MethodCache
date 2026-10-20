@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
-using MethodCache.Serialization.MessagePack;
 using Xunit;
 namespace MethodCache.Core.Tests.Contracts;
 
@@ -10,14 +9,12 @@ public class FrameworkKeyGeneratorTests
     [Theory]
     [InlineData(nameof(FastHashKeyGenerator))]
     [InlineData(nameof(JsonKeyGenerator))]
-    [InlineData(nameof(MessagePackKeyGenerator))]
     public void AspNetCoreRequestValues_GetDifferentKeysInEveryKeyGenerator(string name)
     {
         ICacheKeyGenerator generator = name switch
         {
             nameof(FastHashKeyGenerator) => new FastHashKeyGenerator(),
-            nameof(JsonKeyGenerator) => new JsonKeyGenerator(),
-            _ => new MessagePackKeyGenerator(),
+            _ => new JsonKeyGenerator(),
         };
         string Key(object value) => generator.GenerateKey("Requests", [value], CacheRuntimePolicy.Empty("Requests"));
 

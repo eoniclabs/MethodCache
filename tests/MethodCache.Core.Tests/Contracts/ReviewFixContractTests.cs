@@ -1,5 +1,4 @@
 using MethodCache.Extensibility;
-using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -11,7 +10,6 @@ public class ReviewFixContractTests
     [Theory]
     [InlineData(typeof(FastHashKeyGenerator))]
     [InlineData(typeof(JsonKeyGenerator))]
-    [InlineData(typeof(MessagePackKeyGenerator))]
     public void CollectionScope_GeneratedDecorator_KeepsCallersApart(Type generatorType)
     {
         var services = new ServiceCollection();

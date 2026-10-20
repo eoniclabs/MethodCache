@@ -19,6 +19,6 @@ MethodCache.SqlServer.SqlServerOptions.SchemaName.set -> void
 MethodCache.SqlServer.SqlServerOptions.SqlServerOptions() -> void
 MethodCache.SqlServer.SqlServerOptions.TableName.get -> string!
 MethodCache.SqlServer.SqlServerOptions.TableName.set -> void
-Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions
-static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.SqlServer.SqlServerOptions!>! configure) -> MethodCache.MethodCacheBuilder!
-static Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, string! connectionString) -> MethodCache.MethodCacheBuilder!
+Microsoft.Extensions.DependencyInjection.SqlServerMethodCacheBuilderExtensions
+static Microsoft.Extensions.DependencyInjection.SqlServerMethodCacheBuilderExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.SqlServer.SqlServerOptions!>! configure) -> MethodCache.MethodCacheBuilder!
+static Microsoft.Extensions.DependencyInjection.SqlServerMethodCacheBuilderExtensions.UseSqlServer(this MethodCache.MethodCacheBuilder! builder, string! connectionString) -> MethodCache.MethodCacheBuilder!

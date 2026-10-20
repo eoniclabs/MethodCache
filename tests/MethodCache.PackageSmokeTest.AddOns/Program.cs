@@ -234,7 +234,7 @@ public static class AspNetCoreCheck
             return "the cached entry is not listed: " + entries;
         }
 
-        (await Send(client, HttpMethod.Delete, "/methodcache/entries", "Admin")).EnsureSuccessStatusCode();
+        (await Send(client, HttpMethod.Post, "/methodcache/clear", "Admin", "{}")).EnsureSuccessStatusCode();
         var afterClear = await (await Send(client, HttpMethod.Get, "/methodcache/entries", "Admin")).Content.ReadAsStringAsync();
         if (afterClear.Contains("IUserService.GetAsync", StringComparison.Ordinal))
         {
@@ -246,10 +246,11 @@ public static class AspNetCoreCheck
         return health.IsSuccessStatusCode && status == "Healthy" ? null : $"health check answered {(int)health.StatusCode} {status}";
     }
 
-    private static Task<HttpResponseMessage> Send(HttpClient client, HttpMethod method, string path, string role)
+    private static Task<HttpResponseMessage> Send(HttpClient client, HttpMethod method, string path, string role, string? json = null)
     {
         var request = new HttpRequestMessage(method, path);
         request.Headers.Add("X-Role", role);
+        if (json != null) request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         return client.SendAsync(request);
     }
 
@@ -289,8 +290,8 @@ public static class OpenTelemetryCheck
             if (instrument.Name != "methodcache.requests") return;
             foreach (var tag in tags)
             {
-                if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
-                if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
+                if (tag.Key == "methodcache.result" && Equals(tag.Value, "hit")) Interlocked.Add(ref hits, value);
+                if (tag.Key == "methodcache.result" && Equals(tag.Value, "miss")) Interlocked.Add(ref misses, value);
             }
         });
         meters.Start();

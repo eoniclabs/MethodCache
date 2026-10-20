@@ -31,14 +31,22 @@ internal sealed class RedisConnection : IDisposable
             return () => Task.FromResult(factory(services));
         }
 
-        var configuration = options.Configuration;
+        // Options validation guarantees a configuration string whenever there is no factory
+        var configuration = options.Configuration ?? throw new InvalidOperationException(
+            Microsoft.Extensions.DependencyInjection.RedisMethodCacheBuilderExtensions.MissingConnectionMessage);
         return () => ConnectAsync(configuration);
     }
 
     /// <summary>
-    /// The connection, opened by the first call. A connect that failed (the app's factory threw while Redis was
-    /// down, say) is tried again by the next call instead of failing every later one.
+    /// The connection, opened by the first call. Callers that arrive while it is opening share that one attempt. A
+    /// connect that failed (the app's factory threw while Redis was down, say) is tried again by the next call instead
+    /// of failing every later one.
     /// </summary>
+    /// <remarks>
+    /// The connect runs on the thread pool, outside the lock: the app's factory may block (ConnectionMultiplexer.Connect
+    /// does, for as long as Redis takes to answer), and neither the caller, which then serves from memory, nor any
+    /// other caller waits for it.
+    /// </remarks>
     public Task<IConnectionMultiplexer> GetAsync()
     {
         var connection = Volatile.Read(ref _connection);
@@ -51,22 +59,11 @@ internal sealed class RedisConnection : IDisposable
         {
             if (_connection is null or { IsFaulted: true } or { IsCanceled: true })
             {
-                _connection = Connect(_connect);
+                // Only starts the attempt; an exception the factory throws faults the task
+                _connection = Task.Run(_connect);
             }
 
             return _connection;
-        }
-    }
-
-    private static Task<IConnectionMultiplexer> Connect(Func<Task<IConnectionMultiplexer>> connect)
-    {
-        try
-        {
-            return connect();
-        }
-        catch (Exception ex)
-        {
-            return Task.FromException<IConnectionMultiplexer>(ex);
         }
     }
 

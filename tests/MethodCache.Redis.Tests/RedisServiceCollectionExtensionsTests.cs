@@ -46,7 +46,11 @@ public class RedisServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        services.AddMethodCache(mc => mc.UseRedis(options => options.EnableBackplane = false));
+        services.AddMethodCache(mc => mc.UseRedis(options =>
+        {
+            options.Configuration = "localhost:6379";
+            options.EnableBackplane = false;
+        }));
 
         using var provider = services.BuildServiceProvider();
         provider.GetKeyedService<IBackplane>("MethodCache").Should().BeNull();
