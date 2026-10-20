@@ -29,6 +29,12 @@ public static class MethodCacheHttpClientBuilderExtensions
     /// Requires AddMethodCache. Core stores responses in its separate HTTP memory budget, or exclusively in
     /// MethodCache's native Redis/SQL Server transport when configured. KeepCookies preserves transport cookies
     /// and bypasses response caching completely.
+    /// <para>
+    /// A client has at most one cache: calling this for every client (in <c>ConfigureHttpClientDefaults</c>) and again
+    /// for one client, or twice for one client, adds the cache once and applies every <paramref name="configure"/>.
+    /// With caching added for every client, set one client's options with
+    /// <c>services.Configure&lt;HttpCacheOptions&gt;("name", ...)</c>.
+    /// </para>
     /// </remarks>
     public static IHttpClientBuilder AddHttpCaching(this IHttpClientBuilder builder, Action<HttpCacheOptions>? configure = null)
     {
