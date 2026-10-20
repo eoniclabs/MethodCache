@@ -326,6 +326,38 @@ public class ConfigFileRulesTests
         Assert.Contains("MC0010", error.Message, StringComparison.Ordinal);
     }
 
+    public interface ICaseRules
+    {
+        [Cache] ValueTask<int> FindAsync(int name, int Name);
+    }
+
+    public sealed class CaseRules : ICaseRules
+    {
+        public ValueTask<int> FindAsync(int name, int Name) => ValueTask.FromResult(name + Name);
+    }
+
+    [Theory]
+    [InlineData("found:{NAME}", false)]
+    [InlineData("found:{Name}", true)]
+    public void CodeTagMatchingSeveralParametersOnlyIgnoringCase_FailsStartup(string tag, bool accepted)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ICaseRules, CaseRules>();
+        services.AddMethodCache(mc => mc.Method((ICaseRules r) => r.FindAsync(0, 0)).Configure(o => o.AddTags(tag)));
+        using var provider = services.BuildServiceProvider();
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+
+        if (accepted)
+        {
+            Assert.Contains(tag, registry.GetPolicy(MethodIds.For(typeof(ICaseRules), nameof(ICaseRules.FindAsync))).Policy.Tags);
+            return;
+        }
+
+        var error = Assert.Throws<InvalidOperationException>(() => registry.GetAllPolicies());
+        Assert.Contains("{NAME} matches the parameters name, Name when case is ignored", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MC0017", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void CodeTagWithAParameterInAnotherCase_IsAccepted()
     {
