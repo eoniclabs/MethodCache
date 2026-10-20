@@ -18,7 +18,23 @@ public sealed class MethodCacheBuilder
     internal FluentMethodCacheConfiguration Configuration { get; } = new();
     internal List<Assembly> Assemblies { get; } = [];
     internal ServiceLifetime? AutoLifetime { get; private set; }
-    internal IServiceCollection Services { get; }
+    internal bool ConfiguresDistributed { get; private set; }
+
+    /// <summary>
+    /// The service collection <c>AddMethodCache</c> was called on. An extension method such as
+    /// <c>mc.UseRedis(...)</c> registers its services here; use it to write your own <c>mc.UseXxx()</c> extension
+    /// that adds services MethodCache resolves, and return the builder so calls chain.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// public static MethodCacheBuilder UseClock(this MethodCacheBuilder builder, TimeProvider clock)
+    /// {
+    ///     builder.Services.AddSingleton(clock);
+    ///     return builder;
+    /// }
+    /// </code>
+    /// </example>
+    public IServiceCollection Services { get; }
 
     /// <summary>Sets defaults for cached methods.</summary>
     public MethodCacheBuilder Defaults(Action<CacheEntryOptions.Builder> configure)
@@ -63,6 +79,7 @@ public sealed class MethodCacheBuilder
     public MethodCacheBuilder Distributed(Action<DistributedCacheOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
+        ConfiguresDistributed = true;
         Services.Configure(configure);
         return this;
     }

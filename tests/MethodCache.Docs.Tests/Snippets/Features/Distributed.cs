@@ -34,12 +34,5 @@ namespace Docs.Distributed
                 .UseMessagePack());   // MethodCache.Serialization.MessagePack
             // end-snippet
         }
-
-        public static void MessagePackKeys(WebApplicationBuilder builder)
-        {
-            // begin-snippet: messagepack-key-generator
-            builder.Services.AddMethodCache(cache => cache.UseMessagePack());
-            // end-snippet
-        }
     }
 }

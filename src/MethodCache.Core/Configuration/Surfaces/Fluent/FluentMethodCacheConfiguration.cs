@@ -18,13 +18,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             return this;
         }
 
-        public IFluentMethodCacheConfiguration WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null)
-        {
-            // Validate now, so a bad value fails at the call that set it
-            new CacheEntryOptions.Builder().WithFailSafe(duration, timeout, retryAfter);
-            return DefaultPolicy(options => options.WithFailSafe(duration, timeout, retryAfter));
-        }
-
         public IFluentServiceConfiguration<TService> ForService<TService>()
         {
             var serviceType = typeof(TService);
@@ -63,13 +56,13 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
 
             if (BuildOptions(_defaultPolicyBuilders) is { } defaultOptions)
             {
-                drafts.Add(CachePolicyBuilderFactory.ForDefaults("DefaultPolicy()", defaultOptions).Build(MethodIds.AllMethods));
+                drafts.Add(CachePolicyBuilderFactory.ForDefaults("mc.Defaults(...)", defaultOptions).Build(MethodIds.AllMethods));
             }
 
             foreach (var (groupName, groupConfiguration) in _groups)
             {
                 var groupOptions = groupConfiguration.BuildOptions();
-                drafts.Add(CachePolicyBuilderFactory.ForDefaults($"group '{groupName}'", groupOptions).Build(MethodIds.Group(groupName)));
+                drafts.Add(CachePolicyBuilderFactory.ForDefaults($"mc.Group(\"{groupName}\", ...)", groupOptions).Build(MethodIds.Group(groupName)));
             }
 
             foreach (var serviceConfiguration in _services.Values)
@@ -81,11 +74,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                     if (!string.IsNullOrWhiteSpace(methodConfiguration.GroupName))
                     {
                         policyBuilder.AddMetadata("group", methodConfiguration.GroupName);
-                    }
-
-                    if (methodConfiguration.CacheWhen != null)
-                    {
-                        policyBuilder.WithCacheWhen(methodConfiguration.CacheWhen);
                     }
 
                     drafts.Add(policyBuilder.Build(methodKey));
@@ -162,22 +150,9 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return new FluentMethodConfiguration<TResult>(CreateMethodConfiguration(method));
             }
 
+            // A method that returns nothing to cache fails here; one without [Cache] when the policies load
             private FluentMethodConfiguration CreateMethodConfiguration(LambdaExpression expression)
-            {
-                var methodInfo = ExtractMethodInfo(expression);
-                return _inner.GetOrCreate(methodInfo);
-            }
-
-            private static MethodInfo ExtractMethodInfo(LambdaExpression expression)
-            {
-                if (expression == null) throw new ArgumentNullException(nameof(expression));
-
-                return expression.Body switch
-                {
-                    MethodCallExpression methodCall => methodCall.Method,
-                    _ => throw new ArgumentException("Expression must target a method call.", nameof(expression))
-                };
-            }
+                => _inner.GetOrCreate(MethodIds.CachedCall(expression, "method"));
         }
 
         private sealed class FluentMethodConfiguration
@@ -208,13 +183,6 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
             }
 
             public string? GroupName => _groupName;
-
-            public Func<object?, bool>? CacheWhen { get; set; }
-
-            public void WithVersion(int version)
-            {
-                _configurations.Add(builder => builder.WithVersion(version));
-            }
 
             public CacheEntryOptions BuildOptions()
             {
@@ -250,18 +218,12 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return this;
             }
 
-            public IFluentMethodConfiguration<TResult> WithVersion(int version)
-            {
-                _inner.WithVersion(version);
-                return this;
-            }
-
             public IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate)
             {
                 ArgumentNullException.ThrowIfNull(predicate);
 
-                // Results reach the cache as object; a null can only be a TResult that allows null.
-                _inner.CacheWhen = new TypedCachePredicate<TResult>(predicate).Accept;
+                // In the same ordered list as Configure, so whichever of the two is called last wins
+                _inner.Configure(builder => builder.CacheWhen(predicate));
                 return this;
             }
         }

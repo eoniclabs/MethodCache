@@ -7,7 +7,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 
 internal sealed partial class RuntimeCacheConfigurator
 {
-    public async Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure,
+    public async ValueTask UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure,
         RuntimeOverrideMetadata? metadata, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -16,11 +16,17 @@ internal sealed partial class RuntimeCacheConfigurator
         var builder = new CacheEntryOptions.Builder();
         configure(builder);
         var draft = CachePolicyBuilderFactory.ForMethod(methodId, builder.Build()).Build(methodId);
+        if (_registry is PolicyRegistry registry && registry.Resolver.FindOverrideTagProblem(methodId, draft.Policy, draft.Fields) is { } problem)
+        {
+            throw new ArgumentException(
+                $"The tag '{problem.Tag}' in the override reaches the cached method '{problem.MethodId}', but {problem.Reason}.", nameof(configure));
+        }
+
         await _store.UpsertAsync(methodId, draft.Policy, draft.Fields, metadata).ConfigureAwait(false);
         await WaitForInvalidation(methodId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task RemoveAsync(string methodId, CancellationToken cancellationToken)
+    public async ValueTask RemoveAsync(string methodId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateKnown(methodId);
@@ -28,7 +34,7 @@ internal sealed partial class RuntimeCacheConfigurator
         await WaitForInvalidation(methodId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task ClearAsync(CancellationToken cancellationToken)
+    public async ValueTask ClearAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var methods = _store.GetSnapshots().Select(static snapshot => snapshot.MethodId).ToArray();
@@ -36,17 +42,21 @@ internal sealed partial class RuntimeCacheConfigurator
         await Task.WhenAll(methods.Select(method => WaitForInvalidation(method, cancellationToken))).ConfigureAwait(false);
     }
 
-    public Task<IReadOnlyCollection<RuntimeOverride>> GetOverridesAsync(CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_store.DescribeOverrides());
-    }
+    public IReadOnlyList<RuntimeOverride> GetOverrides() => _store.DescribeOverrides();
 
     private void ValidateKnown(string methodId)
     {
         ArgumentException.ThrowIfNullOrEmpty(methodId);
-        if (_registry != null && (MethodIds.IsDefaults(methodId) || !_registry.GetAllPolicies().Any(policy => policy.MethodId == methodId && policy.Contributions.Any(static contribution => contribution.SourceId == "attributes"))))
-            throw new ArgumentException($"Unknown MethodCache method '{methodId}'.", nameof(methodId));
+        if (_registry != null)
+        {
+            var cached = _registry.GetAllPolicies()
+                .Where(static policy => policy.Contributions.Any(static contribution => contribution.SourceId == PolicySourceIds.Attributes))
+                .Select(static policy => policy.MethodId)
+                .ToHashSet(StringComparer.Ordinal);
+            if (MethodIds.IsDefaults(methodId) || !cached.Contains(methodId))
+                throw new ArgumentException(MethodIds.NotCached(methodId, cached), nameof(methodId));
+        }
+
         if (_registry is PolicyRegistry registry) _ = registry.GetHandle(methodId);
     }
 

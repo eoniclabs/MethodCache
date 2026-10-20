@@ -58,7 +58,7 @@ public class AdminDistributedRemovalTests
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Add(AuthHeader, "admin");
 
-        var response = await client.DeleteAsync("/methodcache/entry?key=users:1");
+        var response = await client.DeleteAsync("/methodcache/entry?storedKey=users:1");
 
         // The removal did happen in the distributed cache: node A now has to load the value again.
         var loads = 0;
@@ -110,12 +110,53 @@ public class AdminDistributedRemovalTests
         backend.FailAdvance = true;
         using var response = operation switch
         {
-            "remove" => await client.DeleteAsync("/methodcache/entry?key=" + Uri.EscapeDataString(key)),
-            "clear" => await client.DeleteAsync("/methodcache/entries"),
+            "remove" => await client.DeleteAsync("/methodcache/entry?storedKey=" + Uri.EscapeDataString(key)),
+            "clear" => await client.PostAsync("/methodcache/clear", new StringContent("{}", System.Text.Encoding.UTF8, "application/json")),
             _ => await client.PostAsync("/methodcache/invalidate", new StringContent("{\"tags\":[\"users\"]}", System.Text.Encoding.UTF8, "application/json"))
         };
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Distributed > 0);
+        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Queued > 0);
+    }
+
+    public interface IAccounts
+    {
+        [Cache] Task<string> GetAccount(int id);
+    }
+
+    public sealed class Accounts : IAccounts
+    {
+        public Task<string> GetAccount(int id) => Task.FromResult("account-" + id);
+    }
+
+    [Fact]
+    public async Task UnconfirmedMethodInvalidation_Answers503AndRetainsRecovery()
+    {
+        var backend = HttpEpochTestCache.Create();
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddSingleton<IAccounts, Accounts>();
+        builder.Services.AddMethodCache();
+        builder.Services.AddMethodCacheDistributedCache(_ => backend);
+        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+        builder.Services.AddAuthorization(options => options.AddPolicy("CacheAdmins", policy => policy.RequireUserName("admin")));
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapMethodCacheAdmin("CacheAdmins");
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Add(AuthHeader, "admin");
+        var methodId = app.Services.GetRequiredService<IMethodCacheKeys>().MethodId<IAccounts>(a => a.GetAccount(0));
+
+        backend.FailStamp = true;
+        backend.FailAdvance = true;
+        using var response = await client.PostAsync("/methodcache/invalidate-method",
+            System.Net.Http.Json.JsonContent.Create(new { methodId }));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.True(app.Services.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Queued > 0);
     }
 
     private sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>

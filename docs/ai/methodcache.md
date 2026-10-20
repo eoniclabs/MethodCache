@@ -15,9 +15,11 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
 3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable
    registrations fail at host startup or first generated binding. Missing services require explicit
    `AutoRegister(lifetime)` and exactly one accessible implementation in the selected generated module.
-4. Use `MethodCacheBuilder` for startup: `Defaults`, `Group`, typed `Method`, `Memory`, `FromConfiguration`,
-   `FromAssemblyOf<T>()` and the integrations' `UseRedis` / `UseSqlServer` / `UseMessagePack`. Choose a module
-   explicitly when multiple assemblies generate the same interface. Keep all add-on/Core versions identical.
+4. Use `MethodCacheBuilder` for startup, in one `AddMethodCache(mc => mc...)` call: `Defaults`, `Group`, typed
+   `Method`, `Memory`, `Distributed`, `Telemetry`, `FromConfiguration`, `FromAssemblyOf<T>()` and the integrations'
+   `UseRedis` / `UseSqlServer` (one of them) / `UseMessagePack`. Don't use `services.Configure<...>` for MethodCache
+   options. Choose a module explicitly when multiple assemblies generate the same interface. Keep all add-on/Core
+   versions identical.
 
 <!-- snippet: getting-started-interface -->
 ```cs
@@ -69,30 +71,41 @@ builder.Services.AddMethodCache();                               // after your r
   Tags share an application-defined namespace; different literal templates can still select the same tag. Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
 - Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
-  (shorter than `Duration`, or `"off"`), `FailSafe` (or `"off"`), `FailSafeTimeout`, `Version`, `Tags`, and the named `Group` setting.
+  (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
+  `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
+  the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
 - Cached objects are shared between callers: return immutable types such as records.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
   If multiple modules generate the same interface, select exactly one; calling/entry assemblies have no special priority.
-- In `appsettings.json`, write durations as `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known
-  setting names; anything else fails startup.
+- In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
+  `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
+  `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
+  unknown method id and a method listed twice fail startup.
+- `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
+  startup.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,
   prefixed key such as `$"order:{id}"`.
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
-- In tests, register `NoOpCacheManager` (namespace `MethodCache.Extensibility`) after `AddMethodCache()` to turn
-  method caching off. HTTP response storage remains independent; use its own options and administrator.
-- To invalidate a `GetOrCreateAsync` entry that has a version, pass `CacheManagerExtensions.GetCacheKey(key, version)`
-  to `InvalidateKeysAsync`.
+- In tests, register `NoOpCacheManager` (namespace `MethodCache`) after `AddMethodCache()` to turn method caching
+  off. HTTP response storage remains independent; use its own options and administrator.
+- To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
+  `InvalidateKeyAsync(key, version: 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
+- To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
+  `cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`. For every entry of one method, use
+  `ICacheAdministrator.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))`.
+- Several registrations of one interface with different implementation types each cache their own results.
 - Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
 - `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
 
 ## Namespaces
 
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
-  `IRuntimeCacheConfigurator`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`, `ICacheKeyProvider`.
+  `IRuntimeCacheConfigurator`, `IMethodCacheKeys`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`,
+  `ICacheKeyProvider`.
 - `MethodCache`: also `NoOpCacheManager` (sealed). Serializer, transport and atomic-store interfaces are internal.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`. Everything else is a method on its builder:
   `FromConfiguration`, `Distributed(...)`, `Telemetry(...)`, `UseRedis` (package `MethodCache.Redis`), `UseSqlServer`
@@ -101,9 +114,10 @@ builder.Services.AddMethodCache();                               // after your r
 SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
 
 The public ICacheManager contract is GetOrCreateAsync (a state-passing factory, like HybridCache), TryGetAsync,
-InvalidateKeysAsync and InvalidateTagsAsync, all with the caller token last. CacheEntryOptions is immutable. Custom managers use GetCacheKey and CanCache helpers; generated
-synchronous calls bypass a custom manager. Runtime configurators expose only Upsert/Remove/Clear/GetOverrides. They
-reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
+InvalidateKeysAsync and InvalidateTagsAsync, all with the caller token last. CacheEntryOptions is immutable. Custom managers store
+entries under MethodCacheKeys.StoredKey(key, version) and use CanCache; generated calls pass keys that already carry their
+version, with Version = null, and generated synchronous calls bypass a custom manager. Runtime configurators expose only
+UpsertAsync/RemoveAsync/ClearAsync (ValueTask) and GetOverrides(). They reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
 changes use private random namespaces. Never reintroduce cache callbacks, a factory context object, public policy pipelines,
 key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
 
@@ -115,8 +129,9 @@ Core owns container-scoped `IMeterFactory` instruments and its `MethodCache` Act
 only provides AddMethodCacheInstrumentation builder subscriptions. Never add metrics-provider interfaces, manager
 wrappers or baggage propagators. Core MethodCacheTelemetryOptions controls explicit key/tag span opt-ins; hashes are
 the default when keys are enabled. No keys/tags/URLs/user/tenant metric dimensions, copied HTTP attributes or exception
-payloads in spans/logs. Preserve application ambient activity/baggage context. Histograms use seconds. Report local
+payloads in spans/logs. Preserve application ambient activity/baggage context. Attributes are namespaced
+(`methodcache.kind`, `methodcache.method`, `methodcache.result` and so on). Histograms use seconds. Report local
 method/HTTP entries, HTTP bytes, observed L2 entries and TotalWeight in configured units, never object-memory estimates.
 Health checks honor failureStatus and independently report L2, backplane subscription and storage/publication queues.
 
-- Generated keys and string policy ids start with the service assembly simple name in brackets, without its version. Closed generic argument identities include their assemblies. Build keys with `MethodCacheKeys`; use `TypePart(typeof(T))` when spelling a closed generic method name. Get exact policy ids from administration or prefer typed configuration expressions.
+- Generated keys and method ids start with the service assembly simple name in brackets, without its version. Closed generic argument identities include their assemblies. Never write a key or method id by hand: get keys from `IMethodCacheKeys.For` and ids from `IMethodCacheKeys.MethodId`, administration, or typed configuration expressions.

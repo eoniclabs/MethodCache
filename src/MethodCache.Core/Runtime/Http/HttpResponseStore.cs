@@ -308,7 +308,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     private static async Task ConfirmAsync(Task<bool>[] operations)
     {
         if ((await Task.WhenAll(operations).ConfigureAwait(false)).Any(static confirmed => !confirmed))
-            throw new CacheInvalidationQueuedException("The HTTP origin mutation may have succeeded, but its cache invalidation could not be confirmed. The cache owns recovery; do not retry the origin mutation automatically.");
+            throw new CacheInvalidationQueuedException("HTTP cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
     }
 
     private async Task<bool> AdvanceAsync(int slot, PendingEpoch pending, bool shutdown = false)
@@ -485,10 +485,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
     internal static bool IsObservationId(string id)
         => id.Length == 69 && id.StartsWith("http:", StringComparison.Ordinal) && id.AsSpan(5).IndexOfAnyExcept("0123456789ABCDEF") < 0;
 
-    internal static void RequireConfirmed(InvalidationResult result)
-    {
-        if (result.Queued > 0) throw new CacheInvalidationQueuedException("Cache invalidation is queued for recovery and has not been confirmed by distributed storage.");
-    }
+    internal static void RequireConfirmed(InvalidationResult result) => CacheInvalidationQueuedException.ThrowIfQueued(result);
 
     internal HttpStorageInfo? Find(string id) => IsObservationId(id) ? List().FirstOrDefault(info => info.Id == id) : null;
     internal async ValueTask<bool> RemoveObservationAsync(string id, CancellationToken token)

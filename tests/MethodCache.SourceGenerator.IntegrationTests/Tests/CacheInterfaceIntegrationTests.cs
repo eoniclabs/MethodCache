@@ -108,7 +108,7 @@ namespace VendorApp
         await fx.GetRateAsync("EUR", "SEK");
         await fx.GetRateAsync("USD", "SEK");
 
-        var key = MethodCacheKeys.For(typeof(IFxVendorClient), nameof(IFxVendorClient.GetRateAsync), MethodCacheKeys.Part("EUR"), MethodCacheKeys.Part("SEK"));
+        var key = provider.GetRequiredService<IMethodCacheKeys>().For<IFxVendorClient>(vendor => vendor.GetRateAsync("EUR", "SEK"));
         var entry = admin.GetEntry(key);
         Assert.NotNull(entry);
         Assert.Contains("fx:EUR", entry!.Tags);

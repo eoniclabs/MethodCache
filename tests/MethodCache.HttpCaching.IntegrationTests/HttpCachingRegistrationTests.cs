@@ -122,7 +122,7 @@ public class HttpCachingRegistrationTests
         {
             foreach (var tag in tags)
             {
-                if (tag.Key == "result")
+                if (tag.Key == "methodcache.result")
                 {
                     lock (outcomes)
                     {

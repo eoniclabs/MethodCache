@@ -12,7 +12,7 @@ public class BuilderIntegrationTests
     {
         var services = new ServiceCollection();
         services.AddMethodCache(b => b.UseRedis("localhost:6379")
-            .UseMessagePack().UseJson().UseMessagePack(MessagePack.MessagePackSerializerOptions.Standard));
+            .UseMessagePack().UseJson().UseMessagePack(options => options.WithCompression(MessagePack.MessagePackCompression.None)));
         using var provider = services.BuildServiceProvider();
         Assert.IsType<MessagePackCacheSerializer>(provider.GetRequiredKeyedService<ISerializer>("MethodCache"));
     }

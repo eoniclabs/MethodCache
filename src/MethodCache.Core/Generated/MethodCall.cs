@@ -156,7 +156,7 @@ public readonly struct MethodCall
         object?[] parameterValues, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(loader);
-        if (_snapshot.Services.RecordsKeys) return Task.FromResult(MethodCacheKeyRecorder.Record<T>(key));
+        if (_snapshot.Services.RecordsKeys) return Task.FromResult(MethodCacheKeyRecorder.Record<T>(key, _snapshot.Policy.MethodId));
         cancellationToken.ThrowIfCancellationRequested();
         var call = this;
         var telemetry = _snapshot.Services.Telemetry;
@@ -174,7 +174,7 @@ public readonly struct MethodCall
         object?[] parameterValues, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(loader);
-        if (_snapshot.Services.RecordsKeys) return new ValueTask<T>(MethodCacheKeyRecorder.Record<T>(key));
+        if (_snapshot.Services.RecordsKeys) return new ValueTask<T>(MethodCacheKeyRecorder.Record<T>(key, _snapshot.Policy.MethodId));
         cancellationToken.ThrowIfCancellationRequested();
         var call = this;
         var telemetry = _snapshot.Services.Telemetry;
@@ -192,7 +192,7 @@ public readonly struct MethodCall
         object?[] parameterValues, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(loader);
-        if (_snapshot.Services.RecordsKeys) return MethodCacheKeyRecorder.Record<T>(key);
+        if (_snapshot.Services.RecordsKeys) return MethodCacheKeyRecorder.Record<T>(key, _snapshot.Policy.MethodId);
         cancellationToken.ThrowIfCancellationRequested();
         var call = this;
         var telemetry = _snapshot.Services.Telemetry;

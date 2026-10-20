@@ -27,7 +27,7 @@ public class BulkCacheConsistencyTests
         var reader = second.GetRequiredService<ICacheManager>();
         await writer.GetOrCreateAsync("key", _ => ValueTask.FromResult("stored"));
         var bulk = await reader.GetOrCreateManyAsync<string>(["key"], (_, _) =>
-            ValueTask.FromResult<IDictionary<string, string>>(new Dictionary<string, string> { ["key"] = "candidate" }));
+            ValueTask.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string> { ["key"] = "candidate" }));
         var individual = await reader.GetOrCreateAsync("key", _ => ValueTask.FromResult("another"));
         Assert.Equal("stored", bulk["key"]);
         Assert.Equal(individual, bulk["key"]);

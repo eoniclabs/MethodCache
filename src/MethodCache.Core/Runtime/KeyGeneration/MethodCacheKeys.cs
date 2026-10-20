@@ -1,44 +1,63 @@
 ﻿using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Text;
+using MethodCache.Generated;
 
 namespace MethodCache;
 
 /// <summary>
-/// Builds the cache keys that generated decorators use, so application code can compute the same key
-/// (for example to invalidate one entry) without guessing the format.
+/// Formats values the way cache keys and tags write them, and builds the key a manual entry is stored under, so
+/// application code writes the same text as MethodCache does.
 /// </summary>
 /// <remarks>
-/// A key has the form <c>[Assembly]{Service}.{Method}[:v{Version}][:{part}]*</c>, for example
-/// <c>[MyApp]MyApp.IUserService.GetUser:v2:42</c>. Parts are formatted with the invariant culture; string parts
-/// escape <c>\</c> and <c>:</c>, and <c>null</c> is written as <c>\0</c>, so no two argument lists share a key.
-/// A record, class or struct argument whose public properties and fields are simple values is written as
-/// <c>({member1}:{member2}...)</c> in declaration order, and an <see cref="ICacheKeyProvider"/> as its
-/// <see cref="ICacheKeyProvider.CacheKeyPart"/>. An array or collection of such values (records and classes only when
-/// sealed) is written as <see cref="Sequence{T}"/> writes it, after its runtime type name when that differs from the
-/// declared type. Methods with other arguments, or a subclass of a declared record
-/// or class, use a hash of the arguments instead:
-/// <c>[Assembly]{Service}.{Method}[:v{Version}]:{hash}</c>; <see cref="Pattern"/> matches both forms.
+/// <para>To get the key of a call to a cached method, use <see cref="IMethodCacheKeys.For{TService}"/>: it builds the
+/// key exactly as the decorator does, including the policy version, overloads, generic arguments and keyed
+/// registrations. Keys written by hand go wrong without notice when any of those change.</para>
+/// <para>Use <c>Part</c> for a tag written by hand, such as <c>"user:" + MethodCacheKeys.Part(id)</c> for a
+/// <c>"user:{id}"</c> tag template: parts are formatted with the invariant culture, string parts escape <c>\</c> and
+/// <c>:</c>, and <c>null</c> is written as <c>\0</c>.</para>
+/// <para>An application <see cref="ICacheManager"/> stores an entry under <see cref="StoredKey"/>, so keys from
+/// <see cref="IMethodCacheKeys"/> and <see cref="CacheEntryInfo.StoredKey"/> name the same entry.</para>
 /// </remarks>
 /// <example>
 /// <code>
-/// var key = MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUser), MethodCacheKeys.Part(42));
-/// await cacheManager.InvalidateKeyAsync(key);
+/// await cacheManager.InvalidateTagAsync("user:" + MethodCacheKeys.Part(userId));
 /// </code>
 /// </example>
 public static class MethodCacheKeys
 {
-    /// <summary>The key part written for a <c>null</c> argument.</summary>
-    public const string Null = "\\0";
+    /// <summary>
+    /// Returns the key the built-in manager stores a manual entry under, and the key an application
+    /// <see cref="ICacheManager"/> should store it under: <paramref name="key"/> for an unversioned entry, framed with
+    /// <paramref name="version"/> otherwise. It is the <see cref="CacheEntryInfo.StoredKey"/> the administrator lists.
+    /// </summary>
+    /// <remarks>
+    /// Store an entry under <c>StoredKey(key, options?.Version)</c> in <see cref="ICacheManager.GetOrCreateAsync{TState, T}"/>
+    /// and look it up or remove it under <c>StoredKey(key, version)</c> in the other methods. A key from
+    /// <see cref="IMethodCacheKeys"/> already carries its version and comes with <c>Version = null</c>, so it is stored
+    /// as it is. Treat the framing as opaque.
+    /// </remarks>
+    /// <param name="key">The key passed to <see cref="ICacheManager"/>.</param>
+    /// <param name="version">The non-negative version passed with it, or <c>null</c> for an unversioned entry.</param>
+    /// <exception cref="ArgumentException"><paramref name="key"/> is <c>null</c>, empty or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="version"/> is negative.</exception>
+    public static string StoredKey(string key, int? version = null)
+    {
+        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("A cache key cannot be null or whitespace.", nameof(key));
+        if (version < 0) throw new ArgumentOutOfRangeException(nameof(version), "Version must be non-negative.");
+        return VersionedKey(key, version);
+    }
 
-    /// <summary>Separates the parts of a key.</summary>
-    public const string Separator = ":";
+    /// <summary>Separates versioned keys from unversioned user keys, escaping the reserved leading NUL.</summary>
+    internal static string VersionedKey(string key, int? version)
+        => version.HasValue
+            ? string.Concat("\0v", version.Value.ToString(CultureInfo.InvariantCulture), ":", key)
+            : key[0] == '\0' ? "\0" + key : key;
 
     /// <summary>
-    /// Returns the key prefix shared by every entry of one cached method: its service type, method name and,
-    /// when set, the policy version.
+    /// The key prefix shared by every entry of one cached method: its service type, key method name and, when set,
+    /// the policy version.
     /// </summary>
-    public static string Prefix(Type serviceType, string methodName, int? version = null)
+    internal static string Prefix(Type serviceType, string methodName, int? version = null)
     {
         ArgumentNullException.ThrowIfNull(serviceType);
         ArgumentException.ThrowIfNullOrEmpty(methodName);
@@ -48,28 +67,6 @@ public static class MethodCacheKeys
         return version.HasValue
             ? string.Concat(method, ":v", version.Value.ToString(CultureInfo.InvariantCulture))
             : method;
-    }
-
-    /// <summary>
-    /// Returns the method name used in the keys of a keyed registration (<c>AddKeyedScoped&lt;IRates, EcbRates&gt;("ecb")</c>),
-    /// such as <c>Get@ecb</c>, to pass as the method name to <see cref="For"/>, <see cref="Prefix"/> or
-    /// <see cref="Pattern"/>. Each registration of an interface then caches its own results.
-    /// </summary>
-    /// <param name="methodName">The method's name.</param>
-    /// <param name="serviceKey">
-    /// The service key: a string (<c>Get@ecb</c>), an enum (<c>Get@[MyApp]MyApp.Region.Eu</c>), or a bool, char, integer or
-    /// <see cref="Guid"/> (<c>Get@Int32(7)</c>).
-    /// </param>
-    /// <exception cref="ArgumentException">The key is of another type, whose string form may not be stable.</exception>
-    public static string KeyedMethodName(string methodName, object serviceKey)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(methodName);
-        ArgumentNullException.ThrowIfNull(serviceKey);
-
-        return string.Concat(methodName, "@", ServiceKeyPart(serviceKey)
-            ?? throw new ArgumentException(
-                $"A service key of type {serviceKey.GetType()} has no stable string form for cache keys; use a string, enum, bool, char, integer or Guid key.",
-                nameof(serviceKey)));
     }
 
     /// <summary>
@@ -92,38 +89,12 @@ public static class MethodCacheKeys
         _ => null
     };
 
-    /// <summary>Returns the key for a call with the given already formatted <paramref name="parts"/>.</summary>
-    public static string For(Type serviceType, string methodName, params string[] parts)
-        => ForVersion(serviceType, methodName, version: null, parts);
-
-    /// <summary>Returns the key for a call to a method whose policy has a <paramref name="version"/>.</summary>
-    public static string ForVersion(Type serviceType, string methodName, int? version, params string[] parts)
-    {
-        var prefix = Prefix(serviceType, methodName, version);
-        return parts is { Length: > 0 }
-            ? string.Concat(prefix, Separator, string.Join(Separator, parts))
-            : prefix;
-    }
-
-    /// <summary>Formats a closed type argument in a generic method name, including assembly identity without versions.</summary>
-    public static string TypePart(Type type)
-    {
-        ArgumentNullException.ThrowIfNull(type);
-        return Infrastructure.StableTypeIdentity.For(type);
-    }
-
-    /// <summary>Returns a wildcard pattern for one method name and optional version.</summary>
-    /// <remarks>For a generic method in a particular version, include its closed type arguments in the name,
-    /// using <see cref="TypePart"/> for each type. Omitting both the type arguments and version matches every specialization.</remarks>
-    public static string Pattern(Type serviceType, string methodName, int? version = null)
-        => string.Concat(Prefix(serviceType, methodName, version), "*");
-
     /// <summary>Formats a string argument, escaping characters that would make keys ambiguous.</summary>
     public static string Part(string? value)
     {
         if (value is null)
         {
-            return Null;
+            return KeyParts.Null;
         }
 
         return value.AsSpan().IndexOfAny('\\', ':') < 0
@@ -182,36 +153,6 @@ public static class MethodCacheKeys
 
     /// <summary>Formats a <see cref="DateTimeOffset"/> argument with full precision and its offset.</summary>
     public static string Part(DateTimeOffset value) => value.ToString("O", CultureInfo.InvariantCulture);
-
-    /// <summary>
-    /// Formats a collection argument as <c>[{count}:{element}:{element}...]</c>, and <c>null</c> as <see cref="Null"/>.
-    /// <paramref name="part"/> formats each element, and its text is escaped like a string part, so an element can't
-    /// read as two; the count keeps the last element apart from the next argument. No two argument lists share a key.
-    /// </summary>
-    /// <example>
-    /// <code>
-    /// var key = MethodCacheKeys.For(typeof(IProductService), nameof(IProductService.GetMany),
-    ///     MethodCacheKeys.Sequence(ids, static id => MethodCacheKeys.Part(id)));
-    /// </code>
-    /// </example>
-    public static string Sequence<T>(IEnumerable<T>? values, Func<T, string> part)
-    {
-        ArgumentNullException.ThrowIfNull(part);
-        if (values is null)
-        {
-            return Null;
-        }
-
-        var builder = new StringBuilder();
-        var count = 0;
-        foreach (var value in values)
-        {
-            builder.Append(Separator).Append(Part(part(value)));
-            count++;
-        }
-
-        return string.Concat("[", count.ToString(CultureInfo.InvariantCulture), builder.ToString(), "]");
-    }
 
     /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>
     public static string Part<TEnum>(TEnum value) where TEnum : struct, Enum => Type.GetTypeCode(typeof(TEnum)) switch

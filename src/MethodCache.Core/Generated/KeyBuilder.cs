@@ -7,8 +7,8 @@ namespace MethodCache.Generated;
 
 /// <summary>
 /// Writes a cache key into a caller-supplied buffer, usually on the stack, so a cache hit can be looked up without
-/// allocating the key string. Produces exactly the text <see cref="MethodCacheKeys"/> builds. Generated decorators
-/// use it; application code rarely needs it.
+/// allocating the key string. Produces exactly the key <see cref="IMethodCacheKeys.For{TService}"/> returns. For
+/// generated decorators; not for direct use.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public ref struct KeyBuilder
@@ -85,7 +85,7 @@ public ref struct KeyBuilder
         return text;
     }
 
-    /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
+    /// <summary>Appends text as is, such as the key prefix of a cached method.</summary>
     internal void Append(string value)
     {
         EnsureWritable();
@@ -110,7 +110,7 @@ public ref struct KeyBuilder
         AppendSeparator();
         if (value is null)
         {
-            Append(MethodCacheKeys.Null.AsSpan());
+            Append(KeyParts.Null.AsSpan());
             return;
         }
 
@@ -132,7 +132,7 @@ public ref struct KeyBuilder
     {
         EnsureWritable();
         AppendSeparator();
-        Append(MethodCacheKeys.Null.AsSpan());
+        Append(KeyParts.Null.AsSpan());
     }
 
     /// <summary>Appends a separator and a <see cref="bool"/> argument.</summary>

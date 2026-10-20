@@ -32,7 +32,38 @@ namespace MethodCache.SourceGenerator
                         break;
                 }
             }
+
+            // A refresh window as long as the entry lives would reload the value on every hit
+            if (TryGetDuration(attribute, "RefreshAhead", out var refreshText, out var refresh) && refresh > System.TimeSpan.Zero)
+            {
+                foreach (var lifetime in new[] { "Duration", "SlidingExpiration" })
+                {
+                    if (TryGetDuration(attribute, lifetime, out var lifetimeText, out var value) && value > System.TimeSpan.Zero && refresh >= value)
+                    {
+                        diagnostics.Add(DiagnosticInfo.Create(Diagnostics.RefreshAheadNotShorterThanDuration, location, refreshText, lifetime, lifetimeText));
+                        break;
+                    }
+                }
+            }
+
             return diagnostics;
+        }
+
+        private static bool TryGetDuration(AttributeData attribute, string setting, out string text, out System.TimeSpan value)
+        {
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.Key == setting && argument.Value.Value is string candidate &&
+                    MethodCache.Internal.DurationParser.TryParse(candidate, AllowsOff(setting), out value))
+                {
+                    text = candidate;
+                    return true;
+                }
+            }
+
+            text = string.Empty;
+            value = default;
+            return false;
         }
     }
 }

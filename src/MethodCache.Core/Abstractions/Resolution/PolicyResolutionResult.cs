@@ -55,5 +55,5 @@ internal sealed class PolicyResolutionResult
     /// </summary>
     public long Version { get; }
     internal CachePolicy? Declaration { get; init; }
-    internal IReadOnlyDictionary<string, string> FieldSources { get; init; } = new Dictionary<string, string>();
+    internal IReadOnlyDictionary<string, CacheSettingSource> FieldSources { get; init; } = new Dictionary<string, CacheSettingSource>();
 }

@@ -21,3 +21,4 @@ MC0019 | Design | Error | Reports a cache key argument, element or member whose 
 MC0020 | Performance | Warning | Reports a cached result type of object, an interface or an abstract class, which a distributed cache can't restore.
 MC0004 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
 MC0021 | Usage | Error | Reports a negative explicit cache version.
+MC0023 | Usage | Error | Reports a RefreshAhead that is not shorter than the Duration or SlidingExpiration on the same attribute.

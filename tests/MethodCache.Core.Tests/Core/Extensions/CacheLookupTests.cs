@@ -53,7 +53,7 @@ public class CacheLookupTests
         await cache.GetOrCreateManyAsync<string>(new[] { "k" }, (keys, _) =>
         {
             requested.AddRange(keys);
-            return new ValueTask<IDictionary<string, string>>(keys.ToDictionary(k => k, _ => "fresh"));
+            return new ValueTask<IReadOnlyDictionary<string, string>>(keys.ToDictionary(k => k, _ => "fresh"));
         });
 
         requested.Should().BeEmpty("\"k\" is cached");

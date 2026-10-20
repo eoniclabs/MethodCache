@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Registers Redis as MethodCache's distributed cache.
 /// </summary>
-public static class MethodCacheRedisServiceCollectionExtensions
+public static class RedisMethodCacheBuilderExtensions
 {
     /// <summary>
     /// Uses Redis as MethodCache's distributed cache: results are shared between instances, and invalidations
@@ -54,8 +54,10 @@ public static class MethodCacheRedisServiceCollectionExtensions
 
         MethodCache.Infrastructure.OwnedServices.AddOptions(services);
         services.AddOptions<RedisOptions>().Configure(configure)
-            .Validate(ValidConnectionSettings,
-                "RedisOptions requires valid Configuration or ConnectionMultiplexerFactory.")
+            .Validate(static options => options.ConnectionMultiplexerFactory != null || !string.IsNullOrWhiteSpace(options.Configuration),
+                MissingConnectionMessage)
+            .Validate(static options => options.ConnectionMultiplexerFactory != null || string.IsNullOrWhiteSpace(options.Configuration)
+                || IsValidConfiguration(options.Configuration), InvalidConfigurationMessage)
             .ValidateOnStart();
         services.TryAddSingleton(static sp =>
         {
@@ -78,11 +80,18 @@ public static class MethodCacheRedisServiceCollectionExtensions
         return services.AddMethodCacheDistributedCache(static sp => new RedisDistributedCache(sp.GetRequiredService<RedisConnection>()));
     }
 
-    private static bool ValidConnectionSettings(RedisOptions options)
+    internal const string MissingConnectionMessage =
+        "UseRedis has no Redis connection: set RedisOptions.Configuration to a StackExchange.Redis configuration string " +
+        "(for example \"localhost:6379\") or set RedisOptions.ConnectionMultiplexerFactory. When the options are bound " +
+        "from configuration, check that the section exists in this environment.";
+
+    // The string itself is not repeated: it may hold a password
+    internal const string InvalidConfigurationMessage =
+        "RedisOptions.Configuration is not a valid StackExchange.Redis configuration string.";
+
+    private static bool IsValidConfiguration(string configuration)
     {
-        if (options.ConnectionMultiplexerFactory != null) return true;
-        if (string.IsNullOrWhiteSpace(options.Configuration)) return false;
-        try { _ = StackExchange.Redis.ConfigurationOptions.Parse(options.Configuration); return true; }
+        try { _ = StackExchange.Redis.ConfigurationOptions.Parse(configuration); return true; }
         catch (ArgumentException) { return false; }
     }
 }

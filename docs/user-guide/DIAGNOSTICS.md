@@ -1,8 +1,11 @@
 # Build diagnostics
 
-MethodCache checks your attributes when you build. Errors mean the method would not be cached as written, so the
-build stops; warnings point at attributes that do nothing. Every diagnostic links to its section below, and the ones
-marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or VS Code.
+MethodCache checks your attributes when you build. An error stops the build: the attribute asks for something
+MethodCache can't do, such as caching a `void` method, or a setting is invalid. A warning lets the build go on: the
+attribute is ignored, such as `[Cache]` on a class member or on a `static` interface member, or it probably doesn't do
+what you meant, such as a tag placeholder that matches no parameter. Every diagnostic links to its section below, and
+the ones marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or VS Code. When both the
+generator and the analyzer run, each problem is reported once.
 
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
@@ -27,6 +30,7 @@ marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or 
 | [MC0019](#mc0019) | Error | A key argument, element or member has a framework type without a key form, such as `StringBuilder` | |
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
+| [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
 
 ## MC0001
 
@@ -200,34 +204,9 @@ cache. When only the in-memory cache is used, or memory-only is what you want, s
 
 An explicitly supplied `Version` is negative. Omit it to inherit the configured version or use a non-negative integer.
 
-## Diagnostic ID migration
+## MC0023
 
-The pre-1.0 diagnostic IDs have been consolidated. Update `.editorconfig` severities and suppressions using this mapping; old IDs are intentionally not emitted.
-
-| Previous ID | Current ID |
-|-------------|------------|
-| MC0001 | MC0001 |
-| MC0004 (duration) | MC0004 (unchanged) |
-| MCG001 | MC0003 |
-| MCG002 | MC0022 |
-| MCG003 | MC0005 |
-| MCG004 | MC0006 |
-| MCG005 | MC0007 |
-| MCG006 | MC0008 |
-| MCG007 | MC0009 |
-| MCG009 | MC0010 |
-| MCG010 | MC0011 |
-| MCG011 | MC0012 |
-| MCG012 | MC0013 |
-| MCG013 | MC0014 |
-| MCG014 | MC0015 |
-| MCG015 | MC0016 |
-| MCG016 | MC0017 |
-| MCG017 | MC0018 |
-| MCG018 | MC0019 |
-| MCG019 | MC0020 |
-
-When generator and analyzer run together, the generator owns interface/assembly
-attribute validation; the analyzer recognizes its assembly-local generated marker
-and reports those settings only when used independently. Class-attribute feedback
-remains in the analyzer. MC0004 keeps its duration meaning; MC0022 replaces MCG002.
+`RefreshAhead` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` or `SlidingExpiration` next to
+it, or longer. The refresh window starts that long before an entry expires, so every hit would reload the value. Use a
+window shorter than both, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead
+off.

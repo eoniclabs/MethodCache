@@ -12,15 +12,18 @@ internal sealed class HttpCacheTransportFilter : IHttpMessageHandlerBuilderFilte
     public Action<HttpMessageHandlerBuilder> Configure(Action<HttpMessageHandlerBuilder> next) => builder =>
     {
         next(builder);
-        if (!builder.AdditionalHandlers.Any(handler => handler is HttpCacheHandler)) return;
+        var caches = builder.AdditionalHandlers.OfType<HttpCacheHandler>().ToArray();
+        if (caches.Length == 0) return;
+        foreach (var cache in caches) builder.AdditionalHandlers.Remove(cache);
+        // AddHttpCaching for every client (ConfigureHttpClientDefaults) and again for this one, or twice for this one,
+        // adds a handler each time. One cache is kept: a second one inside it would cache, count and report every
+        // response again. Both read this client's options, so which one is kept makes no difference.
+        for (var extra = 1; extra < caches.Length; extra++) caches[extra].Dispose();
+        var kept = caches[0];
         // Run the cache after every additional handler, so caller identity and request transforms are visible.
-        foreach (var cache in builder.AdditionalHandlers.OfType<HttpCacheHandler>().ToArray())
-        {
-            builder.AdditionalHandlers.Remove(cache);
-            builder.AdditionalHandlers.Add(cache);
-            // Caching added for every client (ConfigureHttpClientDefaults) keeps each client's entries apart
-            if (!string.IsNullOrEmpty(builder.Name)) cache.UseClientName(builder.Name, builder.Services.GetRequiredService<HttpCacheClientStates>().For(builder.Name));
-        }
+        builder.AdditionalHandlers.Add(kept);
+        // Caching added for every client keeps each client's entries apart
+        if (!string.IsNullOrEmpty(builder.Name)) kept.UseClientName(builder.Name, builder.Services.GetRequiredService<HttpCacheClientStates>().For(builder.Name));
         var options = builder.Services.GetRequiredService<IOptionsMonitor<HttpCacheOptions>>().Get(builder.Name ?? string.Empty);
         if (options.KeepCookies) return;
         HttpMessageHandler? transport = builder.PrimaryHandler;

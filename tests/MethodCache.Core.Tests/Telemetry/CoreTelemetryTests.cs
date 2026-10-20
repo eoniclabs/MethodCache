@@ -40,9 +40,9 @@ public class CoreTelemetryTests
         a.Request("method", "M", RequestResult.Hit);
         b.Request("method", "M", RequestResult.Miss);
         listener.RecordObservableInstruments();
-        Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.entries" && row.Value == 7 && Equals(row.Tags["kind"], "method"));
+        Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.entries" && row.Value == 7 && Equals(row.Tags["methodcache.kind"], "method"));
         Assert.Contains(measurements, row => ReferenceEquals(row.Scope, bFactory) && row.Name == "methodcache.entries" && row.Value == 11);
-        Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.entries" && row.Value == 3 && Equals(row.Tags["kind"], "http"));
+        Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.entries" && row.Value == 3 && Equals(row.Tags["methodcache.kind"], "http"));
         Assert.Contains(measurements, row => ReferenceEquals(row.Scope, aFactory) && row.Name == "methodcache.http.size" && row.Value == 4096);
         Assert.Equal(2, measurements.Count(row => row.Name == "methodcache.requests"));
     }
@@ -89,7 +89,7 @@ public class CoreTelemetryTests
             }
         };
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
-        { if (value != 0) invalidations.Add(tags.ToArray().Single(tag => tag.Key == "stage").Value!.ToString()!); });
+        { if (value != 0) invalidations.Add(tags.ToArray().Single(tag => tag.Key == "methodcache.invalidation.stage").Value!.ToString()!); });
         listener.Start();
         var backend = NSubstitute.Substitute.For<MethodCache.Extensibility.IAtomicInvalidationStore>();
         backend.SetAsync(NSubstitute.Arg.Any<string>(), NSubstitute.Arg.Any<byte[]>(), NSubstitute.Arg.Any<Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions>(), NSubstitute.Arg.Any<CancellationToken>())
@@ -97,9 +97,9 @@ public class CoreTelemetryTests
         await using var layer = new MethodCache.Core.Runtime.Distributed.DistributedCacheLayer(backend,
             new MethodCache.Extensibility.JsonCacheSerializer(), new DistributedCacheOptions(), telemetry: provider.GetRequiredService<CoreTelemetry>());
         await layer.WriteAsync("write", 42, null, layer.Now, TimeSpan.FromMinutes(1));
-        Assert.Equal(1, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(1, layer.GetInvalidationQueues().Queued);
         await layer.FlushAsync(force: true);
-        Assert.Equal(0, layer.GetInvalidationQueues().Distributed);
+        Assert.Equal(0, layer.GetInvalidationQueues().Queued);
         Assert.Empty(invalidations);
     }
 

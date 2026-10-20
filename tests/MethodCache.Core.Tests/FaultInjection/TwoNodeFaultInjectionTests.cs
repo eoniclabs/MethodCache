@@ -116,7 +116,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
             (keys, _) =>
             {
                 requested.AddRange(keys);
-                return ValueTask.FromResult<IDictionary<string, string>>(keys.ToDictionary(key => key, key => "from factory"));
+                return ValueTask.FromResult<IReadOnlyDictionary<string, string>>(keys.ToDictionary(key => key, key => "from factory"));
             },
             options => options.WithDuration(Duration));
 

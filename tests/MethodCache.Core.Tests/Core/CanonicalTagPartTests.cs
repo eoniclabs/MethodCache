@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using MethodCache.Infrastructure;
 using Xunit;
 
@@ -13,7 +14,7 @@ public class CanonicalTagPartTests
     {
         var policy = CacheRuntimePolicy.Empty("Read") with
         { Tags = ["value:{id}"], Metadata = new Dictionary<string, string?> { ["tag-format"] = "legacy" } };
-        Assert.Equal("value:" + MethodCacheKeys.Null, CacheTagTemplates.Expand(policy, ["id"], [(object?)null]).Tags.Single());
+        Assert.Equal("value:" + TestKeys.Null, CacheTagTemplates.Expand(policy, ["id"], [(object?)null]).Tags.Single());
     }
 
     [Fact]
@@ -23,7 +24,7 @@ public class CanonicalTagPartTests
         var id = Guid.Parse("e4cf16cb-b221-4c3d-8231-d78a2e126978");
         (object? Value, string Part)[] cases =
         [
-            (null, MethodCacheKeys.Null),
+            (null, TestKeys.Null),
             ("a:b\\c\0", MethodCacheKeys.Part("a:b\\c\0")),
             (id, MethodCacheKeys.Part(id)),
             (instant, MethodCacheKeys.Part(instant)),

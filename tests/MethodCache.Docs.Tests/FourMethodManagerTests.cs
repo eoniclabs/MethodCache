@@ -1,4 +1,3 @@
-using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -21,13 +20,38 @@ public class FourMethodManagerTests
         Assert.Equal(1, await reader.ReadAsync(1));
         Assert.Equal(2, custom.Calls);
         Assert.Equal(1, origin.Calls);
-        Assert.Equal(2, custom.LastOptions!.Version);
+        // The key already carries the method's version, so the options don't repeat it
+        Assert.Null(custom.LastOptions!.Version);
+        Assert.Contains(".ReadAsync:v2:1", custom.LastKey, StringComparison.Ordinal);
         Assert.False(custom.LastOptions.Distributed);
         Assert.Contains("id:1", custom.LastOptions.Tags);
         Assert.Contains("flag:1", custom.LastOptions.Tags);
         Assert.Equal(1, reader.Sync());
         Assert.Equal(2, reader.Sync());
         Assert.Equal(2, custom.Calls);
+    }
+
+    [Fact]
+    public async Task GeneratedVersionedCall_IsFoundAndInvalidatedByItsKeyFromIMethodCacheKeys()
+    {
+        var custom = new FourMethodManager();
+        var origin = new Origin();
+        var services = new ServiceCollection();
+        services.AddSingleton<ICacheManager>(custom);
+        services.AddSingleton<IReader>(origin);
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var reader = provider.GetRequiredService<IReader>();
+        Assert.Equal(1, await reader.ReadAsync(1));
+
+        var key = provider.GetRequiredService<IMethodCacheKeys>().For<IReader>(r => r.ReadAsync(1));
+        Assert.Equal(custom.LastKey, key);
+        Assert.Equal(key, MethodCacheKeys.StoredKey(key));
+        Assert.Equal(1, (await custom.TryGetAsync<int>(key)).Value);
+        await custom.InvalidateKeyAsync(key);
+        Assert.False((await custom.TryGetAsync<int>(key)).Found);
+        Assert.Equal(1, await reader.ReadAsync(1));
+        Assert.Equal(2, origin.Calls);
     }
 
     [Fact]
@@ -51,7 +75,7 @@ public class FourMethodManagerTests
         var inner = provider.GetRequiredService<ICacheManager>();
         var wrapper = new PublicForwarder(inner);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var candidates = new TaskCompletionSource<IDictionary<string, int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var candidates = new TaskCompletionSource<IReadOnlyDictionary<string, int>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var bulk = wrapper.GetOrCreateManyAsync<int>(["bulk", "bulk"], (missing, _) =>
         {
             Assert.Equal(new[] { "bulk" }, missing);
@@ -128,14 +152,15 @@ public class FourMethodManagerTests
     {
         private readonly Dictionary<string, object?> _values = new(StringComparer.Ordinal);
         public int Calls;
+        public string? LastKey;
         public CacheEntryOptions? LastOptions;
         public async ValueTask<T> GetOrCreateAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, ValueTask<T>> factory,
             CacheEntryOptions? options, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Calls++; LastOptions = options;
+            Calls++; LastKey = key; LastOptions = options;
             options ??= new CacheEntryOptions.Builder().Build();
-            var storedKey = options.GetCacheKey(key);
+            var storedKey = MethodCacheKeys.StoredKey(key, options.Version);
             if (options.Enabled != false && _values.TryGetValue(storedKey, out var stored) && options.CanCache((T)stored!)) return (T)stored!;
             var value = await factory(state, cancellationToken);
             if (options.CanCache(value)) _values[storedKey] = value;
@@ -144,12 +169,12 @@ public class FourMethodManagerTests
         public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return new(_values.TryGetValue(CacheManagerExtensions.GetCacheKey(key, version), out var value) ? CacheLookupResult<T>.Hit((T)value!) : CacheLookupResult<T>.Miss);
+            return new(_values.TryGetValue(MethodCacheKeys.StoredKey(key, version), out var value) ? CacheLookupResult<T>.Hit((T)value!) : CacheLookupResult<T>.Miss);
         }
         public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var targets = keys.Select(key => CacheManagerExtensions.GetCacheKey(key, version)).Distinct(StringComparer.Ordinal).ToArray();
+            var targets = keys.Select(key => MethodCacheKeys.StoredKey(key, version)).Distinct(StringComparer.Ordinal).ToArray();
             foreach (var key in targets) _values.Remove(key);
             return new(new InvalidationResult { Requested = targets.Length, Local = targets.Length });
         }

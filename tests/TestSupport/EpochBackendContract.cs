@@ -70,7 +70,7 @@ public static class EpochBackendContract
             new MethodCache.Extensibility.JsonCacheSerializer(), new DistributedCacheOptions { KeyPrefix = prefix + "core:", TagRetention = TimeSpan.FromDays(1) });
         await shorter.RemoveAsync(["long"]);
         Assert.True(shorter.HasIncompatibleScope);
-        Assert.Equal(1, shorter.GetInvalidationQueues().Distributed);
+        Assert.Equal(1, shorter.GetInvalidationQueues().Queued);
 
         var floor = await first.EnsureRetentionContractAsync(prefix + "retention", TimeSpan.FromDays(2));
         Assert.Equal(TimeSpan.FromDays(2), floor);

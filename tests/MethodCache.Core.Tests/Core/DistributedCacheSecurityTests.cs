@@ -8,6 +8,7 @@ using MethodCache.Serialization.MessagePack;
 using MessagePack;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -146,6 +147,38 @@ public class DistributedCacheSecurityTests
         var read = () => serializer.Deserialize<object>(new System.Buffers.ReadOnlySequence<byte>(typeless));
 
         read.Should().Throw<MessagePackSerializationException>();
+    }
+
+    [Fact]
+    public void UseMessagePack_ConfigureStartsFromTheSecureDefaults_SoChangingCompressionKeepsThem()
+    {
+        MessagePackSerializerOptions? received = null;
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UseMessagePack(options =>
+        {
+            received = options;
+            return options.WithCompression(MessagePackCompression.None);
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var serializer = provider.GetRequiredKeyedService<ISerializer>("MethodCache").Should().BeOfType<MessagePackCacheSerializer>().Subject;
+
+        received.Should().BeSameAs(MessagePackCacheSerializer.DefaultOptions);
+        received!.Compression.Should().Be(MessagePackCompression.Lz4BlockArray);
+        serializer.Options.Compression.Should().Be(MessagePackCompression.None);
+        serializer.Options.Security.HashCollisionResistant.Should().BeTrue();
+        serializer.Options.Security.MaximumObjectGraphDepth.Should().Be(MessagePackSecurity.UntrustedData.MaximumObjectGraphDepth);
+        serializer.Options.Resolver.Should().BeSameAs(MessagePackCacheSerializer.DefaultOptions.Resolver);
+    }
+
+    [Fact]
+    public void UseMessagePack_ConfigureReturningNull_IsRejected()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddMethodCache(mc => mc.UseMessagePack(_ => null!));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*UseMessagePack*");
     }
 
     [Fact]

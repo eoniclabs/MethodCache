@@ -34,11 +34,23 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     private WebApplication _app = null!;
     private HttpClient _client = null!;
 
+    public interface IAdminGreeter
+    {
+        [Cache(Duration = "00:05:00", FailSafe = "00:30:00")]
+        ValueTask<string> GreetAsync(string name);
+    }
+
+    public sealed class AdminGreeter : IAdminGreeter
+    {
+        public ValueTask<string> GreetAsync(string name) => ValueTask.FromResult("Hello " + name);
+    }
+
     public async Task InitializeAsync()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        builder.Services.AddSingleton<IAdminGreeter, AdminGreeter>();
         builder.Services.AddMethodCache();
         builder.Services.AddHealthChecks().AddMethodCache();
         builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
@@ -84,7 +96,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         user.DefaultRequestHeaders.Add(AuthHeader, "someone");
 
         Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/methodcache/entries")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await user.DeleteAsync("/methodcache/entries")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.PostAsJsonAsync("/methodcache/clear", new { })).StatusCode);
         Assert.Equal(3, (await _app.Services.GetRequiredService<ICacheAdministrator>().GetStatsAsync()).LocalMethodEntries);
     }
 
@@ -105,9 +117,9 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Entries_FilterByPrefixAndTag_WithoutValues()
+    public async Task Entries_FilterByStoredKeyPrefixAndTag_WithoutValues()
     {
-        var byPrefix = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?prefix=users:");
+        var byPrefix = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?storedKeyPrefix=users:");
         var byTag = await _client.GetFromJsonAsync<List<CacheEntryInfo>>("/methodcache/entries?tag=orders");
 
         Assert.Equal(new[] { "users:1", "users:2" }, byPrefix!.Select(e => e.StoredKey));
@@ -130,10 +142,10 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Entry_CanBeReadAndRemoved()
     {
-        var found = await _client.GetAsync("/methodcache/entry?key=users:1");
-        var removed = await _client.DeleteAsync("/methodcache/entry?key=users:1");
-        var gone = await _client.GetAsync("/methodcache/entry?key=users:1");
-        var removedAgain = await _client.DeleteAsync("/methodcache/entry?key=users:1");
+        var found = await _client.GetAsync("/methodcache/entry?storedKey=users:1");
+        var removed = await _client.DeleteAsync("/methodcache/entry?storedKey=users:1");
+        var gone = await _client.GetAsync("/methodcache/entry?storedKey=users:1");
+        var removedAgain = await _client.DeleteAsync("/methodcache/entry?storedKey=users:1");
 
         Assert.Equal(HttpStatusCode.OK, found.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
@@ -162,11 +174,22 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task Clear_RemovesEverything()
     {
-        var response = await _client.DeleteAsync("/methodcache/entries");
+        var response = await _client.PostAsJsonAsync("/methodcache/clear", new { });
         var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(0, stats!.LocalMethodEntries);
+    }
+
+    [Fact]
+    public async Task DeleteEntries_IsNoLongerARoute_AndRemovesNothing()
+    {
+        // DELETE entries?tag=orders, the natural guess after GET entries?tag=orders, used to empty the whole cache
+        var response = await _client.DeleteAsync("/methodcache/entries?tag=orders");
+        var stats = await _client.GetFromJsonAsync<CacheStats>("/methodcache/stats");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.Equal(3, stats!.LocalMethodEntries);
     }
 
     [Fact]
@@ -175,7 +198,29 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
         var response = await _client.GetAsync("/methodcache/methods");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.NotNull(await response.Content.ReadFromJsonAsync<List<CachedMethodInfo>>());
+        // CacheEntryOptions is built by its Builder, so the list is read as JSON rather than back into CachedMethodInfo
+        var methods = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(System.Text.Json.JsonValueKind.Array, methods.ValueKind);
+        Assert.NotEqual(0, methods.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Methods_ReportWhereEachSettingComesFrom_ByNameAsJsonStrings()
+    {
+        await _app.Services.GetRequiredService<IRuntimeCacheConfigurator>()
+            .UpsertAsync<IAdminGreeter>(g => g.GreetAsync(Any<string>.Value), o => o.WithFailSafeTimeout(TimeSpan.FromSeconds(1)));
+
+        var json = await _client.GetStringAsync("/methodcache/methods");
+        var greeter = Assert.Single(System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateArray(),
+            method => method.GetProperty("methodId").GetString()!.EndsWith("IAdminGreeter.GreetAsync", StringComparison.Ordinal));
+        var sources = greeter.GetProperty("settingSources").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString());
+
+        Assert.Equal(new Dictionary<string, string?>
+        {
+            ["Duration"] = "Attribute",
+            ["FailSafe"] = "Attribute",
+            ["FailSafeTimeout"] = "RuntimeOverride"
+        }, sources);
     }
 
     [Fact]

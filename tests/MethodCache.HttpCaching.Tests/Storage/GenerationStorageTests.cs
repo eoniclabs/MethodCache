@@ -109,6 +109,45 @@ public class GenerationStorageTests
     }
 
     [Fact]
+    public async Task UnconfirmedRetirementOnAGet_ThrowsTheTypedHttpError_ThatSaysTheGetIsSafeToRetry()
+    {
+        // A GET whose answer replaces the stored response (no-store now) must retire it; that retirement is unconfirmed
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend); using var origin = new ReplacedRepresentationOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, storage, time));
+        (await client.GetAsync("https://api.example.com/item")).Dispose();
+        backend.FailAdvance = true;
+
+        using var revalidate = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/item");
+        revalidate.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoCache = true };
+        var error = await Assert.ThrowsAsync<HttpCacheInvalidationException>(() => client.SendAsync(revalidate));
+
+        Assert.DoesNotContain("mutation", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("safe to retry", error.Message, StringComparison.Ordinal);
+        Assert.Null(error.InnerException);
+        Assert.True(origin.ReplacementDisposed);
+        backend.FailAdvance = false; time.Advance(TimeSpan.FromSeconds(11)); await storage.Core.FlushRecoveryAsync();
+        Assert.Equal(0, storage.Core.PendingRecoveries);
+    }
+
+    [Fact]
+    public async Task UnconfirmedAdminRemoval_KeepsTheCoreError_WithoutTalkingAboutAnOriginMutation()
+    {
+        // The admin endpoint answers 503 for this exception type; it is not an HTTP mutation
+        var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
+        using var storage = new TestHttpStore(time, backend); using var origin = new ReplacedRepresentationOrigin();
+        using var client = new HttpClient(HttpCacheTestFactory.CreateHandler(new(), origin, storage, time));
+        (await client.GetAsync("https://api.example.com/item")).Dispose();
+        var stored = Assert.Single(storage.Core.List());
+        backend.FailAdvance = true;
+
+        var error = await Assert.ThrowsAnyAsync<Exception>(() => storage.Core.RemoveObservationAsync(stored.Id, CancellationToken.None).AsTask());
+
+        Assert.IsType<CacheInvalidationQueuedException>(error);
+        Assert.DoesNotContain("mutation", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Generations_DifferentCorePrefixes_RemainIsolated()
     {
         var time = new FakeTimeProvider(); var backend = HttpEpochTestCache.Create(time);
@@ -156,6 +195,26 @@ public class GenerationStorageTests
             {
                 Content = new DisposalContent(() => ResponseDisposed = true)
             });
+        }
+    }
+
+    /// <summary>Answers a cacheable response first, then one that may no longer be stored.</summary>
+    private sealed class ReplacedRepresentationOrigin : HttpMessageHandler
+    {
+        private int _calls;
+        public bool ReplacementDisposed { get; private set; }
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _calls) == 1)
+            {
+                var cacheable = new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent("v1") };
+                cacheable.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { MaxAge = TimeSpan.FromSeconds(60) };
+                return Task.FromResult(cacheable);
+            }
+
+            var replacement = new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new DisposalContent(() => ReplacementDisposed = true) };
+            replacement.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue { NoStore = true };
+            return Task.FromResult(replacement);
         }
     }
 

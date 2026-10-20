@@ -44,7 +44,6 @@ namespace Docs.Configuration
         public static void FromConfiguration(WebApplicationBuilder builder)
         {
             // begin-snippet: configuration-appsettings
-            builder.Services.AddMethodCache();
             builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));   // the "MethodCache" section
             // end-snippet
         }
@@ -55,7 +54,7 @@ namespace Docs.Configuration
             var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
 
             // One method, strongly typed, with who and why for the audit trail
-            await configurator.UpsertAsync<IOrdersService, Order>(
+            await configurator.UpsertAsync<IOrdersService>(
                 s => s.GetAsync(Any<int>.Value),
                 o => o.WithDuration(TimeSpan.FromMinutes(2)),
                 new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(4) });
@@ -65,7 +64,7 @@ namespace Docs.Configuration
                 o => o.WithDuration(TimeSpan.FromMinutes(10)));
 
             // Back to the lower layers
-            await configurator.RemoveAsync<IOrdersService, Order>(s => s.GetAsync(Any<int>.Value));
+            await configurator.RemoveAsync<IOrdersService>(s => s.GetAsync(Any<int>.Value));
             await configurator.ClearAsync();
             // end-snippet
         }

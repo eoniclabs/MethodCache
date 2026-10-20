@@ -123,7 +123,7 @@ public partial class VendorCompatibilityTests
             Assert.NotSame(first.GetRequiredService<ICacheManager>(), second.GetRequiredService<ICacheManager>());
             Assert.Equal(1, a.Read(42));
             Assert.Equal(1, b.Read(42));
-            await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync<IService, int>(
+            await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync<IService>(
                 service => service.Read(0), options => options.WithEnabled(false));
             Assert.Equal(2, a.Read(42));
             Assert.Equal(3, a.Read(42));

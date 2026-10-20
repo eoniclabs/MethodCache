@@ -33,7 +33,7 @@ namespace MethodCache
     /// [CacheInvalidate(Tags = new[] { "products", "catalog", "search-results" })]
     /// Task&lt;Product&gt; CreateProductAsync(ProductDto product);
     ///
-    /// [CacheInvalidate(Tags = new[] { "products", $"product:{productId}", "catalog" })]
+    /// [CacheInvalidate(Tags = new[] { "products", "product:{productId}", "catalog" })]
     /// Task DeleteProductAsync(int productId);
     /// </code>
     /// </example>
@@ -61,7 +61,7 @@ namespace MethodCache
         /// [CacheInvalidate(Tags = new[] { "users" })]
         ///
         /// // Invalidate specific user and related caches
-        /// [CacheInvalidate(Tags = new[] { "users", $"user:{userId}", "user-profiles" })]
+        /// [CacheInvalidate(Tags = new[] { "users", "user:{userId}", "user-profiles" })]
         /// </code>
         /// </example>
         public string[]? Tags { get; set; }

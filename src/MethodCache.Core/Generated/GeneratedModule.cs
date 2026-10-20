@@ -62,7 +62,10 @@ public abstract class GeneratedModule
     public abstract void Describe(GeneratedModuleBuilder builder);
 }
 
-/// <summary>Attribute data for a method; null preserves an unset setting, including explicit off values.</summary>
+/// <summary>
+/// Attribute data for a method. Null leaves a setting unset, so a lower layer can set it; an explicit <c>"off"</c> is
+/// <see cref="TimeSpan.Zero"/>.
+/// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class GeneratedMethodOptions
 {
@@ -70,9 +73,9 @@ public sealed class GeneratedMethodOptions
     public GeneratedMethodOptions() { }
     /// <summary>The absolute duration, when explicitly specified.</summary>
     public TimeSpan? Duration { get; init; }
-    /// <summary>The sliding window, when explicitly specified.</summary>
+    /// <summary>The sliding window, when explicitly specified; zero explicitly disables it.</summary>
     public TimeSpan? SlidingExpiration { get; init; }
-    /// <summary>The refresh window, when explicitly specified.</summary>
+    /// <summary>The refresh window, when explicitly specified; zero explicitly disables it.</summary>
     public TimeSpan? RefreshAhead { get; init; }
     /// <summary>The fail-safe retention; zero explicitly disables it.</summary>
     public TimeSpan? FailSafe { get; init; }

@@ -15,9 +15,18 @@ internal static class CachePolicyBuilderFactory
     /// <summary>
     /// Builds defaults that apply to many cached methods, described by <paramref name="target"/> in errors.
     /// </summary>
+    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen.</exception>
     public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
     {
-        return FromOptions(options);
+        // A predicate checks one result type, so in defaults it would reject every other method's results
+        if (options?.CacheWhen != null)
+        {
+            throw new InvalidOperationException(
+                $"CacheWhen is set in {target}, but a CacheWhen predicate checks the result type of one method, so it can only be " +
+                "set for one method: mc.Method(...).CacheWhen(...) or mc.Method(...).Configure(o => o.CacheWhen<T>(...)).");
+        }
+
+        return FromOptions(options!);
     }
 
     public static CachePolicyBuilder FromOptions(CacheEntryOptions options)

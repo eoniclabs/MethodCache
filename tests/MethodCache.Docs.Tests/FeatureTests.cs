@@ -96,7 +96,14 @@ public class FeatureTests(ITestOutputHelper output)
         Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string):INV-7", overload);
         Assert.Contains(versioned, keys);
         Assert.Contains(overload, keys);
-        Assert.Equal((versioned, overload), KeyExamples.BuildByHand());
+        var entry = Assert.Single(KeyExamples.ListMethod(provider.GetRequiredService<IMethodCacheKeys>(), provider.GetRequiredService<ICacheAdministrator>()));
+        Assert.Equal(overload, entry.StoredKey);
+        Assert.Equal("[MethodCache.Docs.Tests]MyApp.IInvoiceService.FindAsync(string)", entry.MethodId);
+
+        await KeyExamples.InvalidateMethod(provider.GetRequiredService<IMethodCacheKeys>(), provider.GetRequiredService<ICacheAdministrator>());
+        var remaining = provider.GetRequiredService<ICacheAdministrator>().ListEntries(storedKeyPrefix: "[MethodCache.Docs.Tests]MyApp.IInvoiceService").Select(e => e.StoredKey).ToList();
+        Assert.DoesNotContain(overload, remaining);
+        Assert.Contains(versioned, remaining);
     }
 
     private sealed class Documents : IDocumentStore
@@ -114,7 +121,7 @@ public class FeatureTests(ITestOutputHelper output)
         await provider.GetRequiredService<IDocumentStore>().GetAsync("doc:2026/report.pdf");
 
         var keys = provider.GetRequiredService<ICacheAdministrator>().ListEntries().Select(e => e.StoredKey).ToList();
-        Assert.Contains(MethodCacheKeys.For(typeof(IDocumentStore), nameof(IDocumentStore.GetAsync), MethodCacheKeys.Part("doc:2026/report.pdf")), keys);
+        Assert.Contains(provider.GetRequiredService<IMethodCacheKeys>().For<IDocumentStore>(store => store.GetAsync("doc:2026/report.pdf")), keys);
         Assert.DoesNotContain("doc:2026/report.pdf", keys);
     }
 

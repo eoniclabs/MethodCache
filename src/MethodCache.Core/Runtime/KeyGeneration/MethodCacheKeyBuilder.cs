@@ -39,7 +39,7 @@ internal ref struct MethodCacheKeyBuilder
     /// <summary>Returns the key as a string.</summary>
     public override readonly string ToString() => new(_chars[.._length]);
 
-    /// <summary>Appends text as is, such as a key prefix from <see cref="MethodCacheKeys.Prefix"/>.</summary>
+    /// <summary>Appends text as is, such as the key prefix of a cached method.</summary>
     public void Append(string value) => Append(value.AsSpan());
 
     /// <summary>Appends a separator and a string argument, escaped as <see cref="MethodCacheKeys.Part(string)"/> does.</summary>
@@ -48,7 +48,7 @@ internal ref struct MethodCacheKeyBuilder
         AppendSeparator();
         if (value is null)
         {
-            Append(MethodCacheKeys.Null.AsSpan());
+            Append(Generated.KeyParts.Null.AsSpan());
             return;
         }
 
@@ -69,7 +69,7 @@ internal ref struct MethodCacheKeyBuilder
     public void AppendNullPart()
     {
         AppendSeparator();
-        Append(MethodCacheKeys.Null.AsSpan());
+        Append(Generated.KeyParts.Null.AsSpan());
     }
 
     /// <summary>Appends a separator and a <see cref="bool"/> argument.</summary>

@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using MethodCache.Extensibility;
 using MethodCache.Generated;
 using MethodCache.Infrastructure;
@@ -59,8 +60,8 @@ public class GeneratedContractTests
         key.AppendPart("a:\\b\0\ud800\udfff");
         key.AppendPart(int.MinValue);
         key.AppendNullPart();
-        var expected = MethodCacheKeys.ForVersion(typeof(IService), new string('x', 500), 1,
-            MethodCacheKeys.Part("a:\\b\0\ud800\udfff"), MethodCacheKeys.Part(int.MinValue), MethodCacheKeys.Null);
+        var expected = TestKeys.ForVersion(typeof(IService), new string('x', 500), 1,
+            MethodCacheKeys.Part("a:\\b\0\ud800\udfff"), MethodCacheKeys.Part(int.MinValue), TestKeys.Null);
         Assert.Equal(expected, key.AsSpan().ToString());
         Assert.False(call.TryGetValue<string>(ref key, out _));
         Assert.Equal(expected, key.ToString());
@@ -97,8 +98,8 @@ public class GeneratedContractTests
         key.AppendPart("a:\\b\0\ud800\udfff");
         key.AppendPart(int.MinValue);
         key.AppendNullPart();
-        var expected = MethodCacheKeys.ForVersion(typeof(IService), new string('x', 500), 1,
-            MethodCacheKeys.Part("a:\\b\0\ud800\udfff"), MethodCacheKeys.Part(int.MinValue), MethodCacheKeys.Null);
+        var expected = TestKeys.ForVersion(typeof(IService), new string('x', 500), 1,
+            MethodCacheKeys.Part("a:\\b\0\ud800\udfff"), MethodCacheKeys.Part(int.MinValue), TestKeys.Null);
         Assert.Equal(expected, key.ToString());
         Assert.False(call.TryGetValue<string>(ref key, out _));
         Assert.Throws<ArgumentException>(() =>
@@ -239,7 +240,6 @@ public class GeneratedContractTests
         var key = new KeyBuilder(specialized, stackalloc char[256]);
         Assert.Equal(expected, key.ToString());
         Assert.StartsWith(expected + ":", specialized.CreateFallbackKey([new object()]).ToString(), StringComparison.Ordinal);
-        Assert.StartsWith(MethodCacheKeys.Pattern(typeof(IService), "Get<System.Int32>", 1).TrimEnd('*'), key.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public class GeneratedContractTests
         var (method, handle, memory) = Create();
         using var owned = memory;
         var call = method.Capture();
-        var expected = MethodCacheKeys.ForVersion(typeof(IService), "Get", 1, MethodCacheKeys.Part(42));
+        var expected = TestKeys.ForVersion(typeof(IService), "Get", 1, MethodCacheKeys.Part(42));
         Span<char> buffer = stackalloc char[expected.Length];
         buffer.Fill('!');
         var inline = new KeyBuilder(call, buffer);

@@ -1,13 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using BenchmarkDotNet.Attributes;
-using MessagePack;
 using MethodCache.Benchmarks.Core;
 using MethodCache.Benchmarks.Infrastructure;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
-using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.Benchmarks.Scenarios;
@@ -22,7 +20,7 @@ public class SerializationBenchmarks : BenchmarkBase
 {
     private readonly List<ServiceProvider> _keyGeneratorProviders = [];
 
-    private ISerializationTestService _messagePackService = null!;
+    private ISerializationTestService _fastHashService = null!;
     private ISerializationTestService _jsonService = null!;
     private ISerializationTestService _toStringService = null!;
 
@@ -34,8 +32,8 @@ public class SerializationBenchmarks : BenchmarkBase
 
     protected override void OnSetupComplete()
     {
-        // Create services with different key generators
-        _messagePackService = CreateServiceWithKeyGenerator<MessagePackKeyGenerator>();
+        // Create services with different key generators; FastHashKeyGenerator is MethodCache's own
+        _fastHashService = CreateServiceWithKeyGenerator<FastHashKeyGenerator>();
         _jsonService = CreateServiceWithKeyGenerator<JsonKeyGenerator>();
         _toStringService = CreateServiceWithKeyGenerator<ToStringKeyGenerator>();
     }
@@ -84,9 +82,9 @@ public class SerializationBenchmarks : BenchmarkBase
     }
 
     [Benchmark(Baseline = true)]
-    public async Task MessagePack_Serialization()
+    public async Task FastHash_Serialization()
     {
-        await RunSerializationTest(_messagePackService);
+        await RunSerializationTest(_fastHashService);
     }
 
     [Benchmark]
@@ -102,9 +100,9 @@ public class SerializationBenchmarks : BenchmarkBase
     }
 
     [Benchmark]
-    public async Task MessagePack_ComplexObjects()
+    public async Task FastHash_ComplexObjects()
     {
-        await RunComplexObjectTest(_messagePackService);
+        await RunComplexObjectTest(_fastHashService);
     }
 
     [Benchmark]
@@ -120,9 +118,9 @@ public class SerializationBenchmarks : BenchmarkBase
     }
 
     [Benchmark]
-    public async Task MessagePack_CacheKeyCollisions()
+    public async Task FastHash_CacheKeyCollisions()
     {
-        await RunCollisionTest(_messagePackService);
+        await RunCollisionTest(_fastHashService);
     }
 
     [Benchmark]

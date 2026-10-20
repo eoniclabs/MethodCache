@@ -18,18 +18,26 @@ internal sealed class MessagePackCacheSerializer : ISerializer
     private readonly MessagePackSerializerOptions _options;
 
     /// <summary>
+    /// The defaults described above. <c>UseMessagePack(configure)</c> passes them to its callback, so changing one
+    /// setting keeps the others.
+    /// </summary>
+    internal static MessagePackSerializerOptions DefaultOptions { get; } = MessagePackSerializerOptions.Standard
+        .WithCompression(MessagePackCompression.Lz4BlockArray)
+        // Native DateTime first: the standard format turns local and unspecified times into UTC, so a value
+        // read from the distributed cache would differ from the one the method returned
+        .WithResolver(CompositeResolver.Create(NativeDateTimeResolver.Instance, ContractlessStandardResolver.Instance))
+        // Bounds what a crafted entry in the distributed cache can cost to read, such as hash collisions
+        .WithSecurity(MessagePackSecurity.UntrustedData);
+
+    /// <summary>
     /// Creates a serializer with the given <paramref name="options"/>, or the defaults described above.
     /// </summary>
     public MessagePackCacheSerializer(MessagePackSerializerOptions? options = null)
     {
-        _options = options ?? MessagePackSerializerOptions.Standard
-            .WithCompression(MessagePackCompression.Lz4BlockArray)
-            // Native DateTime first: the standard format turns local and unspecified times into UTC, so a value
-            // read from the distributed cache would differ from the one the method returned
-            .WithResolver(CompositeResolver.Create(NativeDateTimeResolver.Instance, ContractlessStandardResolver.Instance))
-            // Bounds what a crafted entry in the distributed cache can cost to read, such as hash collisions
-            .WithSecurity(MessagePackSecurity.UntrustedData);
+        _options = options ?? DefaultOptions;
     }
+
+    internal MessagePackSerializerOptions Options => _options;
 
     /// <inheritdoc />
     public string ContentType => "application/x-msgpack";

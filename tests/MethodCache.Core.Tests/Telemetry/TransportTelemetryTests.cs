@@ -25,9 +25,9 @@ public class TransportTelemetryTests
         Assert.All(metrics.Distributed, row =>
         {
             Assert.Contains(row.Operation, new[] { "get", "set", "remove", "invalidate" });
-            Assert.All(row.Tags.Keys, key => Assert.Contains(key, new[] { "operation", "error.type" }));
+            Assert.All(row.Tags.Keys, key => Assert.Contains(key, new[] { "methodcache.operation", "error.type" }));
         });
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["stage"], "distributed") && Equals(row.Tags["type"], "tag") && row.Value == 1);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["methodcache.invalidation.stage"], "distributed") && Equals(row.Tags["methodcache.invalidation.type"], "tag") && row.Value == 1);
     }
 
     [Fact]
@@ -40,14 +40,14 @@ public class TransportTelemetryTests
         Assert.Equal(1, result.Distributed);
         Assert.Equal(1, result.PublicationQueued);
         metrics.Poll();
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["stage"], "publication") && row.Value == 1);
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["stage"], "storage") && row.Value == 0);
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["stage"], "publication_queued") && row.Value == 1);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["methodcache.invalidation.stage"], "publication") && row.Value == 1);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["methodcache.invalidation.stage"], "storage") && row.Value == 0);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["methodcache.invalidation.stage"], "publication_queued") && row.Value == 1);
         Assert.Contains(metrics.Distributed, row => row.Operation == "invalidate" && row.Tags.ContainsKey("error.type"));
         backplane.Fail = false;
         await provider.GetRequiredService<DistributedCacheLayer>().FlushPublicationsAsync();
-        Assert.Equal(0, provider.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().Publication);
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["stage"], "published") && row.Value == 1);
+        Assert.Equal(0, provider.GetRequiredService<ICacheAdministrator>().GetInvalidationQueues().PublicationQueued);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["methodcache.invalidation.stage"], "published") && row.Value == 1);
     }
 
     [Fact]
@@ -59,9 +59,9 @@ public class TransportTelemetryTests
         Assert.Equal(1, result.Queued);
         Assert.Equal(0, result.Distributed);
         metrics.Poll();
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["stage"], "storage") && row.Value == 1);
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["stage"], "publication") && row.Value == 0);
-        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["stage"], "queued") && row.Value == 1);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["methodcache.invalidation.stage"], "storage") && row.Value == 1);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.distributed.queue" && Equals(row.Tags["methodcache.invalidation.stage"], "publication") && row.Value == 0);
+        Assert.Contains(metrics.Longs, row => row.Name == "methodcache.invalidations" && Equals(row.Tags["methodcache.invalidation.stage"], "queued") && row.Value == 1);
     }
 
     private static ServiceProvider Node(IDistributedCache cache, IBackplane? backplane = null)

@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using CsCheck;
 using MethodCache.Core.Tests.Core;
 using MethodCache.Extensibility;
@@ -49,8 +50,8 @@ public class KeyInjectionPropertyTests
             var bk = "key:" + b;
             var left = await StoredKey(manager, ak, av);
             var right = await StoredKey(manager, bk, bv);
-            Assert.Equal(left, CacheManagerExtensions.GetCacheKey(ak, av));
-            Assert.Equal(right, CacheManagerExtensions.GetCacheKey(bk, bv));
+            Assert.Equal(left, MethodCacheKeys.StoredKey(ak, av));
+            Assert.Equal(right, MethodCacheKeys.StoredKey(bk, bv));
             Assert.Equal(ak == bk && av == bv, left == right);
             if (av.HasValue) Assert.NotEqual(left, await StoredKey(manager, left, null));
         }, seed: PropertySettings.Seed, iter: PropertySettings.PureIterations);
@@ -71,7 +72,7 @@ public class KeyInjectionPropertyTests
             var cache = provider.GetRequiredService<ICacheManager>();
             var loads = 0;
             var key = "\0" + text;
-            var identity = CacheManagerExtensions.GetCacheKey(key, version);
+            var identity = MethodCacheKeys.StoredKey(key, version);
             ValueTask<int> Load() => cache.GetOrCreateAsync(key, _ => ValueTask.FromResult(++loads),
                 options => { if (version is { } value) options.WithVersion(value); });
             await cache.InvalidateByKeysAsync(identity);
@@ -88,7 +89,7 @@ public class KeyInjectionPropertyTests
         manager.GetOrCreateAsync(Arg.Any<string>(), Arg.Any<Func<CancellationToken, ValueTask<string>>>(),
             Arg.Any<Func<Func<CancellationToken, ValueTask<string>>, CancellationToken, ValueTask<string>>>(),
             Arg.Any<CacheEntryOptions>(), Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult(call.ArgAt<CacheEntryOptions>(3).GetCacheKey(call.ArgAt<string>(0))));
+            .Returns(call => ValueTask.FromResult(MethodCacheKeys.StoredKey(call.ArgAt<string>(0), call.ArgAt<CacheEntryOptions>(3).Version)));
         return manager;
     }
 
@@ -102,8 +103,8 @@ public class KeyInjectionPropertyTests
         // GetOrders(string userId, string? filter): equal keys exactly when both arguments are equal
         Gen.Select(GenNullableHostile, GenNullableHostile, GenNullableHostile, GenNullableHostile).Sample((a1, b1, a2, b2) =>
         {
-            var k1 = MethodCacheKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(a1), MethodCacheKeys.Part(b1));
-            var k2 = MethodCacheKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(a2), MethodCacheKeys.Part(b2));
+            var k1 = TestKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(a1), MethodCacheKeys.Part(b1));
+            var k2 = TestKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(a2), MethodCacheKeys.Part(b2));
 
             Assert.Equal(a1 == a2 && b1 == b2, k1 == k2);
             Assert.Equal(k1, Built(a1, b1));
@@ -140,11 +141,11 @@ public class KeyInjectionPropertyTests
     {
         // GetOrders(string) and GetOrdersSummary(): no argument of the first gives the key of the second, and a
         // version is a fixed part of the prefix that no argument can supply
-        var summary = MethodCacheKeys.For(typeof(IUsers), "GetOrdersSummary");
-        var versioned = MethodCacheKeys.ForVersion(typeof(IUsers), "GetOrders", 2, MethodCacheKeys.Part("1"));
+        var summary = TestKeys.For(typeof(IUsers), "GetOrdersSummary");
+        var versioned = TestKeys.ForVersion(typeof(IUsers), "GetOrders", 2, MethodCacheKeys.Part("1"));
         GenNullableHostile.Sample(arg =>
         {
-            var key = MethodCacheKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(arg));
+            var key = TestKeys.For(typeof(IUsers), "GetOrders", MethodCacheKeys.Part(arg));
             Assert.NotEqual(summary, key);
             Assert.NotEqual(versioned, key);
             Assert.StartsWith(MethodCacheKeys.Prefix(typeof(IUsers), "GetOrders") + ":", key);
@@ -248,9 +249,9 @@ public class KeyInjectionPropertyTests
     private static string RecordKey(Pair? pair, string? page)
         => string.Concat(
             MethodCacheKeys.Prefix(typeof(IUsers), "GetOrders"),
-            MethodCacheKeys.Separator,
-            pair is null ? MethodCacheKeys.Null : string.Concat("(", MethodCacheKeys.Part(pair.A), MethodCacheKeys.Separator, MethodCacheKeys.Part(pair.B), ")"),
-            MethodCacheKeys.Separator,
+            TestKeys.Separator,
+            pair is null ? TestKeys.Null : string.Concat("(", MethodCacheKeys.Part(pair.A), TestKeys.Separator, MethodCacheKeys.Part(pair.B), ")"),
+            TestKeys.Separator,
             MethodCacheKeys.Part(page));
 
     private static string Describe(params string?[] values)

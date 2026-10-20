@@ -129,5 +129,5 @@ are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefi
 have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
 
 For a known unversioned schema, drain all nodes, back up the database and apply the delivered
-[`0001-version-existing-schema.sql`](migrations/0001-version-existing-schema.sql) migration. Unknown schema
+[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql) migration. Unknown schema
 versions fail fast; initialization never silently migrates existing tables.

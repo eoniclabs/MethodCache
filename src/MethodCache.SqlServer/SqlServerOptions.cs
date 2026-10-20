@@ -3,7 +3,7 @@ namespace MethodCache.SqlServer;
 /// <summary>
 /// Options for using SQL Server as MethodCache's distributed cache.
 /// </summary>
-public class SqlServerOptions
+public sealed class SqlServerOptions
 {
     /// <summary>
     /// The SQL Server connection string. Required.

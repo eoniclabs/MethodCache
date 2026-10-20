@@ -24,8 +24,9 @@ public class ReviewLookupTests
         services.AddMethodCache(builder => builder.FromAssemblyOf<ReviewLookupTests>());
         await using var provider = services.BuildServiceProvider();
         Assert.Equal(42, provider.GetRequiredKeyedService<IKeyedGeneric>("ecb").Read<int>(42));
-        var key = MethodCacheKeys.ForVersion(typeof(IKeyedGeneric),
-            MethodCacheKeys.KeyedMethodName("Read<" + MethodCacheKeys.TypePart(typeof(int)) + ">", "ecb"), 2, MethodCacheKeys.Part(42));
+        var key = TestKeys.ForVersion(typeof(IKeyedGeneric),
+            TestKeys.KeyedMethodName("Read<" + TestKeys.TypePart(typeof(int)) + ">", "ecb"), 2, MethodCacheKeys.Part(42));
+        Assert.Equal(key, provider.GetRequiredService<IMethodCacheKeys>().For<IKeyedGeneric>(reader => reader.Read<int>(42), "ecb"));
         Assert.NotNull(provider.GetRequiredService<ICacheAdministrator>().GetEntry(key));
     }
 
@@ -45,7 +46,7 @@ public class ReviewLookupTests
         await using var writer = Node(backend);
         await using var reader = Node(backend);
         Assert.Equal(42, await writer.GetRequiredService<IReader>().Read(42));
-        var key = MethodCacheKeys.For(typeof(IReader), "Read", MethodCacheKeys.Part(42));
+        var key = reader.GetRequiredService<IMethodCacheKeys>().For<IReader>(service => service.Read(42));
         var result = await reader.GetRequiredService<ICacheManager>().TryGetAsync<int>(key, default);
         Assert.True(result.Found);
         Assert.Equal(42, result.Value);
@@ -77,7 +78,7 @@ public class ReviewLookupTests
         var service = provider.GetRequiredService<IReader>();
         await service.Read(42);
         var cache = provider.GetRequiredService<InMemoryCacheManager>();
-        var key = MethodCacheKeys.For(typeof(IReader), "Read", MethodCacheKeys.Part(42));
+        var key = provider.GetRequiredService<IMethodCacheKeys>().For<IReader>(reader => reader.Read(42));
         Assert.True((await cache.TryGetAsync<int>(key, default)).Found);
         await provider.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodIds.For(typeof(IReader), "Read"), options => options.WithVersion(2));
         Assert.False((await cache.TryGetAsync<int>(key, default)).Found);

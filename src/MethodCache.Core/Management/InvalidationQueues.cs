@@ -1,6 +1,10 @@
 namespace MethodCache;
 
-/// <summary>Pending local recovery targets, coalesced when the bounded queues fill.</summary>
+/// <summary>
+/// Invalidations applied in this instance's memory whose distributed delivery is still pending, counted per stage with
+/// the same names as <see cref="InvalidationResult.Queued"/> and <see cref="InvalidationResult.PublicationQueued"/>.
+/// The cache retries them in the background; the queues are bounded and coalesce targets when they fill.
+/// </summary>
 public sealed record InvalidationQueues
 {
     /// <summary>Creates empty queue counts, for example in an <see cref="ICacheAdministrator"/> of your own.</summary>
@@ -8,14 +12,14 @@ public sealed record InvalidationQueues
     {
     }
 
-    internal InvalidationQueues(int distributed, int publication)
+    internal InvalidationQueues(int queued, int publicationQueued)
     {
-        Distributed = distributed;
-        Publication = publication;
+        Queued = queued;
+        PublicationQueued = publicationQueued;
     }
 
-    /// <summary>Targets awaiting distributed invalidation confirmation.</summary>
-    public int Distributed { get; init; }
-    /// <summary>Storage-confirmed targets awaiting backplane publication.</summary>
-    public int Publication { get; init; }
+    /// <summary>Targets waiting for the distributed cache to confirm their invalidation.</summary>
+    public int Queued { get; init; }
+    /// <summary>Targets the distributed cache confirmed, waiting for the backplane to publish them to other instances.</summary>
+    public int PublicationQueued { get; init; }
 }

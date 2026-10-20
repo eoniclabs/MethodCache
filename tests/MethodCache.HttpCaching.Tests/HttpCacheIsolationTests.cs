@@ -436,8 +436,8 @@ public class HttpCacheIsolationTests
         await client.SendAsync(Get(authorization: "Bearer s3cr3t", url: "https://api.example.com/users/alice@example.com?ssn=123"));
 
         Assert.NotEmpty(tags);
-        Assert.All(tags, tag => Assert.Contains(tag.Key, new[] { "kind", "name", "result" }));
-        Assert.Equal(new[] { "orders-api" }, tags.Where(t => t.Key == "name").Select(t => (string)t.Value!).Distinct());
+        Assert.All(tags, tag => Assert.Contains(tag.Key, new[] { "methodcache.kind", "methodcache.http.client", "methodcache.result" }));
+        Assert.Equal(new[] { "orders-api" }, tags.Where(t => t.Key == "methodcache.http.client").Select(t => (string)t.Value!).Distinct());
     }
 
     /// <summary>Lets the first request through, then answers 304, with a Set-Cookie the first time only.</summary>

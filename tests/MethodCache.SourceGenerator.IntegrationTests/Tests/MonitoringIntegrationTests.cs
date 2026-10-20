@@ -190,9 +190,9 @@ namespace Monitoring
                 if (instrument.Name != "methodcache.requests") return;
                 foreach (var tag in tags)
                 {
-                    if (tag.Key == "name") Names.Add((string)tag.Value!);
-                    if (tag.Key == "result" && Equals(tag.Value, "hit")) Interlocked.Increment(ref _hits);
-                    if (tag.Key == "result" && Equals(tag.Value, "miss")) Interlocked.Increment(ref _misses);
+                    if (tag.Key == "methodcache.method") Names.Add((string)tag.Value!);
+                    if (tag.Key == "methodcache.result" && Equals(tag.Value, "hit")) Interlocked.Increment(ref _hits);
+                    if (tag.Key == "methodcache.result" && Equals(tag.Value, "miss")) Interlocked.Increment(ref _misses);
                 }
             });
             _listener.SetMeasurementEventCallback<double>((instrument, value, _, _) =>

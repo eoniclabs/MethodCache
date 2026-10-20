@@ -54,10 +54,15 @@ namespace MethodCache.Analyzers
             "MC0021", "Invalid cache version", "Version must be non-negative when explicitly specified",
             Category, DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0021"));
 
+        internal static readonly DiagnosticDescriptor RefreshAheadNotShorterThanDurationRule = new DiagnosticDescriptor(
+            "MC0023", "RefreshAhead is not shorter than Duration or SlidingExpiration",
+            "RefreshAhead = \"{0}\" is not shorter than {1} = \"{2}\", so every hit would reload the value; use a RefreshAhead window shorter than the {1}",
+            Category, DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0023"));
+
         private static readonly string[] TimeSpanProperties = { "Duration", "SlidingExpiration", "RefreshAhead", "FailSafe", "FailSafeTimeout", "FailSafeRetryAfter" };
 
         /// <inheritdoc />
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule, InvalidVersionRule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(AttributeOnClassRule, InvalidTimeSpanRule, InvalidVersionRule, RefreshAheadNotShorterThanDurationRule);
 
         /// <inheritdoc />
         public override void Initialize(AnalysisContext context)
@@ -92,6 +97,8 @@ namespace MethodCache.Analyzers
                 {
                     if (HasNegativeVersion(attribute))
                         Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidVersionRule);
+                    if (RefreshAheadNotShorterThanDuration(attribute) is { } refresh)
+                        Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], RefreshAheadNotShorterThanDurationRule, refresh.RefreshAhead, refresh.Lifetime, refresh.LifetimeText);
                     foreach (var (property, text) in InvalidTimeSpans(attribute))
                     {
                         Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidTimeSpanRule, property, text);
@@ -123,6 +130,8 @@ namespace MethodCache.Analyzers
 
                 var location = reference.GetSyntax(context.CancellationToken).GetLocation();
                 if (HasNegativeVersion(attribute)) context.ReportDiagnostic(Diagnostic.Create(InvalidVersionRule, location));
+                if (RefreshAheadNotShorterThanDuration(attribute) is { } refresh)
+                    context.ReportDiagnostic(Diagnostic.Create(RefreshAheadNotShorterThanDurationRule, location, refresh.RefreshAhead, refresh.Lifetime, refresh.LifetimeText));
                 foreach (var (property, text) in InvalidTimeSpans(attribute))
                 {
                     context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text));
@@ -147,6 +156,29 @@ namespace MethodCache.Analyzers
             => SymbolEqualityComparer.Default.Equals(
                 compilation.GetTypeByMetadataName("MethodCache.Generated.AttributeValidationOwner")?.ContainingAssembly,
                 compilation.Assembly);
+
+        /// <summary>
+        /// The texts of a RefreshAhead and of the Duration or SlidingExpiration it is not shorter than, when all of them parse.
+        /// </summary>
+        private static (string RefreshAhead, string Lifetime, string LifetimeText)? RefreshAheadNotShorterThanDuration(AttributeData attribute)
+        {
+            string? refreshText = null;
+            string? durationText = null;
+            string? slidingText = null;
+            foreach (var argument in attribute.NamedArguments)
+            {
+                if (argument.Key == "RefreshAhead") refreshText = argument.Value.Value as string;
+                else if (argument.Key == "Duration") durationText = argument.Value.Value as string;
+                else if (argument.Key == "SlidingExpiration") slidingText = argument.Value.Value as string;
+            }
+
+            if (!MethodCache.Internal.DurationParser.TryParse(refreshText, true, out var refresh) || refresh <= TimeSpan.Zero) return null;
+            if (MethodCache.Internal.DurationParser.TryParse(durationText, false, out var duration) && refresh >= duration)
+                return (refreshText!, "Duration", durationText!);
+            if (MethodCache.Internal.DurationParser.TryParse(slidingText, true, out var sliding) && sliding > TimeSpan.Zero && refresh >= sliding)
+                return (refreshText!, "SlidingExpiration", slidingText!);
+            return null;
+        }
 
         private static bool HasNegativeVersion(AttributeData attribute)
         {

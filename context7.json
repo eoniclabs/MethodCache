@@ -25,7 +25,7 @@
     "Register services first, then call builder.Services.AddMethodCache(); services registered after it are not cached.",
     "Callers must use the interface: calling a cached method from inside its class bypasses the cache.",
     "Don't write keys for [Cache] methods; they come from the method and its arguments.",
-    "Tag templates take a parameter name only, like \"product:{id}\"; \"{product.Id}\" stays literal text (warning MCG015).",
+    "Tag templates take a parameter name only, like \"product:{id}\"; \"{product.Id}\" stays literal text (warning MC0016).",
     "Durations are TimeSpan strings, like Duration = \"00:10:00\".",
     "Return materialized lists, not IEnumerable<T> or IQueryable<T>, from cached methods.",
     "Use ICacheManager.GetOrCreateAsync with an explicit, prefixed key when an attribute doesn't fit."

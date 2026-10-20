@@ -27,9 +27,15 @@ namespace MethodCache.Benchmarks.Microbenchmarks
         public bool SelectPerformanceCores { get; set; } = true;
         internal GeneratedPrefixSource OriginService => _provider.GetRequiredService<GeneratedPrefixSource>();
         internal int OriginLoads => OriginService.OriginLoads;
-        internal int KeyLength => MethodCacheKeys.For(LongPrefix ? typeof(LongSource) : typeof(ShortSource),
-            ArgumentKind == PrefixArgumentKind.Guid ? nameof(ShortSource.Read) : nameof(ShortSource.ReadInt),
-            ArgumentKind == PrefixArgumentKind.Guid ? MethodCacheKeys.Part(Id) : MethodCacheKeys.Part(IntId)).Length;
+        internal int KeyLength => Key(_provider.GetRequiredService<IMethodCacheKeys>()).Length;
+
+        private string Key(IMethodCacheKeys keys) => (LongPrefix, ArgumentKind) switch
+        {
+            (true, PrefixArgumentKind.Guid) => keys.For<LongSource>(source => source.Read(Id)),
+            (true, _) => keys.For<LongSource>(source => source.ReadInt(IntId)),
+            (false, PrefixArgumentKind.Guid) => keys.For<ShortSource>(source => source.Read(Id)),
+            _ => keys.For<ShortSource>(source => source.ReadInt(IntId)),
+        };
 
         [GlobalSetup]
         public void Setup()

@@ -3,7 +3,6 @@ using System.Numerics;
 using System.Text.Json;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
-using MethodCache.Serialization.MessagePack;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Core;
@@ -23,7 +22,7 @@ public class FrameworkTypeKeyTests
     public static TheoryData<string, string> Cases()
     {
         var data = new TheoryData<string, string>();
-        foreach (var generator in new[] { nameof(FastHashKeyGenerator), nameof(JsonKeyGenerator), nameof(MessagePackKeyGenerator) })
+        foreach (var generator in new[] { nameof(FastHashKeyGenerator), nameof(JsonKeyGenerator) })
         {
             foreach (var name in Values.Keys)
             {
@@ -93,8 +92,7 @@ public class FrameworkTypeKeyTests
     private static ICacheKeyGenerator Create(string name) => name switch
     {
         nameof(FastHashKeyGenerator) => new FastHashKeyGenerator(),
-        nameof(JsonKeyGenerator) => new JsonKeyGenerator(),
-        _ => new MessagePackKeyGenerator(),
+        _ => new JsonKeyGenerator(),
     };
 
     private static JsonElement Json(string json)

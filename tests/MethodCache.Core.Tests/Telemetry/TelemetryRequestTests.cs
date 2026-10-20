@@ -19,14 +19,14 @@ public class TelemetryRequestTests
         await cache.GetOrCreateManyAsync<int>(["a", "b"], (keys, _) =>
         {
             clock.Advance(TimeSpan.FromMilliseconds(2));
-            return ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 7));
+            return ValueTask.FromResult<IReadOnlyDictionary<string, int>>(keys.ToDictionary(key => key, _ => 7));
         });
         await cache.GetOrCreateManyAsync<int>(["a", "b"], (_, _) => throw new Exception("must hit"));
-        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _) => ValueTask.FromResult<IDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
+        await cache.GetOrCreateManyAsync<int>(["c"], (keys, _) => ValueTask.FromResult<IReadOnlyDictionary<string, int>>(keys.ToDictionary(key => key, _ => 8)), b => b.WithEnabled(false));
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateManyAsync<int>(["d"], (_, _) => throw new InvalidOperationException("failed")));
         Assert.Equal(new[] { "bypass", "error", "hit", "miss" }, recorded.Requests.Order(StringComparer.Ordinal));
         Assert.Equal(3, recorded.Loads.Count);
-        Assert.Contains(recorded.Loads, row => row.Value == 0.002 && Equals(row.Tags["name"], "MethodCache.Fluent.Bulk"));
+        Assert.Contains(recorded.Loads, row => row.Value == 0.002 && Equals(row.Tags["methodcache.kind"], "manual") && Equals(row.Tags["methodcache.bulk"], true));
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class TelemetryRequestTests
         using var recorded = new TelemetryRecorder(provider);
         var result = await provider.GetRequiredService<ICacheManager>().InvalidateKeysAsync(["a", "a", "b"]);
         Assert.Equal(2, result.Local);
-        Assert.Contains(recorded.Longs, row => row.Name == "methodcache.invalidations" && row.Value == 2 && Equals(row.Tags["type"], "key") && Equals(row.Tags["stage"], "local"));
+        Assert.Contains(recorded.Longs, row => row.Name == "methodcache.invalidations" && row.Value == 2 && Equals(row.Tags["methodcache.invalidation.type"], "key") && Equals(row.Tags["methodcache.invalidation.stage"], "local"));
     }
 
     private static ServiceProvider Node(FakeTimeProvider time, MethodCache.TestSupport.AtomicTestCache? backend = null)
@@ -184,7 +184,7 @@ internal sealed class TelemetryRecorder : IDisposable
     internal ConcurrentQueue<(double Value, Dictionary<string, object?> Tags)> Loads { get; } = new();
     internal ConcurrentQueue<(string Operation, double Value, Dictionary<string, object?> Tags)> Distributed { get; } = new();
     internal void Poll() => _listener.RecordObservableInstruments();
-    internal IEnumerable<string> Requests => Longs.Where(row => row.Name == "methodcache.requests").Select(row => (string)row.Tags["result"]!);
+    internal IEnumerable<string> Requests => Longs.Where(row => row.Name == "methodcache.requests").Select(row => (string)row.Tags["methodcache.result"]!);
     internal TelemetryRecorder(IServiceProvider provider)
     {
         var factory = provider.GetRequiredService<IMeterFactory>();
@@ -199,7 +199,7 @@ internal sealed class TelemetryRecorder : IDisposable
             if (instrument.Name == "methodcache.distributed.duration")
             {
                 var data = tags.ToArray().ToDictionary(pair => pair.Key, pair => pair.Value);
-                Distributed.Enqueue(((string)data["operation"]!, value, data));
+                Distributed.Enqueue(((string)data["methodcache.operation"]!, value, data));
             }
         });
         _listener.Start();

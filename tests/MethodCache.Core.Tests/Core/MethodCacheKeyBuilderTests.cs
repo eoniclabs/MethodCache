@@ -1,3 +1,4 @@
+using MethodCache.TestSupport;
 using System.Globalization;
 using MethodCache.Infrastructure;
 using Xunit;
@@ -50,13 +51,13 @@ namespace MethodCache.Core.Tests.Core
         [MemberData(nameof(SameTextAsMethodCacheKeys))]
         public void AppendPart_WritesTheSameTextAsMethodCacheKeys(string built, string part)
         {
-            Assert.Equal("Prefix" + MethodCacheKeys.Separator + part, built);
+            Assert.Equal("Prefix" + TestKeys.Separator + part, built);
         }
 
         [Fact]
         public void AppendNullPart_WritesTheSameTextAsMethodCacheKeysNull()
         {
-            Assert.Equal("Prefix" + MethodCacheKeys.Separator + MethodCacheKeys.Null,
+            Assert.Equal("Prefix" + TestKeys.Separator + TestKeys.Null,
                 Build((ref MethodCacheKeyBuilder builder) => builder.AppendNullPart()));
         }
 
@@ -90,8 +91,8 @@ namespace MethodCache.Core.Tests.Core
             builder.AppendPart("tenant:1");
             builder.AppendNullPart();
 
-            var expected = MethodCacheKeys.For(typeof(MethodCacheKeyBuilderTests), "Get",
-                MethodCacheKeys.Part(7), MethodCacheKeys.Part("tenant:1"), MethodCacheKeys.Null);
+            var expected = TestKeys.For(typeof(MethodCacheKeyBuilderTests), "Get",
+                MethodCacheKeys.Part(7), MethodCacheKeys.Part("tenant:1"), TestKeys.Null);
             Assert.Equal(expected, builder.ToString());
             Assert.True(builder.AsSpan().SequenceEqual(expected));
         }

@@ -22,7 +22,7 @@ internal sealed partial class SqlServerDistributedCache : IAtomicInvalidationSto
     {
         _schemaOptions = options;
         _inner = new SqlServerCache(Microsoft.Extensions.Options.Options.Create(
-            Microsoft.Extensions.DependencyInjection.MethodCacheSqlServerServiceCollectionExtensions.CacheOptions(options)));
+            Microsoft.Extensions.DependencyInjection.SqlServerMethodCacheBuilderExtensions.CacheOptions(options)));
         _connectionString = options.ConnectionString;
         _table = options.QualifiedTableName;
     }

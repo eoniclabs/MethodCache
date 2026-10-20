@@ -3,6 +3,7 @@ using MethodCache.Infrastructure;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Extensibility;
 using MethodCache.Policies;
+using MethodCache.Core.PolicyPipeline.Model;
 
 namespace MethodCache.Core.Management;
 
@@ -39,7 +40,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return _cache.GetStatsAsync();
     }
 
-    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100)
+    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100, string? methodId = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
@@ -54,7 +55,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             var node = pair.Value;
             if (IsLive(node, now)
                 && (storedKeyPrefix == null || node.Key.StartsWith(storedKeyPrefix, StringComparison.Ordinal))
-                && (tag == null || HasTag(node, tag)))
+                && (tag == null || HasTag(node, tag))
+                && (methodId == null || InMemoryCacheManager.MethodIdOf(node) == methodId))
             {
                 if (matches.Count < limit)
                 {
@@ -74,7 +76,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             result[i] = Describe(matches.Dequeue(), now);
         }
 
-        return _http == null ? result : result.Concat(_http.DescribeEntries(storedKeyPrefix, tag, limit))
+        // HTTP responses belong to no method
+        return _http == null || methodId != null ? result : result.Concat(_http.DescribeEntries(storedKeyPrefix, tag, limit))
             .OrderBy(entry => entry.StoredKey, StringComparer.Ordinal).Take(limit).ToArray();
     }
 
@@ -100,7 +103,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
 
         // With L2 an unobserved key can still live on another instance, so confirmed invalidation reports true.
         var result = await _cache.InvalidatePreparedKeysAsync([storedKey], cancellationToken).ConfigureAwait(false);
-        HttpResponseStore.RequireConfirmed(result);
+        CacheInvalidationQueuedException.ThrowIfQueued(result);
         return wasLive || _cache.HasDistributedCache;
     }
 
@@ -108,7 +111,28 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
     {
         ArgumentNullException.ThrowIfNull(tags);
         var result = await _cache.InvalidateTagsAsync(tags, cancellationToken).ConfigureAwait(false);
-        HttpResponseStore.RequireConfirmed(result);
+        CacheInvalidationQueuedException.ThrowIfQueued(result);
+        return result;
+    }
+
+    public async ValueTask<InvalidationResult> InvalidateMethodAsync(string methodId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(methodId)) throw new ArgumentException("A method id cannot be null or whitespace.", nameof(methodId));
+        cancellationToken.ThrowIfCancellationRequested();
+        // A mistyped id would remove nothing and still report success
+        if (_policies != null && (MethodIds.IsDefaults(methodId) || !_policies.GetAllPolicies().Any(policy => policy.MethodId == methodId)))
+        {
+            throw new ArgumentException(
+                $"No cached method has the id '{methodId}'. ICacheAdministrator.GetMethods() lists the ids, and " +
+                "IMethodCacheKeys.MethodId returns the id of a call.", nameof(methodId));
+        }
+
+        // Once memory is cleared, distributed recovery belongs to the cache, not to the caller's token
+        var invalidation = _cache.InvalidateMethodAsync(methodId);
+        _ = invalidation.ContinueWith(static task => _ = task.Exception, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        var result = await invalidation.WaitAsync(cancellationToken).ConfigureAwait(false);
+        CacheInvalidationQueuedException.ThrowIfQueued(result);
         return result;
     }
 
@@ -116,7 +140,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
     {
         cancellationToken.ThrowIfCancellationRequested();
         await _cache.ClearAsync().ConfigureAwait(false);
-        if (_cache.GetInvalidationQueues().Distributed != 0)
+        if (_cache.GetInvalidationQueues().Queued != 0)
             throw new CacheInvalidationQueuedException("Cache clear is queued for distributed recovery.");
     }
 
@@ -136,8 +160,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
                 MethodId = result.MethodId,
                 Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
                 IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
-                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
-                    new Dictionary<string, string>(result.FieldSources, StringComparer.Ordinal))
+                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(
+                    new Dictionary<string, CacheSettingSource>(result.FieldSources, StringComparer.Ordinal))
             })
             .ToArray();
     }
@@ -157,6 +181,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
         return new CacheEntryInfo
         {
             StoredKey = node.Key,
+            MethodId = InMemoryCacheManager.MethodIdOf(node),
             ValueType = node.BoxedValue?.GetType().FullName,
             Age = TimeSpan.FromTicks(Math.Max(0, now - node.CreatedAt) / NanosPerTick),
             TimeToLive = remaining >= NoExpiryThreshold ? null : TimeSpan.FromTicks(remaining / NanosPerTick),

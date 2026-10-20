@@ -77,14 +77,16 @@ public class KeyedRegistrationTests
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheAdministrator>();
+        var keys = provider.GetRequiredService<IMethodCacheKeys>();
 
         provider.GetRequiredKeyedService<IKeyedRates>("ecb").Get(5);
         provider.GetRequiredKeyedService<IKeyedRates>(KeyedRegion.Eu).Get(5);
         provider.GetRequiredKeyedService<IKeyedRates>(7).Get(5);
 
-        foreach (var key in new object[] { "ecb", KeyedRegion.Eu, 7 })
+        foreach (var (key, ending) in new (object, string)[] { ("ecb", ".Get@ecb:5"), (KeyedRegion.Eu, "KeyedRegion.Eu:5"), (7, ".Get@Int32(7):5") })
         {
-            var expected = MethodCacheKeys.For(typeof(IKeyedRates), MethodCacheKeys.KeyedMethodName(nameof(IKeyedRates.Get), key), MethodCacheKeys.Part(5));
+            var expected = keys.For<IKeyedRates>(rates => rates.Get(5), key);
+            Assert.EndsWith(ending, expected, StringComparison.Ordinal);
             Assert.NotNull(cache.GetEntry(expected));
         }
     }

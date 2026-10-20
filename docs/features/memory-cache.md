@@ -4,17 +4,18 @@
 
 The in-memory cache uses W-TinyLFU eviction: when it is full, it keeps the entries that are read often and
 evicts the rest, so a burst of one-off reads doesn't push out your hot data. Configure it with
-`MethodCacheMemoryOptions`:
+`mc.Memory(o => ...)`, which sets `MethodCacheMemoryOptions`:
 
 <!-- snippet: memory-options -->
 ```cs
-builder.Services.AddMethodCache(cache => cache.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10))));
-builder.Services.Configure<MethodCacheMemoryOptions>(o =>
-{
-    o.MaxItems = 50_000;                              // default 10,000
-    o.JitterMaxDuration = TimeSpan.FromSeconds(30);   // spread out entries created together
-    o.CacheNullValues = false;                        // a null result means "try again next time"
-});
+builder.Services.AddMethodCache(cache => cache
+    .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10)))
+    .Memory(o =>
+    {
+        o.MaxItems = 50_000;                              // default 10,000
+        o.JitterMaxDuration = TimeSpan.FromSeconds(30);   // spread out entries created together
+        o.CacheNullValues = false;                        // a null result means "try again next time"
+    }));
 ```
 <!-- endSnippet -->
 
@@ -26,10 +27,10 @@ builder.Services.Configure<MethodCacheMemoryOptions>(o =>
 | `MaxExpiration` | 7 days | No entry lives longer, whatever its duration |
 | `JitterMaxDuration` | zero | Adds a random extra lifetime up to this value, so entries created together don't expire together |
 | `CacheNullValues` | `true` | Caches `null` results like any other value |
+| `MaxHttpBytes` | 100 MiB | The most bytes the HTTP response cache keeps in memory, bodies and headers included. Shared by all HTTP clients and separate from `MaxItems` and `WeightLimit` |
 
 Method defaults are set with `Defaults.WithDuration`; unset defaults use five minutes. Cleanup, statistics and
-the generated fast path are always enabled. `MaxHttpBytes` (32 MiB by default) is reserved for the separate HTTP store in design PR 6;
-it does not yet limit the current HTTP storage path.
+the generated fast path are always enabled.
 
 ## How a call is answered
 
@@ -52,11 +53,11 @@ Object sizes can't be measured reliably at runtime, so to bound the cache by mem
 
 <!-- snippet: memory-weigher -->
 ```cs
-builder.Services.Configure<MethodCacheMemoryOptions>(o =>
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
 {
     o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
     o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
-});
+}));
 ```
 <!-- endSnippet -->
 

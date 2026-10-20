@@ -12,9 +12,14 @@ public sealed class ProductApiClient(HttpClient http)
     {
         using var response = await http.GetAsync(path);
         response.EnsureSuccessStatusCode();
-        return new(response.StatusCode, await response.Content.ReadAsStringAsync(),
-            response.Headers.TryGetValues("X-Cache", out var values) ? values.Single() : null);
+        return new(response.StatusCode, await response.Content.ReadAsStringAsync(), CacheStatus(response));
     }
+
+    // AddDiagnosticHeaders appends the cache's own Cache-Status member (RFC 9211) after any the origin's caches added
+    private static string? CacheStatus(HttpResponseMessage response)
+        => response.Headers.TryGetValues("Cache-Status", out var values)
+            ? values.LastOrDefault(value => value.StartsWith("MethodCache;", StringComparison.Ordinal))
+            : null;
 
     public async Task UpdatePriceAsync(decimal price)
     {

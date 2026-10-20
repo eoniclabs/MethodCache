@@ -29,6 +29,11 @@ builder.Services.AddMethodCache(mc => mc
 
 MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops. Once subscribed after a failure, it clears this instance's in-memory cache, as after a reconnect, since invalidations other instances sent meanwhile never arrived.
 
+Set `Configuration` or `ConnectionMultiplexerFactory`; startup fails when neither is set, so a missing configuration
+section never makes MethodCache connect to `localhost`. The connection is opened on the thread pool: a factory that
+blocks while Redis is slow or down (as `ConnectionMultiplexer.Connect` does) never holds up a call, which is served
+from memory and your method in the meantime.
+
 To share a connection your app already has instead:
 
 <!-- snippet: redis-shared-connection -->
@@ -76,7 +81,7 @@ that tune all of this.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `Configuration` | `localhost:6379` | StackExchange.Redis configuration string |
+| `Configuration` | none | StackExchange.Redis configuration string |
 | `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
 

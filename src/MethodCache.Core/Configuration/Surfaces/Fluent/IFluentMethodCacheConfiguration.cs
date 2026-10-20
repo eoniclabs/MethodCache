@@ -15,14 +15,6 @@ namespace MethodCache
         IFluentMethodCacheConfiguration DefaultPolicy(Action<CacheEntryOptions.Builder> configure);
 
         /// <summary>
-        /// Turns on fail-safe for every cached method: expired values are kept for <paramref name="duration"/> and
-        /// returned when reloading throws or, with <paramref name="timeout"/>, takes longer than that. After a fallback
-        /// the old value is reused for <paramref name="retryAfter"/> (default 30 seconds) before trying again. A method
-        /// or group can change it, and <c>[Cache(FailSafe = "off")]</c> turns it off for one method.
-        /// </summary>
-        IFluentMethodCacheConfiguration WithFailSafe(TimeSpan duration, TimeSpan? timeout = null, TimeSpan? retryAfter = null);
-
-        /// <summary>
         /// Configures the methods of one service; these settings win over the method's <c>[Cache]</c> attribute.
         /// </summary>
         IFluentServiceConfiguration<TService> ForService<TService>();
@@ -75,16 +67,10 @@ namespace MethodCache
         /// <returns>This configuration, for chaining.</returns>
         IFluentMethodConfiguration<TResult> WithGroup(string groupName);
         /// <summary>
-        /// Sets the method's version, which changes every key of the method so values cached by an earlier version are ignored.
-        /// </summary>
-        /// <param name="version">Zero or more.</param>
-        /// <returns>This configuration, for chaining.</returns>
-        IFluentMethodConfiguration<TResult> WithVersion(int version);
-
-        /// <summary>
         /// Stores a result only when <paramref name="predicate"/> returns true, e.g. <c>CacheWhen(r =&gt; r.Count &gt; 0)</c>.
         /// A rejected result is still returned to the caller, the entry it would have replaced stays, and the next call
-        /// runs the method again. The predicate runs once per load, never on a cache hit.
+        /// runs the method again. The predicate runs once per load and on each value read from the distributed cache,
+        /// where a rejected value is skipped and the method runs; it never runs on a hit in memory.
         /// </summary>
         IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate);
     }

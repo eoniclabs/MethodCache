@@ -25,7 +25,7 @@ public class RequestMetadataReviewTests
         time.Advance(TimeSpan.FromSeconds(2));
         using var second = Request();
         using var stale = await client.SendAsync(second);
-        Assert.Equal("STALE", stale.Headers.GetValues("X-Cache").Single());
+        Assert.Matches(HttpCacheTestFactory.StaleWhileRevalidateHit, HttpCacheTestFactory.CacheStatus(stale));
         var metadata = await seen.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal((HttpVersion.Version20, HttpVersionPolicy.RequestVersionExact, "tenant-a"), metadata);
     }

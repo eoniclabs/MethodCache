@@ -165,7 +165,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 
     var admin = provider.GetRequiredService<ICacheAdministrator>();
     var runtime = provider.GetRequiredService<IRuntimeCacheConfigurator>();
-    const string productMethod = "MethodCache.Demo.IProductCatalog.GetProductAsync";
+    const string productMethod = "[MethodCache.Demo]MethodCache.Demo.IProductCatalog.GetProductAsync";
 
     PrintPolicies(admin, "At startup:");
 
@@ -177,12 +177,12 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
     Ui.Check(reloaded, "appsettings.json was reloaded while the app was running");
 
     // An operator shortens the duration during an incident.
-    await runtime.UpsertAsync<IProductCatalog, Product>(c => c.GetProductAsync(default!),
+    await runtime.UpsertAsync<IProductCatalog>(c => c.GetProductAsync(default!),
         o => o.WithDuration(TimeSpan.FromMinutes(1)));
 
     var catalog = provider.GetRequiredService<IProductCatalog>();
     await catalog.GetProductAsync("KB-1");
-    var key = MethodCacheKeys.For(typeof(IProductCatalog), nameof(IProductCatalog.GetProductAsync), MethodCacheKeys.Part("KB-1"));
+    var key = provider.GetRequiredService<IMethodCacheKeys>().For<IProductCatalog>(c => c.GetProductAsync("KB-1"));
     var entry = admin.GetEntry(key);
     Ui.Step("Runtime override, then a call", $"entry {key} lives {Ui.Duration(entry?.TimeToLive)}");
     Ui.Check(entry?.TimeToLive is { TotalSeconds: > 50 and <= 60 }, "The runtime override applied to new entries at once");
@@ -252,7 +252,7 @@ static void PrintPolicies(ICacheAdministrator admin, string title)
 static TimeSpan? DurationOf(ICacheAdministrator admin, string methodId) =>
     admin.GetMethods().FirstOrDefault(m => m.MethodId == methodId)?.Options.Duration;
 
-static string ShortName(string methodId) => methodId["MethodCache.Demo.".Length..];
+static string ShortName(string methodId) => methodId[(methodId.IndexOf(']') + 1 + "MethodCache.Demo.".Length)..];
 
 static async Task<bool> WaitForAsync(Func<bool> condition)
 {

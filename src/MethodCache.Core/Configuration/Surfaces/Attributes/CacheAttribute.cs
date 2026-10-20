@@ -9,7 +9,7 @@ namespace MethodCache
     /// <remarks>
     /// Keys are built from the method and its arguments. Each setting can be changed without touching the attribute,
     /// and the highest layer that sets it wins: runtime overrides (<c>IRuntimeCacheConfigurator</c>), then
-    /// <c>appsettings.json</c> (<c>AddMethodCacheFromConfiguration</c>), then startup code
+    /// <c>appsettings.json</c> (<c>mc.FromConfiguration(configuration)</c>), then startup code
     /// (<c>AddMethodCache(config => ...)</c>), then this attribute. Defaults and groups fill in what the method leaves
     /// unset. See docs/features/configuration.md.
     /// </remarks>
@@ -37,8 +37,8 @@ namespace MethodCache
     public sealed class CacheAttribute : Attribute
     {
         /// <summary>
-        /// The group the method belongs to, or null. A group's settings, from <c>config.ForGroup(name)</c> or
-        /// <c>appsettings.json</c>, fill in what the method leaves unset.
+        /// The group the method belongs to, or null. A group's settings, from <c>mc.Group(name, ...)</c> or the
+        /// <c>"Groups"</c> section of <c>appsettings.json</c>, fill in what the method leaves unset.
         /// </summary>
         public string? Group { get; set; }
 
@@ -79,7 +79,7 @@ namespace MethodCache
         /// <summary>
         /// Gets or sets how long an expired value is kept and returned when calling the method again throws, as a
         /// TimeSpan string, or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
-        /// methods. Unset uses the group or the central setting (<c>config.WithFailSafe(...)</c>).
+        /// methods. Unset uses the group or the central setting (<c>mc.Defaults(o =&gt; o.WithFailSafe(...))</c>).
         /// </summary>
         /// <example>
         /// <code>
@@ -110,7 +110,7 @@ namespace MethodCache
         public bool Distributed { get; set; } = true;
 
         /// <summary>
-        /// Tags for the entries this method stores, so <c>[CacheInvalidate]</c> or <c>InvalidateByTagsAsync</c> can
+        /// Tags for the entries this method stores, so <c>[CacheInvalidate]</c> or <c>ICacheManager.InvalidateTagsAsync</c> can
         /// remove them. A template such as <c>"product:{id}"</c> is filled in from the parameter with that name; it
         /// takes a parameter name only, not a property path.
         /// </summary>

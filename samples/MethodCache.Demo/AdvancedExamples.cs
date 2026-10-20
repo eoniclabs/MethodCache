@@ -25,7 +25,7 @@ public static class AdvancedExamples
             config.Method((IAvailableProducts s) => s.FindAsync(Any<int>.Value))
                 .CacheWhen(product => product is not null);
             config.Method((IResilientRates s) => s.GetAsync(Any<string>.Value))
-                .Configure(options => options.WithFailSafe(TimeSpan.FromMinutes(1), retryAfter: TimeSpan.FromSeconds(5)));
+                .Configure(options => options.WithFailSafe(TimeSpan.FromMinutes(1)).WithFailSafeRetryAfter(TimeSpan.FromSeconds(5)));
         });
         return services.BuildServiceProvider();
     }
@@ -78,7 +78,7 @@ public static class AdvancedExamples
         source.Failing = true;
         checks.Add(new("An API failure returns the expired last good value", await rates.GetAsync("EUR/SEK") == 100m));
         await rates.GetAsync("EUR/SEK");
-        checks.Add(new("RetryAfter prevents another API call during the outage", source.Calls == 2));
+        checks.Add(new("FailSafeRetryAfter prevents another API call during the outage", source.Calls == 2));
         source.Failing = false;
         source.Rate = 120m;
         clock.Advance(TimeSpan.FromSeconds(6));

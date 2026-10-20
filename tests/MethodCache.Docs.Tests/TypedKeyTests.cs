@@ -68,7 +68,7 @@ namespace MethodCache.Docs.Tests
             Assert.EndsWith(".Find(int):1", keys.For<ICatalog>(c => c.Find(1)), StringComparison.Ordinal);
 
             await provider.GetRequiredService<IRuntimeCacheConfigurator>()
-                .UpsertAsync<ICatalog, Task<string>>(c => c.Find(Any<int>.Value), o => o.WithVersion(5));
+                .UpsertAsync<ICatalog>(c => c.Find(Any<int>.Value), o => o.WithVersion(5));
 
             Assert.EndsWith(".Find(int):v5:1", keys.For<ICatalog>(c => c.Find(1)), StringComparison.Ordinal);
         }

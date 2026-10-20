@@ -56,10 +56,10 @@ public class StaleContentTests
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal("original content", content1);
         Assert.Equal("original content", content2);
-        Assert.Equal("STALE", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.StaleWhileRevalidateHit, HttpCacheTestFactory.CacheStatus(response2));
         Assert.Equal(2, innerHandler.RequestCount);
         Assert.Equal("updated content", await response3.Content.ReadAsStringAsync());
-        Assert.Equal("HIT", response3.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.FreshHit, HttpCacheTestFactory.CacheStatus(response3));
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class StaleContentTests
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
         Assert.Equal("cached content", content1);
         Assert.Equal("cached content", content2);
-        Assert.Equal("STALE-IF-ERROR", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.StaleIfOriginFailed, HttpCacheTestFactory.CacheStatus(response2));
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public class StaleContentTests
 
         Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
         Assert.Equal("stale content", content);
-        Assert.Equal("STALE-IF-ERROR", response2.Headers.GetValues("X-Cache").FirstOrDefault());
+        Assert.Matches(HttpCacheTestFactory.StaleIfOriginFailed, HttpCacheTestFactory.CacheStatus(response2));
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class StaleContentTests
         var responses = await Task.WhenAll(Enumerable.Range(0, 10)
             .Select(_ => httpClient.GetAsync("https://api.example.com/concurrent-swr")));
 
-        Assert.All(responses, r => Assert.Equal("STALE", r.Headers.GetValues("X-Cache").FirstOrDefault()));
+        Assert.All(responses, r => Assert.Matches(HttpCacheTestFactory.StaleWhileRevalidateHit, HttpCacheTestFactory.CacheStatus(r)));
         Assert.Single(state.RevalidationsInFlight);
 
         handler.Release();

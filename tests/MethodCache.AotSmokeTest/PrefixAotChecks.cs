@@ -40,8 +40,8 @@ namespace MethodCache.AotSmokeTest.PrefixCases
 
                 foreach (var longPrefix in new[] { false, true })
                 {
-                    var type = longPrefix ? typeof(LongSource) : typeof(ShortSource);
-                    var key = MethodCacheKeys.For(type, nameof(ShortSource.Read), MethodCacheKeys.Part(first));
+                    var keys = provider.GetRequiredService<IMethodCacheKeys>();
+                    var key = longPrefix ? keys.For<LongSource>(source => source.Read(first)) : keys.For<ShortSource>(source => source.Read(first));
                     if ((key.Length > 256) != longPrefix)
                         throw new InvalidOperationException("Native prefix fixture did not cross the intended key boundary.");
 

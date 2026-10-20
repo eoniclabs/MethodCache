@@ -12,19 +12,26 @@ internal sealed class MethodCacheKeyRecorder(
     IServiceProvider root,
     MethodCacheServiceCollectionExtensions.GeneratedParameters parameters) : IMethodCacheKeys
 {
-    // Recording decorators are shared, so the keys of one For call are collected per thread; loads record synchronously
-    [ThreadStatic] private static List<string>? t_keys;
+    // Recording decorators are shared, so the calls of one For call are collected per thread; loads record synchronously
+    [ThreadStatic] private static List<(string Key, string MethodId)>? t_keys;
 
     // One recording decorator per registration and container, so its methods subscribe to their policies once
     private readonly ConcurrentDictionary<(Type Service, object? Key), object> _decorators = new();
 
     public string For<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
+        => RecordCall(call, serviceKey, nameof(For)).Key;
+
+    public string MethodId<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
+        => RecordCall(call, serviceKey, nameof(MethodId)).MethodId;
+
+    private (string Key, string MethodId) RecordCall<TService>(Func<TService, object?> call, object? serviceKey, string operation)
+        where TService : class
     {
         ArgumentNullException.ThrowIfNull(call);
         var decorator = (TService)_decorators.GetOrAdd((typeof(TService), serviceKey), Create);
 
         var outer = t_keys;
-        var keys = t_keys = new List<string>(1);
+        var keys = t_keys = new List<(string Key, string MethodId)>(1);
         try
         {
             call(decorator);
@@ -32,19 +39,19 @@ internal sealed class MethodCacheKeyRecorder(
         catch (Exception error) when (keys.Count == 0)
         {
             // A method without [Cache] goes straight to the decorated instance, which a recording decorator has none of
-            throw NoCachedCall(typeof(TService), error);
+            throw NoCachedCall(typeof(TService), operation, error);
         }
         finally
         {
             t_keys = outer;
         }
 
-        return keys.Count == 1 ? keys[0] : throw NoCachedCall(typeof(TService), null, keys.Count);
+        return keys.Count == 1 ? keys[0] : throw NoCachedCall(typeof(TService), operation, null, keys.Count);
     }
 
-    internal static T Record<T>(string key)
+    internal static T Record<T>(string key, string methodId)
     {
-        (t_keys ?? throw new InvalidOperationException("A recording decorator was called outside IMethodCacheKeys.For.")).Add(key);
+        (t_keys ?? throw new InvalidOperationException("A recording decorator was called outside IMethodCacheKeys.")).Add((key, methodId));
         return default!;
     }
 
@@ -58,7 +65,8 @@ internal sealed class MethodCacheKeyRecorder(
                 "and keyed services with their key, before AddMethodCache.");
         }
 
-        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(found.KeySuffix));
+        // Of several registrations under one service key, the last one: the one GetService and GetKeyedService return
+        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(found.RecordingSuffix(root)));
         try
         {
             return found.Registration.Decorate(new MethodCacheServiceCollectionExtensions.RegistrationServiceProvider(root, services), null!);
@@ -72,7 +80,7 @@ internal sealed class MethodCacheKeyRecorder(
         }
     }
 
-    private static InvalidOperationException NoCachedCall(Type service, Exception? error, int count = 0) => new(
-        $"IMethodCacheKeys.For<{service.Name}> needs a call to one cached method of {service.Name}, such as " +
+    private static InvalidOperationException NoCachedCall(Type service, string operation, Exception? error, int count = 0) => new(
+        $"IMethodCacheKeys.{operation}<{service.Name}> needs a call to one cached method of {service.Name}, such as " +
         $"service => service.GetUser(42); this call reached {(count == 0 ? "none" : count.ToString(System.Globalization.CultureInfo.InvariantCulture))}.", error);
 }

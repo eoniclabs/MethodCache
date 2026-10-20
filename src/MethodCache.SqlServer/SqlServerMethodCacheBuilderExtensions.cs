@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Registers SQL Server as MethodCache's distributed cache.
 /// </summary>
-public static class MethodCacheSqlServerServiceCollectionExtensions
+public static class SqlServerMethodCacheBuilderExtensions
 {
     /// <summary>
     /// Uses SQL Server as MethodCache's distributed cache: results are shared between instances, and invalidations
@@ -55,13 +55,8 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         MethodCache.Infrastructure.OwnedServices.AddOptions(services);
-        services.AddOptions<SqlServerOptions>().Configure(configure)
-            .Validate(options =>
-            {
-                try { options.Validate(); return true; }
-                catch (InvalidOperationException) { return false; }
-            }, "SqlServerOptions requires a connection, table names and valid positive polling/retention settings.")
-            .ValidateOnStart();
+        services.AddOptions<SqlServerOptions>().Configure(configure).ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<SqlServerOptions>, SqlServerOptionsValidator>());
         services.TryAddSingleton(static sp =>
         {
             var configured = sp.GetRequiredService<IOptions<SqlServerOptions>>().Value;
@@ -81,9 +76,10 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
             return new SqlServerRuntimeOptions(options,
                 sp.GetRequiredKeyedService<DistributedCacheOptions>(MethodCache.Infrastructure.OwnedServices.Key).KeyPrefix);
         });
-        services.AddSingleton<IHostedService>(sp => new SqlServerTables(
+        // UseSqlServer may be called again to add to the options; the tables are still created once
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SqlServerTables>(sp => new SqlServerTables(
             sp.GetRequiredService<SqlServerRuntimeOptions>().Options,
-            sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>()));
+            sp.GetService<ILoggerFactory>()?.CreateLogger<SqlServerTables>(), timeProvider: sp.GetService<TimeProvider>())));
         services.TryAddKeyedSingleton<IBackplane>(MethodCache.Infrastructure.OwnedServices.Key, static (sp, _) =>
         {
             var runtime = sp.GetRequiredService<SqlServerRuntimeOptions>();
@@ -112,3 +108,23 @@ public static class MethodCacheSqlServerServiceCollectionExtensions
 }
 
 internal sealed record SqlServerRuntimeOptions(SqlServerOptions Options, string Prefix);
+
+/// <summary>Fails startup with the message of the rule the options break, not a summary of every rule.</summary>
+internal sealed class SqlServerOptionsValidator : IValidateOptions<SqlServerOptions>
+{
+    /// <inheritdoc />
+    public ValidateOptionsResult Validate(string? name, SqlServerOptions options)
+    {
+        // UseSqlServer configures the unnamed options; named ones are not MethodCache's
+        if (name != Microsoft.Extensions.Options.Options.DefaultName) return ValidateOptionsResult.Skip;
+        try
+        {
+            options.Validate();
+            return ValidateOptionsResult.Success;
+        }
+        catch (InvalidOperationException error)
+        {
+            return ValidateOptionsResult.Fail(error.Message);
+        }
+    }
+}

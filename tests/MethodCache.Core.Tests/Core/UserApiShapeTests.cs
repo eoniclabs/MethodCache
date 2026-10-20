@@ -22,7 +22,7 @@ public class UserApiShapeTests
     {
         Assert.Equal(new[] { "GetOrCreateAsync", "InvalidateKeysAsync", "InvalidateTagsAsync", "TryGetAsync" },
             typeof(ICacheManager).GetMethods().Select(m => m.Name).Order().ToArray());
-        Assert.Equal(new[] { "ClearAsync", "GetOverridesAsync", "RemoveAsync", "UpsertAsync" },
+        Assert.Equal(new[] { "ClearAsync", "GetOverrides", "RemoveAsync", "UpsertAsync" },
             typeof(IRuntimeCacheConfigurator).GetMethods().Select(m => m.Name).Order().ToArray());
         foreach (var type in new[] { typeof(ICacheManager), typeof(IRuntimeCacheConfigurator), typeof(CacheManagerExtensions), typeof(RuntimeCacheConfiguratorExtensions) })
             foreach (var method in type.GetMethods().Where(m => m.ReturnType == typeof(Task) || m.Name.EndsWith("Async", StringComparison.Ordinal)))
@@ -31,6 +31,7 @@ public class UserApiShapeTests
             Assert.DoesNotContain(typeof(CacheEntryOptions.Builder).GetMethods(), m => m.Name == name);
         Assert.DoesNotContain(typeof(ICacheManager).Assembly.GetExportedTypes(), t => t.Name == "CacheContext");
         Assert.True(typeof(NoOpCacheManager).IsSealed);
+        Assert.True(typeof(MethodCacheMemoryOptions).IsSealed);
         Assert.Equal(new[] { "CacheNullValues", "JitterMaxDuration", "MaxExpiration", "MaxHttpBytes", "MaxItems", "Weigher", "WeightLimit" },
             typeof(MethodCacheMemoryOptions).GetProperties().Select(p => p.Name).Order().ToArray());
     }

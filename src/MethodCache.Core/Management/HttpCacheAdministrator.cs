@@ -22,10 +22,11 @@ internal sealed class HttpCacheAdministrator(HttpResponseStore store) : ICacheAd
         });
     }
     /// <inheritdoc />
-    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100)
+    public IReadOnlyList<CacheEntryInfo> ListEntries(string? storedKeyPrefix = null, string? tag = null, int limit = 100, string? methodId = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
-        return store.DescribeEntries(storedKeyPrefix, tag, limit);
+        // HTTP responses belong to no method
+        return methodId != null ? [] : store.DescribeEntries(storedKeyPrefix, tag, limit);
     }
     /// <inheritdoc />
     public CacheEntryInfo? GetEntry(string storedKey) => store.Find(storedKey) is { } info ? store.Describe(info) : null;
@@ -34,6 +35,14 @@ internal sealed class HttpCacheAdministrator(HttpResponseStore store) : ICacheAd
     /// <inheritdoc />
     public ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default)
         => store.InvalidateTagsAsync(InMemoryCacheManager.ValidateTargets(tags), cancellationToken);
+    /// <inheritdoc />
+    public ValueTask<InvalidationResult> InvalidateMethodAsync(string methodId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(methodId)) throw new ArgumentException("A method id cannot be null or whitespace.", nameof(methodId));
+        throw new NotSupportedException(
+            "The application's own ICacheManager holds the method results, so MethodCache can't remove them by method. " +
+            "Invalidate their keys or tags through that manager.");
+    }
     /// <inheritdoc />
     public ValueTask ClearAsync(CancellationToken cancellationToken = default) => store.ClearAsync(cancellationToken);
     /// <inheritdoc />

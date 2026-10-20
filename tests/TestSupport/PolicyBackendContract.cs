@@ -104,7 +104,7 @@ public static partial class PolicyBackendContract
 
         await writer.GetOrCreateAsync("version", _ => ValueTask.FromResult(7), o => o.WithVersion(2));
         Assert.True((await verifier.GetRequiredService<ICacheManager>().TryGetAsync<int>("version", version: 2)).Found);
-        var result = await writer.InvalidateKeysAsync([CacheManagerExtensions.GetCacheKey("version", 2), CacheManagerExtensions.GetCacheKey("version", 2)]);
+        var result = await writer.InvalidateKeysAsync(["version", "version"], version: 2);
         Assert.Equal(1, result.Requested); Assert.Equal(1, result.Local); Assert.Equal(1, result.Distributed);
         Assert.Equal(0, result.Queued); Assert.Equal(1, result.Published); Assert.Equal(0, result.PublicationQueued);
     }

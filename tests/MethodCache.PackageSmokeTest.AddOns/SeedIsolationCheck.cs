@@ -7,8 +7,9 @@ using MethodCache;
 internal static class SeedIsolationCheck
 {
     // The SQL Server backplane's first poll also delivers invalidations written up to a second before it subscribed.
-    // One that arrives during the worker's first load keeps that value out of memory, so a phase after an
-    // invalidation starts once this window has passed.
+    // One that arrives during or after the worker's first load keeps that value out of memory, so every phase starts
+    // once this window has passed: an invalidation publishes one, and so does a load that writes the distributed
+    // cache, for nodes that may hold an older value.
     private static readonly TimeSpan SqlServerReplayWindow = TimeSpan.FromSeconds(1.5);
 
     internal static async Task<string?> RunAsync(Backend backend)
@@ -18,7 +19,7 @@ internal static class SeedIsolationCheck
         for (var index = 0; index < phases.Length; index++)
         {
             var phase = phases[index];
-            if (backend == Backend.SqlServer && index > 0 && phases[index - 1] is "key" or "tag" or "clear")
+            if (backend == Backend.SqlServer && index > 0)
                 await Task.Delay(SqlServerReplayWindow);
             var executable = Environment.ProcessPath ?? throw new InvalidOperationException("No process executable.");
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -66,7 +67,7 @@ internal static class SeedIsolationCheck
                 await Task.Yield();
             }
             UserService.Reset();
-            var key = MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetAsync), MethodCacheKeys.Part(7));
+            var key = instance.Services.GetRequiredService<IMethodCacheKeys>().For<IUserService>(users => users.GetAsync(7));
             if (phase is "origin" or "hit")
             {
                 var result = await instance.Users.GetAsync(7);

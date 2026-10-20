@@ -1,5 +1,4 @@
 using MethodCache.Extensibility;
-using MethodCache.Serialization.MessagePack;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
@@ -11,7 +10,6 @@ public class ReviewFixContractTests
     [Theory]
     [InlineData(typeof(FastHashKeyGenerator))]
     [InlineData(typeof(JsonKeyGenerator))]
-    [InlineData(typeof(MessagePackKeyGenerator))]
     public void CollectionScope_GeneratedDecorator_KeepsCallersApart(Type generatorType)
     {
         var services = new ServiceCollection();
@@ -34,7 +32,7 @@ public class ReviewFixContractTests
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheManager>();
-        var pending = new TaskCompletionSource<IDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<IReadOnlyDictionary<string, string>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var batch = cache.GetOrCreateManyAsync<string>(["key"], (_, _) =>
         {

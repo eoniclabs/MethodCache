@@ -85,11 +85,11 @@ namespace Docs.Readme
 
     public static class Invalidation
     {
-        public static async Task FromCode(ICacheManager cache)
+        public static async Task FromCode(ICacheManager cache, IMethodCacheKeys keys)
         {
             // begin-snippet: readme-invalidation
             await cache.InvalidateTagAsync("user:42");
-            await cache.InvalidateKeyAsync(MethodCacheKeys.For(typeof(IUserService), nameof(IUserService.GetUserAsync), MethodCacheKeys.Part(42)));
+            await cache.InvalidateKeyAsync(keys.For<IUserService>(users => users.GetUserAsync(42)));
             await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
             // end-snippet
         }
@@ -100,9 +100,9 @@ namespace Docs.Readme
         public static void Layers(WebApplicationBuilder builder)
         {
             // begin-snippet: readme-configuration
-            builder.Services.AddMethodCache(config =>
-                config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))));
-            builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
+            builder.Services.AddMethodCache(config => config
+                .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5)))
+                .FromConfiguration(builder.Configuration));   // the "MethodCache" section wins over code
             // end-snippet
         }
 

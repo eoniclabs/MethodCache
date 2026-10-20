@@ -27,10 +27,10 @@ public class InvalidationResultTests
         Assert.Equal(1, result.Published);
         Assert.Equal(1, result.PublicationQueued);
         // The public constructor, which an ICacheAdministrator of your own uses, builds the same value
-        Assert.Equal(new InvalidationQueues { Distributed = 1, Publication = 1 }, memory.GetInvalidationQueues());
+        Assert.Equal(new InvalidationQueues { Queued = 1, PublicationQueued = 1 }, memory.GetInvalidationQueues());
         Assert.False(await layer.CheckAvailableAsync(CancellationToken.None));
         await layer.FlushAsync(force: true);
-        Assert.Equal(0, memory.GetInvalidationQueues().Distributed);
+        Assert.Equal(0, memory.GetInvalidationQueues().Queued);
         await layer.FlushPublicationsAsync();
         Assert.Equal(new InvalidationQueues(0, 0), memory.GetInvalidationQueues());
         time.Advance(TimeSpan.FromSeconds(10));
