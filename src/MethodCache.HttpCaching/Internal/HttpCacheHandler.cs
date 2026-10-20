@@ -504,13 +504,21 @@ internal sealed class HttpCacheHandler : DelegatingHandler
         catch
         {
             // The new generation alone makes the old entry unreachable: publish it anyway, then report the failure
-            await storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+            await RetireUrlAsync(storage, urlKey, cancellationToken).ConfigureAwait(false);
             if (attempt != null) attempt.Retired = true;
             throw;
         }
 
-        await storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false);
+        await RetireUrlAsync(storage, urlKey, cancellationToken).ConfigureAwait(false);
         if (attempt != null) attempt.Retired = true;
+    }
+
+    // The same typed error as an unconfirmed mutation, with a message for a GET or HEAD, which is safe to retry
+    private static async ValueTask RetireUrlAsync(IHttpCacheStorage storage, string urlKey, CancellationToken cancellationToken)
+    {
+        try { await storage.InvalidateAsync(urlKey, cancellationToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { throw HttpCacheInvalidationException.ForRetirement(); }
     }
 
     private sealed class StoreAttempt { public bool Retired; }
