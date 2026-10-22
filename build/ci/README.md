@@ -89,6 +89,8 @@ change is required. If retiring the new runner, let its job finish, then stop/re
 Do not restart, re-register, or remove the existing Skribera runners. Its owned home may be retired only
 after checking that no build or container still uses it; never apply global Docker pruning.
 
+## CI script reference
+
 | Script | Runs on | What it does |
 |---|---|---|
 | `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `webdemo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
