@@ -45,7 +45,7 @@ jobs:
         host: ${{ fromJSON(inputs.include-tigger && '["megatron","tigger"]' || '["megatron"]') }}
     uses: ./.github/workflows/run-script.yml
     with:
-      command: bash build/ci/jobs.sh build && bash build/ci/jobs.sh unit
+      command: bash build/ci/actions-macos.sh
       runner-group: ci-public-reviewed
       runner-label: ${{ matrix.host }}
       artifact-path: artifacts/ci/
