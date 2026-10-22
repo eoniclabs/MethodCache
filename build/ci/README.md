@@ -388,7 +388,8 @@ that never contact a package feed or use real secrets.
 
 The cross-platform pilot adds one organization runner per host: `megatron-org-macos-1`,
 `tigger-org-macos-1` and `baloo-org-windows-1`. The existing Nimbus runner remains the Linux pool.
-The manual pilot runs build/unit on each Mac and Baloo, plus the selected Linux suite. Host labels
+The manual pilot runs build/unit on Megatron and Baloo, plus the selected Linux suite. Tigger is
+opt-in with `include-tigger=true` after its SSH access and runner have been provisioned. Host labels
 `megatron` and `tigger` prove both Macs independently; ordinary projects can request `macos-build`
 and let GitHub choose an idle Mac. Windows projects request `windows-build`.
 
@@ -417,7 +418,7 @@ The MethodCache coordinator uses the same wrapper. Queueing is bounded to 30 min
 On Baloo `host-lease.ps1` opens both existing Skribera slot locks
 `C:\ProgramData\bldr\ci\.lock` and `C:\ProgramData\bldr\ci1\.lock`, plus
 `C:\mc\actions-capacity.lock`, with `FileShare.None`. The external MethodCache coordinator acquires
-the same locks in the same order before preparing a checkout. Missing Windows slot roots fail closed.
+the same locks in the same order before preparing a checkout. Missing Windows slot roots and unresolved legacy `.active-run` markers fail closed.
 These are cooperative build leases; they do not reserve the whole machine against interactive work.
 
 **Installation and ownership.** `install-actions-macos.sh megatron` (or `tigger`) runs as the intended

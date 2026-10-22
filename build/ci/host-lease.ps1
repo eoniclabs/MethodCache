@@ -26,6 +26,12 @@ try {
             }
         }
     }
+    foreach ($path in $Locks) {
+        $marker = Join-Path (Split-Path $path) '.active-run'
+        if ((Split-Path $path -Leaf) -eq '.lock' -and (Test-Path -LiteralPath $marker)) {
+            throw "Unresolved legacy Windows run at $marker; inspect it before admitting another build"
+        }
+    }
     # A child shell keeps exit in the project's script from skipping this wrapper's finally.
     & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $Command
     $code = $LASTEXITCODE

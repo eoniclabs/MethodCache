@@ -181,6 +181,9 @@ foreach ($path in (@('C:\ProgramData\bldr\ci\.lock', 'C:\ProgramData\bldr\ci1\.l
         }
     }
 }
+foreach ($legacyRoot in @('C:\ProgramData\bldr\ci', 'C:\ProgramData\bldr\ci1')) {
+    if (Test-Path -LiteralPath (Join-Path $legacyRoot '.active-run')) { throw "Unresolved legacy Windows run: $legacyRoot" }
+}
 New-Item -ItemType Directory -Force -Path (Join-Path $Root 'runs') | Out-Null
 Set-Location $Root
 function Invoke-Native { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }

@@ -26,5 +26,9 @@ try {
     if ($LASTEXITCODE -ne 23) { throw 'Child did not run under admission' }
     $lease = [IO.File]::Open($path, 'OpenOrCreate', 'ReadWrite', 'None')
     $lease.Dispose()
+    $legacyLock = Join-Path $root '.lock'
+    New-Item -ItemType File -Path (Join-Path $root '.active-run') | Out-Null
+    & $hostShell -NoProfile -File $Wrapper -Locks $legacyLock -Command "New-Item '$marker'"
+    if ($LASTEXITCODE -eq 0 -or (Test-Path $marker)) { throw 'Unresolved legacy run was ignored' }
     Write-Host 'PASS: Windows parser, contention, failure propagation and release'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force }
