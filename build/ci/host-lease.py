@@ -34,7 +34,8 @@ def terminate_group(child, seconds):
     if group_alive(child):
         try:
             os.killpg(child.pid, signal.SIGTERM)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
+            # Darwin may retire the final member after the liveness probe.
             pass
         deadline = time.monotonic() + seconds
         while group_alive(child) and time.monotonic() < deadline:
@@ -42,8 +43,14 @@ def terminate_group(child, seconds):
         if group_alive(child):
             try:
                 os.killpg(child.pid, signal.SIGKILL)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
+                # Recheck actual membership instead of treating a retirement race as a build failure.
                 pass
+            retired_by = time.monotonic() + 5
+            while group_alive(child):
+                if time.monotonic() >= retired_by:
+                    raise RuntimeError('Owned process group did not retire after SIGKILL')
+                time.sleep(0.1)
     child.wait()
 
 

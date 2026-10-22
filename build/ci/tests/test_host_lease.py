@@ -88,6 +88,34 @@ with open({str(self.lock)!r}, 'a+b') as lease:
             self.assertTrue(module.group_alive(child))
             self.assertFalse(module.group_alive(child))
 
+    def test_retiring_group_disappears_between_probe_and_term(self):
+        spec = importlib.util.spec_from_file_location('host_lease', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        child = SimpleNamespace(pid=123, poll=lambda: 0, wait=lambda: 0)
+        with patch.object(module, 'group_alive', side_effect=[True, False, False]), patch.object(
+                module.os, 'killpg', side_effect=PermissionError):
+            module.terminate_group(child, 0)
+
+    def test_retiring_group_disappears_between_probe_and_kill(self):
+        spec = importlib.util.spec_from_file_location('host_lease', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        child = SimpleNamespace(pid=123, poll=lambda: 0, wait=lambda: 0)
+        with patch.object(module, 'group_alive', side_effect=[True, True, True, False]), patch.object(
+                module.os, 'killpg', side_effect=[None, PermissionError]):
+            module.terminate_group(child, 0)
+
+    def test_unresponsive_child_is_killed_before_lease_release(self):
+        marker = self.root / 'pid'
+        source = f'import os,signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); open({str(marker)!r},"w").write(str(os.getpid())); time.sleep(60)'
+        result = self.run_lease(source, '--run-seconds', '0.5', '--kill-seconds', '0.1')
+        self.assertEqual(124, result.returncode, result.stderr)
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(marker.read_text()), 0)
+        with self.lock.open('a+b') as lease:
+            fcntl.lockf(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
     def test_requires_configured_locks(self):
         env = dict(os.environ, EONIC_CI_CAPACITY_LOCKS='')
         result = subprocess.run([sys.executable, str(SCRIPT), '--', 'true'], env=env, capture_output=True)
