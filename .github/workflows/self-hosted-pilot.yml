@@ -1,10 +1,8 @@
 name: Self-hosted CI pilot
 
-# The one bootstrap branch allows an end-to-end test before this file exists on main.
+# Dispatch a reviewed ref explicitly; provisioning must finish before the first run.
 # No pull_request/pull_request_target trigger: fork code never runs automatically.
 on:
-  push:
-    branches: [ci/github-actions-pilot]
   workflow_dispatch:
     inputs:
       suite:
@@ -12,6 +10,11 @@ on:
         type: choice
         options: [smoke, full]
         default: smoke
+
+      include-tigger:
+        description: Include Tigger after SSH provisioning and runner verification
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -24,10 +27,36 @@ jobs:
   linux:
     if: >-
       github.repository == 'eoniclabs/MethodCache' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/github-actions-pilot')
+      github.ref == 'refs/heads/main'
     uses: ./.github/workflows/run-script.yml
     with:
       command: ${{ inputs.suite == 'full' && 'build/ci/actions-linux.sh full' || 'build/ci/actions-linux.sh smoke' }}
       runner-group: ci-public-reviewed
       runner-label: linux-docker
+      artifact-path: artifacts/ci/
+
+  macos:
+    if: >-
+      github.repository == 'eoniclabs/MethodCache' &&
+      github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        host: ${{ fromJSON(inputs.include-tigger && '["megatron","tigger"]' || '["megatron"]') }}
+    uses: ./.github/workflows/run-script.yml
+    with:
+      command: bash build/ci/actions-macos.sh
+      runner-group: ci-public-reviewed
+      runner-label: ${{ matrix.host }}
+      artifact-path: artifacts/ci/
+
+  windows:
+    if: >-
+      github.repository == 'eoniclabs/MethodCache' &&
+      github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/run-script.yml
+    with:
+      command: '& ./build/ci/windows.ps1 build unit'
+      runner-group: ci-public-reviewed
+      runner-label: windows-build
       artifact-path: artifacts/ci/

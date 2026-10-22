@@ -169,3 +169,10 @@ ordinally. Hash state is immutable per invocation snapshot and never becomes an 
 [algorithm and threat review](developer/prefix-hash-security.md) records the 32-bit dictionary output limitation,
 reference sources and validation. `PrefixHashPropertyTests` pins published SipHash vectors in both encodings, arbitrary UTF-16 splits and append
 invalidation; `PrefixCollisionTests` forces collisions through all lookup/publication paths and checks eviction.
+
+The optional cross-platform Actions pool runs only reviewed main/manual code. Its macOS runners use
+the existing login account and therefore share that account's filesystem and credential access; they
+are trusted build hosts, not an isolation boundary. Baloo runs as the limited `bldr` account. Admission
+wrappers cooperate with both external CI coordinators through OS-owned leases; locks limit concurrent
+build load and do not restrict a job's host permissions. Private projects need an explicit trust review
+before joining the reviewed public pool. No production/signing secrets are added by runner setup.

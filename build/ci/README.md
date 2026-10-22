@@ -383,3 +383,62 @@ not update the installed copy automatically.
 has the whole release procedure, including the BWS configuration and optional `--github` destination.
 The `build` job also runs the Python tests under `build/ci/tests`, including simulated publishing checks
 that never contact a package feed or use real secrets.
+
+### Shared macOS and Windows runners
+
+The cross-platform pilot adds one organization runner per host: `megatron-org-macos-1`,
+`tigger-org-macos-1` and `baloo-org-windows-1`. The existing Nimbus runner remains the Linux pool.
+The manual pilot runs build/unit on Megatron and Baloo, plus the selected Linux suite. Tigger is
+opt-in with `include-tigger=true` after its SSH access and runner have been provisioned. Host labels
+`megatron` and `tigger` prove both Macs independently; ordinary projects can request `macos-build`
+and let GitHub choose an idle Mac. Windows projects request `windows-build`.
+
+`run-script.yml` is reusable across approved `eoniclabs` repositories on `main`. It selects Bash on
+POSIX and Windows PowerShell on Windows, checks out without persisted credentials, uploads separate
+seven-day result artifacts per runner label and preserves the command's failure. A new project needs:
+
+1. A reviewed repository build/test script and a caller of
+   `eoniclabs/MethodCache/.github/workflows/run-script.yml@<reviewed-full-commit-SHA>`.
+2. Inputs `command`, `runner-group: ci-public-reviewed`, `runner-label` and `artifact-path`.
+3. An operator adding the repository ID to the group's **selected repositories**, and the exact
+   reusable workflow/ref to its **selected workflows**. Keep the existing entries. Labels alone grant
+   no access. No new runner process or paid GitHub plan is needed.
+4. A manual run on `main`, checking the commit, physical runner, result files and uploaded artifacts.
+
+Private repositories require an explicit trust decision before sharing this reviewed public pool.
+`ci-private` remains separate and empty; it needs its own runner identity/pool before use. None of
+these persistent hosts is a sandbox for unreviewed public PRs or arbitrary external collaborators.
+Only push/manual events on approved refs enter the reusable workflow; forks never start automatically.
+
+**Admission is host-wide.** On macOS the installed `host-lease.py` holds POSIX `lockf` leases on
+`~/.cache/eonic-ci/capacity.lock` and Skribera's `~/.cache/skribera-external-ci/.coordinator.lock`.
+This conservatively waits for the existing Skribera coordinator pass, including its child workers.
+The MethodCache coordinator uses the same wrapper. Queueing is bounded to 30 minutes, execution to
+60 minutes, and timed-out commands and descendants are terminated before capacity is released.
+On Baloo `host-lease.ps1` opens both existing Skribera slot locks
+`C:\ProgramData\bldr\ci\.lock` and `C:\ProgramData\bldr\ci1\.lock`, plus
+`C:\mc\actions-capacity.lock`, with `FileShare.None`. The external MethodCache coordinator acquires
+the same locks in the same order before preparing a checkout. Missing Windows slot roots and unresolved legacy `.active-run` markers fail closed.
+These are cooperative build leases; they do not reserve the whole machine against interactive work.
+
+**Installation and ownership.** `install-actions-macos.sh megatron` (or `tigger`) runs as the intended
+build user and installs the official per-user LaunchAgent under `~/.local/share/eonic-ci/runner`.
+It uses the existing .NET/Python installations. These Macs currently use Johan's login account:
+reviewed build code has that account's host permissions, including access to its files. A separate
+HOME is not account isolation. No signing, production or personal GitHub credentials are provisioned
+by these installers. Use a dedicated build account/VM before admitting code with a lower trust level.
+
+`install-actions-windows.ps1` configures the Windows runner as the existing limited user `bldr` in
+`C:\Users\bldr\actions-runner`, using .NET from `C:\mc\dotnet` and Git for Windows. No administrator
+grant or PowerShell 7 is needed. A per-user LaunchAgent on Megatron supervises an SSH session running
+Baloo's `run.cmd`; reconnects use the existing SSH access and a 60-second restart throttle. Thus Baloo's
+listener currently depends on Megatron being logged in and able to reach it. For independent reboot
+recovery an administrator can replace that supervisor with the official Windows runner service under
+a limited build identity. Stop only the task's supervisor/listener when idle before changing its owner.
+
+Both installers pin runner 2.338.0 and verify the official platform SHA-256 before extraction; subsequent
+runner auto-updates remain enabled. Pass a fresh organization registration token on stdin, never as a
+CLI argument or a committed file. The host admission wrappers are installed outside project checkouts;
+update them through the reviewed bootstrap/operations procedure. Never overwrite an existing `.runner`
+configuration. Install a revised legacy coordinator with `install-coordinator.sh --update-only`; let an
+already-running pass finish before starting the first cross-platform Actions build.

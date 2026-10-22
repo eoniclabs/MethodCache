@@ -23,11 +23,13 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install_scripts() {
   mkdir -p "$install_dir"
   # Version the helper with the coordinator. Atomic rename leaves an active shell on its original script.
-  local revision temporary
+  local revision lease_revision temporary
   revision=$(shasum -a 256 "$here/coordinator-state.py" | cut -d ' ' -f1)
   install -m 755 "$here/coordinator-state.py" "$install_dir/coordinator-state-$revision.py"
+  lease_revision=$(shasum -a 256 "$here/host-lease.py" | cut -d ' ' -f1)
+  install -m 755 "$here/host-lease.py" "$install_dir/host-lease-$lease_revision.py"
   temporary=$(mktemp "$install_dir/.coordinator.XXXXXX")
-  sed "s/coordinator-state.py/coordinator-state-$revision.py/g" "$here/coordinator.sh" > "$temporary"
+  sed -e "s/coordinator-state.py/coordinator-state-$revision.py/g" -e "s/host-lease.py/host-lease-$lease_revision.py/g" "$here/coordinator.sh" > "$temporary"
   chmod 755 "$temporary"
   mv -f "$temporary" "$install_dir/coordinator.sh"
   git -C "$here" rev-parse HEAD > "$install_dir/installed-from" 2> /dev/null || true
