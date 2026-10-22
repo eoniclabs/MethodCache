@@ -70,6 +70,12 @@ use `ci-private`. Until more runners are provisioned, that group has no executio
 default branch names, explicitly extend the reusable workflow's trusted-ref gate in a reviewed change.
 The first template is Linux/bash; Windows/PowerShell and macOS admission need separate validated templates.
 
+Provisioned 2026-10-22 on the Free plan: runner group `ci-public-reviewed` (ID 4), runner
+`nimbus-org-linux-1` (ID 203), home `/var/lib/eonic-ci`, runner root `/var/lib/eonic-ci/runner`.
+The account has only its own primary group and `docker`; all three original Skribera services remained active.
+The group was created after the bootstrap workflow was pushed, because GitHub validates workflow refs.
+Trigger a fresh bootstrap push after provisioning so scheduling resolves the now-existing group.
+
 Keep the template version pinned per caller and update it through normal review. Move shared templates
 to a dedicated public `ci-platform` repository when more than this pilot is onboarded; public callers
 cannot consume a reusable workflow from a private repository. Register capacity once at organization
