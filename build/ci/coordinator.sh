@@ -168,6 +168,19 @@ run_windows() { # sha run_id results_dir
   IFS= read -r -d '' body <<'SCRIPT' || true
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+# Share both existing Skribera slots and the new cross-project Actions lease.
+$capacity = @()
+$capacityDeadline = [DateTime]::UtcNow.AddSeconds(1800)
+foreach ($path in (@('C:\ProgramData\bldr\ci\.lock', 'C:\ProgramData\bldr\ci1\.lock', 'C:\mc\actions-capacity.lock') | Sort-Object -Unique)) {
+    if (-not (Test-Path -LiteralPath (Split-Path $path))) { throw "Missing capacity lock directory: $path" }
+    while ($true) {
+        try { $capacity += [IO.File]::Open($path, 'OpenOrCreate', 'ReadWrite', 'None'); break }
+        catch [IO.IOException] {
+            if ([DateTime]::UtcNow -ge $capacityDeadline) { exit 75 }
+            Start-Sleep -Milliseconds 200
+        }
+    }
+}
 New-Item -ItemType Directory -Force -Path (Join-Path $Root 'runs') | Out-Null
 Set-Location $Root
 function Invoke-Native { & $args[0] $args[1..($args.Count - 1)]; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
@@ -240,7 +253,9 @@ run_macos() { # sha run_id results_dir
 run_macos_jobs() { # sha run_id results_dir
   (
     eval "$(checkout_script "$state/macos" "$1" "$2")"
-    METHODCACHE_CI_RESULTS="$3" FRAMEWORK='' bash -c '
+    METHODCACHE_CI_RESULTS="$3" FRAMEWORK='' python3 "$here/host-lease.py" \
+      --lock "$HOME/.cache/eonic-ci/capacity.lock" \
+      --lock "$HOME/.cache/skribera-external-ci/.coordinator.lock" -- bash -c '
       for job in build unit; do
         if [ "$job" = unit ] && [ "$(cat "$METHODCACHE_CI_RESULTS/build.exit" 2> /dev/null)" != 0 ]; then
           echo skipped > "$METHODCACHE_CI_RESULTS/unit.exit"; continue
