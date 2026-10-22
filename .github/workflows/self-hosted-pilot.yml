@@ -1,0 +1,33 @@
+name: Self-hosted CI pilot
+
+# The one bootstrap branch allows an end-to-end test before this file exists on main.
+# No pull_request/pull_request_target trigger: fork code never runs automatically.
+on:
+  push:
+    branches: [ci/github-actions-pilot]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: smoke builds and runs unit tests; full runs the existing Linux suite
+        type: choice
+        options: [smoke, full]
+        default: smoke
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-hosted-pilot
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    if: >-
+      github.repository == 'eoniclabs/MethodCache' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/github-actions-pilot')
+    uses: ./.github/workflows/run-script.yml
+    with:
+      command: ${{ inputs.suite == 'full' && 'build/ci/actions-linux.sh full' || 'build/ci/actions-linux.sh smoke' }}
+      runner-group: ci-public-reviewed
+      runner-label: linux-docker
+      artifact-path: artifacts/ci/

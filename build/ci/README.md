@@ -3,6 +3,86 @@
 MethodCache is built and tested on our own build servers, not on GitHub-hosted runners. Every CI job is a
 plain script in this folder, so a job runs the same way on a build server, on your machine and anywhere else.
 
+The external coordinator remains the authoritative merge gate. The opt-in GitHub Actions pilot below
+exercises the same scripts on a shared organization runner without changing existing PR validation.
+
+## GitHub Actions pilot (2026-10-22)
+
+GitHub Free coordinates the job; Nimbus supplies all build compute. The pilot adds one organization runner
+`nimbus-org-linux-1`, label `linux-docker`, under a dedicated `eonic-ci` account. Existing Skribera runners and
+the MethodCache coordinator remain running. macOS/Windows still use the external coordinator during this pilot.
+
+MethodCache is **public**. Group `ci-public-reviewed` selects only this repository and only
+`eoniclabs/MethodCache/.github/workflows/run-script.yml` at `refs/heads/ci/github-actions-pilot` during
+bootstrap. After merge, add the same workflow at `refs/heads/main` to the group allowlist before manual
+dispatch; GitHub validates that allowed workflows exist at their refs. Group `ci-private` remains available for separately onboarded private
+projects; public repositories are not allowed there. Runner labels route jobs; groups control access.
+
+`.github/workflows/self-hosted-pilot.yml` calls the reusable `run-script.yml`. It runs automatically only on
+the named bootstrap branch `ci/github-actions-pilot`; once merged, use **Actions → Self-hosted CI pilot →
+Run workflow**, selecting `main` and `smoke` or `full`. There are no PR triggers. Both caller and reusable
+workflow restrict execution to trusted events/refs; no arbitrary checkout ref is accepted. A repository
+writer must review code before putting it on either allowed branch. Never add fork PR triggers to this pool.
+GitHub requires the workflow file on the default branch before manual dispatch is available.
+
+`actions-linux.sh smoke` runs `linux.sh build unit`; `full` runs the existing default Linux suite. The
+adapter takes an **exclusive** hold on `/srv/skribera-ci/ci-build-capacity.lock`, so it waits for existing
+MethodCache/Skribera readers and image-build writers, then holds capacity until Docker cleanup completes.
+A missing lock fails closed. Checkout happens before admission; heavy work happens after admission. The
+inner `linux.sh` shared lock is unset to avoid reacquisition deadlocks. SDK containers are capped at four CPUs
+and 16 GiB; a 30-minute admission deadline and one-hour build deadline bound each run. Timeouts are failures.
+The reusable workflow has a 100-minute whole-job limit. It never cancels a running build to clear the queue.
+
+The action token is read-only and checkout does not persist it. Logs/exits are uploaded from `artifacts/ci`
+with seven-day retention, plus a job summary. Workflow actions are pinned to full commit SHAs. These results
+are separate Actions checks; they do not publish or override `MethodCache CI`. Artifact storage remains
+subject to the account quota; self-hosted compute has no Actions minute fee.
+
+### Runner provisioning
+
+`install-actions-runner.sh` is a Nimbus Linux-x64 bootstrap, not an upgrade command. Inspect it before use.
+It installs runner 2.338.0 after SHA-256 verification and creates a new systemd service. Auto-update stays
+enabled. The dedicated account has no sudo grant, but **Docker group membership is root-equivalent**:
+this provides account separation, not a security sandbox. No production/signing credentials belong here.
+Before allowing untrusted builds, introduce disposable VMs or another effective isolation boundary.
+
+Create the restricted runner group before provisioning. Copy the reviewed installer to Nimbus, then pipe
+an org registration token directly into its stdin from a trusted operator process:
+
+```bash
+set -o pipefail
+scp build/ci/install-actions-runner.sh agent-admin@100.103.39.117:/tmp/methodcache-install-actions-runner.sh
+gh api --method POST orgs/eoniclabs/actions/runners/registration-token --jq .token |
+  ssh agent-admin@100.103.39.117 'sudo -n bash /tmp/methodcache-install-actions-runner.sh'
+```
+
+Never print or save the token. The installer refuses to replace an already configured runner. It reads
+the token from stdin and uses the runner's environment input, not a token argument. After installation,
+verify the org runner API and the actual pilot run; an online runner alone does not prove a successful build.
+
+### Onboarding another project
+
+Keep build/test commands in that project's scripts. For a trusted private project's `main` workflow, call
+`eoniclabs/MethodCache/.github/workflows/run-script.yml@<reviewed-full-commit-SHA>` with `command`,
+`runner-group`, `runner-label`, and `artifact-path`. Grant only that repository access to its runner group,
+and provision matching capacity first. Do not grant private projects access to the public pilot group;
+use `ci-private`. Until more runners are provisioned, that group has no execution capacity. For other
+default branch names, explicitly extend the reusable workflow's trusted-ref gate in a reviewed change.
+The first template is Linux/bash; Windows/PowerShell and macOS admission need separate validated templates.
+
+Keep the template version pinned per caller and update it through normal review. Move shared templates
+to a dedicated public `ci-platform` repository when more than this pilot is onboarded; public callers
+cannot consume a reusable workflow from a private repository. Register capacity once at organization
+level, rather than installing a separate runner for every project on the same machine.
+
+### Rollback
+
+Stop dispatching the pilot workflow. Existing coordinator checks remain authoritative, so no merge-gate
+change is required. If retiring the new runner, let its job finish, then stop/remove **only**
+`actions.runner.eoniclabs.nimbus-org-linux-1.service` and its GitHub registration with named authorization.
+Do not restart, re-register, or remove the existing Skribera runners. Its owned home may be retired only
+after checking that no build or container still uses it; never apply global Docker pruning.
+
 | Script | Runs on | What it does |
 |---|---|---|
 | `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `webdemo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |

@@ -2174,6 +2174,21 @@ The web demo uses a shared SQLite database in the temp folder (`methodcache-webd
 
 What each package protects against, what it leaves to you, and the tests that hold it to that.
 
+## Self-hosted CI pilot
+
+The opt-in Actions pilot uses a dedicated Nimbus account and a restricted organization runner group.
+MethodCache is public: neither the caller nor the reusable workflow permits pull-request events. Only
+trusted pushes/manual dispatches on the reviewed main/bootstrap branches can reach the job; checkout
+uses that event's commit, with read-only token permissions and credential persistence disabled.
+The external `MethodCache CI` merge gate remains independent.
+
+The account's Docker access is root-equivalent. A separate account is not a sandbox, and runner groups
+and event guards do not protect against a malicious repository writer. Do not add untrusted forks,
+production secrets or signing credentials. Disposable execution isolation is required before widening
+that trust boundary. The host capacity lease prevents overlapping heavy CI, not hostile code execution.
+`build/ci/tests/test_actions_linux.py` verifies admission, lease lifetime, missing-lock refusal, and
+failure/timeout propagation; the workflow event/ref gates are part of security review.
+
 ## Release publishing
 
 `build/ci/publish.sh <tag>` retrieves only the configured BWS publishing secret after packing. The

@@ -1,0 +1,52 @@
+name: Run repository CI script
+
+on:
+  workflow_call:
+    inputs:
+      command:
+        description: Reviewed repository command to execute
+        required: true
+        type: string
+      runner-group:
+        required: true
+        type: string
+      runner-label:
+        required: true
+        type: string
+      artifact-path:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  script:
+    # Enforce this in the called workflow too: a fork PR must not bypass the caller's gate.
+    if: >-
+      github.repository_owner == 'eoniclabs' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/main' ||
+       (github.repository == 'eoniclabs/MethodCache' && github.ref == 'refs/heads/ci/github-actions-pilot'))
+    runs-on:
+      group: ${{ inputs.runner-group }}
+      labels: ${{ inputs.runner-label }}
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run repository script
+        shell: bash
+        env:
+          CI_COMMAND: ${{ inputs.command }}
+        run: bash -e -o pipefail -c "$CI_COMMAND"
+      - name: Preserve CI results
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ inputs.artifact-path }}
+          retention-days: 7
+          if-no-files-found: warn
