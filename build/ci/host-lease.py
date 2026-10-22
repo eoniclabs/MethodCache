@@ -26,9 +26,8 @@ def group_alive(child):
         rows = subprocess.check_output(['/bin/ps', '-axo', 'pgid=,stat='], text=True)
         live = [row for row in rows.splitlines() if row.split()[0] == str(child.pid)
                 and not row.split()[1].startswith('Z')]
-        if live:
-            raise
-        return False
+        # A dying member may still appear runnable briefly: keep the lease and poll again.
+        return bool(live)
 
 
 def terminate_group(child, seconds):

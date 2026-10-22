@@ -1,5 +1,8 @@
 """Exercise real OS admission and termination, without starting project builds."""
 import fcntl
+import importlib.util
+from types import SimpleNamespace
+from unittest.mock import patch
 import os
 from pathlib import Path
 import signal
@@ -73,6 +76,17 @@ with open({str(self.lock)!r}, 'a+b') as lease:
         result = self.run_lease(source, '--kill-seconds', '0.2')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(marker.exists())
+
+    def test_darwin_eperm_during_process_exit_is_polled_until_gone(self):
+        spec = importlib.util.spec_from_file_location('host_lease', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        child = SimpleNamespace(pid=123, poll=lambda: None)
+        # ps can briefly observe a dying member after killpg has lost permission to signal it.
+        with patch.object(module.os, 'killpg', side_effect=PermissionError), patch.object(
+                module.subprocess, 'check_output', side_effect=['123 R\n', '123 Z\n']):
+            self.assertTrue(module.group_alive(child))
+            self.assertFalse(module.group_alive(child))
 
     def test_requires_configured_locks(self):
         env = dict(os.environ, EONIC_CI_CAPACITY_LOCKS='')
