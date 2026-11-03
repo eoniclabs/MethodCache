@@ -77,6 +77,48 @@ public class BackplaneRecoveryTests(SqlServerFixture fixture)
     }
 
     [SkippableFact]
+    public async Task FirstPoll_ThatWaitsToRegisterItsRetention_SkipsNoInvalidationWithoutAClear()
+    {
+        var options = Options("register_wait");
+        try
+        {
+            await SqlServerTables.CreateIfMissingAsync(options, CancellationToken.None);
+            await using var sender = new SqlServerBackplane(options);
+            // The real clock: the wait for the cache table's lock is what must not move where reading starts
+            await using var receiver = new SqlServerBackplane(options);
+            var delivered = new List<BackplaneMessage>();
+
+            Task poll;
+            await using (var holder = new SqlConnection(options.ConnectionString))
+            {
+                await holder.OpenAsync();
+                await using var transaction = (SqlTransaction)await holder.BeginTransactionAsync();
+                await using (var command = new SqlCommand($"SELECT COUNT(*) FROM {options.QualifiedTableName} WITH (TABLOCKX, HOLDLOCK);", holder, transaction))
+                    await command.ExecuteScalarAsync();
+
+                // The first poll starts, then waits to register its retention in the locked cache table
+                poll = receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+                await WaitUntilAsync(async () => await ScalarAsync<int>(options, $"""
+                    SELECT COUNT(*) FROM sys.dm_tran_locks
+                    WHERE request_status = N'WAIT' AND resource_type = N'OBJECT' AND resource_associated_entity_id = OBJECT_ID(N'{options.QualifiedTableName}');
+                    """) > 0);
+                await sender.PublishInvalidationAsync("after subscribing");
+                await WaitUntilAsync(async () => await ScalarAsync<int>(options, $"""
+                    SELECT CASE WHEN MIN(DATEDIFF(millisecond, [CreatedAt], SYSUTCDATETIME())) > 1500 THEN 1 ELSE 0 END
+                    FROM {options.QualifiedInvalidationsTableName};
+                    """) == 1);
+                await transaction.RollbackAsync();
+            }
+
+            await poll;
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Contains(delivered, m => m.Key == "after subscribing" || m.Type == BackplaneMessageType.ClearAll);
+        }
+        finally { await BackplaneIsolationTests.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task BacklogUnreadForHalfTheRetention_ClearsMemory()
     {
         // More invalidations than one poll reads: the rest may be deleted before this instance gets to them

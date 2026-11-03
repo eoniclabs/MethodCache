@@ -183,13 +183,15 @@ internal sealed class SqlServerBackplane : IBackplane, IAsyncDisposable, IDispos
     /// database's clock, or the last id of all after an outage. The time since subscribing is measured once the
     /// connection is this instance's, so time spent waiting for one in the pool doesn't move the start past
     /// invalidations written meanwhile. After half the retention or more, rows written since may already be deleted:
-    /// then it is an outage too, and the caller clears. Registers this instance's retention first.
+    /// then it is an outage too, and the caller clears. Registers this instance's retention first; the database's time
+    /// is read before that, since registering may wait for a lock.
     /// </summary>
     private async Task<(long LastId, bool Outage)> ReadStartAsync(bool first, CancellationToken cancellationToken)
     {
         var sql = $"""
+            DECLARE @now datetime2 = SYSUTCDATETIME();
             {RegisterSql}
-            SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(millisecond, -@age, SYSUTCDATETIME());
+            SELECT ISNULL(MAX([Id]), 0) FROM {_options.QualifiedInvalidationsTableName} WHERE [Scope] = @scope AND [CreatedAt] < DATEADD(millisecond, -@age, @now);
             """;
 
         var connection = new SqlConnection(_options.ConnectionString);
