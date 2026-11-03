@@ -5,12 +5,12 @@
 #   build/ci/jobs.sh build      restore and build the solution (Release)
 #   build/ci/jobs.sh demo       eleven-chapter console tour (including HttpClient), plus web tests without Docker
 #   build/ci/jobs.sh webdemo    all web demo tests, including two instances and Redis outage/recovery
-#   build/ci/jobs.sh tests      every test on net10.0, Redis and SQL Server required
+#   build/ci/jobs.sh tests      every test on net10.0, Redis, SQL Server and PostgreSQL required
 #   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS), on net10.0
 #   build/ci/jobs.sh cultures   the unit tests under tr-TR and sv-SE
 #   build/ci/jobs.sh aot        publish and run tests/MethodCache.AotSmokeTest with Native AOT
-#   build/ci/jobs.sh packages   pack all 7 packages, install them in apps (needs METHODCACHE_REDIS_URL and
-#                               METHODCACHE_SQLSERVER_CONNECTION)
+#   build/ci/jobs.sh packages   pack all 8 packages, install them in apps (needs METHODCACHE_REDIS_URL,
+#                               METHODCACHE_SQLSERVER_CONNECTION and METHODCACHE_POSTGRESQL_CONNECTION)
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
 #   build/ci/jobs.sh diffcoverage  at least 80% of the lines a change adds under src/ are covered by tests
 #   build/ci/jobs.sh properties  the CsCheck properties from random seeds, PROPERTY_SECONDS (5) each
@@ -35,7 +35,7 @@ export CI=true
 export MethodCacheEnforceAudit=true
 
 solution=MethodCache.sln
-without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests&Category!=RedisDemo"
+without_docker="FullyQualifiedName!~MethodCache.Redis.IntegrationTests&FullyQualifiedName!~MethodCache.SqlServer.IntegrationTests&FullyQualifiedName!~MethodCache.PostgreSql.IntegrationTests&Category!=RedisDemo"
 
 job_build() {
   PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s build/ci/tests -v
@@ -57,7 +57,7 @@ job_webdemo() {
 }
 
 job_tests() {
-  # A missing Redis or SQL Server fails the run instead of skipping the tests
+  # A missing Redis, SQL Server or PostgreSQL fails the run instead of skipping the tests
   METHODCACHE_REQUIRE_INFRA_TESTS=true \
     dotnet test "$solution" --configuration Release --no-build --results-directory artifacts/test-results --logger trx
 }
@@ -92,14 +92,16 @@ job_aot() {
 job_packages() {
   : "${METHODCACHE_REDIS_URL:?set METHODCACHE_REDIS_URL to a Redis the add-on apps can use}"
   : "${METHODCACHE_SQLSERVER_CONNECTION:?set METHODCACHE_SQLSERVER_CONNECTION to a SQL Server the add-on apps can use}"
+  : "${METHODCACHE_POSTGRESQL_CONNECTION:?set METHODCACHE_POSTGRESQL_CONNECTION to a PostgreSQL the add-on apps can use}"
   rm -rf artifacts/packages
   dotnet pack "$solution" --configuration Release --output artifacts/packages
   python3 build/ci/check_package_contracts.py artifacts/packages
   python3 build/ci/check_package_restore.py artifacts/packages
 
-  echo "== All 7 packages were packed"
-  for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.Serialization.MessagePack \
-                 MethodCache.AspNetCore MethodCache.OpenTelemetry MethodCache.HttpCaching; do
+  echo "== All 8 packages were packed"
+  for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.PostgreSql \
+                 MethodCache.Serialization.MessagePack MethodCache.AspNetCore MethodCache.OpenTelemetry \
+                 MethodCache.HttpCaching; do
     compgen -G "artifacts/packages/$package.[0-9]*.nupkg" > /dev/null || { echo "Missing $package"; exit 1; }
   done
 

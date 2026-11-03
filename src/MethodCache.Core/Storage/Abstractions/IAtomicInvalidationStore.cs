@@ -5,7 +5,7 @@ namespace MethodCache.Extensibility;
 /// <summary>A distributed cache that can write invalidation timestamps atomically across all its instances.</summary>
 /// <remarks>
 /// MethodCache requires this capability for its distributed cache. A read followed by an unconditional write
-/// cannot provide the contract across processes. Redis and SQL Server providers implement it with backend
+/// cannot provide the contract across processes. The Redis, SQL Server and PostgreSQL providers implement it with backend
 /// atomic operations; custom providers must supply the same guarantee.
 /// </remarks>
 internal interface IAtomicInvalidationStore : IDistributedCache

@@ -58,17 +58,22 @@ cleanup() {
 trap cleanup EXIT
 
 if printf '%s\n' "${jobs[@]}" | grep -qx packages; then
-  echo "Starting Redis and SQL Server for the package apps"
+  echo "Starting Redis, SQL Server and PostgreSQL for the package apps"
   docker run --detach --label "$label" --publish 127.0.0.1::6379 --name "methodcache-ci-redis-$run_id" \
     redis:7-alpine > /dev/null
   sql_password="Ci_$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')!"
   docker run --detach --label "$label" --publish 127.0.0.1::1433 --name "methodcache-ci-sql-$run_id" \
     --env ACCEPT_EULA=Y --env MSSQL_SA_PASSWORD="$sql_password" \
     mcr.microsoft.com/mssql/server:2022-latest > /dev/null
+  pg_password="ci$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  docker run --detach --label "$label" --publish 127.0.0.1::5432 --name "methodcache-ci-postgres-$run_id" \
+    --env POSTGRES_PASSWORD="$pg_password" postgres:17-alpine > /dev/null
   redis_port=$(docker port "methodcache-ci-redis-$run_id" 6379/tcp | head -1 | sed 's/.*://')
   sql_port=$(docker port "methodcache-ci-sql-$run_id" 1433/tcp | head -1 | sed 's/.*://')
+  pg_port=$(docker port "methodcache-ci-postgres-$run_id" 5432/tcp | head -1 | sed 's/.*://')
   export METHODCACHE_REDIS_URL="localhost:$redis_port"
   export METHODCACHE_SQLSERVER_CONNECTION="Server=localhost,$sql_port;User Id=sa;Password=$sql_password;TrustServerCertificate=True;Encrypt=False"
+  export METHODCACHE_POSTGRESQL_CONNECTION="Host=localhost;Port=$pg_port;Username=postgres;Password=$pg_password;Database=postgres"
 fi
 
 # Host network: the jobs reach the containers above, and those Testcontainers starts, on localhost.
@@ -81,7 +86,7 @@ docker_args=(
   --volume "$repo_dir:$repo_dir" --workdir "$repo_dir"
   --volume "$cache_dir/nuget:/nuget"
   --env TESTCONTAINERS_HOST_OVERRIDE=localhost
-  --env METHODCACHE_REDIS_URL --env METHODCACHE_SQLSERVER_CONNECTION
+  --env METHODCACHE_REDIS_URL --env METHODCACHE_SQLSERVER_CONNECTION --env METHODCACHE_POSTGRESQL_CONNECTION
   # The settings of the jobs, when set (build/ci/jobs.sh)
   --env FRAMEWORK --env DIFF_COVERAGE_MIN --env DIFF_COVERAGE_BASE
   --env PROPERTY_SECONDS --env PROPERTY_FRAMEWORKS --env METHODCACHE_SOAK_SECONDS --env MUTATION_ARGS

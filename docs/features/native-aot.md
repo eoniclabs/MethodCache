@@ -17,7 +17,7 @@ Nothing to do: the in-memory cache stores your objects as they are, without seri
 
 ## Distributed caching
 
-Values written to Redis or SQL Server are serialized with System.Text.Json. Under Native AOT it needs a
+Values written to Redis, SQL Server or PostgreSQL are serialized with System.Text.Json. Under Native AOT it needs a
 `JsonSerializerContext` that lists every type your cached methods return:
 
 <!-- snippet: native-aot-context -->

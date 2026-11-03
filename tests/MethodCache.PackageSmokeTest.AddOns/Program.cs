@@ -15,8 +15,10 @@ var checks = new (string Name, Func<Task<string?>> Run)[]
     ("Redis, two instances, JSON", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: false)),
     ("Redis, two instances, MessagePack", () => DistributedCheck.RunAsync(Backend.Redis, messagePack: true)),
     ("SQL Server, two instances, JSON", () => DistributedCheck.RunAsync(Backend.SqlServer, messagePack: false)),
+    ("PostgreSQL, two instances, JSON", () => DistributedCheck.RunAsync(Backend.PostgreSql, messagePack: false)),
     ("Redis across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.Redis)),
     ("SQL Server across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.SqlServer)),
+    ("PostgreSQL across independent processes and hash seeds", () => SeedIsolationCheck.RunAsync(Backend.PostgreSql)),
     ("ASP.NET Core admin endpoints and health check", AspNetCoreCheck.RunAsync),
     ("OpenTelemetry metrics and spans, mc.Telemetry and IMethodCacheKeys", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
@@ -70,7 +72,18 @@ public sealed class UserService : IUserService
     public Task RenameAsync(int id, string name) => Task.CompletedTask;
 }
 
-public enum Backend { Redis, SqlServer }
+public enum Backend { Redis, SqlServer, PostgreSql }
+
+public static class Backends
+{
+    /// <summary>The environment variable that holds the connection to <paramref name="backend"/>.</summary>
+    public static string Variable(Backend backend) => backend switch
+    {
+        Backend.Redis => "METHODCACHE_REDIS_URL",
+        Backend.SqlServer => "METHODCACHE_SQLSERVER_CONNECTION",
+        _ => "METHODCACHE_POSTGRESQL_CONNECTION"
+    };
+}
 
 /// <summary>
 /// Two instances share one distributed cache: the second reads the first one's result, and an invalidation on the
@@ -80,7 +93,7 @@ public static class DistributedCheck
 {
     public static async Task<string?> RunAsync(Backend backend, bool messagePack)
     {
-        var variable = backend == Backend.Redis ? "METHODCACHE_REDIS_URL" : "METHODCACHE_SQLSERVER_CONNECTION";
+        var variable = Backends.Variable(backend);
         var connection = Environment.GetEnvironmentVariable(variable);
         if (string.IsNullOrEmpty(connection))
         {
@@ -143,13 +156,22 @@ public static class DistributedCheck
             {
                 mc.UseRedis(options => options.Configuration = connection);
             }
-            else
+            else if (backend == Backend.SqlServer)
             {
                 mc.UseSqlServer(options =>
                 {
                     options.ConnectionString = connection;
                     options.SchemaName = isolation;
                     options.BackplanePollingInterval = TimeSpan.FromMilliseconds(200);
+                });
+            }
+            else
+            {
+                // Notifications deliver invalidations at once; the default one-second poll is the fallback
+                mc.UsePostgreSql(options =>
+                {
+                    options.ConnectionString = connection;
+                    options.SchemaName = isolation;
                 });
             }
 

@@ -1,0 +1,455 @@
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using Microsoft.Extensions.Time.Testing;
+using Npgsql;
+using NpgsqlTypes;
+
+namespace MethodCache.PostgreSql.IntegrationTests;
+
+[Collection(PostgreSqlCollection.Name)]
+public class BackplaneTests(PostgreSqlFixture fixture)
+{
+    private static readonly TimeSpan Eventually = TimeSpan.FromSeconds(15);
+
+    [SkippableTheory]
+    [InlineData("tenant-a:", "tenant-b:")]
+    [InlineData("tenant-a:", "Tenant-a:")]
+    public async Task SharedTable_DifferentPrefixes_ReceiveOnlyTheirOwnMessages(string prefix, string otherPrefix)
+    {
+        var options = fixture.Options("scope");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var publisher = new PostgreSqlBackplane(connection, options, prefix: prefix);
+            await using var subscriber = new PostgreSqlBackplane(connection, options, prefix: prefix);
+            await using var other = new PostgreSqlBackplane(connection, options, prefix: otherPrefix);
+            var own = new List<BackplaneMessage>();
+            var others = new List<BackplaneMessage>();
+            await subscriber.PollOnceAsync(Collect(own), CancellationToken.None);
+            await other.PollOnceAsync(Collect(others), CancellationToken.None);
+
+            await publisher.PublishInvalidationAsync("same-key");
+            await publisher.PublishTagInvalidationAsync("same-tag");
+            await other.PublishInvalidationAsync("other-key");
+            await subscriber.PollOnceAsync(Collect(own), CancellationToken.None);
+            await other.PollOnceAsync(Collect(others), CancellationToken.None);
+
+            Assert.Equal(2, own.Count);
+            Assert.Equal("same-key", own[0].Key);
+            Assert.Equal("same-tag", own[1].Tag);
+            Assert.Empty(others);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task EveryMessageType_ArrivesExactly_IncludingLoneSurrogates()
+    {
+        var options = fixture.Options("wire");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var publisher = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            var tags = new[] { "tag:\ud800", "tag:\udfff", "tag:\0", "tag:�" };
+
+            foreach (var tag in tags) await publisher.PublishTagInvalidationAsync(tag);
+            await publisher.PublishInvalidationAsync("key:\ud801");
+            await publisher.PublishMethodInvalidationAsync("method");
+            await publisher.PublishClearAsync();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal(tags, delivered.Take(4).Select(m => m.Tag));
+            Assert.Equal((BackplaneMessageType.KeyInvalidation, "key:\ud801"), (delivered[4].Type, delivered[4].Key));
+            Assert.Equal((BackplaneMessageType.MethodInvalidation, "method"), (delivered[5].Type, delivered[5].Key));
+            Assert.Equal(BackplaneMessageType.ClearAll, delivered[6].Type);
+            Assert.All(delivered, m => Assert.Equal(publisher.InstanceId, m.InstanceId));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task OwnInvalidations_AreNotDeliveredBack()
+    {
+        var options = fixture.Options("own");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var backplane = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await backplane.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            await backplane.PublishInvalidationAsync("key");
+
+            Assert.False(await backplane.PollOnceAsync(Collect(delivered), CancellationToken.None));
+            Assert.Empty(delivered);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task PollingState_TracksDeliveryFailureAndRecovery()
+    {
+        var options = fixture.Options("health");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            Assert.Equal(BackplaneState.Connecting, receiver.ConnectionState);
+            await receiver.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            Assert.Equal(BackplaneState.Connected, receiver.ConnectionState);
+            await sender.PublishInvalidationAsync("key");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.PollOnceAsync(_ => throw new InvalidOperationException("delivery failed"), CancellationToken.None));
+            Assert.Equal(BackplaneState.Disconnected, receiver.ConnectionState);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            Assert.Equal("key", Assert.Single(delivered).Key);
+            Assert.Equal(BackplaneState.Connected, receiver.ConnectionState);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task UnreachableDatabase_ReportsDisconnected()
+    {
+        var options = new PostgreSqlOptions { ConnectionString = "Host=127.0.0.1;Port=1;Timeout=1" };
+        await using var connection = new PostgreSqlConnection(options.ConnectionString);
+        await using var backplane = new PostgreSqlBackplane(connection, options);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => backplane.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None));
+
+        Assert.Equal(BackplaneState.Disconnected, backplane.ConnectionState);
+    }
+
+    [SkippableFact]
+    public async Task AMessageThatKeepsFailing_IsReplacedByAClearAfterFiveAttempts()
+    {
+        var options = fixture.Options("poison");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            await receiver.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await sender.PublishInvalidationAsync("poison");
+            await sender.PublishInvalidationAsync("next");
+            var delivered = new List<BackplaneMessage>();
+            Task Handle(BackplaneMessage message) => message.Key == "poison" ? throw new InvalidOperationException("handler failed") : Collect(delivered)(message);
+
+            for (var attempt = 1; attempt < PostgreSqlBackplane.MaxDeliveryAttempts; attempt++)
+                await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.PollOnceAsync(Handle, CancellationToken.None));
+            await receiver.PollOnceAsync(Handle, CancellationToken.None);
+
+            Assert.Equal([BackplaneMessageType.ClearAll, BackplaneMessageType.KeyInvalidation], delivered.Select(m => m.Type));
+            Assert.Equal("next", delivered[1].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task AnInvalidationStillCommitting_HoldsBackLaterOnes_SoNoneIsSkipped()
+    {
+        var options = fixture.Options("order");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var publisher = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            // Another instance writes an invalidation in a transaction that stays open
+            await using var slow = new NpgsqlConnection(options.ConnectionString);
+            await slow.OpenAsync();
+            await using var transaction = await slow.BeginTransactionAsync();
+            await using (var insert = new NpgsqlCommand(publisher.PublishSql, slow, transaction))
+            {
+                insert.Parameters.Add(new NpgsqlParameter<byte[]> { NpgsqlDbType = NpgsqlDbType.Bytea, TypedValue = PostgreSqlBackplane.GetScope("methodcache:") });
+                insert.Parameters.Add(new NpgsqlParameter<string> { TypedValue = "slow" });
+                insert.Parameters.Add(new NpgsqlParameter<short> { TypedValue = BackplaneWire.Version });
+                insert.Parameters.Add(new NpgsqlParameter<string> { TypedValue = Wire("first", "slow") });
+                insert.Parameters.Add(new NpgsqlParameter<string> { TypedValue = publisher.Channel });
+                await insert.ExecuteNonQueryAsync();
+            }
+
+            // A later invalidation waits for it instead of committing first with a higher id
+            var later = publisher.PublishInvalidationAsync("later");
+            await Task.Delay(300);
+            Assert.False(later.IsCompleted);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            Assert.Empty(delivered);
+
+            await transaction.CommitAsync();
+            await later.WaitAsync(Eventually);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal(["first", "later"], delivered.Select(m => m.Key));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task ConcurrentPublishers_AreAllDelivered_InIdOrder()
+    {
+        var options = fixture.Options("concurrent");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            var publishers = Enumerable.Range(0, 4).Select(_ => new PostgreSqlBackplane(connection, options)).ToArray();
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            var polling = Task.Run(async () =>
+            {
+                for (var i = 0; i < 20; i++) { await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None); await Task.Delay(5); }
+            });
+            await Task.WhenAll(publishers.Select((p, n) => Task.Run(async () =>
+            {
+                for (var i = 0; i < 50; i++) await p.PublishInvalidationAsync($"{n}:{i}");
+            })));
+            await polling;
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal(200, delivered.Count);
+            Assert.Equal(200, delivered.Select(m => m.Key).Distinct().Count());
+            // Each publisher's invalidations arrive in the order it wrote them
+            foreach (var group in delivered.GroupBy(m => m.Key!.Split(':')[0]))
+                Assert.Equal(Enumerable.Range(0, 50).Select(i => $"{group.Key}:{i}"), group.Select(m => m.Key));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task CursorBehindWhatWasRead_ClearsMemory_AndStartsFromTheDatabase()
+    {
+        var options = fixture.Options("restore");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("before");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            // A restore from before that invalidation, or a failover that lost it
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"TRUNCATE {options.QualifiedInvalidationsTableName}, {options.QualifiedCursorTableName}");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("after");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal([BackplaneMessageType.KeyInvalidation, BackplaneMessageType.ClearAll, BackplaneMessageType.KeyInvalidation], delivered.Select(m => m.Type));
+            Assert.Equal("after", delivered[2].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task OutageLongerThanHalfTheRetention_ClearsMemory_AndSkipsWhatItMissed()
+    {
+        var options = fixture.Options("outage");
+        try
+        {
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("missed");
+
+            time.Advance(options.BackplaneRetention / 2);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("after");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal([BackplaneMessageType.ClearAll, BackplaneMessageType.KeyInvalidation], delivered.Select(m => m.Type));
+            Assert.Equal("after", delivered[1].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task FirstPoll_DeliversRecentInvalidations_ButNotOldOnes()
+    {
+        var options = fixture.Options("start");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            await sender.PublishInvalidationAsync("old");
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"UPDATE {options.QualifiedInvalidationsTableName} SET created_at = now() - interval '10 minutes'");
+            await sender.PublishInvalidationAsync("recent");
+
+            // Started just now: it may have cached values in the second before it subscribed
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal("recent", Assert.Single(delivered).Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task ABurstOfInvalidations_IsReadInOnePoll()
+    {
+        var options = fixture.Options("burst");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await InsertAsync(options, 3000, "unrelated");
+            await sender.PublishInvalidationAsync("key");
+
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal(3001, delivered.Count);
+            Assert.Equal("key", delivered[^1].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Cleanup_RemovesExpiredInvalidations_OfItsOwnPrefixOnly()
+    {
+        var options = fixture.Options("cleanup");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await InsertAsync(options, 12000, "old", age: TimeSpan.FromHours(2));
+            await InsertAsync(options, 10, "other", age: TimeSpan.FromHours(2), prefix: "other:");
+            await InsertAsync(options, 10, "recent");
+
+            // Already the first poll cleans up, then once a minute
+            await receiver.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+            Assert.Equal(20L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName}"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Notification_DeliversAtOnce_WithoutWaitingForThePoll()
+    {
+        var options = fixture.Options("notify");
+        options.BackplanePollingInterval = TimeSpan.FromMinutes(10);
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new TaskCompletionSource<BackplaneMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await receiver.SubscribeAsync(message =>
+            {
+                if (message.Key == "key") delivered.TrySetResult(message);
+                return Task.CompletedTask;
+            });
+            await WaitUntilAsync(() => receiver.Listening);
+
+            // The very first invalidation after subscribing: the poll it triggers both finds where to start and delivers it
+            await sender.PublishInvalidationAsync("key");
+
+            Assert.Equal("key", (await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5))).Key);
+            Assert.Equal(BackplaneState.Connected, receiver.ConnectionState);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task LostListenConnection_Reconnects()
+    {
+        var options = fixture.Options("relisten");
+        options.BackplanePollingInterval = TimeSpan.FromMinutes(10);
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<string>();
+            await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
+            await WaitUntilAsync(() => receiver.Listening);
+            await WaitUntilAsync(() => receiver.ConnectionState == BackplaneState.Connected);
+
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString,
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query = $1", "LISTEN " + PostgreSqlOptions.Quote(receiver.Channel));
+            await WaitUntilAsync(() => !receiver.Listening);
+            // Its notification is lost, and the next poll is ten minutes away: reconnecting reads it
+            await sender.PublishInvalidationAsync("while-down");
+            await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("while-down"); });
+            await WaitUntilAsync(() => receiver.Listening);
+            await sender.PublishInvalidationAsync("after");
+
+            await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("after"); });
+            lock (delivered) Assert.Equal(["while-down", "after"], delivered);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Unsubscribe_StopsPollingAndListening()
+    {
+        var options = fixture.Options("stop");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await receiver.SubscribeAsync(_ => Task.CompletedTask);
+            await WaitUntilAsync(() => receiver.Listening);
+
+            await receiver.UnsubscribeAsync().WaitAsync(Eventually);
+
+            Assert.False(receiver.Listening);
+            Assert.Equal(BackplaneState.Disconnected, receiver.ConnectionState);
+            var deadline = DateTime.UtcNow + Eventually;
+            while (await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString,
+                       "SELECT count(*) FROM pg_stat_activity WHERE query = $1", "LISTEN " + PostgreSqlOptions.Quote(receiver.Channel)) != 0)
+            {
+                Assert.True(DateTime.UtcNow < deadline, "the LISTEN connection stayed open");
+                await Task.Delay(50);
+            }
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    private static Func<BackplaneMessage, Task> Collect(List<BackplaneMessage> messages) => message =>
+    {
+        lock (messages) messages.Add(message);
+        return Task.CompletedTask;
+    };
+
+    private static string Wire(string key, string sender) => BackplaneWire.Encode(new BackplaneMessage
+    { Type = BackplaneMessageType.KeyInvalidation, Key = key, InstanceId = sender });
+
+    /// <summary>Rows written the way the backplane writes them, from an instance named "other".</summary>
+    private static Task InsertAsync(PostgreSqlOptions options, int count, string key, TimeSpan age = default, string prefix = "methodcache:")
+        => PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
+            WITH next AS (
+                INSERT INTO {options.QualifiedCursorTableName} AS c (scope, last_id) VALUES ($1, $3)
+                ON CONFLICT (scope) DO UPDATE SET last_id = c.last_id + $3
+                RETURNING last_id)
+            INSERT INTO {options.QualifiedInvalidationsTableName} (scope, id, instance_id, message_type, target, created_at)
+            SELECT $1, next.last_id - $3 + i, 'other', 1, $2, now() - $4 FROM next, generate_series(1, $3) AS i
+            """, PostgreSqlBackplane.GetScope(prefix), Wire(key, "other"), (long)count, age);
+
+    internal static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + Eventually;
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "timed out");
+            await Task.Delay(20);
+        }
+    }
+}

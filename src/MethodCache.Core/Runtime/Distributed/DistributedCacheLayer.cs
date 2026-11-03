@@ -13,7 +13,7 @@ namespace MethodCache.Core.Runtime.Distributed
 {
     /// <summary>
     /// The distributed cache (L2) behind <see cref="MethodCache.Extensibility.InMemoryCacheManager"/>. Entries are stored in an
-    /// <see cref="IAtomicInvalidationStore"/> (Redis, SQL Server, ...) together with their tags and creation time.
+    /// <see cref="IAtomicInvalidationStore"/> (Redis, SQL Server, PostgreSQL, ...) together with their tags and creation time.
     /// </summary>
     /// <remarks>
     /// <para>Tags are invalidated by monotonic timestamp: invalidating a tag stores the

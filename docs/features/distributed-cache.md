@@ -21,9 +21,17 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(connectionString));   // M
 ```
 <!-- endSnippet -->
 
+<!-- snippet: distributed-postgresql -->
+```cs
+builder.Services.AddMethodCache(mc => mc.UsePostgreSql(connectionString));   // MethodCache.PostgreSql
+```
+<!-- endSnippet -->
+
 Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
 
 Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
+The PostgreSQL backplane keeps invalidations in a table, like SQL Server, and announces each one with `NOTIFY`, so other instances read it at once instead of at their next poll. Ids are handed out in commit order, so it needs no gap checks. Its `LISTEN` connection reconnects with the same doubling delay and reads what it missed when it is back; until then, polling delivers every invalidation.
 
 ## How it works
 
@@ -31,7 +39,7 @@ Redis backplane recovery retries transient unsubscribe/subscribe failures after 
 flowchart LR
     A([Call a cached method]):::dark --> B{In memory?<br/>L1}
     B -- yes --> R([Return the value]):::amber
-    B -- no --> C{In Redis or<br/>SQL Server? L2}
+    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL? L2}
     C -- yes --> D[Keep it in memory]:::light --> R
     C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
     classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
@@ -42,11 +50,11 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant A as Instance A
-    participant L2 as Redis / SQL Server
+    participant L2 as Redis / SQL Server / PostgreSQL
     participant B as Instance B
     A->>A: [CacheInvalidate] or InvalidateTagsAsync
     A->>L2: Remove the key, or stamp the tag
-    A-->>B: Backplane message (pub/sub, or the next poll)
+    A-->>B: Backplane message (pub/sub, NOTIFY, or the next poll)
     B->>B: Drop the in-memory copy
     Note over B: The next call reads L2 or runs the method
 ```
@@ -55,10 +63,10 @@ sequenceDiagram
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
-  with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
-- Only Redis and Microsoft SQL Server are supported. Other stores, such as PostgreSQL, are not; the storage
-  interfaces are internal. Use one of them: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)` and
-  `UseMessagePack()` without either log a warning at startup, since they have nothing to apply to.
+  with Redis pub/sub and PostgreSQL `NOTIFY`, or on their next poll (every second by default) with SQL Server.
+- Redis, Microsoft SQL Server and PostgreSQL are supported. Other stores are not; the storage interfaces are
+  internal. Use one of them: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws.
+  `Distributed(...)` and `UseMessagePack()` without one log a warning at startup, since they have nothing to apply to.
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
@@ -120,7 +128,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to the owned Redis and SQL Server providers:
+`DistributedCacheOptions` apply to the owned Redis, SQL Server and PostgreSQL providers:
 
 <!-- snippet: distributed-outage-options -->
 ```cs
@@ -196,7 +204,7 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 ## Owned storage and compatibility
 
-Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
+Use `MethodCacheBuilder.UseRedis`, `UseSqlServer` or `UsePostgreSql`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
 
 `TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
 
@@ -204,9 +212,11 @@ Entry keys include the entry format and `SerializerVersion` (default 1); logical
 
 SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
 
+PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server.
+
 Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
-Redis and SQL Server own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
+Redis, SQL Server and PostgreSQL own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
 keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
 lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
 backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
@@ -219,7 +229,7 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 > it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
-> as down and answers from memory. SQL Server removes rows only once they expired.
+> as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.
 
 ## Limits
 
@@ -229,9 +239,11 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 
 ## Package guides
 
-The [Redis](../../src/MethodCache.Redis/README.md) and [SQL Server](../../src/MethodCache.SqlServer/README.md) READMEs
-cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
-The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
+The [Redis](../../src/MethodCache.Redis/README.md), [SQL Server](../../src/MethodCache.SqlServer/README.md) and
+[PostgreSQL](../../src/MethodCache.PostgreSql/README.md) READMEs cover their options, shared connections, table creation,
+outage settings and how each stores keys and invalidations. The PostgreSQL guide compares all three; the SQL Server
+guide has the schema migration for an existing invalidations table. [Benchmarks](../benchmarks.md#distributed-cache-providers)
+measures them side by side.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
 

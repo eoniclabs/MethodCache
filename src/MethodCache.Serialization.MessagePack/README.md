@@ -5,7 +5,7 @@ Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCac
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
-Stores MethodCache's distributed cache values (Redis or SQL Server) as compact MessagePack
+Stores MethodCache's distributed cache values (Redis, SQL Server or PostgreSQL) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
 
 ## Install
@@ -24,7 +24,7 @@ builder.Services.AddMethodCache(mc => mc
 ```
 <!-- endSnippet -->
 
-Call `UseMessagePack()` with `UseRedis(...)` or `UseSqlServer(...)`, in any order; without either it does nothing and
+Call `UseMessagePack()` with `UseRedis(...)`, `UseSqlServer(...)` or `UsePostgreSql(...)`, in any order; without one it does nothing and
 logs a warning at startup. Entries written in the other format read as misses and are replaced, so switching needs
 no flush.
 

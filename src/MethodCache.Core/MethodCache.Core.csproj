@@ -12,7 +12,7 @@
 
     <!-- Enhanced NuGet Metadata for AI Discovery -->
     <Title>MethodCache - Declarative Caching for .NET</Title>
-    <Description>Declarative caching for .NET: [Cache] attributes compiled by a source generator, tag invalidation, and an in-memory cache with optional Redis or SQL Server as a distributed cache</Description>
+    <Description>Declarative caching for .NET: [Cache] attributes compiled by a source generator, tag invalidation, and an in-memory cache with optional Redis, SQL Server or PostgreSQL as a distributed cache</Description>
     <PackageTags>cache;caching;methodcache;memorycache;source-generator;attributes;declarative;method-caching;memoization;tag-invalidation;distributed-cache;native-aot</PackageTags>
     <RepositoryUrl>https://github.com/eoniclabs/MethodCache</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -48,6 +48,8 @@
     <InternalsVisibleTo Include="MethodCache.SqlServer.Tests" />
     <InternalsVisibleTo Include="MethodCache.Redis.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.SqlServer.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.PostgreSql.Tests" />
+    <InternalsVisibleTo Include="MethodCache.PostgreSql.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching.Tests" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.Serialization.MessagePack.Tests" />
@@ -58,6 +60,7 @@
     <InternalsVisibleTo Include="MethodCache.SourceGenerator.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.Redis" />
     <InternalsVisibleTo Include="MethodCache.SqlServer" />
+    <InternalsVisibleTo Include="MethodCache.PostgreSql" />
     <InternalsVisibleTo Include="MethodCache.AspNetCore" />
     <InternalsVisibleTo Include="MethodCache.OpenTelemetry" />
     <InternalsVisibleTo Include="MethodCache.HttpCaching" />

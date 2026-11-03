@@ -28,7 +28,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
 
 ## Usage
 

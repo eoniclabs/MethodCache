@@ -108,7 +108,7 @@ builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 *
 
 ### Sharing responses between instances
 
-Responses use MethodCache's native Redis or SQL Server automatically when configured. Core keeps no local
+Responses use MethodCache's native Redis, SQL Server or PostgreSQL automatically when configured. Core keeps no local
 response or epoch copies in this mode. The application's unrelated `IDistributedCache` is never a fallback.
 Without an owned native transport, responses stay in Core's separate HTTP memory store. Register Core explicitly
 with `AddMethodCache`; either registration order works.

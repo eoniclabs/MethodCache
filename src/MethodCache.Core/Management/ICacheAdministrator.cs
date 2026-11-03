@@ -7,7 +7,7 @@ namespace MethodCache;
 public interface ICacheAdministrator
 {
     /// <summary>
-    /// Asks whether the distributed cache (Redis, SQL Server) answers, waiting at most its operation timeout.
+    /// Asks whether the distributed cache (Redis, SQL Server, PostgreSQL) answers, waiting at most its operation timeout.
     /// <c>false</c> while it is unreachable and MethodCache serves from memory only; <c>null</c> when no distributed
     /// cache is configured.
     /// </summary>

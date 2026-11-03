@@ -93,7 +93,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         else
         {
             if (!distributed.SupportsHttpEpochs)
-                throw new NotSupportedException("HTTP L2 caching requires MethodCache's native Redis or SQL Server transport.");
+                throw new NotSupportedException("HTTP L2 caching requires MethodCache's native Redis, SQL Server or PostgreSQL transport.");
             distributed.AttachHttp(InvalidateLocalTag, ClearLocal, DisposeAsync);
             distributed.ObserveHttpRecovery(() => PendingRecoveries);
         }

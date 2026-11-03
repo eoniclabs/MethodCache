@@ -39,7 +39,7 @@ maps them under `/ops/cache` instead.
 | `GET` | `methods` | Every cached method: its `methodId`, effective policy and where each setting comes from |
 | `GET` | `entries?storedKeyPrefix=&tag=&methodId=&limit=` | Live entries in the memory of the instance that answers, each with its `storedKey` and `methodId`, ordered by `storedKey` (default limit 100, max 1000). `methodId` must be an id that `methods` lists. Values are not returned |
 | `GET` | `entry?storedKey=` | One entry, by the `storedKey` that `entries` lists, in the memory of the instance that answers, or 404 |
-| `DELETE` | `entry?storedKey=` | Removes one entry, also from Redis or SQL Server and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
+| `DELETE` | `entry?storedKey=` | Removes one entry, also from Redis, SQL Server or PostgreSQL and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `POST` | `invalidate-method` | Removes every entry of one cached method, also from the distributed cache and the other instances. Body: `{ "methodId": "[MyApp]MyApp.IUserService.GetUserAsync" }`, an id that `methods` lists |
 | `POST` | `clear` | Removes every entry. Body: `{}` |

@@ -10,7 +10,7 @@ spec.loader.exec_module(contracts)
 
 class PackageContractTests(unittest.TestCase):
     def write_packages(self, root, bound="[1.2.3]", framework="net10.0", extra_framework=None, icon=True):
-        names = ["MethodCache", "MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.Serialization.MessagePack",
+        names = ["MethodCache", "MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.PostgreSql", "MethodCache.Serialization.MessagePack",
                  "MethodCache.AspNetCore", "MethodCache.OpenTelemetry", "MethodCache.HttpCaching"]
         for name in names:
             dependencies = "" if name == "MethodCache" else f'<dependencies><group targetFramework="{framework}"><dependency id="MethodCache" version="{bound}"/></group></dependencies>'

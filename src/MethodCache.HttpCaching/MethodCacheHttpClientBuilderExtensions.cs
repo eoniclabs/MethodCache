@@ -27,7 +27,7 @@ public static class MethodCacheHttpClientBuilderExtensions
     /// Automatic cookies are disabled on this client's SocketsHttpHandler or HttpClientHandler after all handler configuration.
     /// Send caller cookies explicitly so they participate in cache isolation. Unknown transports bypass caching unless explicitly trusted.
     /// Requires AddMethodCache. Core stores responses in its separate HTTP memory budget, or exclusively in
-    /// MethodCache's native Redis/SQL Server transport when configured. KeepCookies preserves transport cookies
+    /// MethodCache's native Redis/SQL Server/PostgreSQL transport when configured. KeepCookies preserves transport cookies
     /// and bypasses response caching completely.
     /// <para>
     /// A client has at most one cache: calling this for every client (in <c>ConfigureHttpClientDefaults</c>) and again

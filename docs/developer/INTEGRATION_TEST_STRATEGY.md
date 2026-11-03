@@ -1,6 +1,6 @@
 # Integration Tests
 
-The Redis and SQL Server providers each have an integration test project that runs two MethodCache instances against one real server. The tests check that a value one instance stores is read by the other, and that key and tag invalidations reach the other instance's in-memory cache through the backplane.
+The Redis, SQL Server and PostgreSQL providers each have an integration test project that runs two MethodCache instances against one real server. The tests check that a value one instance stores is read by the other, and that key and tag invalidations reach the other instance's in-memory cache through the backplane.
 
 `MethodCache.HttpCaching.IntegrationTests` needs no server: it runs the HTTP cache handler in process.
 
@@ -10,6 +10,7 @@ The Redis and SQL Server providers each have an integration test project that ru
 |---------|----------------------|----------|
 | `MethodCache.Redis.IntegrationTests` | `METHODCACHE_REDIS_URL` | `redis:7-alpine` container |
 | `MethodCache.SqlServer.IntegrationTests` | `METHODCACHE_SQLSERVER_CONNECTION` | `mcr.microsoft.com/mssql/server:2022-latest` container |
+| `MethodCache.PostgreSql.IntegrationTests` | `METHODCACHE_POSTGRESQL_CONNECTION` | `postgres:17-alpine` container |
 
 Containers are started with Testcontainers when Docker is available. With neither a variable nor Docker, the tests are skipped. Set `METHODCACHE_REQUIRE_INFRA_TESTS=true` to make a missing server fail the run instead; the `tests` CI job does this (`build/ci/jobs.sh`).
 
@@ -23,14 +24,16 @@ From the repository root:
 # Use servers you already run
 METHODCACHE_REDIS_URL=localhost:6379 \
 METHODCACHE_SQLSERVER_CONNECTION="Server=localhost;User Id=sa;Password=...;TrustServerCertificate=true" \
+METHODCACHE_POSTGRESQL_CONNECTION="Host=localhost;Username=postgres;Password=...;Database=methodcache_tests" \
 dotnet test MethodCache.sln
 
 # Or let Testcontainers start them (Docker must be running)
 dotnet test tests/MethodCache.Redis.IntegrationTests
 dotnet test tests/MethodCache.SqlServer.IntegrationTests
+dotnet test tests/MethodCache.PostgreSql.IntegrationTests
 ```
 
-Each SQL Server test uses its own schema, and each Redis test its own key prefix and backplane channel, so tests do not see each other's data.
+Each SQL Server and PostgreSQL test uses its own schema, and each Redis test its own key prefix and backplane channel, so tests do not see each other's data. CI runs the PostgreSQL tests on PostgreSQL 17; they also pass on 13, the oldest version the package supports.
 
 ## SQL Server readiness
 
@@ -38,7 +41,7 @@ The SQL Server fixture opens a connection and runs a readiness query before cach
 
 ## Policy invalidation faults
 
-The Redis and SQL policy suites compile the same `NativePolicyFaultContract` as the Core fault model.
+The Redis, SQL Server and PostgreSQL policy suites compile the same `NativePolicyFaultContract` as the Core fault model.
 It holds or fails selected stamp writes and fails one publication around the real provider, while
 successful operations still reach that provider. Tests check exact partial confirmation counters,
 independent recovery queues, caller cancellation after local mutation and validation before mutation.

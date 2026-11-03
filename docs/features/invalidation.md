@@ -95,6 +95,6 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 
 ## With several instances
 
-With [Redis or SQL Server](distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
+With [Redis, SQL Server or PostgreSQL](distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 

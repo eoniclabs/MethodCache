@@ -4,6 +4,17 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Added
+
+- **`MethodCache.PostgreSql`**: PostgreSQL as the distributed cache, `AddMethodCache(mc => mc.UsePostgreSql(connectionString))`.
+  Invalidations reach other instances at once through `LISTEN`/`NOTIFY`, with the invalidations table as the truth
+  and a poll every second as a safety net, so a lost notification or a pooler in transaction mode only delays them.
+  Every operation is one prepared statement; cache values and backplane messages are committed without waiting for the
+  disk (invalidation stamps are not), and values up to about 8 KB stay in the row. Small values read about as fast as from Redis. The tables are
+  created at startup, or by the package's `migrations/0001-create-schema.sql`. Requires PostgreSQL 13 or later.
+
 ## 1.0.0-rc.2 (2026-10-20)
 
 ### Breaking changes since 1.0.0-rc.1

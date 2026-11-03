@@ -99,6 +99,54 @@ cases; the entire eight-case matrix was rerun with fixed invocation counts for t
 The two studies are not pooled. Design-series acceptance remains a separate paired baseline comparison;
 see [the verification record](developer/design-final-validation.md).
 
+## Distributed cache providers (2026-11-03)
+
+Redis, SQL Server and PostgreSQL as MethodCache's distributed cache, side by side, on one cloud machine: 4 vCPU
+(Intel Xeon, 2.8 GHz), .NET 10.0, Redis 7.4, SQL Server 2022 (16.0) and PostgreSQL 17.11, each in a container next to
+the app with host networking and default settings. Absolute numbers include the network hop and four servers sharing
+four cores, so compare the columns rather than the values. Medians (p50) unless noted.
+
+**Each provider's own cache, one call at a time** (3,500 calls each, random bytes):
+
+| | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| Read, 256 B | 0.25 ms | 0.26 ms | 0.80 ms |
+| Read, 4 KB | 0.34 ms | 0.28 ms | 0.88 ms |
+| Read, 64 KB | 0.57 ms | 0.37 ms | 1.47 ms |
+| Read, missing key | 0.23 ms | 0.25 ms | 0.72 ms |
+| Write, 256 B | 0.32 ms | 0.28 ms | 2.16 ms |
+| Write, 4 KB | 0.47 ms | 0.28 ms | 2.35 ms |
+| Write, 64 KB | 1.18 ms | 0.36 ms | 3.43 ms |
+
+**Throughput** (1 KB values, 10,000 keys, 90 % reads, for 10 seconds):
+
+| Concurrent callers | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| 1 | 2,100 ops/s | 3,500 ops/s | 1,000 ops/s |
+| 16 | 11,200 ops/s | 36,400 ops/s | 4,600 ops/s |
+| 64 | 14,100 ops/s | 71,100 ops/s | 5,200 ops/s |
+
+**MethodCache end to end** (a generated `[Cache]` decorator, JSON, a 1 KB result; two or three instances):
+
+| | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| In-memory hit | < 1 µs | < 1 µs | < 1 µs |
+| Hit in the distributed cache (in-memory miss) | 0.80 ms | 0.67 ms | 1.83 ms |
+| Miss: read, run the method, write, check, publish | 1.82 ms | 1.28 ms | 6.63 ms |
+| Backplane message from one instance to another | 2.1 ms | 0.8 ms | 531 ms |
+| Tag invalidation until another instance runs the method again | 8.0 ms | 2.5 ms | 982 ms |
+
+PostgreSQL reads small values as fast as Redis, and writes them within about 15 %. Larger values and many concurrent
+callers favor Redis, which keeps everything in memory and answers from a single thread without transactions; at 64
+callers PostgreSQL still does almost three times the work of SQL Server here. Its backplane reaches the other
+instances within milliseconds through `NOTIFY`, where SQL Server waits for the next poll (every second by default).
+Each miss costs four round trips with every provider (read, write, a check that no removal raced the write, and a
+backplane message so other instances drop an older copy), which is where most of the difference between the columns
+in that row comes from.
+
+The console program that measured this times each provider's internal services, so it is not part of the solution;
+its source is in the description of PR_PLACEHOLDER, which added `MethodCache.PostgreSql`.
+
 ## Historical cloud run (2026-10-15)
 
 | Approach | `int` id | Allocated | vs. IMemoryCache by hand | `Guid` id | Allocated | vs. IMemoryCache by hand |

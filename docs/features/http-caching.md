@@ -69,9 +69,9 @@ Concurrent writers with the same variant selection share its namespace, includin
 A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
 the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
 background revalidation that was already in flight can still complete, but it stores its response under the old
-generation, so later requests fetch the updated response. With native Redis or SQL Server configured, the generation is shared by every instance, even when backplane
+generation, so later requests fetch the updated response. With native Redis, SQL Server or PostgreSQL configured, the generation is shared by every instance, even when backplane
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
-SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
+SQL Server and PostgreSQL read already initialized, permanent generation records without rewriting them. Missing or
 non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
 The transport retains only its latest bounded command-text shape. It does not cache generation values;
 reordered or duplicate keys still return generations in the caller's order.
@@ -94,7 +94,7 @@ lost when the process exits; other nodes may retain old responses until they exp
 `AddHttpCaching` requires an explicit `AddMethodCache` registration in the same container. Either registration
 order works. Without L2, Core uses a separate HTTP byte budget (100 MiB by default), independent of method entries.
 Bodies exceeding the whole HTTP budget remain streamed and are not stored. Headers and metadata are charged too.
-With MethodCache Redis or SQL Server configured, HTTP responses live exclusively in that owned L2; the application's
+With MethodCache Redis, SQL Server or PostgreSQL configured, HTTP responses live exclusively in that owned L2; the application's
 unrelated `IDistributedCache` is never a fallback. HTTP entries use an internal codec, independent of method serializers.
 The former `HttpCacheStorageOptions`, `IHttpCacheStorage` and `HttpCacheEntry` public extension points are removed.
 

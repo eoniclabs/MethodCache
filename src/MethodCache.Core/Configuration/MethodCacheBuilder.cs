@@ -73,7 +73,7 @@ public sealed class MethodCacheBuilder
         return this;
     }
     /// <summary>
-    /// Configures the distributed cache added with <c>UseRedis</c> or <c>UseSqlServer</c>: key prefix, timeouts,
+    /// Configures the distributed cache added with <c>UseRedis</c>, <c>UseSqlServer</c> or <c>UsePostgreSql</c>: key prefix, timeouts,
     /// tag checks and the round-trip check.
     /// </summary>
     public MethodCacheBuilder Distributed(Action<DistributedCacheOptions> configure)
