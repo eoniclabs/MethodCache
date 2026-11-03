@@ -69,6 +69,7 @@ $Packages = @(
     "MethodCache.AspNetCore"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
+    "MethodCache.PostgreSql"
     "MethodCache.Redis"
     "MethodCache.SqlServer"
     "MethodCache.Serialization.MessagePack"
@@ -86,7 +87,7 @@ function Get-CurrentVersion {
     return $versionJson.version
 }
 
-# Function to check if a package version exists on GitHub Packages
+# Function to check if a package version exists on nuget.org (once indexed)
 function Test-PackageVersion {
     param(
         [string]$Package,
@@ -94,8 +95,8 @@ function Test-PackageVersion {
     )
 
     try {
-        $versions = gh api "/orgs/$GitHubOrg/packages/nuget/$Package/versions" 2>$null | ConvertFrom-Json
-        return ($versions | Where-Object { $_.name -eq $PackageVersion }) -ne $null
+        $index = Invoke-RestMethod "https://api.nuget.org/v3-flatcontainer/$($Package.ToLowerInvariant())/index.json"
+        return $index.versions -contains $PackageVersion.ToLowerInvariant()
     } catch {
         return $false
     }
@@ -143,7 +144,7 @@ function Get-ReleaseStatus {
 
     # Check published packages
     Write-Info ""
-    Write-Info "Checking published packages..."
+    Write-Info "Checking packages on nuget.org..."
     $allPublished = $true
     $anyPublished = $false
 
@@ -163,8 +164,8 @@ function Get-ReleaseStatus {
         return 0
     } elseif ($anyPublished) {
         Write-Err "⚠ PARTIAL RELEASE: Some packages were published, some were not."
-        Write-Info "  This indicates a failed release that needs cleanup."
-        Write-Info "  Run: .\release.ps1 -Cleanup $ReleaseVersion"
+        Write-Info "  Publish the tag again; packages already on nuget.org are skipped."
+        Write-Info "  Run: .\release.ps1 -Retry $ReleaseVersion"
         return 2
     } else {
         Write-Warn "✗ No packages published for version $ReleaseVersion"
@@ -174,40 +175,13 @@ function Get-ReleaseStatus {
     }
 }
 
-# Function to delete a package version from GitHub Packages
-function Remove-PackageVersion {
-    param(
-        [string]$Package,
-        [string]$PackageVersion
-    )
-
-    try {
-        $versions = gh api "/orgs/$GitHubOrg/packages/nuget/$Package/versions" 2>$null | ConvertFrom-Json
-        $versionEntry = $versions | Where-Object { $_.name -eq $PackageVersion } | Select-Object -First 1
-
-        if ($versionEntry) {
-            Write-Info "  Deleting $Package@$PackageVersion (ID: $($versionEntry.id))..."
-            gh api --method DELETE "/orgs/$GitHubOrg/packages/nuget/$Package/versions/$($versionEntry.id)" 2>$null
-            Write-Success "  ✓ Deleted $Package@$PackageVersion"
-            return $true
-        } else {
-            Write-Info "  $Package@$PackageVersion not found, skipping"
-            return $true
-        }
-    } catch {
-        Write-Err "  ✗ Failed to delete $Package@$PackageVersion"
-        return $false
-    }
-}
-
 # Function to cleanup a failed release
 function Invoke-ReleaseCleanup {
     param([string]$ReleaseVersion)
 
     $tagName = "v$ReleaseVersion"
 
-    Write-Warn "⚠ This will delete all traces of version $ReleaseVersion"
-    Write-Warn "  - Delete published packages from GitHub Packages"
+    Write-Warn "⚠ This will delete the tag of version $ReleaseVersion"
     Write-Warn "  - Delete local and remote tags"
     Write-Warn "  - Revert version.json commit (if it's the HEAD)"
     Write-Info ""
@@ -221,11 +195,11 @@ function Invoke-ReleaseCleanup {
     Write-Info ""
     Write-Info "Starting cleanup for version $ReleaseVersion..."
 
-    # Delete published packages
-    Write-Info ""
-    Write-Info "Deleting published packages..."
     foreach ($package in $Packages) {
-        Remove-PackageVersion -Package $package -PackageVersion $ReleaseVersion
+        if (Test-PackageVersion -Package $package -PackageVersion $ReleaseVersion) {
+            Write-Err "✗ $package@$ReleaseVersion is on nuget.org, where versions can't be deleted. Publish a new version instead."
+            return
+        }
     }
 
     # Delete remote tag
@@ -363,7 +337,7 @@ if (-not $Version) {
     Write-Info ""
     Write-Info "Usage: .\release.ps1 -Version <version>"
     Write-Info "       .\release.ps1 -Status <version>   # Check release status"
-    Write-Info "       .\release.ps1 -Cleanup <version>  # Clean up failed release"
+    Write-Info "       .\release.ps1 -Cleanup <version>  # Clean up a release that published nothing"
     Write-Info "       .\release.ps1 -Retry <version>    # Print how to publish a tag again"
     Write-Info ""
     Write-Info "Example: .\release.ps1 -Version $($suggestions['Minor'])"

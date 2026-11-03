@@ -23,6 +23,7 @@ PACKAGES=(
     "MethodCache.AspNetCore"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
+    "MethodCache.PostgreSql"
     "MethodCache.Redis"
     "MethodCache.SqlServer"
     "MethodCache.Serialization.MessagePack"
@@ -38,13 +39,14 @@ get_current_version() {
     grep '"version"' version.json | sed 's/.*"version".*:.*"\([^"]*\)".*/\1/'
 }
 
-# Function to check if a package version exists on GitHub Packages
+# Function to check if a package version exists on nuget.org (once indexed)
 check_package_version() {
     local package=$1
     local version=$2
 
-    # Use gh api to check if version exists
-    local result=$(gh api "/orgs/$GITHUB_ORG/packages/nuget/$package/versions" 2>/dev/null | grep -o "\"name\":\"$version\"" || true)
+    local id=$(echo "$package" | tr '[:upper:]' '[:lower:]')
+    local lower=$(echo "$version" | tr '[:upper:]' '[:lower:]')
+    local result=$(curl -fsS "https://api.nuget.org/v3-flatcontainer/$id/index.json" 2>/dev/null | grep -o "\"$lower\"" || true)
 
     if [ -n "$result" ]; then
         return 0  # Version exists
@@ -90,7 +92,7 @@ check_release_status() {
 
     # Check published packages
     print_info ""
-    print_info "Checking published packages..."
+    print_info "Checking packages on nuget.org..."
     local all_published=true
     local any_published=false
 
@@ -110,8 +112,8 @@ check_release_status() {
         return 0
     elif [ "$any_published" = true ]; then
         print_error "⚠ PARTIAL RELEASE: Some packages were published, some were not."
-        print_info "  This indicates a failed release that needs cleanup."
-        print_info "  Run: ./release.sh --cleanup $version"
+        print_info "  Publish the tag again; packages already on nuget.org are skipped."
+        print_info "  Run: ./release.sh --retry $version"
         return 2
     else
         print_warning "✗ No packages published for version $version"
@@ -121,37 +123,12 @@ check_release_status() {
     fi
 }
 
-# Function to delete a package version from GitHub Packages
-delete_package_version() {
-    local package=$1
-    local version=$2
-
-    # Get version ID
-    local version_id=$(gh api "/orgs/$GITHUB_ORG/packages/nuget/$package/versions" 2>/dev/null | \
-        grep -B5 "\"name\":\"$version\"" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-
-    if [ -n "$version_id" ]; then
-        print_info "  Deleting $package@$version (ID: $version_id)..."
-        if gh api --method DELETE "/orgs/$GITHUB_ORG/packages/nuget/$package/versions/$version_id" 2>/dev/null; then
-            print_success "  ✓ Deleted $package@$version"
-            return 0
-        else
-            print_error "  ✗ Failed to delete $package@$version"
-            return 1
-        fi
-    else
-        print_info "  $package@$version not found, skipping"
-        return 0
-    fi
-}
-
 # Function to cleanup a failed release
 cleanup_release() {
     local version=$1
     local tag_name="v$version"
 
-    print_warning "⚠ This will delete all traces of version $version"
-    print_warning "  - Delete published packages from GitHub Packages"
+    print_warning "⚠ This will delete the tag of version $version"
     print_warning "  - Delete local and remote tags"
     print_warning "  - Revert version.json commit (if it's the HEAD)"
     print_info ""
@@ -166,11 +143,11 @@ cleanup_release() {
     print_info ""
     print_info "Starting cleanup for version $version..."
 
-    # Delete published packages
-    print_info ""
-    print_info "Deleting published packages..."
     for package in "${PACKAGES[@]}"; do
-        delete_package_version "$package" "$version"
+        if check_package_version "$package" "$version"; then
+            print_error "✗ $package@$version is on nuget.org, where versions can't be deleted. Publish a new version instead."
+            exit 1
+        fi
     done
 
     # Delete remote tag
@@ -318,7 +295,7 @@ show_help() {
     print_info "Commands:"
     print_info "  <version>            Create a new release"
     print_info "  --status <version>   Check the status of a release"
-    print_info "  --cleanup <version>  Clean up a failed release (delete packages, tags)"
+    print_info "  --cleanup <version>  Clean up a release that published nothing (delete tags)"
     print_info "  --retry <version>    Print how to publish an existing tag again"
     echo ""
     print_info "Options:"

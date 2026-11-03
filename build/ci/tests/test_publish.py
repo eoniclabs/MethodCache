@@ -20,9 +20,7 @@ with open(os.environ['TEST_LOG'], 'a') as log:
         'symbol_key': bool(os.environ.get('NUGET_SYMBOL_API_KEY')),
         'bws_token': bool(os.environ.get('BWS_ACCESS_TOKEN'))}) + '\\n')
 if name == 'gh':
-    if args[:2] == ['auth', 'token']: print('github-test-key')
-    elif '--include' in args: print('X-OAuth-Scopes: repo, write:packages')
-    elif '/status' in args[1]: print(os.environ.get('TEST_STATUS', 'success'))
+    if '/status' in args[1]: print(os.environ.get('TEST_STATUS', 'success'))
     elif '--method' not in args: print('a' * 40)
 elif name == 'git' and args[0] == 'clone':
     pathlib.Path(args[-1]).mkdir()
@@ -105,7 +103,6 @@ class PublishTests(unittest.TestCase):
             self.assertFalse(push['bws_token'])
             self.assertNotIn('--api-key', push['args'])
             self.assertIn('--skip-duplicate', push['args'])
-        self.assertFalse(any(c['args'][:2] == ['auth', 'token'] for c in calls))
 
     def test_default_is_nuget(self):
         result, calls = self.run_publish(target=None)
@@ -176,13 +173,11 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(2, result.returncode)
         self.assertEqual([], calls)
 
-    def test_explicit_github_packages(self):
+    def test_github_packages_is_no_longer_a_destination(self):
         result, calls = self.run_publish(target='--github')
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertFalse(any(c['tool'] == 'bws' for c in calls))
-        pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
-        self.assertEqual(8, len(pushes))
-        self.assertTrue(all('https://nuget.pkg.github.com/eoniclabs/index.json' in c['args'] for c in pushes))
+        self.assertEqual(2, result.returncode)
+        self.assertIn('GitHub Packages is no longer a release destination', result.stderr)
+        self.assertEqual([], calls)
 
 
 if __name__ == '__main__':

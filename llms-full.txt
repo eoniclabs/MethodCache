@@ -3574,6 +3574,9 @@ release.
 
 ## 1.0.0-rc.3 (2026-11-04)
 
+The packages are on nuget.org only. GitHub Packages no longer has the MethodCache packages, so remove a
+`nuget.pkg.github.com/eoniclabs` source you added for them.
+
 ### Added
 
 - **`MethodCache.PostgreSql`**: PostgreSQL as the distributed cache, `AddMethodCache(mc => mc.UsePostgreSql(connectionString))`.
