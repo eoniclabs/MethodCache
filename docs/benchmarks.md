@@ -145,7 +145,7 @@ backplane message so other instances drop an older copy), which is where most of
 in that row comes from.
 
 The console program that measured this times each provider's internal services, so it is not part of the solution;
-its source is in the description of PR_PLACEHOLDER, which added `MethodCache.PostgreSql`.
+its source is in the description of [#160](https://github.com/eoniclabs/MethodCache/pull/160), which added `MethodCache.PostgreSql`.
 
 ## Historical cloud run (2026-10-15)
 
