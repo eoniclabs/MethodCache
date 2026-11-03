@@ -7,19 +7,22 @@ namespace MethodCache.Redis.IntegrationTests;
 // so a test can prove that an operation wrote nothing without reading server-wide statistics.
 internal sealed class KeyWrites : IAsyncDisposable
 {
+    private const string KeyspacePrefix = "__keyspace@0__:";
     private readonly ConnectionMultiplexer _admin;
     private readonly IServer _server;
     private readonly string _previousEvents;
-    private readonly RedisKey _marker = "key-writes-marker:" + Guid.NewGuid().ToString("N");
-    private readonly List<RedisChannel> _channels = [];
+    private readonly HashSet<string> _keys;
+    private readonly string _marker = "key-writes-marker:" + Guid.NewGuid().ToString("N");
     private readonly ConcurrentQueue<string> _events = new();
+    private ChannelMessageQueue? _queue;
     private TaskCompletionSource _markerSeen = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private KeyWrites(ConnectionMultiplexer admin, string previousEvents)
+    private KeyWrites(ConnectionMultiplexer admin, string previousEvents, IEnumerable<RedisKey> keys)
     {
         _admin = admin;
         _server = admin.GetServer(admin.GetEndPoints()[0]);
         _previousEvents = previousEvents;
+        _keys = keys.Select(key => (string)key!).ToHashSet(StringComparer.Ordinal);
     }
 
     internal static async Task<KeyWrites> WatchAsync(string configuration, IEnumerable<RedisKey> keys)
@@ -27,26 +30,23 @@ internal sealed class KeyWrites : IAsyncDisposable
         var admin = await ConnectionMultiplexer.ConnectAsync(configuration + ",allowAdmin=true");
         var server = admin.GetServer(admin.GetEndPoints()[0]);
         var previous = (await server.ConfigGetAsync("notify-keyspace-events")).SingleOrDefault().Value ?? "";
-        var watch = new KeyWrites(admin, previous);
+        var watch = new KeyWrites(admin, previous, keys);
         // K: keyspace channel per key; g: generic commands such as PERSIST and EXPIRE; h: hash commands; $: SET (the marker)
         await server.ConfigSetAsync("notify-keyspace-events", "Kgh$");
-        var subscriber = admin.GetSubscriber();
-        foreach (var key in keys.Append(watch._marker))
+        // One subscription read as a queue: StackExchange.Redis runs callback handlers on the thread pool, where the
+        // marker's event can overtake earlier ones, but hands a queue's messages to OnMessage one at a time, in order
+        watch._queue = await admin.GetSubscriber().SubscribeAsync(RedisChannel.Pattern(KeyspacePrefix + "*"));
+        watch._queue.OnMessage(message =>
         {
-            var channel = RedisChannel.Literal("__keyspace@0__:" + (string)key!);
-            var isMarker = key == watch._marker;
-            await subscriber.SubscribeAsync(channel, (_, message) =>
-            {
-                if (isMarker) watch._markerSeen.TrySetResult();
-                else watch._events.Enqueue(message!);
-            });
-            watch._channels.Add(channel);
-        }
+            var key = ((string)message.Channel!)[KeyspacePrefix.Length..];
+            if (key == watch._marker) watch._markerSeen.TrySetResult();
+            else if (watch._keys.Contains(key)) watch._events.Enqueue(message.Message!);
+        });
         return watch;
     }
 
-    // The server publishes events in command order on one subscriber connection, so once the marker's
-    // event arrives, every write event from earlier commands has arrived too.
+    // The server publishes events in command order on one subscriber connection, and the queue keeps that order,
+    // so once the marker's event arrives, every write event from earlier commands has arrived too.
     internal async Task<string[]> CollectAsync()
     {
         await _admin.GetDatabase().StringSetAsync(_marker, 1);
@@ -59,8 +59,7 @@ internal sealed class KeyWrites : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        var subscriber = _admin.GetSubscriber();
-        foreach (var channel in _channels) await subscriber.UnsubscribeAsync(channel);
+        if (_queue is not null) await _queue.UnsubscribeAsync();
         await _admin.GetDatabase().KeyDeleteAsync(_marker);
         await _server.ConfigSetAsync("notify-keyspace-events", _previousEvents);
         await _admin.DisposeAsync();
