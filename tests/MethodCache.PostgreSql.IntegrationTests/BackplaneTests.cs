@@ -276,6 +276,35 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task BacklogUnreadForHalfTheRetention_ClearsMemory()
+    {
+        // More invalidations than one poll reads: the rest may be deleted before this instance gets to them
+        var options = fixture.Options("backlog");
+        try
+        {
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            const int OnePoll = PostgreSqlBackplane.MaxBatchesPerPoll * PostgreSqlBackplane.BatchSize;
+            await InsertAsync(options, 2 * OnePoll + 1, "burst");
+
+            // Each poll comes a quarter of the retention after the last and reads, but none catches up
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            time.Advance(options.BackplaneRetention / 4);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            time.Advance(options.BackplaneRetention / 4);
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal(2 * OnePoll, delivered.Count(m => m.Type == BackplaneMessageType.KeyInvalidation));
+            Assert.Equal(BackplaneMessageType.ClearAll, Assert.Single(delivered, m => m.Type != BackplaneMessageType.KeyInvalidation).Type);
+            Assert.Equal(BackplaneMessageType.ClearAll, delivered[^1].Type);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task OutageFromSubscribingToTheFirstPoll_ClearsMemory()
     {
         // PostgreSQL was unreachable from startup: values cached meanwhile may have lost invalidations already deleted
@@ -628,8 +657,10 @@ public class BackplaneTests(PostgreSqlFixture fixture)
         options.BackplanePollingInterval = TimeSpan.FromMinutes(10);
         try
         {
+            // Neither the poll timer nor the reconnect delay runs until the test advances this clock
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
             await using var connection = await CacheTests.CreateAsync(options);
-            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
             await using var sender = new PostgreSqlBackplane(connection, options);
             var delivered = new List<string>();
             await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
@@ -639,10 +670,15 @@ public class BackplaneTests(PostgreSqlFixture fixture)
             await PostgreSqlFixture.ExecuteAsync(options.ConnectionString,
                 "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query = $1", "LISTEN " + PostgreSqlOptions.Quote(receiver.Channel));
             await WaitUntilAsync(() => !receiver.Listening);
-            // Its notification is lost, and the next poll is ten minutes away: reconnecting reads it
+            // Its notification is lost, and no poll is due: reconnecting reads it
             await sender.PublishInvalidationAsync("while-down");
+            // Advanced until the reconnect delay, which starts just after the connection is seen as lost, has passed
+            await WaitUntilAsync(() =>
+            {
+                time.Advance(PostgreSqlBackplane.FirstListenRetry);
+                return receiver.Listening;
+            });
             await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("while-down"); });
-            await WaitUntilAsync(() => receiver.Listening);
             await sender.PublishInvalidationAsync("after");
 
             await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("after"); });
@@ -656,21 +692,25 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     {
         // As behind a pooler in transaction mode: LISTEN succeeds, but no notification ever arrives
         var options = fixture.Options("silent");
-        options.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
         try
         {
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
             await using var connection = await CacheTests.CreateAsync(options);
             var logger = new WarningLogger();
-            await using var receiver = new PostgreSqlBackplane(connection, options, logger);
+            await using var receiver = new PostgreSqlBackplane(connection, options, logger, time);
             var delivered = new List<string>();
             await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
             await WaitUntilAsync(() => receiver.Listening);
 
             foreach (var key in new[] { "first", "second", "third", "fourth", "fifth" })
             {
-                // Written like another instance's invalidation, without its NOTIFY
+                // Written like another instance's invalidation, without its NOTIFY, so only a poll reads it
                 await InsertAsync(options, 1, key);
-                await WaitUntilAsync(() => { lock (delivered) return delivered.Contains(key); });
+                await WaitUntilAsync(() =>
+                {
+                    time.Advance(options.BackplanePollingInterval);
+                    lock (delivered) return delivered.Contains(key);
+                });
             }
 
             lock (logger.Warnings) Assert.Single(logger.Warnings, warning => warning.Contains("receives no PostgreSQL notifications"));
@@ -713,12 +753,12 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     private static string Wire(string key, string sender) => BackplaneWire.Encode(new BackplaneMessage
     { Type = BackplaneMessageType.KeyInvalidation, Key = key, InstanceId = sender });
 
-    /// <summary>Rows written the way the backplane writes them, from an instance named "other".</summary>
     /// <summary>Whether a statement on this test's tables has waited for a lock for longer than <paramref name="waited"/>.</summary>
     private static Task<bool> WaitsForALockAsync(PostgreSqlOptions options, TimeSpan waited) => PostgreSqlFixture.ScalarAsync<bool>(options.ConnectionString,
         "SELECT coalesce(bool_or(now() - query_start >= $2), false) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND strpos(query, $1) > 0",
         options.SchemaName, waited);
 
+    /// <summary>Rows written the way the backplane writes them, from an instance named "other".</summary>
     private static Task InsertAsync(PostgreSqlOptions options, int count, string key, TimeSpan age = default, string prefix = "methodcache:")
         => PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
             WITH next AS (

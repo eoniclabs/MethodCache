@@ -23,15 +23,15 @@ namespace MethodCache.PostgreSql;
 /// <para>
 /// Each instance polls every <see cref="PostgreSqlOptions.BackplanePollingInterval"/> as well, so a lost
 /// notification, a broken <c>LISTEN</c> connection or a pooler that cannot hold one costs at most one interval. An
-/// instance clears its in-memory cache when it could not read the table for half the retention, or when the cursor
-/// row has a new generation or went back: the cursor table is unlogged, so a crash, a failover or a restore that may
-/// have lost invalidations also gives it a new row.
+/// instance clears its in-memory cache when it could not read the table, or catch up with it, for half the retention
+/// (unread rows may be deleted by then), or when the cursor row has a new generation or went back: the cursor table
+/// is unlogged, so a crash, a failover or a restore that may have lost invalidations also gives it a new row.
 /// </para>
 /// </remarks>
 internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDisposable
 {
     internal const int BatchSize = 1000;
-    private const int MaxBatchesPerPoll = 10;
+    internal const int MaxBatchesPerPoll = 10;
     internal const int CleanupBatchSize = 5000;
     private const int MaxCleanupBatches = 20;
 
@@ -44,7 +44,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
 
     private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan FirstPollMargin = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan FirstListenRetry = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan FirstListenRetry = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxListenRetry = TimeSpan.FromSeconds(30);
 
     private readonly NpgsqlDataSource _dataSource;
@@ -356,6 +356,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             }
 
             var foreign = false;
+            var caughtUp = false;
             for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
             {
                 var pending = _pendingBatch ??= await ReadAsync(_lastId!.Value, cancellationToken).ConfigureAwait(false);
@@ -371,6 +372,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
                     }
 
                     await StartOverAsync(onMessage, pending).ConfigureAwait(false);
+                    caughtUp = true;
                     break;
                 }
 
@@ -385,10 +387,16 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
 
                 _lastId = pending.LastId;
                 _pendingBatch = null;
-                if (pending.Rows < BatchSize) break;
+                if (pending.Rows < BatchSize)
+                {
+                    caughtUp = true;
+                    break;
+                }
             }
 
-            _lastPolled = now;
+            // Rows still unread after the batch limit may date back to when this instance last caught up, so only
+            // catching up restarts the clock that decides when they may be deleted unread
+            if (caughtUp) _lastPolled = now;
             await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
             return foreign;
         }
