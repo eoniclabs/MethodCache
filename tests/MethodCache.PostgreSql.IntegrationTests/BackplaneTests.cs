@@ -398,6 +398,33 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task InvalidationsThatRingNoDoorbell_ArriveByPolling_WithOneWarning()
+    {
+        // As behind a pooler in transaction mode: LISTEN succeeds, but no notification ever arrives
+        var options = fixture.Options("silent");
+        options.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            var logger = new WarningLogger();
+            await using var receiver = new PostgreSqlBackplane(connection, options, logger);
+            var delivered = new List<string>();
+            await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
+            await WaitUntilAsync(() => receiver.Listening);
+
+            foreach (var key in new[] { "first", "second", "third", "fourth", "fifth" })
+            {
+                // Written like another instance's invalidation, without its NOTIFY
+                await InsertAsync(options, 1, key);
+                await WaitUntilAsync(() => { lock (delivered) return delivered.Contains(key); });
+            }
+
+            lock (logger.Warnings) Assert.Single(logger.Warnings, warning => warning.Contains("receives no PostgreSQL notifications"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task Unsubscribe_StopsPollingAndListening()
     {
         var options = fixture.Options("stop");
@@ -442,6 +469,21 @@ public class BackplaneTests(PostgreSqlFixture fixture)
             INSERT INTO {options.QualifiedInvalidationsTableName} (scope, id, instance_id, message_type, target, created_at)
             SELECT $1, next.last_id - $3 + i, 'other', 1, $2, now() - $4 FROM next, generate_series(1, $3) AS i
             """, PostgreSqlBackplane.GetScope(prefix), Wire(key, "other"), (long)count, age);
+
+    private sealed class WarningLogger : Microsoft.Extensions.Logging.ILogger<PostgreSqlBackplane>
+    {
+        public List<string> Warnings { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning) lock (Warnings) Warnings.Add(formatter(state, exception));
+        }
+    }
 
     internal static async Task WaitUntilAsync(Func<bool> condition)
     {
