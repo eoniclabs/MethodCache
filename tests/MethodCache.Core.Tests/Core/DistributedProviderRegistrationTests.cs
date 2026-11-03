@@ -30,7 +30,7 @@ public class DistributedProviderRegistrationTests
         Assert.Contains("one distributed cache", error.Message);
         Assert.Contains("MethodCache.SqlServer", error.Message);
         Assert.Contains("MethodCache.Core.Tests", error.Message);
-        Assert.Contains("UseRedis or UseSqlServer", error.Message);
+        Assert.Contains("UseRedis, UseSqlServer or UsePostgreSql", error.Message);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class DistributedProviderRegistrationTests
 
         var warning = Assert.Single(logs.Messages, message => message.Level == LogLevel.Warning).Text;
         Assert.StartsWith(expected, warning, StringComparison.Ordinal);
-        Assert.Contains("UseRedis(...) or UseSqlServer(...)", warning);
+        Assert.Contains("UseRedis(...), UseSqlServer(...) or UsePostgreSql(...)", warning);
     }
 
     [Fact]

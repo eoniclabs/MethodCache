@@ -126,6 +126,28 @@ namespace Docs.Packages
         }
     }
 
+    public static class PostgreSql
+    {
+        public static void Basic(WebApplicationBuilder builder)
+        {
+            // begin-snippet: postgresql-basic
+            builder.Services.AddMethodCache(mc => mc.UsePostgreSql(builder.Configuration.GetConnectionString("Cache")!));
+            // end-snippet
+        }
+
+        public static void Options(WebApplicationBuilder builder, string connectionString)
+        {
+            // begin-snippet: postgresql-options
+            builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
+            {
+                options.ConnectionString = connectionString;
+                options.SchemaName = "cache";
+                options.CreateTablesIfMissing = false;   // tables created by migrations/0001-create-schema.sql
+            }));
+            // end-snippet
+        }
+    }
+
     public static class AspNetCore
     {
         public static void Setup(WebApplicationBuilder builder)

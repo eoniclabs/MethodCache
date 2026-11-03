@@ -1,0 +1,691 @@
+using System.Security.Cryptography;
+using System.Text;
+using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
+using NpgsqlTypes;
+
+namespace MethodCache.PostgreSql;
+
+/// <summary>
+/// Sends cache invalidations between instances through a PostgreSQL table. The table is the truth; a
+/// <c>NOTIFY</c> only rings the doorbell, so instances read new rows at once instead of at the next poll.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Ids come from one cursor row per prefix, updated in the same transaction as the invalidation. Its row lock makes
+/// invalidations of one prefix commit in id order, so a reader that has seen an id has seen every smaller one: no
+/// gaps to track. The ids follow the database clock in microseconds, and a new cursor row starts after the highest
+/// id left, so ids never repeat.
+/// </para>
+/// <para>
+/// Each instance polls every <see cref="PostgreSqlOptions.BackplanePollingInterval"/> as well, so a lost
+/// notification, a broken <c>LISTEN</c> connection or a pooler that cannot hold one costs at most one interval. An
+/// instance clears its in-memory cache when it could not read the table, or catch up with it, for half the retention
+/// (unread rows may be deleted by then), or when the cursor row has a new generation or went back: the cursor table
+/// is unlogged, so a crash, a failover or a restore that may have lost invalidations also gives it a new row.
+/// </para>
+/// </remarks>
+internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDisposable
+{
+    internal const int BatchSize = 1000;
+    internal const int MaxBatchesPerPoll = 10;
+    internal const int CleanupBatchSize = 5000;
+    private const int MaxCleanupBatches = 20;
+
+    // Polls a message whose handler keeps failing is retried before it is replaced by a clear, so it can't hold back
+    // every later invalidation until the outage clear after half the retention
+    internal const int MaxDeliveryAttempts = 5;
+
+    // Polls in a row that found other instances' invalidations no notification announced, before a warning
+    internal const int SilentPollsBeforeWarning = 3;
+
+    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan FirstPollMargin = TimeSpan.FromSeconds(1);
+    internal static readonly TimeSpan FirstListenRetry = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MaxListenRetry = TimeSpan.FromSeconds(30);
+
+    private readonly NpgsqlDataSource _dataSource;
+    private readonly PostgreSqlConnection _connection;
+    private readonly PostgreSqlOptions _options;
+    private readonly ILogger _logger;
+    private readonly TimeProvider _timeProvider;
+    private readonly byte[] _scope;
+    private readonly string _publishSql;
+    private readonly string _startSql;
+    private readonly string _pollSql;
+    private readonly string _registerSql;
+    private readonly string _cleanupSql;
+    private int _connectionState = (int)BackplaneState.Connecting;
+    private bool _listeningOpen;
+    private int _rejectedWarning;
+    private CancellationTokenSource? _stopping;
+    private Task? _polling;
+    private Task? _listening;
+    private Task? _cleaning;
+    private TaskCompletionSource _doorbell = NewDoorbell();
+    private int _notified;
+    private int _silentPolls;
+    private bool _silentWarning;
+    private long? _lastId;
+    private CursorGeneration? _generation;
+    private PendingBatch? _pendingBatch;
+    private DateTime _lastPolled;
+    private bool _failing;
+    private long _subscribedAt;
+
+    public PostgreSqlBackplane(PostgreSqlConnection connection, PostgreSqlOptions options, ILogger<PostgreSqlBackplane>? logger = null,
+        TimeProvider? timeProvider = null, string prefix = "methodcache:")
+    {
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _dataSource = connection.DataSource;
+        _logger = (ILogger?)logger ?? NullLogger.Instance;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _subscribedAt = _timeProvider.GetTimestamp();
+        _scope = GetScope(prefix);
+        Channel = GetChannel(options, _scope);
+
+        var invalidations = options.QualifiedInvalidationsTableName;
+        var cursor = options.QualifiedCursorTableName;
+        const string clock = "(extract(epoch FROM clock_timestamp()) * 1000000)::bigint";
+        // The cursor row stays locked until commit, so the next invalidation of this prefix waits for this one to be
+        // visible. pg_notify is sent at commit, after the row is readable. created_at is read after the wait for the
+        // cursor row, not at the start of the statement as now() would be, since a new instance's first poll compares
+        // it with the time it subscribed. Without a cursor row nothing is written and no row comes back: the
+        // publisher then creates the row and publishes again.
+        // Messages commit without waiting for the disk, like new values: the stamp the invalidation wrote first is
+        // durable, so a message lost in a crash only leaves other instances' in-memory copies. Recovery from a crash
+        // empties the unlogged cursor table, so every instance sees a new generation and clears its memory.
+        _publishSql = $"""
+            WITH durability AS (SELECT set_config('synchronous_commit', 'off', true)),
+            next AS (
+                UPDATE {cursor} AS c SET last_id = GREATEST(c.last_id + 1, {clock})
+                FROM durability WHERE c.scope = $1
+                RETURNING c.last_id),
+            added AS (
+                INSERT INTO {invalidations} (scope, id, instance_id, message_type, target, created_at)
+                SELECT $1, last_id, $2, $3, $4, clock_timestamp() FROM next
+                RETURNING id)
+            SELECT id, pg_notify($5, $2) FROM added
+            """;
+        // Where a new instance starts reading: after the invalidations written well before it subscribed
+        _startSql = $"""
+            SELECT coalesce(
+                    (SELECT max(id) FROM {invalidations} WHERE scope = $1 AND created_at < now() - $2),
+                    (SELECT min(id) - 1 FROM {invalidations} WHERE scope = $1),
+                    0),
+                c.generation, c.tableoid
+            FROM (VALUES (1)) AS one (x) LEFT JOIN {cursor} c ON c.scope = $1
+            """;
+        // One statement, one snapshot: the cursor, its generation, and the rows after the last id read. Without a cursor
+        // row it returns nothing. The table's own id joins the generation: a logical restore (pg_dump) brings the
+        // generation back, but into a table created anew.
+        _pollSql = $"""
+            SELECT c.last_id, c.generation, c.tableoid, i.id, i.instance_id, i.message_type, i.target
+            FROM {cursor} c
+            LEFT JOIN LATERAL (
+                SELECT id, instance_id, message_type, target FROM {invalidations}
+                WHERE scope = c.scope AND id > $2 ORDER BY id LIMIT {BatchSize}) i ON true
+            WHERE c.scope = $1
+            ORDER BY i.id
+            """;
+        // Creates the cursor row if it is missing, so its generation is known before the first invalidation. A new row
+        // (the first of the prefix, or after a crash emptied the unlogged cursor table) starts after the invalidations
+        // already there, so ids never repeat, even if the clock went back. The row keeps the longest retention of the
+        // prefix's instances, so none of them deletes invalidations another one still counts on: that one clears its
+        // memory only after half of its own retention. Only a missing row or a shorter retention takes its lock.
+        _registerSql = $"""
+            INSERT INTO {cursor} AS c (scope, last_id, retention)
+            SELECT $1, coalesce((SELECT max(id) FROM {invalidations} WHERE scope = $1), 0), $2
+            WHERE NOT EXISTS (SELECT FROM {cursor} WHERE scope = $1 AND retention >= $2)
+            ON CONFLICT (scope) DO UPDATE SET retention = GREATEST(c.retention, EXCLUDED.retention)
+            """;
+        // Instances sharing a prefix share the work; other prefixes may keep their rows longer
+        _cleanupSql = $"""
+            DELETE FROM {invalidations} WHERE scope = $1 AND id IN (
+                SELECT id FROM {invalidations}
+                WHERE scope = $1 AND created_at < now() - GREATEST($2, (SELECT retention FROM {cursor} WHERE scope = $1))
+                LIMIT {CleanupBatchSize} FOR UPDATE SKIP LOCKED)
+            """;
+    }
+
+    /// <inheritdoc />
+    public string InstanceId { get; } = Guid.NewGuid().ToString("N");
+
+    /// <inheritdoc />
+    public BackplaneState ConnectionState => (BackplaneState)Volatile.Read(ref _connectionState);
+
+    /// <summary>The notification channel of this prefix and invalidations table.</summary>
+    internal string Channel { get; }
+
+    /// <summary>The statement that writes an invalidation; tests run it inside their own transactions.</summary>
+    internal string PublishSql => _publishSql;
+
+    /// <summary>Whether the <c>LISTEN</c> connection is open.</summary>
+    internal bool Listening
+    {
+        get => Volatile.Read(ref _listeningOpen);
+        private set => Volatile.Write(ref _listeningOpen, value);
+    }
+
+    /// <inheritdoc />
+    public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default)
+        => PublishAsync(new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, InstanceId = InstanceId, Key = key }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default)
+        => PublishAsync(new BackplaneMessage { Type = BackplaneMessageType.TagInvalidation, InstanceId = InstanceId, Tag = tag }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task PublishMethodInvalidationAsync(string methodId, CancellationToken cancellationToken = default)
+        => PublishAsync(new BackplaneMessage { Type = BackplaneMessageType.MethodInvalidation, InstanceId = InstanceId, Key = methodId }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task PublishClearAsync(CancellationToken cancellationToken = default)
+        => PublishAsync(new BackplaneMessage { Type = BackplaneMessageType.ClearAll, InstanceId = InstanceId }, cancellationToken);
+
+    /// <inheritdoc />
+    public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(onMessage);
+        if (_stopping != null) throw new InvalidOperationException("The backplane already has a subscriber.");
+
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Connecting);
+        _subscribedAt = _timeProvider.GetTimestamp();
+        _stopping = new CancellationTokenSource();
+        var stopping = _stopping.Token;
+        _polling = Task.Run(() => PollAsync(onMessage, stopping), CancellationToken.None);
+        _listening = Task.Run(() => ListenAsync(stopping), CancellationToken.None);
+        _cleaning = Task.Run(() => CleanupAsync(stopping), CancellationToken.None);
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
+    {
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+        var stopping = Interlocked.Exchange(ref _stopping, null);
+        if (stopping == null) return;
+
+        await stopping.CancelAsync().ConfigureAwait(false);
+        try
+        {
+            foreach (var task in new[] { _polling, _listening, _cleaning })
+            {
+                if (task == null) continue;
+                try { await task.ConfigureAwait(false); }
+                catch (OperationCanceledException) { }
+            }
+        }
+        finally
+        {
+            stopping.Dispose();
+            _polling = null;
+            _listening = null;
+            _cleaning = null;
+        }
+    }
+
+    public ValueTask DisposeAsync() => new(UnsubscribeAsync());
+
+    public void Dispose()
+    {
+        // Stops without waiting for a poll in progress to finish
+        Volatile.Write(ref _connectionState, (int)BackplaneState.Disconnected);
+        var stopping = Interlocked.Exchange(ref _stopping, null);
+        if (stopping == null) return;
+        stopping.Cancel();
+        stopping.Dispose();
+    }
+
+    private async Task PublishAsync(BackplaneMessage message, CancellationToken cancellationToken)
+    {
+        var wire = BackplaneWire.Encode(message);
+        using var command = _dataSource.CreateCommand(_publishSql);
+        command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+        command.Parameters.Add(Text(InstanceId));
+        command.Parameters.Add(new NpgsqlParameter<short> { NpgsqlDbType = NpgsqlDbType.Smallint, TypedValue = BackplaneWire.Version });
+        command.Parameters.Add(Text(wire));
+        command.Parameters.Add(Text(Channel));
+        // Without a cursor row (before any instance of the prefix polled, or after a crash) nothing was written
+        for (var attempt = 0; ; attempt++)
+        {
+            if (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) != null) return;
+            if (attempt > 0) throw new InvalidOperationException("The MethodCache invalidation cursor in PostgreSQL disappeared while publishing.");
+            await RegisterAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Polls at once, then every interval, and at once when a notification rings the doorbell.</summary>
+    private async Task PollAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(_options.BackplanePollingInterval, _timeProvider);
+        Task<bool>? tick = null;
+        // The first poll finds where to start before any notification arrives, so the first one already delivers
+        var due = true;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            tick ??= timer.WaitForNextTickAsync(cancellationToken).AsTask();
+            var doorbell = Volatile.Read(ref _doorbell).Task;
+            if (!due && await Task.WhenAny(tick, doorbell).ConfigureAwait(false) == tick)
+            {
+                if (!await tick.ConfigureAwait(false)) return;
+                tick = null;
+            }
+
+            due = false;
+
+            // A notification after this point rings the new doorbell, so it is never lost between two polls
+            Interlocked.Exchange(ref _doorbell, NewDoorbell());
+            var notified = Interlocked.Exchange(ref _notified, 0) != 0;
+            try
+            {
+                var foreign = await PollOnceAsync(onMessage, cancellationToken).ConfigureAwait(false);
+                CheckNotifications(foreign, notified);
+                if (_failing)
+                {
+                    _failing = false;
+                    _logger.LogInformation("The MethodCache backplane reads invalidations from PostgreSQL again.");
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                // The rows stay in the table, so the next poll picks up whatever this one missed
+                if (!_failing)
+                {
+                    _failing = true;
+                    _logger.LogWarning("The MethodCache backplane could not read invalidations from PostgreSQL; retrying every {Interval}. Error type: {ErrorType}.",
+                        _options.BackplanePollingInterval, ex.GetType().FullName);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Warns once when <c>LISTEN</c> seems connected but other instances' invalidations keep arriving without a
+    /// notification, as behind a pooler in transaction mode: they then arrive with polling only.
+    /// </summary>
+    private void CheckNotifications(bool foreign, bool notified)
+    {
+        if (!foreign || notified || !Listening)
+        {
+            if (notified) _silentPolls = 0;
+            return;
+        }
+
+        if (++_silentPolls >= SilentPollsBeforeWarning && !_silentWarning)
+        {
+            _silentWarning = true;
+            _logger.LogWarning("MethodCache receives no PostgreSQL notifications for invalidations other instances write, so they arrive within {Interval} by polling. LISTEN needs a direct connection or a pooler in session mode.",
+                _options.BackplanePollingInterval);
+        }
+    }
+
+    /// <summary>Reads and delivers new invalidations. Returns whether any came from another instance.</summary>
+    internal async Task<bool> PollOnceAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken)
+    {
+        var answered = true;
+        try
+        {
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            if (_lastId == null)
+            {
+                // First poll: start after the invalidations written before this instance subscribed, with a margin, since
+                // it may have cached values since then. The cursor row is created first, so its generation is known.
+                await RegisterAsync(cancellationToken).ConfigureAwait(false);
+                var (start, generation, outage) = await ReadStartAsync(cancellationToken).ConfigureAwait(false);
+                if (outage)
+                {
+                    // Rows this instance never read may already be deleted
+                    _logger.LogWarning("The MethodCache backplane could not read invalidations since it started; it clears this instance's in-memory cache.");
+                    await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+                }
+
+                _lastId = start;
+                _generation = generation;
+                _pendingBatch = null;
+                _lastPolled = now;
+            }
+            else if (now - _lastPolled >= _options.BackplaneRetention / 2)
+            {
+                // After a longer outage, rows this instance never read may already be deleted
+                _logger.LogWarning("The MethodCache backplane could not read invalidations for {Outage}; it clears this instance's in-memory cache.", now - _lastPolled);
+                await StartOverAsync(onMessage, await ReadAsync(long.MaxValue, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                _lastPolled = now;
+            }
+
+            var foreign = false;
+            var caughtUp = false;
+            for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
+            {
+                var pending = _pendingBatch ??= await ReadAsync(_lastId!.Value, cancellationToken).ConfigureAwait(false);
+                if (pending.Generation != _generation || pending.Cursor < _lastId)
+                {
+                    // A crash emptied the cursor table, or a failover or restore brought another copy of it: the
+                    // database may have lost invalidations this instance hasn't read
+                    _logger.LogWarning("The MethodCache invalidation cursor in PostgreSQL was reset (crash, failover or restore); clearing this instance's in-memory cache.");
+                    if (pending.Generation == null)
+                    {
+                        await RegisterAsync(cancellationToken).ConfigureAwait(false);
+                        pending = await ReadAsync(long.MaxValue, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    await StartOverAsync(onMessage, pending).ConfigureAwait(false);
+                    caughtUp = true;
+                    break;
+                }
+
+                foreign |= pending.Messages.Count > 0;
+                while (pending.DeliveredCount < pending.Messages.Count)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await DeliverAsync(onMessage, pending, cancellationToken).ConfigureAwait(false);
+                    pending.DeliveredCount++;
+                    pending.FailedAttempts = 0;
+                }
+
+                _lastId = pending.LastId;
+                _pendingBatch = null;
+                if (pending.Rows < BatchSize)
+                {
+                    caughtUp = true;
+                    break;
+                }
+            }
+
+            // Rows still unread after the batch limit may date back to when this instance last caught up, so only
+            // catching up restarts the clock that decides when they may be deleted unread
+            if (caughtUp) _lastPolled = now;
+            return foreign;
+        }
+        catch { answered = false; throw; }
+        finally
+        {
+            Volatile.Write(ref _connectionState, (int)(answered && !cancellationToken.IsCancellationRequested
+                ? BackplaneState.Connected : BackplaneState.Disconnected));
+        }
+    }
+
+    /// <summary>
+    /// Delivers the next message of <paramref name="pending"/>. After <see cref="MaxDeliveryAttempts"/> failed polls
+    /// it gives up on that message and clears the subscriber's memory instead, since skipping an invalidation would
+    /// leave the value it removes behind. A failed clear throws, so it is tried again on the next poll.
+    /// </summary>
+    private async Task DeliverAsync(Func<BackplaneMessage, Task> onMessage, PendingBatch pending, CancellationToken cancellationToken)
+    {
+        var message = pending.Messages[pending.DeliveredCount];
+        if (pending.FailedAttempts < MaxDeliveryAttempts)
+        {
+            try
+            {
+                await onMessage(message).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested && ++pending.FailedAttempts < MaxDeliveryAttempts)
+            {
+                throw;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("The MethodCache backplane could not apply a {Type} invalidation after {Attempts} attempts; it clears this instance's in-memory cache instead. Error type: {ErrorType}.",
+                    message.Type, MaxDeliveryAttempts, ex.GetType().FullName);
+            }
+        }
+
+        await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Where the first poll starts. The time since subscribing is measured once the connection is this instance's, so
+    /// time spent waiting for one in the pool doesn't move the start past invalidations written meanwhile. After half
+    /// the retention or more, rows written since may already be deleted: then it starts from now, and the caller clears.
+    /// </summary>
+    private async Task<(long Start, CursorGeneration? Generation, bool Outage)> ReadStartAsync(CancellationToken cancellationToken)
+    {
+        var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using (connection.ConfigureAwait(false))
+        {
+            var unread = _timeProvider.GetElapsedTime(_subscribedAt);
+            var outage = unread >= _options.BackplaneRetention / 2;
+            using var command = new NpgsqlCommand(_startSql, connection);
+            command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+            command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = outage ? TimeSpan.Zero : unread + FirstPollMargin });
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using (reader.ConfigureAwait(false))
+            {
+                await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                return (reader.GetInt64(0), ReadGeneration(reader, 1), outage);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clears the subscriber's memory and reads on after <paramref name="snapshot"/>'s cursor: everything committed up
+    /// to it is covered by the clear, everything after it has a higher id. The snapshot is read before the clear.
+    /// </summary>
+    private async Task StartOverAsync(Func<BackplaneMessage, Task> onMessage, PendingBatch snapshot)
+    {
+        // A failed clear must be attempted again; none of the snapshot is acknowledged beforehand
+        await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+        _lastId = snapshot.Cursor;
+        _generation = snapshot.Generation;
+        _pendingBatch = null;
+    }
+
+    private async Task RegisterAsync(CancellationToken cancellationToken)
+    {
+        using var command = _dataSource.CreateCommand(_registerSql);
+        command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+        command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = _options.BackplaneRetention });
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads the cursor, its generation and the invalidations after <paramref name="after"/>.</summary>
+    private async Task<PendingBatch> ReadAsync(long after, CancellationToken cancellationToken)
+    {
+        var lastId = after;
+        var messages = new List<BackplaneMessage>();
+        var rows = 0;
+        long cursor = 0;
+        CursorGeneration? generation = null;
+        using var command = _dataSource.CreateCommand(_pollSql);
+        command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+        command.Parameters.Add(new NpgsqlParameter<long> { NpgsqlDbType = NpgsqlDbType.Bigint, TypedValue = after });
+        var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        await using (reader.ConfigureAwait(false))
+        {
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                cursor = reader.GetInt64(0);
+                generation = ReadGeneration(reader, 1);
+                if (reader.IsDBNull(3)) break;
+                rows++;
+                lastId = reader.GetInt64(3);
+                AddMessage(reader.GetString(4), reader.GetInt16(5), reader.GetString(6), messages);
+            }
+        }
+
+        return new PendingBatch(messages, rows, lastId, cursor, generation);
+    }
+
+    /// <summary>The cursor row's generation and the table it is in, or null without a cursor row.</summary>
+    private static CursorGeneration? ReadGeneration(NpgsqlDataReader reader, int ordinal)
+        => reader.IsDBNull(ordinal) ? null : new CursorGeneration(reader.GetGuid(ordinal), reader.GetFieldValue<uint>(ordinal + 1));
+
+    private void AddMessage(string instanceId, short type, string wire, List<BackplaneMessage> messages)
+    {
+        if (instanceId == InstanceId) return;
+        var message = CreateWireMessage(type, wire, instanceId);
+        if (message == null)
+        {
+            if (Interlocked.Exchange(ref _rejectedWarning, 1) == 0)
+                _logger.LogWarning("Rejected an incompatible or malformed MethodCache backplane frame; clearing this instance's memory.");
+            message = new BackplaneMessage { Type = BackplaneMessageType.ClearAll };
+        }
+
+        messages.Add(message);
+    }
+
+    internal static BackplaneMessage? CreateWireMessage(short type, string wire, string instanceId)
+        => type == BackplaneWire.Version && BackplaneWire.TryDecode(wire, out var message) && message.InstanceId == instanceId ? message : null;
+
+    /// <summary>
+    /// Deletes this prefix's old invalidations when the instance subscribes and then every minute, apart from polling:
+    /// deleting a large backlog (after a burst an hour ago, say) can take a while, and must not hold back delivery.
+    /// </summary>
+    private async Task CleanupAsync(CancellationToken cancellationToken)
+    {
+        var logged = false;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await CleanupOnceAsync(cancellationToken).ConfigureAwait(false);
+                logged = false;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Rows are only kept longer, and the next round deletes them. While polling fails too, that warning
+                // already says PostgreSQL can't be reached.
+                if (!logged && !_failing)
+                {
+                    logged = true;
+                    _logger.LogWarning("The MethodCache backplane could not delete old invalidations from PostgreSQL; it tries again in {Interval}. Error type: {ErrorType}.",
+                        CleanupInterval, ex.GetType().FullName);
+                }
+            }
+
+            try
+            {
+                await Task.Delay(CleanupInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    internal async Task CleanupOnceAsync(CancellationToken cancellationToken)
+    {
+        await RegisterAsync(cancellationToken).ConfigureAwait(false);
+
+        // Small batches keep locks short; repeat until the table is caught up, however fast rows are written
+        for (var batch = 0; batch < MaxCleanupBatches; batch++)
+        {
+            using var command = _dataSource.CreateCommand(_cleanupSql);
+            command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+            command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = _options.BackplaneRetention });
+            if (await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) < CleanupBatchSize) return;
+        }
+    }
+
+    /// <summary>
+    /// Keeps one connection listening on <see cref="Channel"/>, reconnecting with backoff. Notifications from
+    /// this instance are ignored; every other one rings the poll's doorbell.
+    /// </summary>
+    private async Task ListenAsync(CancellationToken cancellationToken)
+    {
+        var retry = FirstListenRetry;
+        var failing = false;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var connection = new NpgsqlConnection(_connection.ListenConnectionString);
+                await using (connection.ConfigureAwait(false))
+                {
+                    connection.Notification += OnNotification;
+                    await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                    using (var listen = new NpgsqlCommand("LISTEN " + PostgreSqlOptions.Quote(Channel), connection))
+                        await listen.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    Listening = true;
+                    // Invalidations written while this instance was not listening rang no doorbell: read them now
+                    Volatile.Read(ref _doorbell).TrySetResult();
+                    retry = FirstListenRetry;
+                    if (failing)
+                    {
+                        failing = false;
+                        _logger.LogInformation("The MethodCache backplane receives PostgreSQL notifications again.");
+                    }
+
+                    while (true) await connection.WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Polling still delivers every invalidation; only the shortcut is gone until the connection is back
+                if (!failing)
+                {
+                    failing = true;
+                    _logger.LogWarning("The MethodCache backplane lost its PostgreSQL LISTEN connection; invalidations arrive by polling every {Interval} until it reconnects. Error type: {ErrorType}.",
+                        _options.BackplanePollingInterval, ex.GetType().FullName);
+                }
+            }
+            finally
+            {
+                Listening = false;
+            }
+
+            try
+            {
+                await Task.Delay(retry, _timeProvider, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            retry = TimeSpan.FromTicks(Math.Min(retry.Ticks * 2, MaxListenRetry.Ticks));
+        }
+    }
+
+    private void OnNotification(object sender, NpgsqlNotificationEventArgs e)
+    {
+        if (e.Payload == InstanceId) return;
+        Volatile.Write(ref _notified, 1);
+        Volatile.Read(ref _doorbell).TrySetResult();
+    }
+
+    private static TaskCompletionSource NewDoorbell() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static NpgsqlParameter<string> Text(string value) => new() { NpgsqlDbType = NpgsqlDbType.Text, TypedValue = value };
+
+    /// <summary>The rows of one prefix: the SHA-256 of its exact UTF-16 code units.</summary>
+    internal static byte[] GetScope(string prefix) => SHA256.HashData(LosslessUtf16.GetBytes(prefix));
+
+    /// <summary>
+    /// A channel per prefix and invalidations table, so instances are not woken by tables or prefixes they don't
+    /// read. 44 lowercase characters, within PostgreSQL's 63-byte identifiers.
+    /// </summary>
+    internal static string GetChannel(PostgreSqlOptions options, byte[] scope)
+    {
+        var table = Encoding.UTF8.GetBytes(options.QualifiedInvalidationsTableName);
+        var hash = SHA256.HashData([.. scope, .. table]);
+        return "methodcache_" + Convert.ToHexStringLower(hash.AsSpan(0, 16));
+    }
+
+    /// <summary>
+    /// Changes when the cursor row is created anew (after a crash, a failover, a restore or a TRUNCATE) or its table is.
+    /// </summary>
+    private readonly record struct CursorGeneration(Guid Id, uint Table);
+
+    private sealed record PendingBatch(List<BackplaneMessage> Messages, int Rows, long LastId, long Cursor, CursorGeneration? Generation)
+    {
+        public int DeliveredCount { get; set; }
+
+        /// <summary>Polls in which the message at <see cref="DeliveredCount"/> failed.</summary>
+        public int FailedAttempts { get; set; }
+    }
+}

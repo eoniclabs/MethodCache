@@ -214,11 +214,11 @@ policy in code, and the change applies to the next call. See [Configuration](doc
 
 <!-- snippet: readme-distributed -->
 ```cs
-builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));       // or mc.UseSqlServer(connectionString)
+builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));       // or mc.UseSqlServer / mc.UsePostgreSql(connectionString)
 ```
 <!-- endSnippet -->
 
-Results live in memory and in Redis (or SQL Server, or your own cache, see
+Results live in memory and in Redis (or SQL Server or PostgreSQL, see
 [Distributed cache](docs/features/distributed-cache.md)).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 Values are JSON by default; a method whose results JSON can't read back unchanged (private setters, a derived type,
@@ -274,7 +274,7 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
-that URL. `AddHttpCaching` requires `AddMethodCache`. Configured native Redis or SQL Server stores HTTP responses
+that URL. `AddHttpCaching` requires `AddMethodCache`. Configured native Redis, SQL Server or PostgreSQL stores HTTP responses
 exclusively in MethodCache's owned L2; otherwise Core uses its separate `MaxHttpBytes` budget (100 MiB by default).
 Shared atomic generations prevent late old responses becoming visible after a confirmed mutation, even without
 backplane delivery. Graceful async disposal drains HTTP invalidation recovery and reports any unconfirmed targets
@@ -350,7 +350,7 @@ hit-only comparison.
 | Stampede protection | ✅ | ✅ | ✅ |
 | Fail-safe and soft timeouts | ✅ | ❌ | ✅ |
 | Memory + distributed cache | ✅ | ✅ | ✅ |
-| Other instances drop their memory copy | ✅ Redis (pub/sub), SQL Server (polling, ~1 s) | ❌ | ✅ |
+| Other instances drop their memory copy | ✅ Redis (pub/sub), PostgreSQL (NOTIFY), SQL Server (polling, ~1 s) | ❌ | ✅ |
 | Tag invalidation | ✅ with argument templates | ✅ | ✅ |
 | Change a method's policy from appsettings.json or at runtime | ✅ | ❌ | ❌ |
 | Admin endpoints and health check | ✅ | ❌ | ❌ |
@@ -368,6 +368,7 @@ Requires .NET 10 and the .NET 10 SDK. The pre-1.0 packages no longer target .NET
 | `MethodCache` | Core, source generator and analyzers. Start here |
 | [`MethodCache.Redis`](src/MethodCache.Redis/README.md) | Redis as the distributed cache, with a pub/sub backplane |
 | [`MethodCache.SqlServer`](src/MethodCache.SqlServer/README.md) | SQL Server as the distributed cache, with a polling backplane |
+| [`MethodCache.PostgreSql`](src/MethodCache.PostgreSql/README.md) | PostgreSQL as the distributed cache, with a `LISTEN`/`NOTIFY` backplane |
 | [`MethodCache.AspNetCore`](src/MethodCache.AspNetCore/README.md) | Admin endpoints and a health check |
 | [`MethodCache.OpenTelemetry`](src/MethodCache.OpenTelemetry/README.md) | Tracing and metrics |
 | [`MethodCache.Serialization.MessagePack`](src/MethodCache.Serialization.MessagePack/README.md) | MessagePack instead of JSON in the distributed cache |
@@ -387,7 +388,7 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
   [security](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
-- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md)
+- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md)
 - [Console tour, including HttpClient caching](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 - Using a coding agent? Give it [docs/ai/methodcache.md](docs/ai/methodcache.md). [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt) have the docs for language models, and `context7.json` lets Context7 index them.
 
@@ -413,7 +414,7 @@ A keyed `ICacheManager` registration remains independent of the default unkeyed 
 
 Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Registrations of one interface with different implementation types under the same service key each cache their own results too: their keys carry the implementation type. Two registrations of the same implementation type share their results. A constructor parameter marked `[ServiceKey]` receives the application's key. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
 
-Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; `CacheWhen` in defaults or a group; and a tag template that names no parameter of a method it applies to. `UseRedis` and `UseSqlServer` together throw in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
+Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; `CacheWhen` in defaults or a group; and a tag template that names no parameter of a method it applies to. Calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

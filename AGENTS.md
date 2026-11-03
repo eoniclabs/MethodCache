@@ -7,12 +7,13 @@ Read this before changing the repository. It is written for human contributors a
   - `MethodCache.Core`: Core APIs, attributes, in-memory cache. Packs as the `MethodCache` package, which also carries the generator and analyzers.
   - `MethodCache.SourceGenerator`: Roslyn source generator for decorators (shipped inside `MethodCache`).
   - `MethodCache.Analyzers`: Compile-time checks and diagnostics (shipped inside `MethodCache`).
-  - `MethodCache.Redis`, `MethodCache.SqlServer`: distributed cache (L2) with a backplane.
+  - `MethodCache.Redis`, `MethodCache.SqlServer`, `MethodCache.PostgreSql`: distributed cache (L2) with a backplane.
   - `MethodCache.Serialization.MessagePack`, `MethodCache.AspNetCore`, `MethodCache.OpenTelemetry`, `MethodCache.HttpCaching`: optional add-ons.
-- `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and three CI-only programs: `MethodCache.AotSmokeTest` (Native AOT), `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package) and `MethodCache.PackageSmokeTest.AddOns` (installs the six add-on packages and uses each one in an app, with Redis and SQL Server from `METHODCACHE_REDIS_URL` and `METHODCACHE_SQLSERVER_CONNECTION`). Both package tests read `artifacts/packages`; run `dotnet pack MethodCache.sln -c Release -o artifacts/packages` first.
+- `tests/`: xUnit unit tests (`*.Tests`), Docker-backed integration tests (`*.IntegrationTests`), and three CI-only programs: `MethodCache.AotSmokeTest` (Native AOT), `MethodCache.PackageSmokeTest` (installs the packed `MethodCache` package) and `MethodCache.PackageSmokeTest.AddOns` (installs the seven add-on packages and uses each one in an app, with Redis, SQL Server and PostgreSQL from `METHODCACHE_REDIS_URL`, `METHODCACHE_SQLSERVER_CONNECTION` and `METHODCACHE_POSTGRESQL_CONNECTION`). Both package tests read `artifacts/packages`; run `dotnet pack MethodCache.sln -c Release -o artifacts/packages` first.
 - `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`). It also runs the console/web demo scenarios, including Docker-backed Redis tests (`Category=RedisDemo`); the `unit` CI job excludes that category.
 - `samples/`: `MethodCache.Demo` (an eleven-chapter console tour including HttpClient caching, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
 - `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.
+- `benchmarks/MethodCache.L2Bench`: Redis, SQL Server and PostgreSQL as the distributed cache, side by side (needs the three servers).
 
 ## Build, Test, Run
 - Restore: `dotnet restore`
@@ -42,7 +43,7 @@ Read this before changing the repository. It is written for human contributors a
   - A distributed cache or backplane that hangs, fails or loses messages: `tests/MethodCache.Core.Tests/FaultInjection`.
   - Isolation between users, authorization, telemetry contents and untrusted input: the security tests, with the threat list in `docs/security.md` kept in step.
   - Behavior the docs promise: a test in `tests/MethodCache.Docs.Tests`.
-- Integration: see `docs/developer/INTEGRATION_TEST_STRATEGY.md` for where the Redis and SQL Server come from.
+- Integration: see `docs/developer/INTEGRATION_TEST_STRATEGY.md` for where the Redis, SQL Server and PostgreSQL come from.
 
 ## Commits & Pull Requests
 - Commits: Imperative present tense (e.g., "Refactor X", "Add Y"); small, focused; include rationale in body when helpful.

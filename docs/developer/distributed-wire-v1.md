@@ -20,7 +20,8 @@ timestamps reject the frame. Unknown optional fields are skipped after validatin
 Each rejection clears local cached data and emits a payload-free warning once per provider instance.
 This does not repair messages the transport never delivered. Key, tag, method and clear are separate
 operations; application text, including NUL or a method-marker-looking tag, never selects an internal one.
-SQL stores envelope version 1 in MessageType and the same envelope text in Target; row sender must match.
+SQL Server and PostgreSQL store envelope version 1 in the message-type column and the same envelope text in the target
+column; row sender must match.
 
 ## Metadata and epochs
 
@@ -32,7 +33,8 @@ bytes (the .NET Guid byte representation), and u64 BE revision; future trailing 
 Ensure initializes only missing epoch state. Advance increments every time; after overflow or missing state
 it uses a fresh initialization ID. An old/retried Advance can increment again but cannot restore an older
 ID. Redis compares/increments bytes in single-key Lua operations, including beyond Lua's exact numeric
-range. SQL uses key/range update locks and two unsigned 32-bit revision halves. Updating a marked method
+range. SQL Server uses key/range update locks and two unsigned 32-bit revision halves. PostgreSQL reads, compares and
+writes the stamp in one `INSERT ... ON CONFLICT DO UPDATE`, under that row's lock. Updating a marked method
 tag/clear stamp advances its HTTP revision in the same operation. Marked metadata has no TTL.
 
 A scope's permanent retention contract is established on first use. A shorter node configuration is rejected.
@@ -49,7 +51,7 @@ Header: version u8; kind u8 (null/value plus explicit-set bit); flags u16 LE; ex
 load-start, first-publication, logical deadline, physical deadline as four i64 LE Unix millisecond values;
 tag count i32 LE (0–10,000); extensions; length-prefixed UTF-16 LE tags; content-type length u8 and bytes;
 serialized payload. Unknown mandatory flags and malformed frames become misses. Every read checks the
-logical key tombstone, even for entries written by another post format. Native Redis/SQL providers batch
+logical key tombstone, even for entries written by another post format. Native Redis, SQL Server and PostgreSQL providers batch
 value and tombstone retrieval; fallback test stores retain separate per-operation timeouts.
 
 Deadlines are bounded from source start by common metadata retention minus skew. Physical store expiry

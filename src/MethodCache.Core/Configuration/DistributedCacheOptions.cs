@@ -82,7 +82,7 @@ namespace MethodCache
 
         /// <summary>
         /// The longest a single distributed cache operation may take. A slower one is abandoned and counts as a
-        /// failure, so a hanging Redis or SQL Server never holds up a call for longer than this. Default 1 second.
+        /// failure, so a hanging Redis, SQL Server or PostgreSQL never holds up a call for longer than this. Default 1 second.
         /// </summary>
         public TimeSpan OperationTimeout
         {

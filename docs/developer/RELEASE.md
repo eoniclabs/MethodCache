@@ -20,7 +20,7 @@ go-ahead for that release. Use `--github` to select GitHub Packages instead.
 
 ### The packages
 
-- [ ] `build/ci/linux.sh build packages` (it packs them first): all seven packages install and work in a fresh app,
+- [ ] `build/ci/linux.sh build packages` (it packs them first): all eight packages install and work in a fresh app,
   with the supported .NET 10 SDK and runtime.
 - [ ] The version is right for the change (`release.sh` sets it in `version.json`): a breaking change after 1.0
   needs a new major version.
@@ -89,7 +89,7 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
    and pushes them and their symbol packages to nuget.org using BWS (see the configuration below).
    Running it again is safe: versions already published are skipped
    (`./release.sh --retry <version>` prints the command again).
-3. **Check all seven packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
+3. **Check all eight packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
    symbols. Do this for `rc.1` before advancing the release. Verify symbol-server retrieval of the portable
    PDBs; an accepted upload alone does not prove symbol indexing succeeded.
 4. **Write the GitHub release** for the tag, with the version's section from [CHANGELOG.md](../../CHANGELOG.md).
@@ -109,7 +109,7 @@ the version commit; do not use it to recover a NuGet release.
 ### NuGet credentials and symbols
 
 `build/ci/publish.sh v1.0.0` selects NuGet; `--nuget` is also accepted. It checks the
-`MethodCache CI` status, seven package versions and their seven `.snupkg` companions, then retrieves `METHODCACHE_NUGET_ORG_API_KEY` from
+`MethodCache CI` status, eight package versions and their eight `.snupkg` companions, then retrieves `METHODCACHE_NUGET_ORG_API_KEY` from
 Bitwarden Secrets Manager (BWS) and pushes to `https://api.nuget.org/v3/index.json` with `--skip-duplicate`.
 It does not require GitHub's `write:packages` scope for this destination.
 
@@ -140,7 +140,7 @@ directly to BWS through the web app or SDK, update the secret reference, and ver
 the previous key. Never paste a token into logs, shell arguments, or Git. A future migration to Trusted
 Publishing can remove recurring key rotation when the publishing platform supports it.
 
-After uploading, check all seven packages, their versions and their `eoniclabs` ownership on nuget.org once
+After uploading, check all eight packages, their versions and their `eoniclabs` ownership on nuget.org once
 indexing completes. GitHub-only `release.sh --status` and `--cleanup` do not track or remove NuGet releases.
 
 For this destination, missing `bws` or `jq` produces a named prerequisite error. An old SDK or

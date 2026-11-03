@@ -18,7 +18,7 @@ public class BuilderIntegrationTests
     }
 
     [Fact]
-    public void StartupBuilder_ConfiguredRedisAndSqlServer_RegistersOwnedStorage()
+    public void StartupBuilder_ConfiguredRedisSqlServerAndPostgreSql_RegistersOwnedStorage()
     {
         var redis = new ServiceCollection();
         redis.AddMethodCache(b => b.UseRedis(o => { o.Configuration = "localhost:6379"; o.EnableBackplane = false; }));
@@ -26,6 +26,9 @@ public class BuilderIntegrationTests
         var sql = new ServiceCollection();
         sql.AddMethodCache(b => b.UseSqlServer("Server=localhost;Database=MethodCache;Integrated Security=True;TrustServerCertificate=True"));
         Assert.Contains(sql, descriptor => descriptor.IsKeyedService && descriptor.ServiceType == typeof(Microsoft.Extensions.Caching.Distributed.IDistributedCache));
+        var postgres = new ServiceCollection();
+        postgres.AddMethodCache(b => b.UsePostgreSql("Host=localhost;Database=methodcache"));
+        Assert.Contains(postgres, descriptor => descriptor.IsKeyedService && descriptor.ServiceType == typeof(Microsoft.Extensions.Caching.Distributed.IDistributedCache));
         var configuredSql = new ServiceCollection();
         configuredSql.AddMethodCache(b => b.UseSqlServer(o =>
         {

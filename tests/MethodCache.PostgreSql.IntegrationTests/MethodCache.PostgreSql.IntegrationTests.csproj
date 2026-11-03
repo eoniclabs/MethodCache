@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Npgsql 10 brings the 10.0 Microsoft.Extensions packages -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.9.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageReference Include="FluentAssertions" Version="8.7.0" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.PostgreSql\MethodCache.PostgreSql.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj" />
+    <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../TestSupport/InvalidationStampContract.cs" Link="TestSupport/InvalidationStampContract.cs" />
+    <Compile Include="../TestSupport/EpochBackendContract.cs" Link="TestSupport/EpochBackendContract.cs" />
+    <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
+    <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+    <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
+    <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
+    <Compile Include="../MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs" Link="TestSupport/NativePolicyFaultContract.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../../src/MethodCache.PostgreSql/migrations/*.sql" Link="migrations/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

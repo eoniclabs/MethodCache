@@ -26,6 +26,13 @@ namespace Docs.Distributed
             // end-snippet
         }
 
+        public static void PostgreSql(WebApplicationBuilder builder, string connectionString)
+        {
+            // begin-snippet: distributed-postgresql
+            builder.Services.AddMethodCache(mc => mc.UsePostgreSql(connectionString));   // MethodCache.PostgreSql
+            // end-snippet
+        }
+
         public static void MessagePack(WebApplicationBuilder builder)
         {
             // begin-snippet: distributed-messagepack

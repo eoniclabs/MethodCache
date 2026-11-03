@@ -54,9 +54,9 @@ builder.Services.AddMethodCache(config =>
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`, `Distributed`,
-`Telemetry`, `FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and
-MessagePack packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`. Use one
-distributed cache: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)`, `UseMessagePack` or `UseJson`
+`Telemetry`, `FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server,
+PostgreSQL and MessagePack packages add `UseRedis`, `UseSqlServer`, `UsePostgreSql` and `UseMessagePack`; Core provides
+`UseJson`. Use one distributed cache: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws. `Distributed(...)`, `UseMessagePack` or `UseJson`
 without a distributed cache logs a warning, since they have nothing to apply to. `builder.Services` is the service
 collection, for a package that adds its own `UseXxx` method.
 `Method` on a method without `[Cache]` fails at startup, and on a method that returns nothing (`void`, `Task`,

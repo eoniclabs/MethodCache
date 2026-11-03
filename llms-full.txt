@@ -26,7 +26,7 @@ Bulk source reads are guarded against key, tag and clear invalidation; invalidat
    `AutoRegister(lifetime)` and exactly one accessible implementation in the selected generated module.
 4. Use `MethodCacheBuilder` for startup, in one `AddMethodCache(mc => mc...)` call: `Defaults`, `Group`, typed
    `Method`, `Memory`, `Distributed`, `Telemetry`, `FromConfiguration`, `FromAssemblyOf<T>()` and the integrations'
-   `UseRedis` / `UseSqlServer` (one of them) / `UseMessagePack`. Don't use `services.Configure<...>` for MethodCache
+   `UseRedis` / `UseSqlServer` / `UsePostgreSql` (one of them) / `UseMessagePack`. Don't use `services.Configure<...>` for MethodCache
    options. Choose a module explicitly when multiple assemblies generate the same interface. Keep all add-on/Core
    versions identical.
 
@@ -103,8 +103,8 @@ builder.Services.AddMethodCache();                               // after your r
   `cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`. For every entry of one method, use
   `ICacheAdministrator.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))`.
 - Several registrations of one interface with different implementation types each cache their own results.
-- Use `UseRedis` or `UseSqlServer`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
-- `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
+- Use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
+- `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL Server/PostgreSQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
 
 ## Namespaces
 
@@ -114,9 +114,9 @@ builder.Services.AddMethodCache();                               // after your r
 - `MethodCache`: also `NoOpCacheManager` (sealed). Serializer, transport and atomic-store interfaces are internal.
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`. Everything else is a method on its builder:
   `FromConfiguration`, `Distributed(...)`, `Telemetry(...)`, `UseRedis` (package `MethodCache.Redis`), `UseSqlServer`
-  (package `MethodCache.SqlServer`) and `UseMessagePack` (package `MethodCache.Serialization.MessagePack`).
+  (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`) and `UseMessagePack` (package `MethodCache.Serialization.MessagePack`).
 
-SQL backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
+SQL Server backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
 
 The public ICacheManager contract is GetOrCreateAsync (a state-passing factory, like HybridCache), TryGetAsync,
 InvalidateKeysAsync and InvalidateTagsAsync, all with the caller token last. CacheEntryOptions is immutable. Custom managers store
@@ -766,7 +766,7 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 
 ## With several instances
 
-With [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
+With [Redis, SQL Server or PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
 tells every instance to drop its in-memory copy. You don't need to do anything else.
 
 
@@ -968,9 +968,9 @@ builder.Services.AddMethodCache(config =>
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`, `Distributed`,
-`Telemetry`, `FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server and
-MessagePack packages add `UseRedis`, `UseSqlServer` and `UseMessagePack`; Core provides `UseJson`. Use one
-distributed cache: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)`, `UseMessagePack` or `UseJson`
+`Telemetry`, `FromConfiguration`, `FromAssemblyOf` and explicit `AutoRegister(lifetime)`. Redis, SQL Server,
+PostgreSQL and MessagePack packages add `UseRedis`, `UseSqlServer`, `UsePostgreSql` and `UseMessagePack`; Core provides
+`UseJson`. Use one distributed cache: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws. `Distributed(...)`, `UseMessagePack` or `UseJson`
 without a distributed cache logs a warning, since they have nothing to apply to. `builder.Services` is the service
 collection, for a package that adds its own `UseXxx` method.
 `Method` on a method without `[Cache]` fails at startup, and on a method that returns nothing (`void`, `Task`,
@@ -1467,9 +1467,9 @@ Concurrent writers with the same variant selection share its namespace, includin
 A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
 the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
 background revalidation that was already in flight can still complete, but it stores its response under the old
-generation, so later requests fetch the updated response. With native Redis or SQL Server configured, the generation is shared by every instance, even when backplane
+generation, so later requests fetch the updated response. With native Redis, SQL Server or PostgreSQL configured, the generation is shared by every instance, even when backplane
 messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
-SQL Server reads already initialized, permanent generation records without rewriting them. Missing or
+SQL Server and PostgreSQL read already initialized, permanent generation records without rewriting them. Missing or
 non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
 The transport retains only its latest bounded command-text shape. It does not cache generation values;
 reordered or duplicate keys still return generations in the caller's order.
@@ -1492,7 +1492,7 @@ lost when the process exits; other nodes may retain old responses until they exp
 `AddHttpCaching` requires an explicit `AddMethodCache` registration in the same container. Either registration
 order works. Without L2, Core uses a separate HTTP byte budget (100 MiB by default), independent of method entries.
 Bodies exceeding the whole HTTP budget remain streamed and are not stored. Headers and metadata are charged too.
-With MethodCache Redis or SQL Server configured, HTTP responses live exclusively in that owned L2; the application's
+With MethodCache Redis, SQL Server or PostgreSQL configured, HTTP responses live exclusively in that owned L2; the application's
 unrelated `IDistributedCache` is never a fallback. HTTP entries use an internal codec, independent of method serializers.
 The former `HttpCacheStorageOptions`, `IHttpCacheStorage` and `HttpCacheEntry` public extension points are removed.
 
@@ -1556,9 +1556,15 @@ builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));   // Metho
 builder.Services.AddMethodCache(mc => mc.UseSqlServer(connectionString));   // MethodCache.SqlServer
 ```
 
+```cs
+builder.Services.AddMethodCache(mc => mc.UsePostgreSql(connectionString));   // MethodCache.PostgreSql
+```
+
 Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
 
 Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+
+The PostgreSQL backplane keeps invalidations in a table, like SQL Server, and announces each one with `NOTIFY`, so other instances read it at once instead of at their next poll. Ids are handed out in commit order, so it needs no gap checks. Its `LISTEN` connection reconnects with the same doubling delay and reads what it missed when it is back; until then, polling delivers every invalidation.
 
 ## How it works
 
@@ -1566,7 +1572,7 @@ Redis backplane recovery retries transient unsubscribe/subscribe failures after 
 flowchart LR
     A([Call a cached method]):::dark --> B{In memory?<br/>L1}
     B -- yes --> R([Return the value]):::amber
-    B -- no --> C{In Redis or<br/>SQL Server? L2}
+    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL? L2}
     C -- yes --> D[Keep it in memory]:::light --> R
     C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
     classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
@@ -1577,11 +1583,11 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant A as Instance A
-    participant L2 as Redis / SQL Server
+    participant L2 as Redis / SQL Server / PostgreSQL
     participant B as Instance B
     A->>A: [CacheInvalidate] or InvalidateTagsAsync
     A->>L2: Remove the key, or stamp the tag
-    A-->>B: Backplane message (pub/sub, or the next poll)
+    A-->>B: Backplane message (pub/sub, NOTIFY, or the next poll)
     B->>B: Drop the in-memory copy
     Note over B: The next call reads L2 or runs the method
 ```
@@ -1590,10 +1596,10 @@ sequenceDiagram
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
-  with Redis pub/sub, or on their next poll (every second by default) with SQL Server.
-- Only Redis and Microsoft SQL Server are supported. Other stores, such as PostgreSQL, are not; the storage
-  interfaces are internal. Use one of them: `UseRedis` and `UseSqlServer` together throw. `Distributed(...)` and
-  `UseMessagePack()` without either log a warning at startup, since they have nothing to apply to.
+  with Redis pub/sub and PostgreSQL `NOTIFY`, or on their next poll (every second by default) with SQL Server.
+- Redis, Microsoft SQL Server and PostgreSQL are supported. Other stores are not; the storage interfaces are
+  internal. Use one of them: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws.
+  `Distributed(...)` and `UseMessagePack()` without one log a warning at startup, since they have nothing to apply to.
 - `[Cache]` methods and `GetOrCreateAsync` need no changes.
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
 
@@ -1655,7 +1661,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to the owned Redis and SQL Server providers:
+`DistributedCacheOptions` apply to the owned Redis, SQL Server and PostgreSQL providers:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc.Distributed(options =>
@@ -1727,7 +1733,7 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 ## Owned storage and compatibility
 
-Use `MethodCacheBuilder.UseRedis` or `UseSqlServer`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
+Use `MethodCacheBuilder.UseRedis`, `UseSqlServer` or `UsePostgreSql`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
 
 `TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
 
@@ -1735,9 +1741,11 @@ Entry keys include the entry format and `SerializerVersion` (default 1); logical
 
 SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
 
+PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server.
+
 Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 
-Redis and SQL Server own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
+Redis, SQL Server and PostgreSQL own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
 keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
 lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
 backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
@@ -1750,7 +1758,7 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 > it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
-> as down and answers from memory. SQL Server removes rows only once they expired.
+> as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.
 
 ## Limits
 
@@ -1760,9 +1768,11 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 
 ## Package guides
 
-The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) and [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) READMEs
-cover their options, shared connections, table creation, outage settings and how each stores keys and invalidations.
-The SQL Server guide also compares the two and has the schema migration for an existing invalidations table.
+The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md), [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) and
+[PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md) READMEs cover their options, shared connections, table creation,
+outage settings and how each stores keys and invalidations. The PostgreSQL guide compares all three; the SQL Server
+guide has the schema migration for an existing invalidations table. [Benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers)
+measures them side by side.
 
 Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
 
@@ -2067,7 +2077,7 @@ Nothing to do: the in-memory cache stores your objects as they are, without seri
 
 ## Distributed caching
 
-Values written to Redis or SQL Server are serialized with System.Text.Json. Under Native AOT it needs a
+Values written to Redis, SQL Server or PostgreSQL are serialized with System.Text.Json. Under Native AOT it needs a
 `JsonSerializerContext` that lists every type your cached methods return:
 
 ```cs
@@ -2212,13 +2222,13 @@ under the same OS user from local credential files.
 | `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
 | A tenant ID is missing from the cache key or invalidation scope | The console tenant example passes an explicit `Guid` tenant ID in the method arguments and tag, and `DemoTenantSecurityTests` verifies distinct results and selective invalidation. Applications must derive and authorize that tenant from the caller's identity. |
 
-## Distributed cache (Redis, SQL Server)
+## Distributed cache (Redis, SQL Server, PostgreSQL)
 
 | Threat | What MethodCache does |
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis or SQL Server | **Not prevented.** They can store any well-formed value, which every instance will serve. Owned Redis and SQL Server providers use backend-atomic maximum stamps and permanent epoch updates; their internal contracts are not application extension points. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. |
+| Someone who can write to Redis, SQL Server or PostgreSQL | **Not prevented.** They can store any well-formed value, which every instance will serve. Owned Redis, SQL Server and PostgreSQL providers use backend-atomic maximum stamps and permanent epoch updates; their internal contracts are not application extension points. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. PostgreSQL stores every key, and each prefix's backplane scope, as the SHA-256 of its exact UTF-16 code units, so NULs and lone surrogates (which PostgreSQL text can't hold) stay distinct. Its notifications carry only the sender's id; the invalidations themselves are read from the table. |
 | Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
@@ -2322,7 +2332,7 @@ Policy-isolation tests reject application keys/tags that imitate internal method
 fingerprints use invariant length-framed UTF-16 and SHA-256; runtime namespaces use 16 random bytes per behavior change.
 Typed method messages retire data without accepting policy from the sender. L2 reads enforce first-publication deadlines,
 null/result predicates and original load-start tombstones, including after delayed transport completion. Format-5 malformed
-header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis and SQL Server.
+header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis, SQL Server and PostgreSQL.
 
 Generated methods always retain their method/service/type scope; the raw-key escape hatch is removed. Dynamic tag arguments use canonical scalar key formatting, keeping null, escaped strings and full-precision temporal values distinct. Reserved metadata keys and tags remain centrally framed and cannot be selected by caller-controlled strings.
 
@@ -2387,7 +2397,7 @@ before joining the reviewed public pool. No production/signing secrets are added
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis or SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  [Redis, SQL Server or PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
   The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
 
@@ -2866,7 +2876,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. PostgreSQL, MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
 
 ## Usage
 
@@ -2967,6 +2977,151 @@ versions fail fast; initialization never silently migrates existing tables.
 
 ---
 
+<!-- source: src/MethodCache.PostgreSql/README.md -->
+
+# MethodCache.PostgreSql
+
+Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+
+Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
+do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
+
+PostgreSQL as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table, announced at once with `LISTEN`/`NOTIFY`.
+
+## Why this package
+
+- **One shared cache for every instance.** Results live in each instance's memory and in PostgreSQL, so a result one instance computed is a hit for the others, and survives restarts.
+- **Invalidation reaches every instance at once.** Invalidating a key or tag removes it from PostgreSQL, and a notification tells every other instance to drop its in-memory copy, typically within milliseconds. A poll every second catches anything a notification missed.
+- **Tags work across instances**, without tag tables: invalidating a tag stores when it happened, stored atomically so a late, older invalidation never undoes a newer one.
+- **No new infrastructure.** If you already run PostgreSQL, the schema and tables are created when the application starts.
+- **Built for speed.** One round trip per read and per new value, prepared statements, new cache values and backplane messages committed without waiting for the disk, and values up to about 8 KB kept in the row. Small values read about as fast as from Redis ([measurements](#performance)).
+- **PostgreSQL never breaks your app.** Calls are capped at one second, a circuit breaker skips PostgreSQL while it is down, and invalidations are queued until it is back.
+
+## PostgreSQL, SQL Server or Redis?
+
+| | PostgreSQL | SQL Server | Redis |
+|---|---|---|---|
+| Infrastructure | The PostgreSQL you already have | The SQL Server you already have | A Redis server |
+| Other instances drop their in-memory copy | At once (`NOTIFY`), with a poll every second as a safety net | On their next poll (every second by default) | At once (pub/sub) |
+| Load when idle | One small query per instance and second | One small query per instance and second | None |
+| Each distributed cache read or write | One prepared statement (two to replace a live value) | A SQL Server query | A Redis command |
+
+Choose PostgreSQL when you already run it; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) for the lowest latency with large values or a very high write rate, or when you would rather keep cache traffic away from your database.
+
+Requires PostgreSQL 13 or later. Provider, atomic metadata and serializer contracts are internal.
+
+## Usage
+
+```cs
+builder.Services.AddMethodCache(mc => mc.UsePostgreSql(builder.Configuration.GetConnectionString("Cache")!));
+```
+
+With options:
+
+```cs
+builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
+{
+    options.ConnectionString = connectionString;
+    options.SchemaName = "cache";
+    options.CreateTablesIfMissing = false;   // tables created by migrations/0001-create-schema.sql
+}));
+```
+
+MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's data sources, `DbContext` and `IDistributedCache` are left alone.
+
+## Tables
+
+By default the schema and four tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if PostgreSQL is down, creation is retried in the background and methods run uncached until it succeeds. Instances that start together create the tables once, under an advisory lock.
+
+- `methodcache` holds the entries: a 32-byte id, the value and its expiry time.
+- `methodcache_schema` contains the schema version (currently 1). Unknown versions are rejected.
+- `methodcache_invalidations` holds recent invalidations for the backplane. Applications that share it are kept apart by `KeyPrefix`.
+- `methodcache_invalidations_cursor` holds one row per `KeyPrefix` that hands out the invalidations' ids in commit order and keeps the longest `BackplaneRetention` of its instances. It is unlogged: recovery from a crash empties it, which tells every instance that the last invalidations may be lost.
+
+If the application's login may not create tables, run the package's [`migrations/0001-create-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/migrations/0001-create-schema.sql) once as a role that may, grant the login `SELECT, INSERT, UPDATE, DELETE` on the four tables, and set `CreateTablesIfMissing = false`. The script is written for the default names; replace them throughout if you configured others.
+
+Existing tables are checked at startup: an incompatible schema is logged as an error and never converted. An error found during the startup wait also fails startup.
+
+## Connection poolers
+
+Cache reads and writes work through any pooler, PgBouncer in transaction mode included. Notifications need a session: each instance holds one extra, unpooled connection for `LISTEN`. Behind PgBouncer in transaction mode a `LISTEN` doesn't survive the transaction, so other instances' invalidations arrive by polling instead, within `BackplanePollingInterval`; MethodCache logs one warning when it sees this. To get them at once, use a session-mode pool or a direct connection string for MethodCache.
+
+## When PostgreSQL is down
+
+MethodCache keeps answering from memory and your methods; PostgreSQL never fails or stalls a call.
+
+- Every PostgreSQL call is capped at `OperationTimeout` (1 second).
+- After a failure or timeout, MethodCache skips PostgreSQL for `CircuitBreakerDuration` (10 seconds), then one call checks whether it is back. The first failure and the recovery are logged.
+- Invalidations that PostgreSQL doesn't accept are queued and retried until it does. They never throw. Until they are stored, this instance doesn't read entries from PostgreSQL, so an invalidated value can't come back.
+- A value set directly while PostgreSQL is down stays in this instance's memory; the value it replaced is removed from PostgreSQL and the other instances once PostgreSQL is back.
+- The `LISTEN` connection reconnects with a delay that doubles from one second to at most 30 seconds; until then, invalidations arrive by polling.
+- `ClockSkewTolerance` (2 seconds) covers servers whose clocks differ: a tag invalidation also applies to entries created up to that long after it.
+
+```cs
+builder.Services.AddMethodCache(mc => mc.Distributed(options =>
+{
+    options.OperationTimeout = TimeSpan.FromMilliseconds(500);
+    options.CircuitBreakerDuration = TimeSpan.FromSeconds(30);
+}));
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `ConnectionString` | (required) | PostgreSQL connection string, in the format Npgsql reads |
+| `SchemaName` | `public` | Schema of the four tables |
+| `TableName` | `methodcache` | Table for cache entries; the schema-version table is named after it |
+| `InvalidationsTableName` | `methodcache_invalidations` | Table the backplane uses; the cursor table is named after it |
+| `ConnectionStringFactory` | none | Resolves a connection string once from DI at binding |
+| `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
+| `EnableBackplane` | `true` | Share invalidations with other instances |
+| `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations when no notification arrived |
+| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute. Instances that share a `KeyPrefix` keep them as long as the longest retention any of them has used |
+
+Names are used exactly as written (quoted), at most 63 bytes, less the suffix of the tables and indexes named after them.
+
+## Performance
+
+Medians on one machine (4 vCPU, PostgreSQL 17, Redis 7.4 and SQL Server 2022 in containers next to the app):
+
+| | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| Read, 256 B | 0.30 ms | 0.27 ms | 1.09 ms |
+| Write a new key, 256 B | 0.32 ms | 0.30 ms | 2.61 ms |
+| Replace a live value, 256 B | 1.08 ms | 0.29 ms | 2.60 ms |
+| `[Cache]` method, hit in the distributed cache | 0.71 ms | 0.64 ms | 1.65 ms |
+| `[Cache]` method, miss | 1.85 ms | 1.09 ms | 6.29 ms |
+| Tag invalidation until another instance runs the method again | 9.3 ms | 2.6 ms | 984 ms |
+
+Replacing a live value waits for the disk, so a crash can't bring back the value it replaced; a miss writes a new
+key, which doesn't. Redis stays ahead with large values and many concurrent callers. See
+[benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers) for
+value sizes, throughput and how they were measured.
+
+## Internals
+
+- Every operation is one statement, one round trip, except replacing a live value (below). Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
+- New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidation stamps and HTTP epochs, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
+- Values are stored as `bytea`, not `jsonb`: they are already serialized (JSON or MessagePack) and never queried, so PostgreSQL stores the bytes without parsing them. Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table; values from about 2 KB are compressed, with lz4 where the server supports it (PostgreSQL 14 and later).
+- Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
+- Keys are stored as the SHA-256 of their exact UTF-16 code units, so keys PostgreSQL text can't hold (NUL characters, lone surrogates) and keys of any length get a fixed-size id.
+- Invalidating a key writes a format-independent logical tombstone and removes the current row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed. Value and tombstone are read in one query.
+- Both also add a row to the invalidations table and `NOTIFY` a channel named after the `KeyPrefix` and table. The notification carries only the sender's id: the table is the truth, and the notification only tells other instances to read it now instead of at their next poll.
+- The cursor row hands out ids in commit order, so a reader never sees a later id before an earlier one commits, and needs no gap tracking.
+- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
+- An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started), or that sees a new cursor (after a crash, a failover or a restore) or the cursor go back, may have missed invalidations, so it clears its in-memory cache.
+- Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than the longest `BackplaneRetention` of that prefix every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
+
+Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
+Initialized permanent HTTP epochs are read without rewriting their rows. Configure the shared scope with
+`DistributedCacheOptions.KeyPrefix`; provider options do not have a separate prefix. The first node establishes a
+common retention bound; shorter settings are rejected.
+
+
+---
+
 <!-- source: src/MethodCache.AspNetCore/README.md -->
 
 # MethodCache.AspNetCore
@@ -3008,7 +3163,7 @@ maps them under `/ops/cache` instead.
 | `GET` | `methods` | Every cached method: its `methodId`, effective policy and where each setting comes from |
 | `GET` | `entries?storedKeyPrefix=&tag=&methodId=&limit=` | Live entries in the memory of the instance that answers, each with its `storedKey` and `methodId`, ordered by `storedKey` (default limit 100, max 1000). `methodId` must be an id that `methods` lists. Values are not returned |
 | `GET` | `entry?storedKey=` | One entry, by the `storedKey` that `entries` lists, in the memory of the instance that answers, or 404 |
-| `DELETE` | `entry?storedKey=` | Removes one entry, also from Redis or SQL Server and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
+| `DELETE` | `entry?storedKey=` | Removes one entry, also from Redis, SQL Server or PostgreSQL and the other instances when configured. 404 only without a distributed cache, when the key isn't in memory |
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `POST` | `invalidate-method` | Removes every entry of one cached method, also from the distributed cache and the other instances. Body: `{ "methodId": "[MyApp]MyApp.IUserService.GetUserAsync" }`, an id that `methods` lists |
 | `POST` | `clear` | Removes every entry. Body: `{}` |
@@ -3295,7 +3450,7 @@ builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 *
 
 ### Sharing responses between instances
 
-Responses use MethodCache's native Redis or SQL Server automatically when configured. Core keeps no local
+Responses use MethodCache's native Redis, SQL Server or PostgreSQL automatically when configured. Core keeps no local
 response or epoch copies in this mode. The application's unrelated `IDistributedCache` is never a fallback.
 Without an owned native transport, responses stay in Core's separate HTTP memory store. Register Core explicitly
 with `AddMethodCache`; either registration order works.
@@ -3365,7 +3520,7 @@ Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCac
 Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
 do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
 
-Stores MethodCache's distributed cache values (Redis or SQL Server) as compact MessagePack
+Stores MethodCache's distributed cache values (Redis, SQL Server or PostgreSQL) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
 
 ## Install
@@ -3382,7 +3537,7 @@ builder.Services.AddMethodCache(mc => mc
     .UseMessagePack());   // MethodCache.Serialization.MessagePack
 ```
 
-Call `UseMessagePack()` with `UseRedis(...)` or `UseSqlServer(...)`, in any order; without either it does nothing and
+Call `UseMessagePack()` with `UseRedis(...)`, `UseSqlServer(...)` or `UsePostgreSql(...)`, in any order; without one it does nothing and
 logs a warning at startup. Entries written in the other format read as misses and are replaced, so switching needs
 no flush.
 
@@ -3415,6 +3570,19 @@ representation. Configure the serializer for your model. Increment method `Versi
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Added
+
+- **`MethodCache.PostgreSql`**: PostgreSQL as the distributed cache, `AddMethodCache(mc => mc.UsePostgreSql(connectionString))`.
+  Invalidations reach other instances at once through `LISTEN`/`NOTIFY`, with the invalidations table as the truth
+  and a poll every second as a safety net, so a lost notification or a pooler in transaction mode only delays them.
+  Every read and every new value is one prepared statement; new cache values and backplane messages are committed
+  without waiting for the disk (replacements of live values and invalidation stamps are not), and values up to about
+  8 KB stay in the row. Small values read about as fast as from Redis. After a crash, a failover or a restore, every
+  instance clears its in-memory cache. The tables are created at startup, or by the package's
+  `migrations/0001-create-schema.sql`. Requires PostgreSQL 13 or later.
 
 ## 1.0.0-rc.2 (2026-10-20)
 
@@ -3978,7 +4146,8 @@ timestamps reject the frame. Unknown optional fields are skipped after validatin
 Each rejection clears local cached data and emits a payload-free warning once per provider instance.
 This does not repair messages the transport never delivered. Key, tag, method and clear are separate
 operations; application text, including NUL or a method-marker-looking tag, never selects an internal one.
-SQL stores envelope version 1 in MessageType and the same envelope text in Target; row sender must match.
+SQL Server and PostgreSQL store envelope version 1 in the message-type column and the same envelope text in the target
+column; row sender must match.
 
 ## Metadata and epochs
 
@@ -3990,7 +4159,8 @@ bytes (the .NET Guid byte representation), and u64 BE revision; future trailing 
 Ensure initializes only missing epoch state. Advance increments every time; after overflow or missing state
 it uses a fresh initialization ID. An old/retried Advance can increment again but cannot restore an older
 ID. Redis compares/increments bytes in single-key Lua operations, including beyond Lua's exact numeric
-range. SQL uses key/range update locks and two unsigned 32-bit revision halves. Updating a marked method
+range. SQL Server uses key/range update locks and two unsigned 32-bit revision halves. PostgreSQL reads, compares and
+writes the stamp in one `INSERT ... ON CONFLICT DO UPDATE`, under that row's lock. Updating a marked method
 tag/clear stamp advances its HTTP revision in the same operation. Marked metadata has no TTL.
 
 A scope's permanent retention contract is established on first use. A shorter node configuration is rejected.
@@ -4007,7 +4177,7 @@ Header: version u8; kind u8 (null/value plus explicit-set bit); flags u16 LE; ex
 load-start, first-publication, logical deadline, physical deadline as four i64 LE Unix millisecond values;
 tag count i32 LE (0–10,000); extensions; length-prefixed UTF-16 LE tags; content-type length u8 and bytes;
 serialized payload. Unknown mandatory flags and malformed frames become misses. Every read checks the
-logical key tombstone, even for entries written by another post format. Native Redis/SQL providers batch
+logical key tombstone, even for entries written by another post format. Native Redis, SQL Server and PostgreSQL providers batch
 value and tombstone retrieval; fallback test stores retain separate per-operation timeouts.
 
 Deadlines are bounded from source start by common metadata retention minus skew. Physical store expiry

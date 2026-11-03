@@ -39,14 +39,20 @@ internal sealed class PolicySubscriptionBarrier(IBackplane inner) : IBackplane, 
     }
     private Task DeliverAsync(BackplaneMessage message)
     {
+        Task<Task> start;
+        Task delivery;
         lock (_deliveryGate)
         {
-            if (_callback == null) return Task.CompletedTask;
-            var delivery = _callback(message);
-            if (!delivery.IsCompletedSuccessfully)
-                _pendingDeliveries = _pendingDeliveries.IsCompleted ? delivery : Task.WhenAll(_pendingDeliveries, delivery);
-            return delivery;
+            var callback = _callback;
+            if (callback == null) return Task.CompletedTask;
+            // Counted as pending here, so unsubscribing waits for it, but run outside the gate: the cache's callback
+            // takes the cache's lifecycle lock, and the cache unsubscribes while holding that lock.
+            start = new Task<Task>(() => callback(message));
+            delivery = start.Unwrap();
+            _pendingDeliveries = _pendingDeliveries.IsCompleted ? delivery : Task.WhenAll(_pendingDeliveries, delivery);
         }
+        start.RunSynchronously(TaskScheduler.Default);
+        return delivery;
     }
     public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
     {

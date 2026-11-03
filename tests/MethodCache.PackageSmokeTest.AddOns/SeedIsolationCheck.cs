@@ -6,11 +6,11 @@ using MethodCache;
 // Only public installed package APIs are used. Neither a seed nor an internal hash is read or exported.
 internal static class SeedIsolationCheck
 {
-    // The SQL Server backplane's first poll also delivers invalidations written up to a second before it subscribed.
+    // The SQL Server and PostgreSQL backplanes' first poll also delivers invalidations written up to a second before it subscribed.
     // One that arrives during or after the worker's first load keeps that value out of memory, so every phase starts
     // once this window has passed: an invalidation publishes one, and so does a load that writes the distributed
     // cache, for nodes that may hold an older value.
-    private static readonly TimeSpan SqlServerReplayWindow = TimeSpan.FromSeconds(1.5);
+    private static readonly TimeSpan ReplayWindow = TimeSpan.FromSeconds(1.5);
 
     internal static async Task<string?> RunAsync(Backend backend)
     {
@@ -19,8 +19,8 @@ internal static class SeedIsolationCheck
         for (var index = 0; index < phases.Length; index++)
         {
             var phase = phases[index];
-            if (backend == Backend.SqlServer && index > 0)
-                await Task.Delay(SqlServerReplayWindow);
+            if (backend != Backend.Redis && index > 0)
+                await Task.Delay(ReplayWindow);
             var executable = Environment.ProcessPath ?? throw new InvalidOperationException("No process executable.");
             var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
             if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
@@ -53,7 +53,7 @@ internal static class SeedIsolationCheck
         {
             if (arguments.Length != 4 || !Enum.TryParse<Backend>(arguments[1], out var backend)) return 2;
             var phase = arguments[3];
-            var variable = backend == Backend.Redis ? "METHODCACHE_REDIS_URL" : "METHODCACHE_SQLSERVER_CONNECTION";
+            var variable = Backends.Variable(backend);
             var connection = Environment.GetEnvironmentVariable(variable);
             if (string.IsNullOrEmpty(connection)) return 3;
             await using var instance = DistributedCheck.CreateInstance(backend, connection, arguments[2], messagePack: false, sameClock: true);

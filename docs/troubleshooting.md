@@ -35,7 +35,7 @@
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis or SQL Server](features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  [Redis, SQL Server or PostgreSQL](features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
   The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](features/fail-safe.md)).
 

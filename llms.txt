@@ -17,7 +17,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Manual caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/manual-caching.md): `GetOrCreateAsync` with a key you choose.
 - [Caching third-party code](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/third-party.md): cache a client from a NuGet package.
 - [HTTP response caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/http-caching.md): `HttpClient` caching with `Cache-Control` and `ETag`.
-- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): owned Redis and SQL Server providers.
+- [Distributed cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/distributed-cache.md): owned Redis, SQL Server and PostgreSQL providers.
 - [Monitoring](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/native-aot.md): what to register when you publish with Native AOT.
@@ -29,6 +29,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Migrating from IMemoryCache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/migration-from-imemorycache.md): replace hand-written cache-aside code.
 - [MethodCache.Redis](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Redis/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 - [MethodCache.SqlServer](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.SqlServer/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+- [MethodCache.PostgreSql](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.PostgreSql/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 - [MethodCache.AspNetCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.AspNetCore/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.

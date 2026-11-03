@@ -11,7 +11,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
-ADDONS = ("MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.Serialization.MessagePack",
+ADDONS = ("MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.PostgreSql", "MethodCache.Serialization.MessagePack",
           "MethodCache.AspNetCore", "MethodCache.OpenTelemetry", "MethodCache.HttpCaching")
 
 

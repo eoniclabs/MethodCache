@@ -99,6 +99,62 @@ cases; the entire eight-case matrix was rerun with fixed invocation counts for t
 The two studies are not pooled. Design-series acceptance remains a separate paired baseline comparison;
 see [the verification record](developer/design-final-validation.md).
 
+## Distributed cache providers (2026-11-03)
+
+Redis, SQL Server and PostgreSQL as MethodCache's distributed cache, side by side, on one cloud machine: 4 vCPU
+(Intel Xeon, 2.8 GHz), .NET 10.0, Redis 7.4, SQL Server 2022 (16.0) and PostgreSQL 17.11, each in a container next to
+the app with host networking and default settings. Absolute numbers include the network hop and four servers sharing
+four cores, so compare the columns rather than the values. Medians (p50) unless noted.
+
+**Each provider's own cache, one call at a time** (3,500 calls each, random bytes):
+
+| | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| Read, 256 B | 0.30 ms | 0.27 ms | 1.09 ms |
+| Read, 4 KB | 0.39 ms | 0.30 ms | 0.95 ms |
+| Read, 64 KB | 0.71 ms | 0.54 ms | 1.67 ms |
+| Read, missing key | 0.26 ms | 0.26 ms | 0.88 ms |
+| Write a new key, 256 B | 0.32 ms | 0.30 ms | 2.61 ms |
+| Write a new key, 4 KB | 0.52 ms | 0.32 ms | 2.47 ms |
+| Write a new key, 64 KB | 1.80 ms | 0.58 ms | 3.64 ms |
+| Replace a live value, 256 B | 1.08 ms | 0.29 ms | 2.60 ms |
+| Replace a live value, 4 KB | 1.60 ms | 0.30 ms | 2.27 ms |
+| Replace a live value, 64 KB | 3.97 ms | 0.49 ms | 3.72 ms |
+
+**Throughput** (1 KB values, 10,000 keys, 90 % reads, for 10 seconds; every write replaces a live value):
+
+| Concurrent callers | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| 1 | 1,500 ops/s | 3,300 ops/s | 1,000 ops/s |
+| 16 | 10,700 ops/s | 39,600 ops/s | 4,000 ops/s |
+| 64 | 13,000 ops/s | 75,100 ops/s | 4,900 ops/s |
+
+**MethodCache end to end** (a generated `[Cache]` decorator, JSON, a 1 KB result; two or three instances):
+
+| | PostgreSQL | Redis | SQL Server |
+|---|---:|---:|---:|
+| In-memory hit | < 1 µs | < 1 µs | < 1 µs |
+| Hit in the distributed cache (in-memory miss) | 0.71 ms | 0.64 ms | 1.65 ms |
+| Miss: read, run the method, write, check, publish | 1.85 ms | 1.09 ms | 6.29 ms |
+| Backplane message from one instance to another | 1.7 ms | 0.8 ms | 527 ms |
+| Tag invalidation until another instance runs the method again | 9.3 ms | 2.6 ms | 984 ms |
+
+PostgreSQL reads small values within about 10 % of Redis, and writes new keys about as fast. Replacing a value that is
+still live costs more: PostgreSQL commits that write only once it is on disk, so a crash can't bring back the value
+it replaced. On this machine's container disk that flush takes about 0.8 ms; a server with a battery-backed write
+cache needs much less. MethodCache writes new keys on a miss (and after a key was invalidated or expired), and
+replaces live values on `SetAsync` and when it reloads a method after a tag invalidation. Every write in the
+throughput test replaces a live value, so each one includes that flush. Larger values and many
+concurrent callers favor Redis, which keeps everything in memory and answers from a single thread without
+transactions; at 64 callers PostgreSQL still does more than twice the work of SQL Server here. Its backplane reaches
+the other instances within milliseconds through `NOTIFY`, where SQL Server waits for the next poll (every second by
+default). Each miss costs four round trips with every provider (read, write, a check that no removal raced the
+write, and a backplane message so other instances drop an older copy), which is where most of the difference between
+the columns in that row comes from.
+
+The console program that measured this is [benchmarks/MethodCache.L2Bench](../benchmarks/MethodCache.L2Bench/README.md).
+It needs all three servers, so CI only builds it.
+
 ## Historical cloud run (2026-10-15)
 
 | Approach | `int` id | Allocated | vs. IMemoryCache by hand | `Guid` id | Allocated | vs. IMemoryCache by hand |

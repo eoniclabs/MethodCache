@@ -215,7 +215,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ArgumentNullException.ThrowIfNull(services);
             ArgumentNullException.ThrowIfNull(cacheFactory);
 
-            // UseRedis and UseSqlServer both end here. A second provider would take over storage while the first
+            // UseRedis, UseSqlServer and UsePostgreSql all end here. A second provider would take over storage while the first
             // one's backplane stayed, so it is rejected; the same provider again only adds to its options.
             var provider = cacheFactory.Method.Module.Assembly;
             if (services.Select(static d => d.ImplementationInstance).OfType<DistributedCacheProvider>().FirstOrDefault() is { } existing)
@@ -224,7 +224,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     throw new InvalidOperationException(
                         $"MethodCache can use one distributed cache (L2), but two were added: one from {existing.Assembly.GetName().Name} " +
-                        $"and one from {provider.GetName().Name}. Call only one of UseRedis or UseSqlServer.");
+                        $"and one from {provider.GetName().Name}. Call only one of UseRedis, UseSqlServer or UsePostgreSql.");
                 }
             }
             else
@@ -237,7 +237,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
-        /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, ...) as well as
+        /// Keeps cached results in the registered <see cref="IDistributedCache"/> (Redis, SQL Server, PostgreSQL, ...) as well as
         /// in memory. An in-memory miss reads the distributed cache before running the method, so instances share
         /// results, and invalidating a key or tag reaches every instance. The registered cache must implement
         /// <see cref="IAtomicInvalidationStore"/> with backend atomic stamp writes; otherwise starting the host
@@ -765,7 +765,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         _warned = true;
                         if (specification?.UnusedDistributedSettings() is { } unused)
-                            logger?.LogWarning("{Settings} nothing without a distributed cache: add UseRedis(...) or UseSqlServer(...) to AddMethodCache, or remove it.", unused);
+                            logger?.LogWarning("{Settings} nothing without a distributed cache: add UseRedis(...), UseSqlServer(...) or UsePostgreSql(...) to AddMethodCache, or remove it.", unused);
                     }
 
                     specification?.Validate();

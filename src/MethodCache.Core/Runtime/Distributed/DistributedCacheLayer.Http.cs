@@ -43,7 +43,7 @@ internal sealed partial class DistributedCacheLayer
 
     internal async ValueTask<CacheEpoch[]?> CaptureHttpEpochsAsync(IReadOnlyList<string> keys, CancellationToken token)
     {
-        if (_epochStore == null) throw new NotSupportedException("HTTP L2 caching requires the native Redis or SQL Server epoch capability.");
+        if (_epochStore == null) throw new NotSupportedException("HTTP L2 caching requires the native Redis, SQL Server or PostgreSQL epoch capability.");
         if (_hasPending || !TryEnter(out var probe) || !await EnsureScopeAsync(probe, token).ConfigureAwait(false)) return null;
         var result = await TryRunAsync(static (layer, addresses, ct) => layer._epochStore!.EnsureEpochsAsync(addresses, ct).AsTask(),
             keys, "read HTTP epochs", probe, token).ConfigureAwait(false);
@@ -52,7 +52,7 @@ internal sealed partial class DistributedCacheLayer
 
     internal async Task<bool> AdvanceHttpSlotAsync(int slot, bool force = false)
     {
-        if (_epochStore == null) throw new NotSupportedException("HTTP L2 caching requires the native Redis or SQL Server epoch capability.");
+        if (_epochStore == null) throw new NotSupportedException("HTTP L2 caching requires the native Redis, SQL Server or PostgreSQL epoch capability.");
         BeginWrite();
         try
         {

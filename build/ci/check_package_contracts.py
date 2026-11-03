@@ -25,7 +25,7 @@ def verify(folder: Path) -> None:
         version = metadata.findtext("n:version", namespaces=ns)
         packages[package_id] = (version, metadata, ns)
     core_version = packages["MethodCache"][0]
-    for package_id in ("MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.Serialization.MessagePack",
+    for package_id in ("MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.PostgreSql", "MethodCache.Serialization.MessagePack",
                        "MethodCache.AspNetCore", "MethodCache.OpenTelemetry", "MethodCache.HttpCaching"):
         version, metadata, ns = packages[package_id]
         assert version == core_version, f"{package_id}: {version} differs from Core {core_version}"
@@ -33,7 +33,7 @@ def verify(folder: Path) -> None:
         assert dependencies, f"{package_id} has no Core dependency"
         for dependency in dependencies:
             assert dependency.attrib["version"] == f"[{core_version}]", f"{package_id}: Core dependency is not exact"
-    print(f"All seven packages target .NET 10 and carry the icon; all six integrations require MethodCache [{core_version}].")
+    print(f"All eight packages target .NET 10 and carry the icon; all seven integrations require MethodCache [{core_version}].")
 
 if __name__ == "__main__":
     verify(Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/packages"))

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TrackPublicApi>true</TrackPublicApi>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>MethodCache.PostgreSql</PackageId>
+    <Title>MethodCache PostgreSQL Provider</Title>
+    <Description>PostgreSQL as MethodCache's distributed cache, with a LISTEN/NOTIFY backplane that keeps every instance's in-memory cache in sync</Description>
+    <PackageTags>cache;methodcache;postgresql;postgres;npgsql;distributed-cache;backplane</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Npgsql 10 needs the 10.0 Microsoft.Extensions packages; this package targets .NET 10 like the rest -->
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.PostgreSql.Tests" />
+    <InternalsVisibleTo Include="MethodCache.PostgreSql.IntegrationTests" />
+    <InternalsVisibleTo Include="MethodCache.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="migrations/*.sql" Pack="true" PackagePath="migrations/" />
+  </ItemGroup>
+</Project>

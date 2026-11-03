@@ -1,0 +1,24 @@
+#nullable enable
+MethodCache.PostgreSql.PostgreSqlOptions
+MethodCache.PostgreSql.PostgreSqlOptions.BackplanePollingInterval.get -> System.TimeSpan
+MethodCache.PostgreSql.PostgreSqlOptions.BackplanePollingInterval.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.BackplaneRetention.get -> System.TimeSpan
+MethodCache.PostgreSql.PostgreSqlOptions.BackplaneRetention.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.ConnectionString.get -> string!
+MethodCache.PostgreSql.PostgreSqlOptions.ConnectionString.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.ConnectionStringFactory.get -> System.Func<System.IServiceProvider!, string!>?
+MethodCache.PostgreSql.PostgreSqlOptions.ConnectionStringFactory.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.CreateTablesIfMissing.get -> bool
+MethodCache.PostgreSql.PostgreSqlOptions.CreateTablesIfMissing.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.EnableBackplane.get -> bool
+MethodCache.PostgreSql.PostgreSqlOptions.EnableBackplane.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.InvalidationsTableName.get -> string!
+MethodCache.PostgreSql.PostgreSqlOptions.InvalidationsTableName.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.PostgreSqlOptions() -> void
+MethodCache.PostgreSql.PostgreSqlOptions.SchemaName.get -> string!
+MethodCache.PostgreSql.PostgreSqlOptions.SchemaName.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.TableName.get -> string!
+MethodCache.PostgreSql.PostgreSqlOptions.TableName.set -> void
+Microsoft.Extensions.DependencyInjection.PostgreSqlMethodCacheBuilderExtensions
+static Microsoft.Extensions.DependencyInjection.PostgreSqlMethodCacheBuilderExtensions.UsePostgreSql(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.PostgreSql.PostgreSqlOptions!>! configure) -> MethodCache.MethodCacheBuilder!
+static Microsoft.Extensions.DependencyInjection.PostgreSqlMethodCacheBuilderExtensions.UsePostgreSql(this MethodCache.MethodCacheBuilder! builder, string! connectionString) -> MethodCache.MethodCacheBuilder!
