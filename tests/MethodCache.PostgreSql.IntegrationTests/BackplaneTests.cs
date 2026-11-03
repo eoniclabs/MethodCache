@@ -396,6 +396,41 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task CursorTableRestoredFromADump_ClearsMemory_ThoughItKeepsTheGeneration()
+    {
+        var options = fixture.Options("dump");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("dumped");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            delivered.Clear();
+
+            // pg_dump copies the unlogged cursor row too, generation included
+            var schema = PostgreSqlOptions.Quote(options.SchemaName);
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"CREATE TABLE {schema}.dump AS SELECT * FROM {options.QualifiedCursorTableName}");
+            await sender.PublishInvalidationAsync("lost");
+
+            // Restored into tables created anew; the next invalidation gets a higher id than this instance read up to
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
+                DELETE FROM {options.QualifiedInvalidationsTableName} WHERE id > (SELECT last_id FROM {schema}.dump);
+                ALTER TABLE {options.QualifiedCursorTableName} RENAME TO replaced;
+                CREATE UNLOGGED TABLE {options.QualifiedCursorTableName} (LIKE {schema}.replaced INCLUDING ALL);
+                INSERT INTO {options.QualifiedCursorTableName} SELECT * FROM {schema}.dump;
+                """);
+            await sender.PublishInvalidationAsync("unrelated");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Contains(delivered, m => m.Type == BackplaneMessageType.ClearAll);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task CursorEmptiedByACrash_ClearsMemory_WhenTheLastInvalidationsWereLost()
     {
         // Invalidations commit asynchronously, so a crash can lose the last ones; recovery also empties the unlogged cursor

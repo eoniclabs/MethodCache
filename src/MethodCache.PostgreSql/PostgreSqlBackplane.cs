@@ -68,7 +68,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private int _silentPolls;
     private bool _silentWarning;
     private long? _lastId;
-    private Guid? _generation;
+    private CursorGeneration? _generation;
     private PendingBatch? _pendingBatch;
     private DateTime _lastPolled;
     private DateTime _nextCleanup;
@@ -116,12 +116,14 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
                     (SELECT max(id) FROM {invalidations} WHERE scope = $1 AND created_at < now() - $2),
                     (SELECT min(id) - 1 FROM {invalidations} WHERE scope = $1),
                     0),
-                (SELECT generation FROM {cursor} WHERE scope = $1)
+                c.generation, c.tableoid
+            FROM (VALUES (1)) AS one (x) LEFT JOIN {cursor} c ON c.scope = $1
             """;
         // One statement, one snapshot: the cursor, its generation, and the rows after the last id read. Without a cursor
-        // row it returns nothing.
+        // row it returns nothing. The table's own id joins the generation: a logical restore (pg_dump) brings the
+        // generation back, but into a table created anew.
         _pollSql = $"""
-            SELECT c.last_id, c.generation, i.id, i.instance_id, i.message_type, i.target
+            SELECT c.last_id, c.generation, c.tableoid, i.id, i.instance_id, i.message_type, i.target
             FROM {cursor} c
             LEFT JOIN LATERAL (
                 SELECT id, instance_id, message_type, target FROM {invalidations}
@@ -431,7 +433,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     /// time spent waiting for one in the pool doesn't move the start past invalidations written meanwhile. After half
     /// the retention or more, rows written since may already be deleted: then it starts from now, and the caller clears.
     /// </summary>
-    private async Task<(long Start, Guid? Generation, bool Outage)> ReadStartAsync(CancellationToken cancellationToken)
+    private async Task<(long Start, CursorGeneration? Generation, bool Outage)> ReadStartAsync(CancellationToken cancellationToken)
     {
         var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using (connection.ConfigureAwait(false))
@@ -445,7 +447,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             await using (reader.ConfigureAwait(false))
             {
                 await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                return (reader.GetInt64(0), reader.IsDBNull(1) ? null : reader.GetGuid(1), outage);
+                return (reader.GetInt64(0), ReadGeneration(reader, 1), outage);
             }
         }
     }
@@ -478,7 +480,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         var messages = new List<BackplaneMessage>();
         var rows = 0;
         long cursor = 0;
-        Guid? generation = null;
+        CursorGeneration? generation = null;
         using var command = _dataSource.CreateCommand(_pollSql);
         command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
         command.Parameters.Add(new NpgsqlParameter<long> { NpgsqlDbType = NpgsqlDbType.Bigint, TypedValue = after });
@@ -488,16 +490,20 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 cursor = reader.GetInt64(0);
-                generation = reader.IsDBNull(1) ? null : reader.GetGuid(1);
-                if (reader.IsDBNull(2)) break;
+                generation = ReadGeneration(reader, 1);
+                if (reader.IsDBNull(3)) break;
                 rows++;
-                lastId = reader.GetInt64(2);
-                AddMessage(reader.GetString(3), reader.GetInt16(4), reader.GetString(5), messages);
+                lastId = reader.GetInt64(3);
+                AddMessage(reader.GetString(4), reader.GetInt16(5), reader.GetString(6), messages);
             }
         }
 
         return new PendingBatch(messages, rows, lastId, cursor, generation);
     }
+
+    /// <summary>The cursor row's generation and the table it is in, or null without a cursor row.</summary>
+    private static CursorGeneration? ReadGeneration(NpgsqlDataReader reader, int ordinal)
+        => reader.IsDBNull(ordinal) ? null : new CursorGeneration(reader.GetGuid(ordinal), reader.GetFieldValue<uint>(ordinal + 1));
 
     private void AddMessage(string instanceId, short type, string wire, List<BackplaneMessage> messages)
     {
@@ -622,7 +628,12 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         return "methodcache_" + Convert.ToHexStringLower(hash.AsSpan(0, 16));
     }
 
-    private sealed record PendingBatch(List<BackplaneMessage> Messages, int Rows, long LastId, long Cursor, Guid? Generation)
+    /// <summary>
+    /// Changes when the cursor row is created anew (after a crash, a failover, a restore or a TRUNCATE) or its table is.
+    /// </summary>
+    private readonly record struct CursorGeneration(Guid Id, uint Table);
+
+    private sealed record PendingBatch(List<BackplaneMessage> Messages, int Rows, long LastId, long Cursor, CursorGeneration? Generation)
     {
         public int DeliveredCount { get; set; }
 
