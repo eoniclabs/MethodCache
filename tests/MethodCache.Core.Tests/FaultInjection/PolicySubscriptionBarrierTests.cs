@@ -46,6 +46,39 @@ public class PolicySubscriptionBarrierTests
     }
 
     [Fact]
+    public async Task Unsubscribe_WhileHoldingALockTheRunningCallbackWaitsFor_DoesNotDeadlock()
+    {
+        // The cache unsubscribes while it holds its lifecycle lock, and its message callback takes that lock
+        var inner = new HeldSubscription();
+        inner.Acknowledge.TrySetResult();
+        // Not disposed at the end: after a deadlock, disposing would wait for it too
+        var barrier = new PolicySubscriptionBarrier(inner);
+        var lifecycle = new object();
+        using var entered = new ManualResetEventSlim();
+        await barrier.SubscribeAsync(message =>
+        {
+            if (message.Type != BackplaneMessageType.KeyInvalidation) return Task.CompletedTask;
+            entered.Set();
+            lock (lifecycle) return Task.CompletedTask;
+        });
+        var deliver = Assert.IsType<Func<BackplaneMessage, Task>>(inner.CapturedCallback);
+        Task? delivery = null;
+
+        var unsubscribing = Task.Run(() =>
+        {
+            lock (lifecycle)
+            {
+                delivery = Task.Run(() => deliver(new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = "key" }));
+                Assert.True(entered.Wait(TimeSpan.FromSeconds(20)));
+                return barrier.UnsubscribeAsync();
+            }
+        });
+
+        await unsubscribing.WaitAsync(TimeSpan.FromSeconds(20));
+        await delivery!.WaitAsync(TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
     public async Task Ready_WaitsForSubscriptionAcknowledgementAndRecoveryCallback()
     {
         var inner = new HeldSubscription();
