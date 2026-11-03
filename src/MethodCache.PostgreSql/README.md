@@ -133,7 +133,7 @@ value sizes, throughput and how they were measured.
 - Both also add a row to the invalidations table and `NOTIFY` a channel named after the `KeyPrefix` and table. The notification carries only the sender's id: the table is the truth, and the notification only tells other instances to read it now instead of at their next poll.
 - The cursor row hands out ids in commit order, so a reader never sees a later id before an earlier one commits, and needs no gap tracking.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- An instance that couldn't read the invalidations table for half of `BackplaneRetention`, or that sees the cursor go back (a restore or failover to an older copy), may have missed invalidations, so it clears its in-memory cache.
+- An instance that couldn't read the invalidations table for half of `BackplaneRetention` (since its last read, or since it started), or that sees the cursor go back (a restore or failover to an older copy), may have missed invalidations, so it clears its in-memory cache.
 - Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than `BackplaneRetention` every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 

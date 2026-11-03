@@ -89,7 +89,9 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         var cursor = options.QualifiedCursorTableName;
         const string clock = "(extract(epoch FROM clock_timestamp()) * 1000000)::bigint";
         // The cursor row stays locked until commit, so the next invalidation of this prefix waits for this one to be
-        // visible. pg_notify is sent at commit, after the row is readable.
+        // visible. pg_notify is sent at commit, after the row is readable. created_at is read after the wait for the
+        // cursor row, not at the start of the statement as now() would be, since a new instance's first poll compares
+        // it with the time it subscribed.
         // Messages commit without waiting for the disk, like values: the stamp the invalidation wrote first is durable,
         // so a message lost in a server crash only leaves other instances' in-memory copies, as a lost Redis pub/sub
         // message would; instances that already read it see the cursor go back and clear their memory.
@@ -100,8 +102,8 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
                 ON CONFLICT (scope) DO UPDATE SET last_id = GREATEST(c.last_id + 1, {clock})
                 RETURNING last_id),
             added AS (
-                INSERT INTO {invalidations} (scope, id, instance_id, message_type, target)
-                SELECT $1, last_id, $2, $3, $4 FROM next
+                INSERT INTO {invalidations} (scope, id, instance_id, message_type, target, created_at)
+                SELECT $1, last_id, $2, $3, $4, clock_timestamp() FROM next
                 RETURNING id)
             SELECT pg_notify($5, $2) FROM added
             """;
@@ -301,17 +303,18 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         try
         {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
-            if (_lastId == null || now - _lastPolled >= _options.BackplaneRetention / 2)
+            // Since the last poll, or since subscribing before the first one
+            var unread = _lastId == null ? _timeProvider.GetElapsedTime(_subscribedAt) : now - _lastPolled;
+            var outage = unread >= _options.BackplaneRetention / 2;
+            if (_lastId == null || outage)
             {
                 // First poll: start after the invalidations written before this instance subscribed, with a margin, since
-                // it may have cached values since then. After a longer outage, rows this instance never read may
-                // already be deleted, so it drops everything it holds in memory and starts from now.
-                var outage = _lastId != null;
-                var age = outage ? TimeSpan.Zero : _timeProvider.GetElapsedTime(_subscribedAt) + FirstPollMargin;
-                var lastId = await ReadStartAsync(age, cancellationToken).ConfigureAwait(false);
+                // it may have cached values since then. After a longer outage, before the first poll too, rows this
+                // instance never read may already be deleted, so it drops everything it holds in memory and starts from now.
+                var lastId = await ReadStartAsync(outage ? TimeSpan.Zero : unread + FirstPollMargin, cancellationToken).ConfigureAwait(false);
                 if (outage)
                 {
-                    _logger.LogWarning("The MethodCache backplane could not read invalidations for {Outage}; it clears this instance's in-memory cache.", now - _lastPolled);
+                    _logger.LogWarning("The MethodCache backplane could not read invalidations for {Outage}; it clears this instance's in-memory cache.", unread);
                     await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
                 }
 

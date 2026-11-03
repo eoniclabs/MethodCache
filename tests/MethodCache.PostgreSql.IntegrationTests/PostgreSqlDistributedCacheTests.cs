@@ -1,6 +1,8 @@
 using FluentAssertions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Time.Testing;
 
 namespace MethodCache.PostgreSql.IntegrationTests;
 
@@ -30,17 +32,18 @@ public sealed class PostgreSqlDistributedCacheTests(PostgreSqlFixture postgres) 
             await PostgreSqlFixture.DropSchemaAsync(new PostgreSqlOptions { ConnectionString = postgres.ConnectionString, SchemaName = _schema });
     }
 
-    private async Task<ICacheManager> CreateNodeAsync(TimeSpan? pollingInterval = null)
+    private async Task<ICacheManager> CreateNodeAsync(TimeProvider? time = null)
     {
         var connectionString = postgres.RequireConnectionString();
         var services = new ServiceCollection();
+        if (time != null) services.AddSingleton<TimeProvider>(time);
         services.Configure<DistributedCacheOptions>(options => options.OperationTimeout = TimeSpan.FromSeconds(5));
         services.AddMethodCache();
         services.AddMethodCache(mc => mc.UsePostgreSql(options =>
         {
             options.ConnectionString = connectionString;
             options.SchemaName = _schema;
-            options.BackplanePollingInterval = pollingInterval ?? TimeSpan.FromMilliseconds(100);
+            options.BackplanePollingInterval = TimeSpan.FromMilliseconds(100);
         }));
 
         var provider = services.BuildServiceProvider();
@@ -106,21 +109,24 @@ public sealed class PostgreSqlDistributedCacheTests(PostgreSqlFixture postgres) 
     }
 
     [SkippableFact]
-    public async Task Invalidation_ArrivesByNotification_LongBeforeTheNextPoll()
+    public async Task Invalidation_ArrivesByNotification_WithoutWaitingForAPoll()
     {
-        var first = await CreateNodeAsync(TimeSpan.FromMinutes(10));
-        var second = await CreateNodeAsync(TimeSpan.FromMinutes(10));
+        var first = await CreateNodeAsync();
+        // On a clock that never moves, the second instance polls only when its doorbell rings
+        var second = await CreateNodeAsync(new FakeTimeProvider(DateTimeOffset.UtcNow));
+        var backplane = (PostgreSqlBackplane)_nodes[^1].GetRequiredKeyedService<IBackplane>("MethodCache");
+        await BackplaneTests.WaitUntilAsync(() => backplane.Listening);
         await Get(first, "key", "v1");
         (await Get(second, "key", "unused")).Should().Be("v1");
-        // The first notification makes the second instance find where to start reading
-        await first.InvalidateByKeysAsync("warm-up");
-        await Task.Delay(500);
+        await Get(first, "warm-up", "w1");
+        (await Get(second, "warm-up", "unused")).Should().Be("w1");
 
-        var started = DateTime.UtcNow;
+        // Once one invalidation has arrived, the poll that connecting LISTEN rang for has run: the next needs a notification
+        await first.InvalidateByKeysAsync("warm-up");
+        await WaitUntil(async () => await Get(second, "warm-up", "w2") == "w2");
         await first.InvalidateByKeysAsync("key");
 
         await WaitUntil(async () => await Get(second, "key", "v2") == "v2");
-        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(3));
     }
 
     [SkippableFact]

@@ -276,6 +276,72 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task OutageFromSubscribingToTheFirstPoll_ClearsMemory()
+    {
+        // PostgreSQL was unreachable from startup: values cached meanwhile may have lost invalidations already deleted
+        var options = fixture.Options("outage_first");
+        try
+        {
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            await sender.PublishInvalidationAsync("kept");
+
+            time.Advance(options.BackplaneRetention / 2);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("after");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Equal([BackplaneMessageType.ClearAll, BackplaneMessageType.KeyInvalidation], delivered.Select(m => m.Type));
+            Assert.Equal("after", delivered[1].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task FirstPoll_DeliversAnInvalidationThatWaitedForTheCursor_UntilAfterSubscribing()
+    {
+        var options = fixture.Options("cursor_wait");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            await sender.PublishInvalidationAsync("before");
+
+            PostgreSqlBackplane receiver;
+            Task late;
+            await using (var blocker = new NpgsqlConnection(options.ConnectionString))
+            {
+                await blocker.OpenAsync();
+                await using var transaction = await blocker.BeginTransactionAsync();
+                await using (var lockCursor = new NpgsqlCommand($"SELECT 1 FROM {options.QualifiedCursorTableName} FOR UPDATE", blocker, transaction))
+                    await lockCursor.ExecuteNonQueryAsync();
+
+                // Its statement starts now, but waits for the cursor row longer than the first poll's margin
+                late = sender.PublishInvalidationAsync("late");
+                await WaitUntilAsync(() => PostgreSqlFixture.ScalarAsync<bool>(options.ConnectionString,
+                    "SELECT coalesce(bool_or(now() - query_start > interval '1500 milliseconds'), false) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND strpos(query, $1) > 0",
+                    options.SchemaName));
+
+                // This instance subscribes, and may cache values, before that invalidation commits
+                receiver = new PostgreSqlBackplane(connection, options, timeProvider: new FakeTimeProvider(DateTimeOffset.UtcNow));
+                await transaction.CommitAsync();
+            }
+
+            await late;
+            await using (receiver)
+            {
+                var delivered = new List<BackplaneMessage>();
+                await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+                Assert.Contains("late", delivered.Select(m => m.Key));
+            }
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task FirstPoll_DeliversRecentInvalidations_ButNotOldOnes()
     {
         var options = fixture.Options("start");
@@ -489,6 +555,16 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     {
         var deadline = DateTime.UtcNow + Eventually;
         while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "timed out");
+            await Task.Delay(20);
+        }
+    }
+
+    internal static async Task WaitUntilAsync(Func<Task<bool>> condition)
+    {
+        var deadline = DateTime.UtcNow + Eventually;
+        while (!await condition())
         {
             Assert.True(DateTime.UtcNow < deadline, "timed out");
             await Task.Delay(20);
