@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -21,10 +22,28 @@ public class OwnedTransportOptionsTests
         using var provider = services.BuildServiceProvider();
         var runtime = provider.GetRequiredService<SqlServerRuntimeOptions>();
         Assert.Equal("configured-last:", runtime.Prefix);
-        Assert.Equal(provider.GetRequiredService<DatabaseSettings>().ConnectionString, runtime.Options.ConnectionString);
+        Assert.Equal(new SqlConnectionStringBuilder(provider.GetRequiredService<DatabaseSettings>().ConnectionString) { Enlist = false }.ConnectionString,
+            runtime.Options.ConnectionString);
         Assert.Same(runtime, provider.GetRequiredService<SqlServerRuntimeOptions>());
         Assert.Equal(1, calls);
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IOptions<DistributedCacheOptions>>().Value.KeyPrefix = "too-late:");
+    }
+
+    [Theory]
+    [InlineData("Server=localhost;Database=Cache;Integrated Security=true")]
+    [InlineData("Server=localhost;Database=Cache;Integrated Security=true;Enlist=true")]
+    public void Commands_NeverJoinTheApplicationsTransactionScope(string connectionString)
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UseSqlServer(connectionString));
+        using var provider = services.BuildServiceProvider();
+
+        var used = new SqlConnectionStringBuilder(provider.GetRequiredService<SqlServerRuntimeOptions>().Options.ConnectionString);
+
+        Assert.False(used.Enlist);
+        Assert.Equal("localhost", used.DataSource);
+        Assert.Equal("Cache", used.InitialCatalog);
+        Assert.True(used.IntegratedSecurity);
     }
 
     private sealed record DatabaseSettings(string ConnectionString);

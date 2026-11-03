@@ -103,9 +103,64 @@ public class BackplaneShutdownTests
         Assert.Equal(1, backplane.UnsubscribeCalls);
     }
 
-    private static DistributedCacheLayer Create(ControlledBackplane backplane, FakeTimeProvider? clock = null) => new(
+    [Fact]
+    public async Task Dispose_BackplaneThatWaitsForItsDeliveryToUnsubscribe_DoesNotDeadlock()
+    {
+        // A delivery takes the layer's lifecycle lock, so the layer must not hold that lock while it unsubscribes
+        using var backplane = new DrainingBackplane();
+        var layer = Create(backplane);
+        layer.Attach(_ => { }, _ => { }, () => { }, _ => { });
+        var delivery = Task.Run(() => backplane.DeliverAsync(
+            new BackplaneMessage { Type = BackplaneMessageType.KeyInvalidation, Key = "key", InstanceId = "remote" }));
+        Assert.True(backplane.Delivering.Wait(TimeSpan.FromSeconds(20)));
+
+        await Task.Run(layer.Dispose).WaitAsync(TimeSpan.FromSeconds(20));
+        await delivery.WaitAsync(TimeSpan.FromSeconds(20));
+
+        Assert.False(backplane.DeliveryOutlastedUnsubscribe);
+    }
+
+    private static DistributedCacheLayer Create(IBackplane backplane, FakeTimeProvider? clock = null) => new(
         new MethodCache.TestSupport.AtomicTestCache(),
         new JsonCacheSerializer(), new DistributedCacheOptions { OperationTimeout = TimeSpan.FromSeconds(1) }, backplane, clock ?? new FakeTimeProvider());
+
+    // Unsubscribing waits, synchronously, for the delivery in progress to finish
+    private sealed class DrainingBackplane : IBackplane, IDisposable
+    {
+        private Func<BackplaneMessage, Task>? _handler;
+        private readonly ManualResetEventSlim _proceed = new();
+        private readonly ManualResetEventSlim _delivered = new();
+        public ManualResetEventSlim Delivering { get; } = new();
+        public bool DeliveryOutlastedUnsubscribe { get; private set; }
+        public string InstanceId => "local";
+        public Task SubscribeAsync(Func<BackplaneMessage, Task> onMessage, CancellationToken cancellationToken = default)
+        {
+            _handler = onMessage;
+            return Task.CompletedTask;
+        }
+        public async Task DeliverAsync(BackplaneMessage message)
+        {
+            Delivering.Set();
+            _proceed.Wait();
+            try { await _handler!(message); }
+            finally { _delivered.Set(); }
+        }
+        public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
+        {
+            _proceed.Set();
+            // Bounded, so a deadlock fails the test instead of hanging it
+            DeliveryOutlastedUnsubscribe = !_delivered.Wait(TimeSpan.FromSeconds(5));
+            return Task.CompletedTask;
+        }
+        public Task PublishInvalidationAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PublishTagInvalidationAsync(string tag, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Dispose()
+        {
+            _proceed.Dispose();
+            _delivered.Dispose();
+            Delivering.Dispose();
+        }
+    }
 
     private sealed class ControlledBackplane : IBackplane
     {

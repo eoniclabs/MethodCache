@@ -862,6 +862,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         public void Dispose()
         {
+            Task<Task> shutdown;
             lock (_lifecycleLock)
             {
                 if (_disposed != 0) return;
@@ -891,8 +892,13 @@ namespace MethodCache.Core.Runtime.Distributed
                     }
                 }
                 _disposing.Cancel();
-                _shutdownTask = ShutdownAsync();
+                shutdown = new Task<Task>(ShutdownAsync);
+                _shutdownTask = shutdown.Unwrap();
             }
+
+            // Started after the lock is released: shutdown unsubscribes from the backplane, which may wait for a delivery
+            // in progress, and deliveries take this lock
+            shutdown.RunSynchronously(TaskScheduler.Default);
         }
 
         public async ValueTask DisposeAsync()

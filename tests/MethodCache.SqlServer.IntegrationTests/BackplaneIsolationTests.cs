@@ -147,7 +147,7 @@ public class BackplaneIsolationTests(SqlServerFixture fixture)
             await using (var ageRows = new SqlCommand($"UPDATE {options.QualifiedInvalidationsTableName} SET CreatedAt = DATEADD(minute, -2, SYSUTCDATETIME());", connection))
                 await ageRows.ExecuteNonQueryAsync();
 
-            await own.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await own.CleanupOnceAsync(CancellationToken.None);
 
             await using var remaining = new SqlCommand($"SELECT Target FROM {options.QualifiedInvalidationsTableName};", connection);
             await using var reader = await remaining.ExecuteReaderAsync();
