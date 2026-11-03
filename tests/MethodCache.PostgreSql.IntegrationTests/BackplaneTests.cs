@@ -575,10 +575,58 @@ public class BackplaneTests(PostgreSqlFixture fixture)
             await InsertAsync(options, 10, "other", age: TimeSpan.FromHours(2), prefix: "other:");
             await InsertAsync(options, 10, "recent");
 
-            // Already the first poll cleans up, then once a minute
-            await receiver.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await receiver.CleanupOnceAsync(CancellationToken.None);
 
             Assert.Equal(20L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName}"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Cleanup_RunsOnSubscribing_WithoutHoldingBackDelivery()
+    {
+        // Deleting a large backlog can take a while; invalidations must keep arriving meanwhile
+        var options = fixture.Options("cleanup_apart");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await InsertAsync(options, 10, "old", age: TimeSpan.FromHours(2));
+            // Every DELETE on the invalidations table waits for a lock this test holds
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
+                CREATE FUNCTION {PostgreSqlOptions.Quote(options.SchemaName)}.hold() RETURNS trigger LANGUAGE plpgsql AS
+                'BEGIN PERFORM pg_advisory_xact_lock(hashtext(TG_TABLE_SCHEMA)); RETURN NULL; END';
+                CREATE TRIGGER hold BEFORE DELETE ON {options.QualifiedInvalidationsTableName}
+                FOR EACH STATEMENT EXECUTE FUNCTION {PostgreSqlOptions.Quote(options.SchemaName)}.hold();
+                """);
+            await using var holder = new NpgsqlConnection(options.ConnectionString);
+            await holder.OpenAsync();
+            await using (var hold = new NpgsqlCommand("SELECT pg_advisory_lock(hashtext($1))", holder) { Parameters = { new() { Value = options.SchemaName } } })
+                await hold.ExecuteNonQueryAsync();
+
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<string>();
+            await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
+            await WaitUntilAsync(() => receiver.ConnectionState == BackplaneState.Connected);
+            // Its cleanup started when it subscribed, and waits
+            await WaitUntilAsync(() => WaitsForALockAsync(options, TimeSpan.Zero));
+
+            foreach (var key in new[] { "first", "second" })
+            {
+                await sender.PublishInvalidationAsync(key);
+                // By notification or by the next poll, whichever comes first
+                await WaitUntilAsync(() =>
+                {
+                    time.Advance(options.BackplanePollingInterval);
+                    lock (delivered) return delivered.Contains(key);
+                });
+            }
+
+            await using (var release = new NpgsqlCommand("SELECT pg_advisory_unlock(hashtext($1))", holder) { Parameters = { new() { Value = options.SchemaName } } })
+                await release.ExecuteNonQueryAsync();
+            await WaitUntilAsync(async () => await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString,
+                $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName} WHERE created_at < now() - interval '1 hour'") == 0);
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
     }
@@ -599,7 +647,7 @@ public class BackplaneTests(PostgreSqlFixture fixture)
             await InsertAsync(options, 10, "past both", age: TimeSpan.FromHours(2));
 
             await using var cleaner = new PostgreSqlBackplane(connection, shorter);
-            await cleaner.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await cleaner.CleanupOnceAsync(CancellationToken.None);
 
             Assert.Equal(10L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName}"));
         }

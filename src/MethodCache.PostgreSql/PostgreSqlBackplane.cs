@@ -64,6 +64,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private CancellationTokenSource? _stopping;
     private Task? _polling;
     private Task? _listening;
+    private Task? _cleaning;
     private TaskCompletionSource _doorbell = NewDoorbell();
     private int _notified;
     private int _silentPolls;
@@ -72,7 +73,6 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private CursorGeneration? _generation;
     private PendingBatch? _pendingBatch;
     private DateTime _lastPolled;
-    private DateTime _nextCleanup;
     private bool _failing;
     private long _subscribedAt;
 
@@ -199,6 +199,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         var stopping = _stopping.Token;
         _polling = Task.Run(() => PollAsync(onMessage, stopping), CancellationToken.None);
         _listening = Task.Run(() => ListenAsync(stopping), CancellationToken.None);
+        _cleaning = Task.Run(() => CleanupAsync(stopping), CancellationToken.None);
         return Task.CompletedTask;
     }
 
@@ -212,7 +213,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         await stopping.CancelAsync().ConfigureAwait(false);
         try
         {
-            foreach (var task in new[] { _polling, _listening })
+            foreach (var task in new[] { _polling, _listening, _cleaning })
             {
                 if (task == null) continue;
                 try { await task.ConfigureAwait(false); }
@@ -224,6 +225,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             stopping.Dispose();
             _polling = null;
             _listening = null;
+            _cleaning = null;
         }
     }
 
@@ -397,7 +399,6 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             // Rows still unread after the batch limit may date back to when this instance last caught up, so only
             // catching up restarts the clock that decides when they may be deleted unread
             if (caughtUp) _lastPolled = now;
-            await CleanupAsync(now, cancellationToken).ConfigureAwait(false);
             return foreign;
         }
         catch { answered = false; throw; }
@@ -531,11 +532,49 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     internal static BackplaneMessage? CreateWireMessage(short type, string wire, string instanceId)
         => type == BackplaneWire.Version && BackplaneWire.TryDecode(wire, out var message) && message.InstanceId == instanceId ? message : null;
 
-    private async Task CleanupAsync(DateTime now, CancellationToken cancellationToken)
+    /// <summary>
+    /// Deletes this prefix's old invalidations when the instance subscribes and then every minute, apart from polling:
+    /// deleting a large backlog (after a burst an hour ago, say) can take a while, and must not hold back delivery.
+    /// </summary>
+    private async Task CleanupAsync(CancellationToken cancellationToken)
     {
-        if (now < _nextCleanup) return;
-        _nextCleanup = now + CleanupInterval;
+        var logged = false;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await CleanupOnceAsync(cancellationToken).ConfigureAwait(false);
+                logged = false;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Rows are only kept longer, and the next round deletes them. While polling fails too, that warning
+                // already says PostgreSQL can't be reached.
+                if (!logged && !_failing)
+                {
+                    logged = true;
+                    _logger.LogWarning("The MethodCache backplane could not delete old invalidations from PostgreSQL; it tries again in {Interval}. Error type: {ErrorType}.",
+                        CleanupInterval, ex.GetType().FullName);
+                }
+            }
 
+            try
+            {
+                await Task.Delay(CleanupInterval, _timeProvider, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    internal async Task CleanupOnceAsync(CancellationToken cancellationToken)
+    {
         await RegisterAsync(cancellationToken).ConfigureAwait(false);
 
         // Small batches keep locks short; repeat until the table is caught up, however fast rows are written

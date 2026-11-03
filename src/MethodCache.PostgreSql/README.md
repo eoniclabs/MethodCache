@@ -112,13 +112,15 @@ Medians on one machine (4 vCPU, PostgreSQL 17, Redis 7.4 and SQL Server 2022 in 
 
 | | PostgreSQL | Redis | SQL Server |
 |---|---:|---:|---:|
-| Read, 256 B value | 0.25 ms | 0.26 ms | 0.80 ms |
-| Write, 256 B value | 0.32 ms | 0.28 ms | 2.16 ms |
-| `[Cache]` method, hit in the distributed cache | 0.80 ms | 0.67 ms | 1.83 ms |
-| `[Cache]` method, miss | 1.82 ms | 1.28 ms | 6.63 ms |
-| Tag invalidation until another instance runs the method again | 8 ms | 2.5 ms | 982 ms |
+| Read, 256 B | 0.30 ms | 0.27 ms | 1.09 ms |
+| Write a new key, 256 B | 0.32 ms | 0.30 ms | 2.61 ms |
+| Replace a live value, 256 B | 1.08 ms | 0.29 ms | 2.60 ms |
+| `[Cache]` method, hit in the distributed cache | 0.71 ms | 0.64 ms | 1.65 ms |
+| `[Cache]` method, miss | 1.85 ms | 1.09 ms | 6.29 ms |
+| Tag invalidation until another instance runs the method again | 9.3 ms | 2.6 ms | 984 ms |
 
-Redis stays ahead with large values and many concurrent callers. See
+Replacing a live value waits for the disk, so a crash can't bring back the value it replaced; a miss writes a new
+key, which doesn't. Redis stays ahead with large values and many concurrent callers. See
 [benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers) for
 value sizes, throughput and how they were measured.
 
