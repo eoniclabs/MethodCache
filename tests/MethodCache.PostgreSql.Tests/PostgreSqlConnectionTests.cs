@@ -31,6 +31,17 @@ public class PostgreSqlConnectionTests
         listen.KeepAlive.Should().Be(5);
     }
 
+    [Theory]
+    [InlineData("Host=localhost;Database=cache")]
+    [InlineData("Host=localhost;Database=cache;Enlist=true")]
+    public void Commands_NeverJoinTheApplicationsTransactionScope(string connectionString)
+    {
+        using var connection = new PostgreSqlConnection(connectionString);
+
+        new NpgsqlConnectionStringBuilder(connection.CommandConnectionString).Enlist.Should().BeFalse();
+        new NpgsqlConnectionStringBuilder(connection.ListenConnectionString).Enlist.Should().BeFalse();
+    }
+
     [Fact]
     public void Listen_UsesItsOwnConnection_WithKeepAlive()
     {

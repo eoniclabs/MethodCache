@@ -232,7 +232,7 @@ internal sealed class PostgreSqlTables(
         await CheckColumnsAsync(connection, options.QualifiedTableName, ["id:bytea", "value:bytea", "expires_at:timestamp with time zone"], ["id"], cancellationToken).ConfigureAwait(false);
         await CheckColumnsAsync(connection, options.QualifiedInvalidationsTableName,
             ["scope:bytea", "id:bigint", "instance_id:text", "message_type:smallint", "target:text", "created_at:timestamp with time zone"], ["scope", "id"], cancellationToken).ConfigureAwait(false);
-        await CheckColumnsAsync(connection, options.QualifiedCursorTableName, ["scope:bytea", "last_id:bigint"], ["scope"], cancellationToken).ConfigureAwait(false);
+        await CheckColumnsAsync(connection, options.QualifiedCursorTableName, ["scope:bytea", "last_id:bigint", "retention:interval"], ["scope"], cancellationToken).ConfigureAwait(false);
         await CheckIndexesAsync(connection, options, cancellationToken).ConfigureAwait(false);
     }
 
@@ -269,7 +269,8 @@ internal sealed class PostgreSqlTables(
 
             CREATE TABLE IF NOT EXISTS {options.QualifiedCursorTableName} (
                 scope bytea NOT NULL PRIMARY KEY,
-                last_id bigint NOT NULL);
+                last_id bigint NOT NULL,
+                retention interval NOT NULL DEFAULT '0');
             """;
     }
 

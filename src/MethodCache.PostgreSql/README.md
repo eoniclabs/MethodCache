@@ -59,7 +59,7 @@ By default the schema and four tables are created when the application starts, i
 - `methodcache` holds the entries: a 32-byte id, the value and its expiry time.
 - `methodcache_schema` contains the schema version (currently 1). Unknown versions are rejected.
 - `methodcache_invalidations` holds recent invalidations for the backplane. Applications that share it are kept apart by `KeyPrefix`.
-- `methodcache_invalidations_cursor` holds one row per `KeyPrefix` that hands out the invalidations' ids in commit order.
+- `methodcache_invalidations_cursor` holds one row per `KeyPrefix` that hands out the invalidations' ids in commit order and keeps the longest `BackplaneRetention` of its instances.
 
 If the application's login may not create tables, run the package's [`migrations/0001-create-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/migrations/0001-create-schema.sql) once as a role that may, grant the login `SELECT, INSERT, UPDATE, DELETE` on the four tables, and set `CreateTablesIfMissing = false`. The script is written for the default names; replace them throughout if you configured others.
 
@@ -102,7 +102,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations when no notification arrived |
-| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
+| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute. Instances that share a `KeyPrefix` keep them as long as the longest retention any of them has used |
 
 Names are used exactly as written (quoted), at most 63 bytes, less the suffix of the tables and indexes named after them.
 
@@ -124,7 +124,7 @@ value sizes, throughput and how they were measured.
 
 ## Internals
 
-- Every operation is one statement, one round trip. Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept.
+- Every operation is one statement, one round trip. Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
 - Cache values and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost: a lost value is only a miss, and a lost message only leaves other instances' in-memory copies, as a lost Redis pub/sub message would (instances that already read it see the cursor go back and clear their memory). Invalidation stamps and HTTP epochs, which keep the shared cache correct, are committed synchronously.
 - Values are stored as `bytea`, not `jsonb`: they are already serialized (JSON or MessagePack) and never queried, so PostgreSQL stores the bytes without parsing them. Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table; values from about 2 KB are compressed, with lz4 where the server supports it (PostgreSQL 14 and later).
 - Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
@@ -134,7 +134,7 @@ value sizes, throughput and how they were measured.
 - The cursor row hands out ids in commit order, so a reader never sees a later id before an earlier one commits, and needs no gap tracking.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - An instance that couldn't read the invalidations table for half of `BackplaneRetention` (since its last read, or since it started), or that sees the cursor go back (a restore or failover to an older copy), may have missed invalidations, so it clears its in-memory cache.
-- Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than `BackplaneRetention` every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than the longest `BackplaneRetention` of that prefix every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
 Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.

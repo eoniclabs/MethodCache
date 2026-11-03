@@ -24,6 +24,9 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
         // the pool needs no reset: that saves the server a reset batch before every command
         if (!Names(connectionString, "noresetonclose")) builder.NoResetOnClose = true;
         if (string.IsNullOrEmpty(builder.ApplicationName)) builder.ApplicationName = DefaultApplicationName;
+        // Cache commands never join the application's TransactionScope, even with Enlist=true: a scope that rolls back
+        // must not undo cache writes or invalidations, and creating the tables runs a transaction of its own
+        builder.Enlist = false;
         CommandConnectionString = builder.ConnectionString;
         DataSource = NpgsqlDataSource.Create(CommandConnectionString);
 

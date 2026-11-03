@@ -36,7 +36,8 @@ CREATE INDEX IF NOT EXISTS "methodcache_invalidations_created" ON "public"."meth
 
 CREATE TABLE IF NOT EXISTS "public"."methodcache_invalidations_cursor" (
     scope bytea NOT NULL PRIMARY KEY,
-    last_id bigint NOT NULL);
+    last_id bigint NOT NULL,
+    retention interval NOT NULL DEFAULT '0');
 
 -- Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table. The 32-byte id is
 -- PLAIN: otherwise PostgreSQL would move it out of the row first.

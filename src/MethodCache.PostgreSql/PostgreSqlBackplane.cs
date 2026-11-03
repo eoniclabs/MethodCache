@@ -55,6 +55,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private readonly string _publishSql;
     private readonly string _startSql;
     private readonly string _pollSql;
+    private readonly string _retentionSql;
     private readonly string _cleanupSql;
     private int _connectionState = (int)BackplaneState.Connecting;
     private bool _listeningOpen;
@@ -124,10 +125,19 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             WHERE c.scope = $1
             ORDER BY i.id
             """;
+        // The cursor row keeps the longest retention of the prefix's instances, so none of them deletes invalidations
+        // another one still counts on: that one clears its memory only after half of its own retention. Only a missing
+        // row or a shorter retention takes the cursor row's lock.
+        _retentionSql = $"""
+            INSERT INTO {cursor} AS c (scope, last_id, retention)
+            SELECT $1, 0, $2 WHERE NOT EXISTS (SELECT FROM {cursor} WHERE scope = $1 AND retention >= $2)
+            ON CONFLICT (scope) DO UPDATE SET retention = GREATEST(c.retention, EXCLUDED.retention)
+            """;
         // Instances sharing a prefix share the work; other prefixes may keep their rows longer
         _cleanupSql = $"""
             DELETE FROM {invalidations} WHERE scope = $1 AND id IN (
-                SELECT id FROM {invalidations} WHERE scope = $1 AND created_at < now() - $2
+                SELECT id FROM {invalidations}
+                WHERE scope = $1 AND created_at < now() - GREATEST($2, (SELECT retention FROM {cursor} WHERE scope = $1))
                 LIMIT {CleanupBatchSize} FOR UPDATE SKIP LOCKED)
             """;
     }
@@ -452,6 +462,13 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     {
         if (now < _nextCleanup) return;
         _nextCleanup = now + CleanupInterval;
+
+        using (var register = _dataSource.CreateCommand(_retentionSql))
+        {
+            register.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+            register.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = _options.BackplaneRetention });
+            await register.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         // Small batches keep locks short; repeat until the table is caught up, however fast rows are written
         for (var batch = 0; batch < MaxCleanupBatches; batch++)

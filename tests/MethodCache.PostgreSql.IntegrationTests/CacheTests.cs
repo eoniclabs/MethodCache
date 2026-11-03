@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Transactions;
 using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.TestSupport;
@@ -104,6 +105,26 @@ public class CacheTests(PostgreSqlFixture fixture)
             var toast = await PostgreSqlFixture.ScalarAsync<string>(options.ConnectionString,
                 $"SELECT reltoastrelid::regclass::text FROM pg_class WHERE oid = '{options.QualifiedTableName}'::regclass");
             Assert.Equal(1L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(DISTINCT chunk_id) FROM {toast}"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Writes_InsideTheApplicationsTransactionScope_AreNotPartOfIt()
+    {
+        var options = fixture.Options("scope");
+        try
+        {
+            await using var connection = await CreateAsync(options);
+            var cache = new PostgreSqlDistributedCache(connection, options);
+
+            using (new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                await cache.SetAsync("key", [1], Minute);
+                // Not completed: the application's transaction rolls back
+            }
+
+            Assert.Equal(new byte[] { 1 }, await cache.GetAsync("key"));
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
     }

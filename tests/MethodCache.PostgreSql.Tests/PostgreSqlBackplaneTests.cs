@@ -71,7 +71,8 @@ public class PostgreSqlBackplaneTests
         var logical = (BackplaneMessageType)logicalValue;
         var frame = BackplaneWire.Encode(new BackplaneMessage
         {
-            Type = logical, InstanceId = "other",
+            Type = logical,
+            InstanceId = "other",
             Key = logical is BackplaneMessageType.KeyInvalidation or BackplaneMessageType.MethodInvalidation ? "key" : null,
             Tag = logical == BackplaneMessageType.TagInvalidation ? "key" : null
         });

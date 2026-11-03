@@ -58,7 +58,8 @@ public sealed class PostgreSqlOptions
 
     /// <summary>
     /// How long invalidations are kept in the invalidations table; at least one minute. An instance that could not
-    /// read the table for half this long may have missed invalidations, so it clears its in-memory cache.
+    /// read the table for half this long may have missed invalidations, so it clears its in-memory cache. Instances
+    /// that share a <c>KeyPrefix</c> keep invalidations as long as the longest retention any of them has used.
     /// </summary>
     public TimeSpan BackplaneRetention { get; set; } = TimeSpan.FromHours(1);
 

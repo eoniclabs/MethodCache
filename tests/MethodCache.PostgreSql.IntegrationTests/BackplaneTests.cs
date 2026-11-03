@@ -178,7 +178,7 @@ public class BackplaneTests(PostgreSqlFixture fixture)
 
             // A later invalidation waits for it instead of committing first with a higher id
             var later = publisher.PublishInvalidationAsync("later");
-            await Task.Delay(300);
+            await WaitUntilAsync(() => WaitsForALockAsync(options, TimeSpan.Zero));
             Assert.False(later.IsCompleted);
             await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
             Assert.Empty(delivered);
@@ -321,9 +321,7 @@ public class BackplaneTests(PostgreSqlFixture fixture)
 
                 // Its statement starts now, but waits for the cursor row longer than the first poll's margin
                 late = sender.PublishInvalidationAsync("late");
-                await WaitUntilAsync(() => PostgreSqlFixture.ScalarAsync<bool>(options.ConnectionString,
-                    "SELECT coalesce(bool_or(now() - query_start > interval '1500 milliseconds'), false) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND strpos(query, $1) > 0",
-                    options.SchemaName));
+                await WaitUntilAsync(() => WaitsForALockAsync(options, TimeSpan.FromMilliseconds(1500)));
 
                 // This instance subscribes, and may cache values, before that invalidation commits
                 receiver = new PostgreSqlBackplane(connection, options, timeProvider: new FakeTimeProvider(DateTimeOffset.UtcNow));
@@ -402,6 +400,29 @@ public class BackplaneTests(PostgreSqlFixture fixture)
             await receiver.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
 
             Assert.Equal(20L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName}"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task Cleanup_KeepsInvalidations_AsLongAsTheLongestRetentionOfItsPrefix()
+    {
+        // During a rolling deployment that shortens the retention, an instance that still uses the longer one may be
+        // out for longer than the shorter retention: it must still find what it missed, since it won't clear its memory
+        var options = fixture.Options("retention");
+        var shorter = new PostgreSqlOptions { ConnectionString = options.ConnectionString, SchemaName = options.SchemaName, BackplaneRetention = TimeSpan.FromMinutes(1) };
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var longer = new PostgreSqlBackplane(connection, options);
+            await longer.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+            await InsertAsync(options, 10, "within the longer retention", age: TimeSpan.FromMinutes(10));
+            await InsertAsync(options, 10, "past both", age: TimeSpan.FromHours(2));
+
+            await using var cleaner = new PostgreSqlBackplane(connection, shorter);
+            await cleaner.PollOnceAsync(_ => Task.CompletedTask, CancellationToken.None);
+
+            Assert.Equal(10L, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString, $"SELECT count(*) FROM {options.QualifiedInvalidationsTableName}"));
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
     }
@@ -526,6 +547,11 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     { Type = BackplaneMessageType.KeyInvalidation, Key = key, InstanceId = sender });
 
     /// <summary>Rows written the way the backplane writes them, from an instance named "other".</summary>
+    /// <summary>Whether a statement on this test's tables has waited for a lock for longer than <paramref name="waited"/>.</summary>
+    private static Task<bool> WaitsForALockAsync(PostgreSqlOptions options, TimeSpan waited) => PostgreSqlFixture.ScalarAsync<bool>(options.ConnectionString,
+        "SELECT coalesce(bool_or(now() - query_start >= $2), false) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND strpos(query, $1) > 0",
+        options.SchemaName, waited);
+
     private static Task InsertAsync(PostgreSqlOptions options, int count, string key, TimeSpan age = default, string prefix = "methodcache:")
         => PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
             WITH next AS (

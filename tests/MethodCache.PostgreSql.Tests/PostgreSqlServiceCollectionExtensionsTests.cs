@@ -149,7 +149,7 @@ public class PostgreSqlServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         services.Invoking(s => s.AddMethodCache(mc => mc.UsePostgreSql((string)null!))).Should().Throw<ArgumentNullException>();
-        services.Invoking(s => s.AddMethodCache(mc => mc.UsePostgreSql("")) ).Should().Throw<ArgumentException>();
+        services.Invoking(s => s.AddMethodCache(mc => mc.UsePostgreSql(""))).Should().Throw<ArgumentException>();
         services.Invoking(s => s.AddMethodCache(mc => mc.UsePostgreSql((Action<PostgreSqlOptions>)null!))).Should().Throw<ArgumentNullException>();
     }
 
