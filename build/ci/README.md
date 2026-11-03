@@ -103,7 +103,7 @@ after checking that no build or container still uses it; never apply global Dock
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
 | `storage_gc.py` | macOS, Linux, Windows | collects idle generated build output and explicitly configured disposable CI archives |
 | `install-storage-gc.sh`, `install-storage-gc.ps1` | build hosts and workstations | install independent collection every 15 minutes |
-| `publish.sh <tag> [--github]` | Megatron | publishes a release tag the build servers passed; nuget.org via BWS by default, GitHub Packages with `--github` |
+| `publish.sh <tag>` | Megatron | publishes a release tag the build servers passed to nuget.org, with the API key from BWS |
 
 Run all Linux jobs locally, the way the build server does:
 
@@ -380,7 +380,7 @@ not update the installed copy automatically.
 ## Publishing a release
 
 `publish.sh <tag>` publishes a tag the build servers passed; [docs/developer/RELEASE.md](../../docs/developer/RELEASE.md)
-has the whole release procedure, including the BWS configuration and optional `--github` destination.
+has the whole release procedure, including the BWS configuration.
 The `build` job also runs the Python tests under `build/ci/tests`, including simulated publishing checks
 that never contact a package feed or use real secrets.
 

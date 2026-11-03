@@ -1,7 +1,6 @@
 # Releasing MethodCache
 
-How to check, tag and publish a release. NuGet.org is the default destination and needs the maintainer's
-go-ahead for that release. Use `--github` to select GitHub Packages instead.
+How to check, tag and publish a release. Releases go to nuget.org, and each one needs the maintainer's go-ahead.
 
 ## Before you tag
 
@@ -94,24 +93,22 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
    PDBs; an accepted upload alone does not prove symbol indexing succeeded.
 4. **Write the GitHub release** for the tag, with the version's section from [CHANGELOG.md](../../CHANGELOG.md).
 
-`./release.sh --status <version>` and `./release.sh --cleanup <version>` only inspect or clean up GitHub
-Packages. They do not track or remove NuGet releases. The cleanup command also deletes the tag and reverts
-the version commit; do not use it to recover a NuGet release.
+`./release.sh --status <version>` shows the tag, its `MethodCache CI` status and which packages nuget.org has
+indexed. `./release.sh --cleanup <version>` deletes the tag and reverts the version commit of a release that
+published nothing; it refuses once a package is on nuget.org, where versions can't be deleted, only unlisted.
 
 ### When publishing fails
 
 - `MethodCache CI` is not green: the build servers' comment and logs say which job failed (see
   [build/ci/README.md](../../build/ci/README.md)).
 - "Missing <package>": `version.json` at the tag does not match the tag's version.
-- NuGet unauthorized: renew the scoped API key in NuGet and BWS. For `--github`, run
-  `gh auth refresh -s write:packages`.
+- NuGet unauthorized: renew the scoped API key in NuGet and BWS.
 
 ### NuGet credentials and symbols
 
-`build/ci/publish.sh v1.0.0` selects NuGet; `--nuget` is also accepted. It checks the
+`build/ci/publish.sh v1.0.0` publishes to nuget.org (`--nuget` is still accepted). It checks the
 `MethodCache CI` status, eight package versions and their eight `.snupkg` companions, then retrieves `METHODCACHE_NUGET_ORG_API_KEY` from
 Bitwarden Secrets Manager (BWS) and pushes to `https://api.nuget.org/v3/index.json` with `--skip-duplicate`.
-It does not require GitHub's `write:packages` scope for this destination.
 
 Configure `METHODCACHE_NUGET_SECRET_ID` with the BWS secret UUID, or put that UUID alone in
 `~/.config/methodcache-publish/nuget-secret-id`. These are references, never API-key values. BWS uses the
@@ -141,35 +138,20 @@ the previous key. Never paste a token into logs, shell arguments, or Git. A futu
 Publishing can remove recurring key rotation when the publishing platform supports it.
 
 After uploading, check all eight packages, their versions and their `eoniclabs` ownership on nuget.org once
-indexing completes. GitHub-only `release.sh --status` and `--cleanup` do not track or remove NuGet releases.
+indexing completes; `./release.sh --status <version>` lists which ones nuget.org has.
 
 For this destination, missing `bws` or `jq` produces a named prerequisite error. An old SDK or
 missing/incorrect BWS reference stops before publication; an empty secret or BWS authentication error also
 stops every upload. An expired NuGet key requires renewal in NuGet
 and BWS, rather than `gh auth refresh`.
 
-### GitHub Packages
-
-Use `build/ci/publish.sh v1.0.0 --github` to select GitHub Packages. It requires GitHub's `write:packages`
-scope (`gh auth refresh -s write:packages`) and does not retrieve the NuGet secret. Check the packages at
-https://github.com/eoniclabs/MethodCache/packages.
-
 ## Using a pre-release build
 
-NuGet.org pre-release versions are available from the public feed after publication. For builds explicitly
-shared through GitHub Packages, the feed needs a GitHub token even to read. Create a personal
-access token (classic) with the `read:packages` scope, then add the feed once:
+Release candidates are on nuget.org like any release. Ask for the version explicitly, or allow pre-releases:
 
 ```bash
-dotnet nuget add source "https://nuget.pkg.github.com/eoniclabs/index.json" \
-  --name github-eoniclabs \
-  --username YOUR_GITHUB_USERNAME \
-  --password YOUR_GITHUB_PAT \
-  --store-password-in-clear-text
-
-dotnet add package MethodCache --version 1.0.0
+dotnet add package MethodCache --version 1.0.0-rc.3
 ```
 
-A "package not found" or "unauthorized" error usually means the token lacks `read:packages` or the version does
-not exist on the [packages page](https://github.com/eoniclabs/MethodCache/packages). `dotnet nuget locals all --clear`
-clears a stale cache.
+GitHub Packages no longer has MethodCache packages. Remove a `nuget.pkg.github.com/eoniclabs` source you added
+for them (`dotnet nuget remove source github-eoniclabs`).
