@@ -144,8 +144,8 @@ Each miss costs four round trips with every provider (read, write, a check that 
 backplane message so other instances drop an older copy), which is where most of the difference between the columns
 in that row comes from.
 
-The console program that measured this times each provider's internal services, so it is not part of the solution;
-its source is in the description of [#160](https://github.com/eoniclabs/MethodCache/pull/160), which added `MethodCache.PostgreSql`.
+The console program that measured this is [benchmarks/MethodCache.L2Bench](../benchmarks/MethodCache.L2Bench/README.md).
+It needs all three servers, so CI only builds it.
 
 ## Historical cloud run (2026-10-15)
 

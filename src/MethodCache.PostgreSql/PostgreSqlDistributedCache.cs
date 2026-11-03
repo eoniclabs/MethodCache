@@ -14,10 +14,11 @@ namespace MethodCache.PostgreSql;
 /// exact key. Each operation is one statement and one round trip.
 /// </summary>
 /// <remarks>
-/// Value writes commit asynchronously (<c>synchronous_commit = off</c> for that statement only): PostgreSQL
-/// acknowledges them before flushing its log, so a crash can lose the last fraction of a second of values, which
-/// then become misses. Invalidation stamps, epochs and the retention contract commit synchronously, and the log is
-/// sequential, so a stamp that survives a crash never leaves an older value it invalidated behind.
+/// New values, and values that replace an expired one, commit asynchronously (<c>synchronous_commit = off</c> for that
+/// statement only): PostgreSQL acknowledges them before flushing its log, so a crash can lose the last fraction of a
+/// second of them, which then become misses. A value that replaces a live one takes a second statement that commits as
+/// the server's setting says, like invalidation stamps, epochs and the retention contract. The log is sequential, so a
+/// stamp that survives a crash never leaves an older value it invalidated behind.
 /// </remarks>
 internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCache, IAtomicInvalidationStore, IBatchedDistributedStore, IDistributedEpochStore
 {
@@ -29,6 +30,7 @@ internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCac
     private readonly string _getSql;
     private readonly string _readEntrySql;
     private readonly string _setSql;
+    private readonly string _replaceSql;
     private readonly string _removeSql;
     private readonly string _stampSql;
 
@@ -40,10 +42,18 @@ internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCac
         _getSql = $"SELECT value FROM {table} WHERE id = $1 AND expires_at > now()";
         // Positions instead of ids: reading an id back would allocate an array per row
         _readEntrySql = $"SELECT id = $2, value FROM {table} WHERE id IN ($1, $2) AND expires_at > now()";
-        // set_config(..., true) lasts for this statement's transaction only, so the pooled connection is unchanged
+        // set_config(..., true) lasts for this statement's transaction only, so the pooled connection is unchanged. A
+        // new value, or one that replaces an expired value, commits without waiting for the disk: lost in a crash, it is
+        // a miss. A live value is left alone (no row written), since losing its replacement would bring it back.
         _setSql = $"""
             WITH durability AS (SELECT set_config('synchronous_commit', 'off', true))
-            INSERT INTO {table} (id, value, expires_at) SELECT $1, $2, $3 FROM durability
+            INSERT INTO {table} AS c (id, value, expires_at) SELECT $1, $2, $3 FROM durability
+            ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at
+            WHERE c.expires_at <= now()
+            """;
+        // Replaces a live value, committing as the server's setting says. It upserts, since the row may be gone by now.
+        _replaceSql = $"""
+            INSERT INTO {table} (id, value, expires_at) VALUES ($1, $2, $3)
             ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, expires_at = EXCLUDED.expires_at
             """;
         _removeSql = $"DELETE FROM {table} WHERE id = $1";
@@ -53,6 +63,12 @@ internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCac
         _advanceEpochSql = AdvanceEpochSql(table);
         _retentionSql = RetentionSql(table);
     }
+
+    /// <summary>The statement that writes a new value, for tests that run it in a transaction of their own.</summary>
+    internal string SetSql => _setSql;
+
+    /// <summary>The statement that replaces a live value, for tests that run it in a transaction of their own.</summary>
+    internal string ReplaceSql => _replaceSql;
 
     public byte[]? Get(string key)
     {
@@ -92,26 +108,35 @@ internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCac
     public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
     {
         ArgumentNullException.ThrowIfNull(value);
-        using var command = SetCommand(key, value, options);
-        command.ExecuteNonQuery();
+        Write(key, value, options);
     }
 
-    public async Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+    public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
     {
         ArgumentNullException.ThrowIfNull(value);
-        using var command = SetCommand(key, value, options);
-        await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+        return WriteAsync(key, value, options, token);
     }
 
     public void Set(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options)
+        => Write(key, Memory(value), options);
+
+    public ValueTask SetAsync(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        => new(WriteAsync(key, Memory(value), options, token));
+
+    /// <summary>Writes a new or expired value in one statement; a live value takes a second, durable one.</summary>
+    private void Write(string key, ReadOnlyMemory<byte> value, DistributedCacheEntryOptions options)
     {
-        using var command = SetCommand(key, Memory(value), options);
+        using var command = SetCommand(key, value, options);
+        if (command.ExecuteNonQuery() != 0) return;
+        command.CommandText = _replaceSql;
         command.ExecuteNonQuery();
     }
 
-    public async ValueTask SetAsync(string key, ReadOnlySequence<byte> value, DistributedCacheEntryOptions options, CancellationToken token = default)
+    private async Task WriteAsync(string key, ReadOnlyMemory<byte> value, DistributedCacheEntryOptions options, CancellationToken token)
     {
-        using var command = SetCommand(key, Memory(value), options);
+        using var command = SetCommand(key, value, options);
+        if (await command.ExecuteNonQueryAsync(token).ConfigureAwait(false) != 0) return;
+        command.CommandText = _replaceSql;
         await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
     }
 
@@ -195,9 +220,6 @@ internal sealed partial class PostgreSqlDistributedCache : IBufferDistributedCac
         command.Parameters.Add(Bytea(id));
         return command;
     }
-
-    private NpgsqlCommand SetCommand(string key, byte[] value, DistributedCacheEntryOptions options)
-        => SetCommand(key, new ReadOnlyMemory<byte>(value), options);
 
     private NpgsqlCommand SetCommand(string key, ReadOnlyMemory<byte> value, DistributedCacheEntryOptions options)
     {

@@ -340,6 +340,121 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task FirstPoll_ThatWaitsForAConnection_SkipsNoInvalidationWithoutAClear()
+    {
+        var options = fixture.Options("pool_wait");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            await using var receiverConnection = new PostgreSqlConnection(
+                new NpgsqlConnectionStringBuilder(options.ConnectionString) { MaxPoolSize = 1 }.ConnectionString);
+            // The real clock: the wait for a connection is what must not move where reading starts
+            await using var receiver = new PostgreSqlBackplane(receiverConnection, options);
+            var delivered = new List<BackplaneMessage>();
+
+            Task poll;
+            await using (var held = await receiverConnection.DataSource.OpenConnectionAsync())
+            {
+                // The first poll starts, then waits for the pool's only connection
+                poll = receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+                await sender.PublishInvalidationAsync("after subscribing");
+                await WaitUntilAsync(() => PostgreSqlFixture.ScalarAsync<bool>(options.ConnectionString,
+                    $"SELECT coalesce(bool_and(now() - created_at > interval '1500 milliseconds'), false) FROM {options.QualifiedInvalidationsTableName}"));
+            }
+
+            await poll;
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Contains(delivered, m => m.Key == "after subscribing" || m.Type == BackplaneMessageType.ClearAll);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task CursorRecreated_ByARestore_ClearsMemory_EvenWhenAnotherInvalidationCameFirst()
+    {
+        var options = fixture.Options("restore");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            delivered.Clear();
+            await sender.PublishInvalidationAsync("lost");
+
+            // A restore from before that invalidation; the next one gets a higher id than this instance read up to
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"TRUNCATE {options.QualifiedInvalidationsTableName}, {options.QualifiedCursorTableName}");
+            await sender.PublishInvalidationAsync("unrelated");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            Assert.Contains(delivered, m => m.Type == BackplaneMessageType.ClearAll);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task CursorEmptiedByACrash_ClearsMemory_WhenTheLastInvalidationsWereLost()
+    {
+        // Invalidations commit asynchronously, so a crash can lose the last ones; recovery also empties the unlogged cursor
+        var options = fixture.Options("crash");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await sender.PublishInvalidationAsync("kept");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            delivered.Clear();
+            await sender.PublishInvalidationAsync("lost");
+
+            Assert.Equal(1, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString,
+                $"WITH lost AS (DELETE FROM {options.QualifiedInvalidationsTableName} WHERE id = (SELECT max(id) FROM {options.QualifiedInvalidationsTableName}) RETURNING id) SELECT count(*) FROM lost"));
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"TRUNCATE {options.QualifiedCursorTableName}");
+            Assert.Equal("u", await PostgreSqlFixture.ScalarAsync<string>(options.ConnectionString,
+                $"SELECT relpersistence::text FROM pg_class WHERE oid = '{options.QualifiedCursorTableName}'::regclass"));
+            await sender.PublishInvalidationAsync("after the crash");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+            await sender.PublishInvalidationAsync("later");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            // The clear covers everything up to the cursor it read; what commits after that arrives as usual
+            Assert.Equal([BackplaneMessageType.ClearAll, BackplaneMessageType.KeyInvalidation], delivered.Select(m => m.Type));
+            Assert.Equal("later", delivered[1].Key);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task NewCursor_ContinuesAfterTheHighestId_EvenIfTheClockWentBack()
+    {
+        var options = fixture.Options("clock");
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var sender = new PostgreSqlBackplane(connection, options);
+            var delivered = new List<BackplaneMessage>();
+            await sender.PublishInvalidationAsync("before");
+            await receiver.PollOnceAsync(Collect(delivered), CancellationToken.None);
+
+            // Ids an hour ahead of the server's clock, as after a failover to a server whose clock is behind; then a
+            // crash empties the cursor table
+            var ahead = await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString,
+                $"UPDATE {options.QualifiedInvalidationsTableName} SET id = id + 3600000000 RETURNING id");
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"TRUNCATE {options.QualifiedCursorTableName}");
+            await sender.PublishInvalidationAsync("after");
+
+            Assert.Equal(ahead + 1, await PostgreSqlFixture.ScalarAsync<long>(options.ConnectionString,
+                $"SELECT max(id) FROM {options.QualifiedInvalidationsTableName}"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task FirstPoll_DeliversRecentInvalidations_ButNotOldOnes()
     {
         var options = fixture.Options("start");

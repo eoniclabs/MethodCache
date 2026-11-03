@@ -57,6 +57,7 @@
     <InternalsVisibleTo Include="MethodCache.SourceGenerator" />
     <InternalsVisibleTo Include="MethodCache.Benchmarks" />
     <InternalsVisibleTo Include="MethodCache.Benchmarks.Tests" />
+    <InternalsVisibleTo Include="MethodCache.L2Bench" />
     <InternalsVisibleTo Include="MethodCache.SourceGenerator.IntegrationTests" />
     <InternalsVisibleTo Include="MethodCache.Redis" />
     <InternalsVisibleTo Include="MethodCache.SqlServer" />

@@ -55,7 +55,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private readonly string _publishSql;
     private readonly string _startSql;
     private readonly string _pollSql;
-    private readonly string _retentionSql;
+    private readonly string _registerSql;
     private readonly string _cleanupSql;
     private int _connectionState = (int)BackplaneState.Connecting;
     private bool _listeningOpen;
@@ -68,6 +68,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
     private int _silentPolls;
     private bool _silentWarning;
     private long? _lastId;
+    private Guid? _generation;
     private PendingBatch? _pendingBatch;
     private DateTime _lastPolled;
     private DateTime _nextCleanup;
@@ -92,32 +93,35 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         // The cursor row stays locked until commit, so the next invalidation of this prefix waits for this one to be
         // visible. pg_notify is sent at commit, after the row is readable. created_at is read after the wait for the
         // cursor row, not at the start of the statement as now() would be, since a new instance's first poll compares
-        // it with the time it subscribed.
-        // Messages commit without waiting for the disk, like values: the stamp the invalidation wrote first is durable,
-        // so a message lost in a server crash only leaves other instances' in-memory copies, as a lost Redis pub/sub
-        // message would; instances that already read it see the cursor go back and clear their memory.
+        // it with the time it subscribed. Without a cursor row nothing is written and no row comes back: the
+        // publisher then creates the row and publishes again.
+        // Messages commit without waiting for the disk, like new values: the stamp the invalidation wrote first is
+        // durable, so a message lost in a crash only leaves other instances' in-memory copies. Recovery from a crash
+        // empties the unlogged cursor table, so every instance sees a new generation and clears its memory.
         _publishSql = $"""
             WITH durability AS (SELECT set_config('synchronous_commit', 'off', true)),
             next AS (
-                INSERT INTO {cursor} AS c (scope, last_id) SELECT $1, {clock} FROM durability
-                ON CONFLICT (scope) DO UPDATE SET last_id = GREATEST(c.last_id + 1, {clock})
-                RETURNING last_id),
+                UPDATE {cursor} AS c SET last_id = GREATEST(c.last_id + 1, {clock})
+                FROM durability WHERE c.scope = $1
+                RETURNING c.last_id),
             added AS (
                 INSERT INTO {invalidations} (scope, id, instance_id, message_type, target, created_at)
                 SELECT $1, last_id, $2, $3, $4, clock_timestamp() FROM next
                 RETURNING id)
-            SELECT pg_notify($5, $2) FROM added
+            SELECT id, pg_notify($5, $2) FROM added
             """;
         // Where a new instance starts reading: after the invalidations written well before it subscribed
         _startSql = $"""
             SELECT coalesce(
-                (SELECT max(id) FROM {invalidations} WHERE scope = $1 AND created_at < now() - $2),
-                (SELECT min(id) - 1 FROM {invalidations} WHERE scope = $1),
-                0)
+                    (SELECT max(id) FROM {invalidations} WHERE scope = $1 AND created_at < now() - $2),
+                    (SELECT min(id) - 1 FROM {invalidations} WHERE scope = $1),
+                    0),
+                (SELECT generation FROM {cursor} WHERE scope = $1)
             """;
-        // One statement, one snapshot: the cursor and the rows after the last id read
+        // One statement, one snapshot: the cursor, its generation, and the rows after the last id read. Without a cursor
+        // row it returns nothing.
         _pollSql = $"""
-            SELECT c.last_id, i.id, i.instance_id, i.message_type, i.target
+            SELECT c.last_id, c.generation, i.id, i.instance_id, i.message_type, i.target
             FROM {cursor} c
             LEFT JOIN LATERAL (
                 SELECT id, instance_id, message_type, target FROM {invalidations}
@@ -125,12 +129,15 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
             WHERE c.scope = $1
             ORDER BY i.id
             """;
-        // The cursor row keeps the longest retention of the prefix's instances, so none of them deletes invalidations
-        // another one still counts on: that one clears its memory only after half of its own retention. Only a missing
-        // row or a shorter retention takes the cursor row's lock.
-        _retentionSql = $"""
+        // Creates the cursor row if it is missing, so its generation is known before the first invalidation. A new row
+        // (the first of the prefix, or after a crash emptied the unlogged cursor table) starts after the invalidations
+        // already there, so ids never repeat, even if the clock went back. The row keeps the longest retention of the
+        // prefix's instances, so none of them deletes invalidations another one still counts on: that one clears its
+        // memory only after half of its own retention. Only a missing row or a shorter retention takes its lock.
+        _registerSql = $"""
             INSERT INTO {cursor} AS c (scope, last_id, retention)
-            SELECT $1, 0, $2 WHERE NOT EXISTS (SELECT FROM {cursor} WHERE scope = $1 AND retention >= $2)
+            SELECT $1, coalesce((SELECT max(id) FROM {invalidations} WHERE scope = $1), 0), $2
+            WHERE NOT EXISTS (SELECT FROM {cursor} WHERE scope = $1 AND retention >= $2)
             ON CONFLICT (scope) DO UPDATE SET retention = GREATEST(c.retention, EXCLUDED.retention)
             """;
         // Instances sharing a prefix share the work; other prefixes may keep their rows longer
@@ -238,7 +245,13 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         command.Parameters.Add(new NpgsqlParameter<short> { NpgsqlDbType = NpgsqlDbType.Smallint, TypedValue = BackplaneWire.Version });
         command.Parameters.Add(Text(wire));
         command.Parameters.Add(Text(Channel));
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        // Without a cursor row (before any instance of the prefix polled, or after a crash) nothing was written
+        for (var attempt = 0; ; attempt++)
+        {
+            if (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) != null) return;
+            if (attempt > 0) throw new InvalidOperationException("The MethodCache invalidation cursor in PostgreSQL disappeared while publishing.");
+            await RegisterAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>Polls at once, then every interval, and at once when a notification rings the doorbell.</summary>
@@ -313,39 +326,48 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         try
         {
             var now = _timeProvider.GetUtcNow().UtcDateTime;
-            // Since the last poll, or since subscribing before the first one
-            var unread = _lastId == null ? _timeProvider.GetElapsedTime(_subscribedAt) : now - _lastPolled;
-            var outage = unread >= _options.BackplaneRetention / 2;
-            if (_lastId == null || outage)
+            if (_lastId == null)
             {
                 // First poll: start after the invalidations written before this instance subscribed, with a margin, since
-                // it may have cached values since then. After a longer outage, before the first poll too, rows this
-                // instance never read may already be deleted, so it drops everything it holds in memory and starts from now.
-                var lastId = await ReadStartAsync(outage ? TimeSpan.Zero : unread + FirstPollMargin, cancellationToken).ConfigureAwait(false);
+                // it may have cached values since then. The cursor row is created first, so its generation is known.
+                await RegisterAsync(cancellationToken).ConfigureAwait(false);
+                var (start, generation, outage) = await ReadStartAsync(cancellationToken).ConfigureAwait(false);
                 if (outage)
                 {
-                    _logger.LogWarning("The MethodCache backplane could not read invalidations for {Outage}; it clears this instance's in-memory cache.", unread);
+                    // Rows this instance never read may already be deleted
+                    _logger.LogWarning("The MethodCache backplane could not read invalidations since it started; it clears this instance's in-memory cache.");
                     await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
                 }
 
-                // A failed recovery clear must be attempted again; none of its state is acknowledged beforehand
-                _lastId = lastId;
+                _lastId = start;
+                _generation = generation;
                 _pendingBatch = null;
                 _lastPolled = now;
-                // Then read what was written since, so the poll a notification triggered delivers it
+            }
+            else if (now - _lastPolled >= _options.BackplaneRetention / 2)
+            {
+                // After a longer outage, rows this instance never read may already be deleted
+                _logger.LogWarning("The MethodCache backplane could not read invalidations for {Outage}; it clears this instance's in-memory cache.", now - _lastPolled);
+                await StartOverAsync(onMessage, await ReadAsync(long.MaxValue, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
+                _lastPolled = now;
             }
 
             var foreign = false;
             for (var batch = 0; batch < MaxBatchesPerPoll; batch++)
             {
-                var pending = _pendingBatch ??= await ReadAsync(cancellationToken).ConfigureAwait(false);
-                if (pending.Behind)
+                var pending = _pendingBatch ??= await ReadAsync(_lastId!.Value, cancellationToken).ConfigureAwait(false);
+                if (pending.Generation != _generation || pending.Cursor < _lastId)
                 {
-                    // The database lost invalidations this instance already read, so it may also have lost ones it hasn't
-                    _logger.LogWarning("The MethodCache invalidation cursor in PostgreSQL went back (restore or failover); clearing this instance's in-memory cache.");
-                    await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
-                    _lastId = pending.LastId;
-                    _pendingBatch = null;
+                    // A crash emptied the cursor table, or a failover or restore brought another copy of it: the
+                    // database may have lost invalidations this instance hasn't read
+                    _logger.LogWarning("The MethodCache invalidation cursor in PostgreSQL was reset (crash, failover or restore); clearing this instance's in-memory cache.");
+                    if (pending.Generation == null)
+                    {
+                        await RegisterAsync(cancellationToken).ConfigureAwait(false);
+                        pending = await ReadAsync(long.MaxValue, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    await StartOverAsync(onMessage, pending).ConfigureAwait(false);
                     break;
                 }
 
@@ -404,41 +426,77 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
     }
 
-    private async Task<long> ReadStartAsync(TimeSpan age, CancellationToken cancellationToken)
+    /// <summary>
+    /// Where the first poll starts. The time since subscribing is measured once the connection is this instance's, so
+    /// time spent waiting for one in the pool doesn't move the start past invalidations written meanwhile. After half
+    /// the retention or more, rows written since may already be deleted: then it starts from now, and the caller clears.
+    /// </summary>
+    private async Task<(long Start, Guid? Generation, bool Outage)> ReadStartAsync(CancellationToken cancellationToken)
     {
-        using var command = _dataSource.CreateCommand(_startSql);
-        command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
-        command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = age });
-        return (long)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))!;
+        var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using (connection.ConfigureAwait(false))
+        {
+            var unread = _timeProvider.GetElapsedTime(_subscribedAt);
+            var outage = unread >= _options.BackplaneRetention / 2;
+            using var command = new NpgsqlCommand(_startSql, connection);
+            command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+            command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = outage ? TimeSpan.Zero : unread + FirstPollMargin });
+            var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await using (reader.ConfigureAwait(false))
+            {
+                await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                return (reader.GetInt64(0), reader.IsDBNull(1) ? null : reader.GetGuid(1), outage);
+            }
+        }
     }
 
-    /// <summary>Reads the invalidations after the last id read, and checks the cursor has not gone back.</summary>
-    private async Task<PendingBatch> ReadAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Clears the subscriber's memory and reads on after <paramref name="snapshot"/>'s cursor: everything committed up
+    /// to it is covered by the clear, everything after it has a higher id. The snapshot is read before the clear.
+    /// </summary>
+    private async Task StartOverAsync(Func<BackplaneMessage, Task> onMessage, PendingBatch snapshot)
     {
-        var lastId = _lastId!.Value;
+        // A failed clear must be attempted again; none of the snapshot is acknowledged beforehand
+        await onMessage(new BackplaneMessage { Type = BackplaneMessageType.ClearAll }).ConfigureAwait(false);
+        _lastId = snapshot.Cursor;
+        _generation = snapshot.Generation;
+        _pendingBatch = null;
+    }
+
+    private async Task RegisterAsync(CancellationToken cancellationToken)
+    {
+        using var command = _dataSource.CreateCommand(_registerSql);
+        command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
+        command.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = _options.BackplaneRetention });
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads the cursor, its generation and the invalidations after <paramref name="after"/>.</summary>
+    private async Task<PendingBatch> ReadAsync(long after, CancellationToken cancellationToken)
+    {
+        var lastId = after;
         var messages = new List<BackplaneMessage>();
         var rows = 0;
-        long? cursor = null;
+        long cursor = 0;
+        Guid? generation = null;
         using var command = _dataSource.CreateCommand(_pollSql);
         command.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
-        command.Parameters.Add(new NpgsqlParameter<long> { NpgsqlDbType = NpgsqlDbType.Bigint, TypedValue = lastId });
+        command.Parameters.Add(new NpgsqlParameter<long> { NpgsqlDbType = NpgsqlDbType.Bigint, TypedValue = after });
         var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         await using (reader.ConfigureAwait(false))
         {
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 cursor = reader.GetInt64(0);
-                if (reader.IsDBNull(1)) break;
+                generation = reader.IsDBNull(1) ? null : reader.GetGuid(1);
+                if (reader.IsDBNull(2)) break;
                 rows++;
-                lastId = reader.GetInt64(1);
-                AddMessage(reader.GetString(2), reader.GetInt16(3), reader.GetString(4), messages);
+                lastId = reader.GetInt64(2);
+                AddMessage(reader.GetString(3), reader.GetInt16(4), reader.GetString(5), messages);
             }
         }
 
-        // No cursor row: nothing was ever written for this prefix, or the tables were emptied
-        return (cursor ?? 0) < _lastId.Value
-            ? new PendingBatch([], 0, cursor ?? 0, Behind: true)
-            : new PendingBatch(messages, rows, lastId, Behind: false);
+        return new PendingBatch(messages, rows, lastId, cursor, generation);
     }
 
     private void AddMessage(string instanceId, short type, string wire, List<BackplaneMessage> messages)
@@ -463,12 +521,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         if (now < _nextCleanup) return;
         _nextCleanup = now + CleanupInterval;
 
-        using (var register = _dataSource.CreateCommand(_retentionSql))
-        {
-            register.Parameters.Add(PostgreSqlDistributedCache.Bytea(_scope));
-            register.Parameters.Add(new NpgsqlParameter<TimeSpan> { NpgsqlDbType = NpgsqlDbType.Interval, TypedValue = _options.BackplaneRetention });
-            await register.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
+        await RegisterAsync(cancellationToken).ConfigureAwait(false);
 
         // Small batches keep locks short; repeat until the table is caught up, however fast rows are written
         for (var batch = 0; batch < MaxCleanupBatches; batch++)
@@ -569,7 +622,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         return "methodcache_" + Convert.ToHexStringLower(hash.AsSpan(0, 16));
     }
 
-    private sealed record PendingBatch(List<BackplaneMessage> Messages, int Rows, long LastId, bool Behind)
+    private sealed record PendingBatch(List<BackplaneMessage> Messages, int Rows, long LastId, long Cursor, Guid? Generation)
     {
         public int DeliveredCount { get; set; }
 

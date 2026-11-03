@@ -232,7 +232,8 @@ internal sealed class PostgreSqlTables(
         await CheckColumnsAsync(connection, options.QualifiedTableName, ["id:bytea", "value:bytea", "expires_at:timestamp with time zone"], ["id"], cancellationToken).ConfigureAwait(false);
         await CheckColumnsAsync(connection, options.QualifiedInvalidationsTableName,
             ["scope:bytea", "id:bigint", "instance_id:text", "message_type:smallint", "target:text", "created_at:timestamp with time zone"], ["scope", "id"], cancellationToken).ConfigureAwait(false);
-        await CheckColumnsAsync(connection, options.QualifiedCursorTableName, ["scope:bytea", "last_id:bigint", "retention:interval"], ["scope"], cancellationToken).ConfigureAwait(false);
+        await CheckColumnsAsync(connection, options.QualifiedCursorTableName, ["scope:bytea", "last_id:bigint", "retention:interval", "generation:uuid"], ["scope"], cancellationToken).ConfigureAwait(false);
+        await CheckUnloggedAsync(connection, options.QualifiedCursorTableName, cancellationToken).ConfigureAwait(false);
         await CheckIndexesAsync(connection, options, cancellationToken).ConfigureAwait(false);
     }
 
@@ -267,10 +268,11 @@ internal sealed class PostgreSqlTables(
                 PRIMARY KEY (scope, id));
             CREATE INDEX IF NOT EXISTS {createdIndex} ON {options.QualifiedInvalidationsTableName} (scope, created_at);
 
-            CREATE TABLE IF NOT EXISTS {options.QualifiedCursorTableName} (
+            CREATE UNLOGGED TABLE IF NOT EXISTS {options.QualifiedCursorTableName} (
                 scope bytea NOT NULL PRIMARY KEY,
                 last_id bigint NOT NULL,
-                retention interval NOT NULL DEFAULT '0');
+                retention interval NOT NULL DEFAULT '0',
+                generation uuid NOT NULL DEFAULT gen_random_uuid());
             """;
     }
 
@@ -324,6 +326,18 @@ internal sealed class PostgreSqlTables(
                 !key.SequenceEqual(primaryKey, StringComparer.Ordinal))
                 throw Incompatible($"The columns of {table} are incompatible with MethodCache schema version {SchemaVersion}. Apply a supported migration.");
         }
+    }
+
+    /// <summary>
+    /// The cursor table must be unlogged: recovery from a crash empties it, which tells every instance that the
+    /// invalidations written last before the crash may be lost.
+    /// </summary>
+    private static async Task CheckUnloggedAsync(NpgsqlConnection connection, string table, CancellationToken cancellationToken)
+    {
+        using var command = new NpgsqlCommand("SELECT relpersistence = 'u' FROM pg_class WHERE oid = $1::regclass", connection);
+        command.Parameters.Add(new NpgsqlParameter<string> { TypedValue = table });
+        if (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) is not true)
+            throw Incompatible($"{table} must be an unlogged table in MethodCache schema version {SchemaVersion}. Apply a supported migration.");
     }
 
     private static async Task CheckIndexesAsync(NpgsqlConnection connection, PostgreSqlOptions options, CancellationToken cancellationToken)

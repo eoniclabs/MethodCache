@@ -133,7 +133,8 @@ public class CacheTests(PostgreSqlFixture fixture)
     public async Task ValueAndMessageWrites_CommitAsynchronously_WithoutChangingThePooledConnection()
     {
         var options = fixture.Options("durability");
-        options.ConnectionString = new NpgsqlConnectionStringBuilder(options.ConnectionString) { MaxPoolSize = 1 }.ConnectionString;
+        // Synchronous by default for this connection, whatever the server's own default (a test container's is off)
+        options.ConnectionString = new NpgsqlConnectionStringBuilder(SynchronousByDefault(options.ConnectionString)) { MaxPoolSize = 1 }.ConnectionString;
         try
         {
             await using var connection = await CreateAsync(options);
@@ -151,6 +152,61 @@ public class CacheTests(PostgreSqlFixture fixture)
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
     }
+
+    [SkippableFact]
+    public async Task ReplacingALiveValue_CommitsAsDurablyAsTheServerDefault_NewValuesAsynchronously()
+    {
+        // A new value lost in a crash is only a miss; a lost replacement would bring back the value it replaced
+        var options = fixture.Options("replace");
+        options.ConnectionString = SynchronousByDefault(options.ConnectionString);
+        try
+        {
+            await using var connection = await CreateAsync(options);
+            var cache = new PostgreSqlDistributedCache(connection, options);
+            await cache.SetAsync("live", [1], Minute);
+            await cache.SetAsync("expired", [1], new DistributedCacheEntryOptions { AbsoluteExpiration = DateTimeOffset.UtcNow.AddSeconds(-1) });
+
+            // The fast statement writes new and expired values without waiting for the disk, and leaves a live one alone
+            Assert.Equal((1, "off"), await DurabilityOfAsync(options, cache.SetSql, "new"));
+            Assert.Equal((1, "off"), await DurabilityOfAsync(options, cache.SetSql, "expired"));
+            Assert.Equal((0, "off"), await DurabilityOfAsync(options, cache.SetSql, "live"));
+            // The live one is then replaced by a statement that commits as the server's setting says
+            Assert.Equal((1, "on"), await DurabilityOfAsync(options, cache.ReplaceSql, "live"));
+
+            await cache.SetAsync("live", [3], Minute);
+            Assert.Equal(new byte[] { 3 }, await cache.GetAsync("live"));
+            cache.Set("live", [4], Minute);
+            Assert.Equal(new byte[] { 4 }, await cache.GetAsync("live"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    /// <summary>
+    /// The rows a value write changed and the commit setting it left, read in its own transaction, which is then
+    /// rolled back.
+    /// </summary>
+    private static async Task<(int Rows, string Setting)> DurabilityOfAsync(PostgreSqlOptions options, string sql, string key)
+    {
+        await using var connection = new NpgsqlConnection(options.ConnectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        int rows;
+        await using (var set = new NpgsqlCommand(sql, connection, transaction))
+        {
+            set.Parameters.Add(PostgreSqlDistributedCache.Bytea(PostgreSqlDistributedCache.GetPhysicalKey(key)));
+            set.Parameters.Add(PostgreSqlDistributedCache.Bytea([2]));
+            set.Parameters.Add(new NpgsqlParameter<DateTime> { NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.TimestampTz, TypedValue = DateTime.UtcNow.AddMinutes(1) });
+            rows = await set.ExecuteNonQueryAsync();
+        }
+
+        await using var show = new NpgsqlCommand("SHOW synchronous_commit", connection, transaction);
+        var setting = (string)(await show.ExecuteScalarAsync())!;
+        await transaction.RollbackAsync();
+        return (rows, setting);
+    }
+
+    private static string SynchronousByDefault(string? connectionString) =>
+        new NpgsqlConnectionStringBuilder(connectionString) { Options = "-c synchronous_commit=on" }.ConnectionString;
 
     [SkippableFact]
     public async Task ReadEntry_ReturnsTheValueAndItsRemovalStampInOneRead()
