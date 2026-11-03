@@ -13,6 +13,7 @@ Read this before changing the repository. It is written for human contributors a
 - `tests/MethodCache.Docs.Tests` holds every C# example shown in the docs (`README.md`, `NUGET_README.md`, the package READMEs and `docs/`), so they compile, and tests for the claims the docs make (`ReadmeTests`, `FeatureTests`). It also runs the console/web demo scenarios, including Docker-backed Redis tests (`Category=RedisDemo`); the `unit` CI job excludes that category.
 - `samples/`: `MethodCache.Demo` (an eleven-chapter console tour including HttpClient caching, run in CI) and `MethodCache.WebDemo` (ASP.NET Core).
 - `benchmarks/MethodCache.Benchmarks`: Performance benchmarks.
+- `benchmarks/MethodCache.L2Bench`: Redis, SQL Server and PostgreSQL as the distributed cache, side by side (needs the three servers).
 
 ## Build, Test, Run
 - Restore: `dotnet restore`

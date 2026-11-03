@@ -13,7 +13,7 @@ PostgreSQL as MethodCache's distributed cache. Results are shared between applic
 - **Invalidation reaches every instance at once.** Invalidating a key or tag removes it from PostgreSQL, and a notification tells every other instance to drop its in-memory copy, typically within milliseconds. A poll every second catches anything a notification missed.
 - **Tags work across instances**, without tag tables: invalidating a tag stores when it happened, stored atomically so a late, older invalidation never undoes a newer one.
 - **No new infrastructure.** If you already run PostgreSQL, the schema and tables are created when the application starts.
-- **Built for speed.** One round trip per operation, prepared statements, new cache values and backplane messages committed without waiting for the disk, and values up to about 8 KB kept in the row. Small values read about as fast as from Redis ([measurements](#performance)).
+- **Built for speed.** One round trip per read and per new value, prepared statements, new cache values and backplane messages committed without waiting for the disk, and values up to about 8 KB kept in the row. Small values read about as fast as from Redis ([measurements](#performance)).
 - **PostgreSQL never breaks your app.** Calls are capped at one second, a circuit breaker skips PostgreSQL while it is down, and invalidations are queued until it is back.
 
 ## PostgreSQL, SQL Server or Redis?
@@ -23,7 +23,7 @@ PostgreSQL as MethodCache's distributed cache. Results are shared between applic
 | Infrastructure | The PostgreSQL you already have | The SQL Server you already have | A Redis server |
 | Other instances drop their in-memory copy | At once (`NOTIFY`), with a poll every second as a safety net | On their next poll (every second by default) | At once (pub/sub) |
 | Load when idle | One small query per instance and second | One small query per instance and second | None |
-| Each distributed cache read or write | One prepared statement | A SQL Server query | A Redis command |
+| Each distributed cache read or write | One prepared statement (two to replace a live value) | A SQL Server query | A Redis command |
 
 Choose PostgreSQL when you already run it; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) for the lowest latency with large values or a very high write rate, or when you would rather keep cache traffic away from your database.
 
@@ -124,7 +124,7 @@ value sizes, throughput and how they were measured.
 
 ## Internals
 
-- Every operation is one statement, one round trip. Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
+- Every operation is one statement, one round trip, except replacing a live value (below). Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
 - New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidation stamps and HTTP epochs, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
 - Values are stored as `bytea`, not `jsonb`: they are already serialized (JSON or MessagePack) and never queried, so PostgreSQL stores the bytes without parsing them. Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table; values from about 2 KB are compressed, with lz4 where the server supports it (PostgreSQL 14 and later).
 - Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.

@@ -45,10 +45,11 @@ public class PostgreSqlConnectionTests
     [Fact]
     public void Listen_UsesItsOwnConnection_WithKeepAlive()
     {
-        using var connection = new PostgreSqlConnection("Host=localhost;Database=cache;Maximum Pool Size=10");
+        using var connection = new PostgreSqlConnection("Host=localhost;Database=cache;Maximum Pool Size=10;Multiplexing=true");
         var listen = new NpgsqlConnectionStringBuilder(connection.ListenConnectionString);
 
         listen.Pooling.Should().BeFalse("LISTEN holds its connection for as long as the instance runs");
+        listen.Multiplexing.Should().BeFalse("a connection without a pool can't multiplex");
         listen.MaxAutoPrepare.Should().Be(0);
         listen.KeepAlive.Should().Be((int)PostgreSqlConnection.ListenKeepAlive.TotalSeconds);
         listen.Host.Should().Be("localhost");

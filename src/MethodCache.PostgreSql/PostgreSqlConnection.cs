@@ -30,9 +30,10 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
         CommandConnectionString = builder.ConnectionString;
         DataSource = NpgsqlDataSource.Create(CommandConnectionString);
 
-        // LISTEN holds one connection for as long as the instance runs, so it doesn't take a slot in the pool. The
-        // keepalive notices a connection that died silently, so the instance reconnects instead of waiting forever.
-        var listen = new NpgsqlConnectionStringBuilder(CommandConnectionString) { Pooling = false, MaxAutoPrepare = 0 };
+        // LISTEN holds one connection for as long as the instance runs, so it doesn't take a slot in the pool, and
+        // without a pool it can't multiplex. The keepalive notices a connection that died silently, so the instance
+        // reconnects instead of waiting forever.
+        var listen = new NpgsqlConnectionStringBuilder(CommandConnectionString) { Pooling = false, Multiplexing = false, MaxAutoPrepare = 0 };
         if (listen.KeepAlive == 0) listen.KeepAlive = (int)ListenKeepAlive.TotalSeconds;
         ListenConnectionString = listen.ConnectionString;
     }

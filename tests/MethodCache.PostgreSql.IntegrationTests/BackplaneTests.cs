@@ -605,6 +605,23 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task Listen_Connects_WhenTheConnectionStringMultiplexes()
+    {
+        // Multiplexing needs a pool, and the LISTEN connection has none of its own
+        var options = fixture.Options("multiplex");
+        options.ConnectionString = new NpgsqlConnectionStringBuilder(options.ConnectionString) { Multiplexing = true }.ConnectionString;
+        try
+        {
+            await using var connection = await CacheTests.CreateAsync(options);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await receiver.SubscribeAsync(_ => Task.CompletedTask);
+
+            await WaitUntilAsync(() => receiver.Listening);
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
     public async Task LostListenConnection_Reconnects()
     {
         var options = fixture.Options("relisten");

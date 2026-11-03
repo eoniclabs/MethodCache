@@ -17,14 +17,15 @@ namespace MethodCache.PostgreSql;
 /// <para>
 /// Ids come from one cursor row per prefix, updated in the same transaction as the invalidation. Its row lock makes
 /// invalidations of one prefix commit in id order, so a reader that has seen an id has seen every smaller one: no
-/// gaps to track. The ids follow the database clock in microseconds, so ids handed out after a failover never repeat
-/// ids instances already read.
+/// gaps to track. The ids follow the database clock in microseconds, and a new cursor row starts after the highest
+/// id left, so ids never repeat.
 /// </para>
 /// <para>
 /// Each instance polls every <see cref="PostgreSqlOptions.BackplanePollingInterval"/> as well, so a lost
 /// notification, a broken <c>LISTEN</c> connection or a pooler that cannot hold one costs at most one interval. An
-/// instance clears its in-memory cache when it could not read the table for half the retention, or when the
-/// cursor is behind what it already read (a restore or a failover that lost writes).
+/// instance clears its in-memory cache when it could not read the table for half the retention, or when the cursor
+/// row has a new generation or went back: the cursor table is unlogged, so a crash, a failover or a restore that may
+/// have lost invalidations also gives it a new row.
 /// </para>
 /// </remarks>
 internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDisposable
