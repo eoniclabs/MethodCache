@@ -658,24 +658,24 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     public async Task Notification_DeliversAtOnce_WithoutWaitingForThePoll()
     {
         var options = fixture.Options("notify");
-        options.BackplanePollingInterval = TimeSpan.FromMinutes(10);
         try
         {
+            // No poll is ever due on this clock: only a notification, or connecting LISTEN, makes the instance read
+            var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
             await using var connection = await CacheTests.CreateAsync(options);
-            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await using var receiver = new PostgreSqlBackplane(connection, options, timeProvider: time);
             await using var sender = new PostgreSqlBackplane(connection, options);
-            var delivered = new TaskCompletionSource<BackplaneMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-            await receiver.SubscribeAsync(message =>
-            {
-                if (message.Key == "key") delivered.TrySetResult(message);
-                return Task.CompletedTask;
-            });
-            await WaitUntilAsync(() => receiver.Listening);
+            var delivered = new List<string>();
+            await receiver.SubscribeAsync(message => { lock (delivered) delivered.Add(message.Key!); return Task.CompletedTask; });
+            await WaitUntilAsync(() => receiver.Listening && receiver.ConnectionState == BackplaneState.Connected);
 
-            // The very first invalidation after subscribing: the poll it triggers both finds where to start and delivers it
+            // The first invalidation after subscribing arrives, and uses up the poll that connecting LISTEN triggered
+            await sender.PublishInvalidationAsync("first");
+            await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("first"); });
+
+            // So only its notification can make the instance read this one
             await sender.PublishInvalidationAsync("key");
-
-            Assert.Equal("key", (await delivered.Task.WaitAsync(TimeSpan.FromSeconds(5))).Key);
+            await WaitUntilAsync(() => { lock (delivered) return delivered.Contains("key"); });
             Assert.Equal(BackplaneState.Connected, receiver.ConnectionState);
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
