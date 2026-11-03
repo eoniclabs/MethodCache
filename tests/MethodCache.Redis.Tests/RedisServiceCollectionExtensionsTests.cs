@@ -77,12 +77,17 @@ public class RedisServiceCollectionExtensionsTests
         var opening = new TaskCompletionSource<IConnectionMultiplexer>();
         var connection = new RedisConnection(() => opening.Task, owned: true);
         var multiplexer = Substitute.For<IConnectionMultiplexer>();
+        var disposed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        multiplexer.When(m => m.Dispose()).Do(_ => disposed.TrySetResult());
 
         var pending = connection.GetAsync();
         connection.Dispose();
         opening.SetResult(multiplexer);
         await pending;
 
+        // The connection is closed in a continuation of the connect, which may still be running when the connect has
+        // completed and this await resumes
+        await disposed.Task.WaitAsync(TimeSpan.FromSeconds(5));
         multiplexer.Received(1).Dispose();
     }
 
