@@ -85,7 +85,7 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
    build/ci/publish.sh v1.0.0
    ```
 
-   It refuses a tag whose `MethodCache CI` status is not green. It packs the 7 packages from a fresh clone of the tag
+   It refuses a tag whose `MethodCache CI` status is not green. It packs the 8 packages from a fresh clone of the tag
    and pushes them and their symbol packages to nuget.org using BWS (see the configuration below).
    Running it again is safe: versions already published are skipped
    (`./release.sh --retry <version>` prints the command again).
