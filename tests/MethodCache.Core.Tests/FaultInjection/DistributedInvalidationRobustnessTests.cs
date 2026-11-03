@@ -76,6 +76,16 @@ public class DistributedInvalidationRobustnessTests
         await task;
     }
 
+    /// <summary>
+    /// Times out the write a shutdown waits for, then lets the shutdown finish without moving the clock: advancing it
+    /// while shutdown stores what that write gave back would time out that store too, on a machine slow enough.
+    /// </summary>
+    private async Task TimeOutAndWaitFor(Task shutdown)
+    {
+        _time.Advance(Timeout);
+        await shutdown.WaitAsync(RealTimeLimit);
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + RealTimeLimit;
@@ -423,7 +433,7 @@ public class DistributedInvalidationRobustnessTests
 
         // Shutdown starts before the write times out, so nothing is queued yet when it does
         var shutdown = layer.DisposeAsync().AsTask();
-        await AdvanceUntilDone(shutdown, Timeout);
+        await TimeOutAndWaitFor(shutdown);
         await big.WaitAsync(RealTimeLimit);
 
         _shared.Get("methodcache:r:big").Should().NotBeNull("the write may still land, so shutdown removes the key");
@@ -452,7 +462,7 @@ public class DistributedInvalidationRobustnessTests
         await WaitUntil(() => chaos.FaultsStarted > started);
 
         var shutdown = layer.DisposeAsync().AsTask();
-        await AdvanceUntilDone(shutdown, Timeout);
+        await TimeOutAndWaitFor(shutdown);
 
         _shared.Get("methodcache:r:big").Should().NotBeNull("shutdown waited for the removal and stored what it gave back");
     }
