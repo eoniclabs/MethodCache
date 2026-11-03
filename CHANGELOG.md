@@ -17,6 +17,19 @@ release.
   instance clears its in-memory cache. The tables are created at startup, or by the package's
   `migrations/0001-create-schema.sql`. Requires PostgreSQL 13 or later.
 
+### Fixed
+
+- **`MethodCache.SqlServer`**: cache commands no longer join the application's `TransactionScope`. A scope that rolled
+  back undid the cache writes and invalidations made inside it, and the cache's connection could turn it into a
+  distributed transaction.
+- **`MethodCache.SqlServer`**: an instance clears its in-memory cache when it may have missed invalidations in two more
+  cases: SQL Server was unreachable from startup for half of `BackplaneRetention`, or the instance fell behind the
+  invalidations table for that long. Instances that share a `KeyPrefix` now keep invalidations as long as the longest
+  `BackplaneRetention` any of them uses, so one with a shorter setting no longer deletes rows the others haven't read,
+  and old invalidations are deleted apart from polling, so a large delete no longer holds back delivery.
+- **`MethodCache`**: disposing the cache no longer deadlocks with a custom `IBackplane` whose `UnsubscribeAsync` waits
+  for a delivery in progress.
+
 ## 1.0.0-rc.2 (2026-10-20)
 
 ### Breaking changes since 1.0.0-rc.1

@@ -101,10 +101,11 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
-| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute |
+| `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute. Instances that share a `KeyPrefix` keep them as long as the longest retention any of them has used |
 
 ## Internals
 
+- Cache commands never join your `TransactionScope`: MethodCache sets `Enlist=false` on its connection string, so a scope that rolls back doesn't undo cache writes or invalidations, and the cache's connections never turn it into a distributed transaction.
 - Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows: every instance runs one `DELETE` of the rows that expired every 5 minutes (the shortest interval that cache allows), so each delete stays small. With a very large table, keep an index on `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one). Your app's `IDistributedCache` is left alone.
 - Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
@@ -113,9 +114,9 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 - Invalidating a key writes a format-independent logical tombstone and removes the current physical row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
 - Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's rows older than its `BackplaneRetention` from the invalidations table. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
+- Each instance deletes its own prefix's old rows from the invalidations table when it starts and then every minute, apart from polling, so a large delete never holds back invalidations. Rows are kept for the longest `BackplaneRetention` of the prefix's instances, stored in a row of the cache table (`mc-backplane-retention:` and the prefix's hash), so an instance with a shorter setting, during a rolling deployment say, never deletes rows another one still needs. To shorten the retention for good, delete that row once every instance uses the new setting. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
 - Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again without blocking. After five seconds, a separate `NOWAIT` locking probe can retire gaps proven absent. Still-locked gaps and timed-out probes are retried without holding back newer invalidations or other committed gap messages; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
-- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed invalidations, so it clears its in-memory cache.
+- An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started) may have missed invalidations, so it clears its in-memory cache.
 - Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
 
 Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.

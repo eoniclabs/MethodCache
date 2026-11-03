@@ -72,7 +72,9 @@ public static class SqlServerMethodCacheBuilderExtensions
                 BackplaneRetention = configured.BackplaneRetention
             };
             options.Validate();
-            _ = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(options.ConnectionString);
+            // Cache commands never join the application's TransactionScope: a scope that rolls back must not undo cache
+            // writes or invalidations, and the cache's own connection must not promote it to a distributed transaction
+            options.ConnectionString = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(options.ConnectionString) { Enlist = false }.ConnectionString;
             return new SqlServerRuntimeOptions(options,
                 sp.GetRequiredKeyedService<DistributedCacheOptions>(MethodCache.Infrastructure.OwnedServices.Key).KeyPrefix);
         });
