@@ -150,7 +150,7 @@ and BWS, rather than `gh auth refresh`.
 Release candidates are on nuget.org like any release. Ask for the version explicitly, or allow pre-releases:
 
 ```bash
-dotnet add package MethodCache --version 1.0.0-rc.4
+dotnet add package MethodCache --version 1.0.0-rc.5
 ```
 
 GitHub Packages no longer has MethodCache packages. Remove a `nuget.pkg.github.com/eoniclabs` source you added
