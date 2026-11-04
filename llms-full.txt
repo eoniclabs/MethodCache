@@ -119,7 +119,8 @@ builder.Services.AddMethodCache();                               // after your r
 - With Entity Framework Core, add package `MethodCache.EntityFrameworkCore` and map each entity type to the tags of
   the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
   A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
-  them; don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
+  them, also for rows updated or deleted without loading them, `OwnsOne`/`OwnsMany` types and many-to-many links;
+  don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
   call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
   without one.
 - Several registrations of one interface with different implementation types each cache their own results.
@@ -352,7 +353,8 @@ exactly as the cached method does:
 
 **How do I invalidate after a database transaction commits?**
 With Entity Framework Core, `MethodCache.EntityFrameworkCore` does it: tags mapped to an entity type are invalidated
-after the commit, and dropped on a rollback. ([Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md))
+after the commit, and dropped on a rollback. A transaction passed in with `UseTransaction` is invalidated when a
+connected context commits it, or when it is over. ([Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#when-the-tags-are-invalidated))
 Otherwise invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a
 reader between the invalidation and the commit would cache the old data again.
 ([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
@@ -370,7 +372,11 @@ It changes rows without EF Core's change tracker, so no entity tags are known fo
 
 **Does the Entity Framework Core package work with Cosmos DB or MongoDB?**
 Yes, entity tags and `InvalidateAfterCommit` act on `SaveChanges`. A MongoDB transaction you begin yourself is
-invalidated when the context is disposed. ([Document databases](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#document-databases))
+invalidated at the context's next save or when it is disposed. ([Document databases](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#document-databases))
+
+**I update a row from a request without loading it. Is the old category still invalidated?**
+Yes. A row saved with `Update`, `Attach` or `Remove(new Product { Id = id })` is read once before the save, so the
+tags of its stored values are invalidated too. ([Mapping entities to tags](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#mapping-entities-to-tags))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -1169,10 +1175,18 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
   `"sku:{Sku}"` matches `"sku:{sku}"` for a SKU such as `ham:mer`.
 - **A changed row invalidates the tags of its old and its new values.** Moving a product to another category
   invalidates `category:1` and `category:2`.
+- **A row you change without loading it is read once before it is saved**, for its stored values. That covers
+  `Update(product)` with values from a request, `Attach` with a few properties set, and `Remove(new Product { Id = id })`:
+  the category it had in the database is invalidated, not the empty value of a new object. A row the context loaded
+  is never read again.
 - **A new row is tagged with its saved values**, so a key the database generates is the real one, not a temporary value.
   A cached "not found" for that id is invalidated too.
 - **A derived type** invalidates the tags of every mapped type it derives from.
+- **A type mapped with `OwnsOne` or `OwnsMany`**, such as an address stored in the customer's row, invalidates the
+  tags of its owner. **A many-to-many link** added or removed invalidates the tags of both sides that are mapped.
 - **A tag without braces**, such as `"top-sellers"`, is invalidated by any change to that entity type.
+- **Everything the save writes counts**: rows another `SaveChanges` interceptor changes, adds or deletes, and rows EF
+  Core deletes by cascade during the save.
 
 The tags are checked against the model when the host starts. A name that is not a property, or a type the context
 doesn't map, stops the host with a message that lists the entity's properties. When the context can't be created at
@@ -1180,6 +1194,10 @@ startup, because it needs something only a request has, the first save checks th
 
 Map each entity to the tags of every cached method whose result reads it. A method that reads several tables needs
 a tag that each of their entities invalidates, such as `top-sellers` above for order lines.
+
+Rows the database changes by itself aren't seen: rows that `ON DELETE CASCADE` removes when the context hadn't loaded
+them, and rows a trigger writes. Give the cached methods that read them a tag that the parent entity invalidates too,
+such as `category:{CategoryId}` on products for a method that lists a category with its products.
 
 ## When the tags are invalidated
 
@@ -1189,8 +1207,9 @@ Never before the data is committed: a reader in between would cache the old rows
 |---|---|
 | `SaveChanges` without a transaction | After it succeeds |
 | Inside `BeginTransaction` | After `Commit`. `Rollback` drops them |
-| Inside a `TransactionScope` | When the scope completes. An aborted scope drops them |
-| `SaveChanges` throws | Nothing from that save |
+| Inside a `TransactionScope` | When the scope ends, also when it aborts: a connection outside the scope may have saved |
+| A transaction passed in with `UseTransaction` | When a context connected to MethodCache commits it, or else once it is over: when its connection closes, or when the context is disposed after the commit |
+| `SaveChanges` throws | Nothing, when nothing reached the database. When part of it may have, such as a commit that failed on the way back, its tags are invalidated |
 | An execution strategy retries | A failed attempt invalidates nothing early; the retry collects its tags again |
 
 ```cs
@@ -1211,14 +1230,16 @@ public static async Task MoveAsync(int id, int categoryId, ShopDb db, Cancellati
 - With several instances, the other instances drop their copies as with any invalidation
   ([With several instances](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#with-several-instances)).
 - Commit through EF Core: `Commit()` on what `BeginTransaction` returned, or `Database.CommitTransaction()`. A
-  transaction you pass in with `UseTransaction` and commit yourself isn't seen; its tags are invalidated when the
-  context is disposed.
+  transaction that ends some other way, such as a commit on its `DbTransaction`, has its tags invalidated at the
+  context's next save or when the context is disposed.
+- Where the outcome is unknown, the tags are invalidated: an extra invalidation costs a cache miss, a missing one
+  serves old data until it expires.
 
 ## Writes the change tracker doesn't see
 
 `ExecuteUpdate`, `ExecuteDelete` and `Database.ExecuteSql…` change rows without loading them, so no entity tags are
 known for them. Warning [MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) reports such a write when the method around it
-doesn't invalidate anything.
+doesn't invalidate anything, also through a call to a `[CacheInvalidate]` method.
 
 Inside a transaction, queue the tags with `InvalidateAfterCommit`. They are invalidated with the entity tags after the
 commit, and dropped on a rollback:
@@ -1251,8 +1272,9 @@ public static async Task DeleteCategoryAsync(ShopDb db, ICacheManager cache, IMe
 
 `InvalidateAfterCommit` takes tags exactly as cached methods write them. Build them with `IMethodCacheKeys.Tag`, or
 with `MethodCacheKeys.Part` around each value; [MC0024](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024) reports a hand-built tag
-that formats a value differently. Outside a transaction, queued tags wait for the next successful `SaveChanges`, and
-are invalidated when the context is disposed if none comes.
+that formats a value differently. Outside a transaction, queued tags wait for the next commit, a successful
+`SaveChanges` or a transaction's `Commit`, and are invalidated when the context is disposed if none comes. A rollback
+doesn't drop them, since they don't belong to it.
 
 Writes outside EF Core, such as Dapper or another service, are covered in
 [When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else).
@@ -1262,7 +1284,10 @@ Writes outside EF Core, such as Dapper or another service, are covered in
 Azure Cosmos DB and MongoDB have EF Core providers. Entity tags and `InvalidateAfterCommit` work with them, since
 both act on `SaveChanges`. Cosmos DB has no transactions you begin yourself in EF Core, so each `SaveChanges` is the
 commit. A MongoDB transaction you begin with `BeginTransaction` isn't seen by the package; its tags are invalidated
-when the context is disposed, after the commit.
+at the context's next save after the commit, or when the context is disposed.
+
+With these providers, a context can't tell which rows it loaded until its first save. A changed row it loaded before
+then is read once when it is saved, as a row changed without loading is, if its tags use more than its key.
 
 ## Testing
 
@@ -3360,7 +3385,8 @@ Invalidate the tags of the rows it changes, in the same method or in a method ar
 execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
 committed with `ICacheManager.InvalidateTagsAsync(...)`
 ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
-The warning is not reported in the implementation of a `[CacheInvalidate]` method, which invalidates its own tags.
+A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation. The warning is not reported
+in the implementation of a `[CacheInvalidate]` method either, which invalidates its own tags.
 When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.
 
 
@@ -4250,7 +4276,8 @@ Install it at the same version as `MethodCache`.
   invalidates the right tags by itself.
 - **Never too early.** Inside a transaction the tags wait for the commit, so no reader caches the old rows in between,
   and a rollback drops them. `TransactionScope` works too.
-- **Old and new values.** Moving a row to another category invalidates both categories.
+- **Old and new values.** Moving a row to another category invalidates both categories, also when you update or
+  delete the row without loading it first.
 - **The same tags as your methods.** `"product:{Id}"` on the entity matches `"product:{id}"` on a `[Cache]` method,
   formatted the same way, and a name that is not a property stops the host at startup.
 - **A warning where it can't help.** `ExecuteUpdate`, `ExecuteDelete` and raw SQL go past the change tracker; analyzer
@@ -4341,9 +4368,12 @@ release.
   that depends on the current user could reach another user.
 - **`MethodCache.EntityFrameworkCore`**, a new package: `AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef =>
   ef.Entity<Product>("product:{Id}", "products")))` invalidates those tags after every commit that adds, changes or
-  deletes a `Product`, with the old and the new values of a changed row, and drops them on a rollback.
-  `db.InvalidateAfterCommit(tags)` queues other tags for the same moment. Works with `AddDbContext`,
-  `AddDbContextPool`, `AddDbContextFactory` and `TransactionScope`, and with document databases on `SaveChanges`.
+  deletes a `Product`, with the old and the new values of a changed row, and drops them on a rollback. A row saved
+  without loading it (`Update`, `Attach`, `Remove(new Product { Id = id })`) is read once for its stored values.
+  `OwnsOne` and `OwnsMany` types invalidate their owner, many-to-many links both sides, and cascade deletes and other
+  interceptors' changes count. `db.InvalidateAfterCommit(tags)` queues other tags for the same moment. Works with
+  `AddDbContext`, `AddDbContextPool`, `AddDbContextFactory`, `TransactionScope` and `UseTransaction`, and with document
+  databases on `SaveChanges`.
 - Analyzer MC0027 warns, in a project that uses `MethodCache.EntityFrameworkCore`, about `ExecuteUpdate`,
   `ExecuteDelete` and `ExecuteSql…` writes, which go past EF Core's change tracker, when the method around them
   doesn't invalidate. MC0024 also checks the tags passed to `InvalidateAfterCommit`.

@@ -13,6 +13,22 @@ public class Product
     public string Sku { get; set; } = "";
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
+    public Dimensions Size { get; set; } = new();
+    public List<Label> Labels { get; set; } = [];
+}
+
+/// <summary>Owned by a product, in the product's row.</summary>
+public sealed class Dimensions
+{
+    public int Weight { get; set; }
+}
+
+/// <summary>Linked to products many-to-many, through a join table without a class.</summary>
+public sealed class Label
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public List<Product> Products { get; set; } = [];
 }
 
 public sealed class DiscountedProduct : Product
@@ -38,11 +54,14 @@ public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<Label> Labels => Set<Label>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<DiscountedProduct>();
         modelBuilder.Entity<Product>().HasIndex(p => p.Sku).IsUnique();
+        modelBuilder.Entity<Product>().OwnsOne(p => p.Size);
+        modelBuilder.Entity<Product>().HasMany(p => p.Labels).WithMany(l => l.Products);
         modelBuilder.Entity<Review>().Property<int>("ProductId");
         modelBuilder.Entity<Review>().HasOne<Product>().WithMany().HasForeignKey("ProductId");
     }
@@ -119,18 +138,23 @@ public sealed class ReadCounter
     public void Increment() => Interlocked.Increment(ref _calls);
 }
 
-public enum Registration { Context, Pool, Factory, NonRelational }
+public enum Registration { Context, Pool, Factory, NonRelational, File }
 
 /// <summary>A host with an in-memory SQLite shop, a cached read service and MethodCache connected to the context.</summary>
 public sealed class Shop : IAsyncDisposable
 {
     private readonly SqliteConnection _connection;
+    private readonly string? _file;
 
-    private Shop(SqliteConnection connection, IHost host)
+    private Shop(SqliteConnection connection, string? file, IHost host)
     {
         _connection = connection;
+        _file = file;
         Host = host;
     }
+
+    /// <summary>With <see cref="Registration.File"/>: each context opens its own connection to this database.</summary>
+    public string ConnectionString => _connection.ConnectionString;
 
     public IHost Host { get; }
 
@@ -147,8 +171,16 @@ public sealed class Shop : IAsyncDisposable
     public static async Task<Shop> CreateAsync(Registration registration = Registration.Context,
         Action<EntityFrameworkCoreOptions>? tags = null, Action<IServiceCollection>? configure = null, bool start = true)
     {
-        var connection = new SqliteConnection("DataSource=:memory:");
+        // A file in WAL mode lets a reader on another connection see only committed rows, as with a server
+        var file = registration == Registration.File ? Path.Combine(Path.GetTempPath(), "methodcache-ef-" + Guid.NewGuid().ToString("N") + ".db") : null;
+        var connection = new SqliteConnection(file == null ? "DataSource=:memory:" : $"Data Source={file};Pooling=False");
         await connection.OpenAsync();
+        if (file != null)
+        {
+            await using var wal = connection.CreateCommand();
+            wal.CommandText = "PRAGMA journal_mode=WAL;";
+            await wal.ExecuteNonQueryAsync();
+        }
 
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
         var services = builder.Services;
@@ -167,6 +199,9 @@ public sealed class Shop : IAsyncDisposable
             case Registration.Factory:
                 services.AddDbContextFactory<ShopDb>(o => o.UseSqlite(connection));
                 break;
+            case Registration.File:
+                services.AddDbContextFactory<ShopDb>(o => o.UseSqlite(connection.ConnectionString));
+                break;
             case Registration.NonRelational:
                 // EF Core's in-memory provider stands in for a document database: no relational transactions
                 var database = "shop-" + Guid.NewGuid().ToString("N");
@@ -181,12 +216,13 @@ public sealed class Shop : IAsyncDisposable
         services.AddMethodCache();
 
         var host = builder.Build();
-        var shop = new Shop(connection, host);
+        var shop = new Shop(connection, file, host);
         await using (var db = await shop.CreateDbAsync())
         {
             await db.Database.EnsureCreatedAsync();
             db.Categories.AddRange(new Category { Id = 1, Name = "Tools" }, new Category { Id = 2, Name = "Toys" });
-            db.Products.Add(new Product { Id = 42, Name = "Hammer", Sku = "ham:mer", CategoryId = 1 });
+            db.Products.Add(new Product { Id = 42, Name = "Hammer", Sku = "ham:mer", CategoryId = 1, Size = new Dimensions { Weight = 600 } });
+            db.Labels.Add(new Label { Id = 1, Name = "Sale" });
             await db.SaveChangesAsync();
         }
         if (start) await host.StartAsync();
@@ -202,5 +238,9 @@ public sealed class Shop : IAsyncDisposable
         await Host.StopAsync();
         Host.Dispose();
         await _connection.DisposeAsync();
+        if (_file != null)
+        {
+            foreach (var path in new[] { _file, _file + "-wal", _file + "-shm" }) File.Delete(path);
+        }
     }
 }

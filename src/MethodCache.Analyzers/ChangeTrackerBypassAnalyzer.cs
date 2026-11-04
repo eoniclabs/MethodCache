@@ -25,7 +25,7 @@ namespace MethodCache.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. The warning is not reported when the same method, or a method around it, also invalidates.",
+            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] method.",
             helpLinkUri: HelpLink("MC0027"));
 
         private static readonly ImmutableHashSet<string> QueryableWrites = ImmutableHashSet.Create(
@@ -90,6 +90,8 @@ namespace MethodCache.Analyzers
         {
             var type = method.ContainingType;
             if (type == null) return false;
+            // A cached interface's [CacheInvalidate] method invalidates its tags after it runs
+            if (HasCacheInvalidate(method)) return true;
             if (method.Name == "InvalidateAfterCommit") return type.Name == "MethodCacheDbContextExtensions";
             if (!method.Name.StartsWith("Invalidate", System.StringComparison.Ordinal) && method.Name != "ClearAsync") return false;
             for (var ns = type.ContainingNamespace; ns != null && !ns.IsGlobalNamespace; ns = ns.ContainingNamespace)

@@ -1,6 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +11,7 @@ internal class EntityInvalidation
 {
     private readonly ICacheManager _cache;
     private readonly ILogger _logger;
-    private readonly ConditionalWeakTable<IModel, EntityTagMap> _maps = new();
+    private readonly ConditionalWeakTable<IModel, BuiltMap> _maps = new();
 
     protected EntityInvalidation(Type contextType, EntityFrameworkCoreOptions options, ICacheManager cache, ILogger logger)
     {
@@ -29,29 +29,30 @@ internal class EntityInvalidation
     public InvalidationInterceptor Interceptor { get; }
 
     /// <summary>The model's tag map, built and checked once per model.</summary>
+    /// <exception cref="InvalidOperationException">A tag doesn't fit the model.</exception>
     public EntityTagMap GetMap(IModel model)
-        => _maps.GetValue(model, m => EntityTagMap.Build(m, ContextType, Options));
-
-    /// <summary>
-    /// Records the tags of the entries about to be saved: old values now, new values after the save, when generated
-    /// keys and foreign keys to new rows have their real values.
-    /// </summary>
-    public void Collect(DbContext context, ContextInvalidations state)
     {
-        var map = GetMap(context.Model);
-        if (map.IsEmpty) return;
-        foreach (var entry in context.ChangeTracker.Entries())
-        {
-            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)) continue;
-            if (!map.TryGet(entry.Metadata, out var templates)) continue;
-            if (entry.State != EntityState.Added) AddTags(templates, entry.OriginalValues, state.Saving);
-            if (entry.State != EntityState.Deleted) state.SavedEntries.Add((entry, templates));
-        }
+        var built = _maps.GetValue(model, Build);
+        return built.Map ?? throw new InvalidOperationException(built.Error);
     }
 
-    public static void AddTags(EntityTagTemplate[] templates, PropertyValues values, HashSet<string> tags)
+    /// <summary>The model's tag map, or <see langword="false"/> when a tag doesn't fit the model.</summary>
+    public bool TryGetMap(IModel model, [MaybeNullWhen(false)] out EntityTagMap map)
     {
-        foreach (var template in templates) tags.Add(template.Format(values));
+        map = _maps.GetValue(model, Build).Map;
+        return map != null;
+    }
+
+    private BuiltMap Build(IModel model)
+    {
+        try
+        {
+            return new BuiltMap(EntityTagMap.Build(model, ContextType, Options), null);
+        }
+        catch (InvalidOperationException error)
+        {
+            return new BuiltMap(null, error.Message);
+        }
     }
 
     /// <summary>Invalidates after a commit. Never throws: the data is saved, and a failure is logged and retried by the cache.</summary>
@@ -99,6 +100,8 @@ internal class EntityInvalidation
             LogFailure(error, tags);
         }
     }
+
+    private sealed record BuiltMap(EntityTagMap? Map, string? Error);
 
     private void LogFailure(Exception error, string[] tags)
         => _logger.LogWarning(error, "MethodCache could not confirm the invalidation of {Tags} after {Context} committed.",

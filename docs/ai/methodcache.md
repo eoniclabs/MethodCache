@@ -114,7 +114,8 @@ builder.Services.AddMethodCache();                               // after your r
 - With Entity Framework Core, add package `MethodCache.EntityFrameworkCore` and map each entity type to the tags of
   the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
   A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
-  them; don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
+  them, also for rows updated or deleted without loading them, `OwnsOne`/`OwnsMany` types and many-to-many links;
+  don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
   call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
   without one.
 - Several registrations of one interface with different implementation types each cache their own results.

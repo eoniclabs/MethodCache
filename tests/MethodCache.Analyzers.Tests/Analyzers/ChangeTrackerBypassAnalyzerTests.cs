@@ -109,6 +109,28 @@ public sealed class Products(DbContext db, IQueryable<Product> products) : IProd
         }
 
         [Fact]
+        public async Task A_call_to_a_CacheInvalidate_method_covers_the_write()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    [CacheInvalidate(Tags = new[] { ""products"" })]
+    Task ProductsChangedAsync();
+}
+
+public sealed class Endpoint(IProducts productCache)
+{
+    public async Task HandleAsync(IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        await productCache.ProductsChangedAsync();
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
         public async Task Nothing_is_reported_without_MethodCache_EntityFrameworkCore()
         {
             Assert.Empty(await AnalyzeAsync(Method("products.Where(p => p.Id == id).ExecuteDelete();"), withPackage: false));

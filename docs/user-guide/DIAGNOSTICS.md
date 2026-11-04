@@ -294,5 +294,6 @@ Invalidate the tags of the rows it changes, in the same method or in a method ar
 execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
 committed with `ICacheManager.InvalidateTagsAsync(...)`
 ([Writes the change tracker doesn't see](../features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
-The warning is not reported in the implementation of a `[CacheInvalidate]` method, which invalidates its own tags.
+A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation. The warning is not reported
+in the implementation of a `[CacheInvalidate]` method either, which invalidates its own tags.
 When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.

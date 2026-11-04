@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -16,6 +17,7 @@ internal sealed class EntityTagValidator<TContext>(IServiceProvider services, En
         await using var _ = scope.ConfigureAwait(false);
         TContext? context = null;
         var created = false;
+        IModel model;
         try
         {
             if (scope.ServiceProvider.GetService<IDbContextFactory<TContext>>() is { } factory)
@@ -27,17 +29,20 @@ internal sealed class EntityTagValidator<TContext>(IServiceProvider services, En
             {
                 context = scope.ServiceProvider.GetService<TContext>();
             }
+            if (context == null) return;
+            model = context.Model;
         }
         catch (Exception)
         {
-            // The context needs something only a request has (a tenant, a user): the first save checks the tags instead
+            // The context needs something only a request has (a tenant, a user, a connection string): the first save
+            // checks the tags instead
+            if (created) await context!.DisposeAsync().ConfigureAwait(false);
             return;
         }
-        if (context == null) return;
 
         try
         {
-            registration.GetMap(context.Model);
+            registration.GetMap(model);
         }
         finally
         {

@@ -9,7 +9,7 @@ public static class MethodCacheDbContextExtensions
 {
     /// <summary>
     /// Invalidates <paramref name="tags"/> once the context's changes are committed: after the open transaction
-    /// commits, or without one after the next successful <c>SaveChanges</c>.
+    /// commits, or without one at the next commit, a successful <c>SaveChanges</c> or a transaction's commit.
     /// </summary>
     /// <param name="context">A context set up with <c>mc.UseEntityFrameworkCore&lt;TContext&gt;()</c>.</param>
     /// <param name="tags">
@@ -17,9 +17,10 @@ public static class MethodCacheDbContextExtensions
     /// <c>MethodCacheKeys.Part</c> around each value.
     /// </param>
     /// <remarks>
-    /// A rollback drops the tags. Tags still queued when the context is disposed, because no <c>SaveChanges</c> or
-    /// commit followed, are invalidated then. After a write that is already committed, such as an
-    /// <c>ExecuteUpdateAsync</c> outside a transaction, call <c>ICacheManager.InvalidateTagsAsync</c> instead.
+    /// A rollback drops the tags queued inside its transaction and keeps the ones queued before it. Tags still queued
+    /// when the context is disposed, because no commit followed, are invalidated then. After a write that is already
+    /// committed, such as an <c>ExecuteUpdateAsync</c> outside a transaction, call <c>ICacheManager.InvalidateTagsAsync</c>
+    /// instead.
     /// </remarks>
     /// <exception cref="ArgumentException">A tag is <see langword="null"/>, empty or whitespace.</exception>
     /// <exception cref="InvalidOperationException">The context wasn't set up with <c>UseEntityFrameworkCore</c>.</exception>

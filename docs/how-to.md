@@ -47,7 +47,8 @@ exactly as the cached method does:
 
 **How do I invalidate after a database transaction commits?**
 With Entity Framework Core, `MethodCache.EntityFrameworkCore` does it: tags mapped to an entity type are invalidated
-after the commit, and dropped on a rollback. ([Entity Framework Core](features/entity-framework-core.md))
+after the commit, and dropped on a rollback. A transaction passed in with `UseTransaction` is invalidated when a
+connected context commits it, or when it is over. ([Entity Framework Core](features/entity-framework-core.md#when-the-tags-are-invalidated))
 Otherwise invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a
 reader between the invalidation and the commit would cache the old data again.
 ([After a database transaction](features/invalidation.md#after-a-database-transaction))
@@ -65,7 +66,11 @@ It changes rows without EF Core's change tracker, so no entity tags are known fo
 
 **Does the Entity Framework Core package work with Cosmos DB or MongoDB?**
 Yes, entity tags and `InvalidateAfterCommit` act on `SaveChanges`. A MongoDB transaction you begin yourself is
-invalidated when the context is disposed. ([Document databases](features/entity-framework-core.md#document-databases))
+invalidated at the context's next save or when it is disposed. ([Document databases](features/entity-framework-core.md#document-databases))
+
+**I update a row from a request without loading it. Is the old category still invalidated?**
+Yes. A row saved with `Update`, `Attach` or `Remove(new Product { Id = id })` is read once before the save, so the
+tags of its stored values are invalidated too. ([Mapping entities to tags](features/entity-framework-core.md#mapping-entities-to-tags))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum

@@ -2,7 +2,7 @@
 
 Invalidates MethodCache tags when Entity Framework Core commits a change. Map an entity type to the tags of the cached
 methods that read it, and every save that adds, changes or deletes one of its rows invalidates them, after the data
-is committed and never on a rollback.
+is committed, never before.
 
 Install it at the same version as `MethodCache`.
 
@@ -12,7 +12,8 @@ Install it at the same version as `MethodCache`.
   invalidates the right tags by itself.
 - **Never too early.** Inside a transaction the tags wait for the commit, so no reader caches the old rows in between,
   and a rollback drops them. `TransactionScope` works too.
-- **Old and new values.** Moving a row to another category invalidates both categories.
+- **Old and new values.** Moving a row to another category invalidates both categories, also when you update or
+  delete the row without loading it first.
 - **The same tags as your methods.** `"product:{Id}"` on the entity matches `"product:{id}"` on a `[Cache]` method,
   formatted the same way, and a name that is not a property stops the host at startup.
 - **A warning where it can't help.** `ExecuteUpdate`, `ExecuteDelete` and raw SQL go past the change tracker; analyzer

@@ -85,4 +85,33 @@ public sealed class RegistrationTests
         db.InvalidateAfterCommit("products");
         await host.StopAsync();
     }
+
+    [Fact]
+    public async Task A_context_that_needs_a_request_to_configure_itself_doesnt_stop_the_host()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddScoped<Tenant>();
+        builder.Services.AddDbContext<TenantDb>();
+        builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<TenantDb>(ef => ef.Entity<Product>("product:{Id}")));
+        using var host = builder.Build();
+
+        await host.StartAsync();
+        await host.StopAsync();
+    }
+
+    public sealed class Tenant
+    {
+        public string? ConnectionString { get; set; }
+    }
+
+    /// <summary>Picks its database from the request's tenant, which doesn't exist when the host starts.</summary>
+    public sealed class TenantDb(DbContextOptions<TenantDb> options, Tenant tenant) : DbContext(options)
+    {
+        public DbSet<Product> Products => Set<Product>();
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+            => optionsBuilder.UseSqlite(tenant.ConnectionString ?? throw new InvalidOperationException("No tenant."));
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<Product>().Ignore(p => p.Labels).Ignore(p => p.Category);
+    }
 }
