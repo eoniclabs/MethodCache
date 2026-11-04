@@ -46,9 +46,14 @@ exactly as the cached method does:
 ([When the write happens somewhere else](features/invalidation.md#when-the-write-happens-somewhere-else))
 
 **How do I invalidate after a database transaction commits?**
-Invalidate after `CommitAsync` returns, not inside the transaction: a reader between the invalidation and the commit
-would cache the old data again. If the commit throws, there is nothing to invalidate.
-([When the write happens somewhere else](features/invalidation.md#when-the-write-happens-somewhere-else))
+Invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a reader
+between the invalidation and the commit would cache the old data again. If the commit throws, there is nothing to
+invalidate. ([After a database transaction](features/invalidation.md#after-a-database-transaction))
+
+**How do I make sure no write path forgets to invalidate?**
+Send every write through an interface whose methods commit their own transaction and carry `[CacheInvalidate]`: the
+attribute runs after the method succeeds. Test each write path with a cached read before and after it.
+([After a database transaction](features/invalidation.md#after-a-database-transaction))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -80,8 +85,9 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 ## Expiration and what gets cached
 
 **How do I set how long a result is cached?**
-`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"1.5h"`. Change it without a rebuild in `appsettings.json`.
-([Expiration](features/expiration.md), [Configuration](features/configuration.md#appsettingsjson))
+`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
+`appsettings.json`. ([Writing a duration](features/expiration.md#writing-a-duration),
+[Configuration](features/configuration.md#appsettingsjson))
 
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
@@ -115,6 +121,16 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
 ([Cached objects are shared](features/memory-cache.md#cached-objects-are-shared))
 
+**Can I cache a `JsonObject`, a `DataTable` or a `Stream`?**
+No: every caller gets the same instance at once, and these change while they are read (a `JsonNode` parses lazily
+and isn't thread-safe). Warning MC0025 says so. Return a record, a string or a `JsonElement`.
+([MC0025](user-guide/DIAGNOSTICS.md#mc0025))
+
+**My service reads the current user from `HttpContext`. Can I cache it?**
+Not as it is: the key holds only the method's arguments, so one user's result reaches the next. Pass the user or
+tenant id as an argument. Warning MC0026 reports such services. The same goes for row-level security on the
+connection. ([Per-user data](getting-started.md#per-user-data))
+
 ## Keys
 
 **How are keys built?**
@@ -144,6 +160,10 @@ It doesn't read back from JSON unchanged: private setters, a derived type return
 Return records with public properties, or register a serializer with `UseJson(options)`.
 ([Serialization](features/distributed-cache.md#serialization))
 
+**Can a worker process invalidate the API's memory cache without sharing values?**
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))`. Values stay in each
+process's memory, and invalidations reach every process. ([Invalidations only](features/distributed-cache.md#invalidations-only))
+
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
 after a failure, and invalidations are retried. ([Distributed cache](features/distributed-cache.md))
@@ -151,6 +171,11 @@ after a failure, and invalidations are retried. ([Distributed cache](features/di
 **How do I see what's cached?**
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
 show the same. ([Monitoring](features/monitoring.md))
+
+**Why does `POST clear` need a `{}` body?**
+The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
+them. Send `-H "Content-Type: application/json" -d "{}"`.
+([ASP.NET Core](../src/MethodCache.AspNetCore/README.md#endpoints))
 
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named

@@ -139,6 +139,38 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 
+### After a database transaction
+
+Invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
+reader cache the old data again in between, and a rollback after it has nothing to undo. Pass
+`CancellationToken.None`: once the data has changed, the invalidation must happen even if the caller has gone.
+
+<!-- snippet: invalidation-after-commit -->
+```cs
+public static async Task RenameAsync(int id, string name, AppDb db, ICacheManager cache, IMethodCacheKeys keys,
+    CancellationToken ct)
+{
+    await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+    {
+        var product = await db.Products.SingleAsync(p => p.Id == id, ct);
+        product.Name = name;
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+
+    // After the commit, and not cancelled with the request: the data has changed either way
+    await cache.InvalidateTagAsync(
+        keys.Tag<IProductReads>(r => r.GetNameAsync(id), IProductReads.ProductTag), CancellationToken.None);
+}
+```
+<!-- endSnippet -->
+
+To make a forgotten invalidation unlikely, give every write path one place to go. Put the writes behind an interface
+with `[CacheInvalidate]` methods that commit their own transaction: the attribute runs after the method returns, so
+after the commit, and only when it succeeded. Where writes must stay inline, wrap them in a helper that commits and
+then invalidates, and test each write path with a cached read before and after it
+([Testing](testing.md#when-a-test-writes-to-the-database-directly)).
+
 ## With several instances
 
 With [Redis, SQL Server or PostgreSQL](distributed-cache.md), invalidating a tag or key removes it from the distributed

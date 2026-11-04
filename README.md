@@ -135,7 +135,8 @@ every cached method tagged with that user.
 ## Getting started
 
 MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
-the add-on packages):
+the add-on packages). Use the newest release candidate: each one replaces the one before it, and the
+[changelog](CHANGELOG.md) says what to change when you upgrade.
 
 ```bash
 dotnet add package MethodCache --prerelease

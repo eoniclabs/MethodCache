@@ -80,7 +80,12 @@ builder.Services.AddMethodCache();                               // after your r
   (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
   the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
-- Cached objects are shared between callers: return immutable types such as records.
+- Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
+  `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
+- The key holds only the method's arguments. A cached implementation must not read the current user or request
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026): pass the user or tenant id
+  as an argument instead.
+- Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -263,6 +268,22 @@ builder.Services.AddMethodCache();
   [memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md) turns it off for every method.
 - The cached object is returned as is, not copied. Treat cached results as read-only.
 
+## Per-user data
+
+A cached result is shared by every caller with the same arguments. The key is built from the arguments only, so
+anything else the result depends on must be an argument too:
+
+- **The signed-in user or tenant.** Pass the id: `GetOrdersAsync(int userId)`, not a method that reads the user from
+  `IHttpContextAccessor` or a `ClaimsPrincipal`. MethodCache warns about a cached implementation that takes those
+  (MC0026).
+- **Row-level security.** When the database filters rows by a setting on the connection, such as the current user,
+  the same call returns different rows for different users. Make that setting an argument of the cached method, or
+  don't cache the method.
+- **Scoped services.** A scoped `DbContext` works as usual for a normal call. A refresh-ahead or fail-safe load can
+  outlive the request, so it runs on a new instance from a new DI scope, with no `HttpContext`
+  ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do
+  the same from the method's arguments.
+
 ## Next steps
 
 - Choose how long entries live: [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md).
@@ -322,9 +343,14 @@ exactly as the cached method does:
 ([When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else))
 
 **How do I invalidate after a database transaction commits?**
-Invalidate after `CommitAsync` returns, not inside the transaction: a reader between the invalidation and the commit
-would cache the old data again. If the commit throws, there is nothing to invalidate.
-([When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else))
+Invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a reader
+between the invalidation and the commit would cache the old data again. If the commit throws, there is nothing to
+invalidate. ([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
+
+**How do I make sure no write path forgets to invalidate?**
+Send every write through an interface whose methods commit their own transaction and carry `[CacheInvalidate]`: the
+attribute runs after the method succeeds. Test each write path with a cached read before and after it.
+([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -356,8 +382,9 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 ## Expiration and what gets cached
 
 **How do I set how long a result is cached?**
-`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"1.5h"`. Change it without a rebuild in `appsettings.json`.
-([Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md), [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
+`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
+`appsettings.json`. ([Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration),
+[Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
 
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
@@ -391,6 +418,16 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
 ([Cached objects are shared](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared))
 
+**Can I cache a `JsonObject`, a `DataTable` or a `Stream`?**
+No: every caller gets the same instance at once, and these change while they are read (a `JsonNode` parses lazily
+and isn't thread-safe). Warning MC0025 says so. Return a record, a string or a `JsonElement`.
+([MC0025](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0025))
+
+**My service reads the current user from `HttpContext`. Can I cache it?**
+Not as it is: the key holds only the method's arguments, so one user's result reaches the next. Pass the user or
+tenant id as an argument. Warning MC0026 reports such services. The same goes for row-level security on the
+connection. ([Per-user data](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#per-user-data))
+
 ## Keys
 
 **How are keys built?**
@@ -420,6 +457,10 @@ It doesn't read back from JSON unchanged: private setters, a derived type return
 Return records with public properties, or register a serializer with `UseJson(options)`.
 ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization))
 
+**Can a worker process invalidate the API's memory cache without sharing values?**
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))`. Values stay in each
+process's memory, and invalidations reach every process. ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only))
+
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
 after a failure, and invalidations are retried. ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
@@ -427,6 +468,11 @@ after a failure, and invalidations are retried. ([Distributed cache](https://git
 **How do I see what's cached?**
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
 show the same. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md))
+
+**Why does `POST clear` need a `{}` body?**
+The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
+them. Send `-H "Content-Type: application/json" -d "{}"`.
+([ASP.NET Core](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#endpoints))
 
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
@@ -766,7 +812,24 @@ public interface IReportService
 }
 ```
 
-Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. The result must be an exact positive whole number of ticks; fractional ticks are rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004) even without analyzers. `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`, and `TimeSpan.Zero` in the builder (`WithSlidingExpiration`, `WithRefreshAhead`, `WithFailSafe`) does the same. Timeout and retry windows must stay positive.
+## Writing a duration
+
+Attributes, `appsettings.json` and runtime configuration read durations the same way:
+
+| Write | Means | Example |
+|---|---|---|
+| a number and `s` | seconds | `"30s"`, `"0.5s"` |
+| a number and `m` | minutes | `"5m"`, `"1.5m"` |
+| a number and `h` | hours | `"24h"`, `"1.5h"` |
+| a number and `d` | days | `"1d"`, `"7d"` |
+| `hh:mm:ss` or `d.hh:mm:ss` | a `TimeSpan` | `"00:05:00"`, `"1.00:00:00"` |
+| `"off"` | turned off (`SlidingExpiration`, `RefreshAhead` and `FailSafe` only) | `"off"` |
+
+- Units are case-insensitive and the number uses a `.` for decimals, whatever the culture.
+- Milliseconds are written as seconds (`"0.25s"`) or as a `TimeSpan` (`"00:00:00.250"`). There is no `ms` unit.
+- A bare number (`"300"`), zero, a negative value and combined units (`"1h30m"`) are errors: at build time in an
+  attribute ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)), and at startup in `appsettings.json`.
+- In code, pass a `TimeSpan`; `TimeSpan.Zero` turns `SlidingExpiration`, `RefreshAhead` or `FailSafe` off.
 
 ## Duration
 
@@ -961,6 +1024,36 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
   [MC0024](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024).
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
+
+### After a database transaction
+
+Invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
+reader cache the old data again in between, and a rollback after it has nothing to undo. Pass
+`CancellationToken.None`: once the data has changed, the invalidation must happen even if the caller has gone.
+
+```cs
+public static async Task RenameAsync(int id, string name, AppDb db, ICacheManager cache, IMethodCacheKeys keys,
+    CancellationToken ct)
+{
+    await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+    {
+        var product = await db.Products.SingleAsync(p => p.Id == id, ct);
+        product.Name = name;
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+
+    // After the commit, and not cancelled with the request: the data has changed either way
+    await cache.InvalidateTagAsync(
+        keys.Tag<IProductReads>(r => r.GetNameAsync(id), IProductReads.ProductTag), CancellationToken.None);
+}
+```
+
+To make a forgotten invalidation unlikely, give every write path one place to go. Put the writes behind an interface
+with `[CacheInvalidate]` methods that commit their own transaction: the attribute runs after the method returns, so
+after the commit, and only when it succeeded. Where writes must stay inline, wrap them in a helper that commits and
+then invalidates, and test each write path with a cached read before and after it
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)).
 
 ## With several instances
 
@@ -1243,8 +1336,9 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
   fails at startup.
-- Durations use the same invariant grammar as attributes: positive unit values such as `"30s"` or `"1.5h"`,
-  or `"hh:mm:ss"` (including `"d.hh:mm:ss"`). A bare number such as `"300"` is rejected rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations are written as in attributes: `"30s"`, `"5m"`, `"1.5h"`, `"7d"` or `"hh:mm:ss"` (including
+  `"d.hh:mm:ss"`); see [Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration). A bare number such as `"300"` is rejected
+  rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section. Setting the same value in
   that block and in `Defaults` (for example `FailSafe.Timeout` and `Defaults.FailSafeTimeout`) is an error.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
@@ -1825,6 +1919,21 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Give each application that shares a store its own. It can't change while the app runs |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
+
+## Invalidations only
+
+When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
+an API caches, say), turn off the distributed cache for every method. Values stay in each process's memory, and every
+invalidation still reaches the other processes:
+
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+
+Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
+values are written there.
 
 ## What other instances see
 
@@ -2796,6 +2905,8 @@ generator and the analyzer run, each problem is reported once.
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
+| [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
+| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
 
 ## MC0001
 
@@ -3000,6 +3111,45 @@ await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, m
 Or format each value with `MethodCacheKeys.Part`, which the code fix does:
 `$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
 A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
+
+## MC0025
+
+The cached method returns a type whose instances change while they are read or used, or has one as an element:
+`JsonNode` and its subclasses (`JsonObject`, `JsonArray`), `DataTable`, `DataSet`, `DataRow`, `DataView`, a `Stream`
+or a `StringBuilder`. The cache hands the same instance to every caller, at the same time. A `JsonNode` parses its
+content lazily the first time it is read, and isn't thread-safe while it does, so two requests reading one cached
+`JsonObject` at once can get an empty or broken result. A stream's position moves as one caller reads it.
+
+```cs
+[Cache(Duration = "00:05:00")]
+Task<JsonObject> GetLayoutAsync(string locale);   // MC0025: every caller shares one JsonObject
+```
+
+Return an immutable type instead: a record, a string (`node.ToJsonString()`), a `byte[]` you never change, or a
+`JsonElement` (`JsonDocument.Parse(json).RootElement.Clone()`), which is read-only and safe to share.
+Collections such as `List<T>` and arrays are not reported: they are safe to read from several threads, but don't change
+a cached one ([cached objects are shared](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared)).
+
+## MC0026
+
+A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`.
+
+The cache key is built from the method's arguments only. A result that depends on the current request or user, such
+as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
+name the user, and the next caller gets it, whoever they are. Refresh-ahead and fail-safe also load values outside
+the request, in a new scope with no `HttpContext`.
+
+```cs
+public sealed class Orders(IHttpContextAccessor http, AppDb db) : IOrders   // MC0026
+{
+    public Task<List<Order>> MineAsync() => db.Orders.Where(o => o.UserId == http.HttpContext!.User.Id()).ToListAsync();
+}
+```
+
+Make what the result depends on a parameter of the cached method, so it becomes part of the key:
+`Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
+See [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#per-user-data).
 
 
 ---
@@ -3507,6 +3657,15 @@ maps them under `/ops/cache` instead.
 | `POST` | `invalidate-method` | Removes every entry of one cached method, also from the distributed cache and the other instances. Body: `{ "methodId": "[MyApp]MyApp.IUserService.GetUserAsync" }`, an id that `methods` lists |
 | `POST` | `clear` | Removes every entry. Body: `{}` |
 
+The `POST` endpoints take a JSON body, also `clear`, whose body is `{}`:
+
+```bash
+curl -X POST https://localhost:5001/methodcache/clear -H "Content-Type: application/json" -d "{}"
+```
+
+That is on purpose: a browser sends a JSON request to another site only after a CORS preflight, so a page on another
+site can't make a signed-in admin's browser empty the cache. A request without a JSON body is answered with 415 or 400.
+
 Answers other than 200, 204 and 404:
 
 - **400**, and nothing changes: a query parameter the endpoint doesn't take, a missing or empty `storedKey` or
@@ -3896,7 +4055,19 @@ release.
 - The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
   how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
 
+- Analyzer MC0025 warns when a cached method returns a type that isn't safe to share between callers: `JsonNode`
+  (`JsonObject`, `JsonArray`), `DataTable`, `DataSet`, `DataRow`, `DataView`, a `Stream` or a `StringBuilder`, also as
+  an element. Every caller gets the same instance at once, and a cached `JsonObject` read by two requests at the same
+  time could come back empty. A `Stream` result reported MC0020 before.
+- Analyzer MC0026 warns when the implementation of a cached interface takes `IHttpContextAccessor`, `HttpContext`,
+  `HttpRequest` or a `ClaimsPrincipal` in its constructor: the key holds only the method's arguments, so a result
+  that depends on the current user could reach another user.
+
 ### Documentation
+
+- How to keep values in each process's memory and share only invalidations
+  ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)), how to invalidate after a database
+  transaction, per-user data and row-level security in Getting started, and a table of duration units.
 
 - The `MethodCache` package carries the user documentation in its `docs` folder, with `llms-full.txt`, so a coding
   agent can read the docs for the installed version. The README has a prompt to give your agent.

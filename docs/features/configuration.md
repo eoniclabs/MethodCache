@@ -115,8 +115,9 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](../user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
   fails at startup.
-- Durations use the same invariant grammar as attributes: positive unit values such as `"30s"` or `"1.5h"`,
-  or `"hh:mm:ss"` (including `"d.hh:mm:ss"`). A bare number such as `"300"` is rejected rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations are written as in attributes: `"30s"`, `"5m"`, `"1.5h"`, `"7d"` or `"hh:mm:ss"` (including
+  `"d.hh:mm:ss"`); see [Writing a duration](expiration.md#writing-a-duration). A bare number such as `"300"` is rejected
+  rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section. Setting the same value in
   that block and in `Defaults` (for example `FailSafe.Timeout` and `Defaults.FailSafeTimeout`) is an error.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,

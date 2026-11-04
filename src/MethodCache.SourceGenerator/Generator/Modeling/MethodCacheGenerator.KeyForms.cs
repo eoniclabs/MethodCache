@@ -168,6 +168,53 @@ namespace MethodCache.SourceGenerator
             _ => index == 7 ? ".Rest" : ".Item" + (index + 1),
         };
 
+        // Types whose instances change while they are read or used, so one cached instance can't be handed to several
+        // callers at once: JsonNode parses lazily, a stream has a position, DataTable and StringBuilder aren't thread-safe.
+        private static readonly string[] SharedUnsafeTypes =
+        {
+            "System.Text.Json.Nodes.JsonNode",
+            "System.Data.DataTable",
+            "System.Data.DataSet",
+            "System.Data.DataRow",
+            "System.Data.DataView",
+            "System.IO.Stream",
+            "System.Text.StringBuilder",
+        };
+
+        /// <summary>
+        /// The declared result type, or the part of it (an element, a tuple item), that is not safe to hand to several
+        /// callers at once, such as <c>JsonObject</c> or <c>DataTable</c>. Null when there is none.
+        /// </summary>
+        private static ITypeSymbol? FindSharedUnsafeResultType(ITypeSymbol type)
+        {
+            switch (type)
+            {
+                case IArrayTypeSymbol array:
+                    return FindSharedUnsafeResultType(array.ElementType);
+                case INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable:
+                    return FindSharedUnsafeResultType(nullable.TypeArguments[0]);
+                case not INamedTypeSymbol:
+                    return null;
+            }
+
+            var named = (INamedTypeSymbol)type;
+            for (var current = named; current != null; current = current.BaseType)
+            {
+                if (System.Array.IndexOf(SharedUnsafeTypes, MetadataName(current.OriginalDefinition)) >= 0)
+                {
+                    return named;
+                }
+            }
+
+            if (named.IsTupleType || FrameworkComposites.Contains(MetadataName(named.OriginalDefinition)))
+            {
+                return (named.IsTupleType ? named.TupleElements.Select(e => e.Type) : named.TypeArguments)
+                    .Select(FindSharedUnsafeResultType).FirstOrDefault(found => found != null);
+            }
+
+            return DecoratorEmitter.GetSequenceElementType(named) is { } element ? FindSharedUnsafeResultType(element) : null;
+        }
+
         /// <summary>
         /// The declared result type, or the part of it, that a serializer can't restore from a distributed cache:
         /// <c>object</c>, an interface or an abstract class, also as a collection's element. A collection interface

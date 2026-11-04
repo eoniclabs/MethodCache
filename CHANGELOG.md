@@ -29,7 +29,19 @@ release.
 - The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
   how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
 
+- Analyzer MC0025 warns when a cached method returns a type that isn't safe to share between callers: `JsonNode`
+  (`JsonObject`, `JsonArray`), `DataTable`, `DataSet`, `DataRow`, `DataView`, a `Stream` or a `StringBuilder`, also as
+  an element. Every caller gets the same instance at once, and a cached `JsonObject` read by two requests at the same
+  time could come back empty. A `Stream` result reported MC0020 before.
+- Analyzer MC0026 warns when the implementation of a cached interface takes `IHttpContextAccessor`, `HttpContext`,
+  `HttpRequest` or a `ClaimsPrincipal` in its constructor: the key holds only the method's arguments, so a result
+  that depends on the current user could reach another user.
+
 ### Documentation
+
+- How to keep values in each process's memory and share only invalidations
+  ([Invalidations only](docs/features/distributed-cache.md#invalidations-only)), how to invalidate after a database
+  transaction, per-user data and row-level security in Getting started, and a table of duration units.
 
 - The `MethodCache` package carries the user documentation in its `docs` folder, with `llms-full.txt`, so a coding
   agent can read the docs for the installed version. The README has a prompt to give your agent.

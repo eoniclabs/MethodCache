@@ -74,6 +74,13 @@ namespace MethodCache.SourceGenerator
             var result = (Utils.IsTask(method.ReturnType, out var inner) || Utils.IsValueTask(method.ReturnType, out inner)) && inner != null
                 ? inner
                 : method.ReturnType;
+            if (FindSharedUnsafeResultType(result) is { } unsafeType)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.SharedUnsafeResultType, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    unsafeType.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
             if (FindUnrestorableResultType(result) is { } unrestorable)
             {
                 return (DiagnosticInfo.Create(Diagnostics.UnrestorableResultType, location, methodName,
