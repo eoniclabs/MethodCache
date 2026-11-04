@@ -33,6 +33,15 @@ namespace Docs.Distributed
             // end-snippet
         }
 
+        public static void InvalidationsOnly(WebApplicationBuilder builder, string connectionString)
+        {
+            // begin-snippet: distributed-invalidations-only
+            builder.Services.AddMethodCache(mc => mc
+                .UsePostgreSql(connectionString)
+                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+            // end-snippet
+        }
+
         public static void MessagePack(WebApplicationBuilder builder)
         {
             // begin-snippet: distributed-messagepack

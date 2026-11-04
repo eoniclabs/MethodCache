@@ -134,6 +134,22 @@ builder.Services.AddMethodCache();
   [memory cache](features/memory-cache.md) turns it off for every method.
 - The cached object is returned as is, not copied. Treat cached results as read-only.
 
+## Per-user data
+
+A cached result is shared by every caller with the same arguments. The key is built from the arguments only, so
+anything else the result depends on must be an argument too:
+
+- **The signed-in user or tenant.** Pass the id: `GetOrdersAsync(int userId)`, not a method that reads the user from
+  `IHttpContextAccessor` or a `ClaimsPrincipal`. MethodCache warns about a cached implementation that takes those
+  (MC0026).
+- **Row-level security.** When the database filters rows by a setting on the connection, such as the current user,
+  the same call returns different rows for different users. Make that setting an argument of the cached method, or
+  don't cache the method.
+- **Scoped services.** A scoped `DbContext` works as usual for a normal call. A refresh-ahead or fail-safe load can
+  outlive the request, so it runs on a new instance from a new DI scope, with no `HttpContext`
+  ([Refresh-ahead](features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do
+  the same from the method's arguments.
+
 ## Next steps
 
 - Choose how long entries live: [Expiration](features/expiration.md).

@@ -177,6 +177,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0020"));
 
+            internal static readonly DiagnosticDescriptor SharedUnsafeResultType = new(
+                id: "MC0025",
+                title: "Cached result type isn't safe to share between threads",
+                messageFormat: "'{0}' returns '{1}', and '{2}' is not safe to share: the cache hands the same instance to every caller at once, and this type changes as it is read or used. Return an immutable type, such as a record or a string, instead.",
+                category: "Reliability",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0025"));
+
             internal static readonly DiagnosticDescriptor UnsupportedInterface = new(
                 id: "MC0014",
                 title: "Interface cannot be cached",

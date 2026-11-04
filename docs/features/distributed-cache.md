@@ -117,6 +117,23 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
+## Invalidations only
+
+When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
+an API caches, say), turn off the distributed cache for every method. Values stay in each process's memory, and every
+invalidation still reaches the other processes:
+
+<!-- snippet: distributed-invalidations-only -->
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+<!-- endSnippet -->
+
+Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
+values are written there.
+
 ## What other instances see
 
 - An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then

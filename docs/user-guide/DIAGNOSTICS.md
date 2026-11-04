@@ -32,6 +32,8 @@ generator and the analyzer run, each problem is reported once.
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
+| [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
+| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
 
 ## MC0001
 
@@ -236,3 +238,43 @@ await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, m
 Or format each value with `MethodCacheKeys.Part`, which the code fix does:
 `$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
 A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
+
+## MC0025
+
+The cached method returns a type whose instances change while they are read or used, or has one as an element:
+`JsonNode` and its subclasses (`JsonObject`, `JsonArray`), `DataTable`, `DataSet`, `DataRow`, `DataView`, a `Stream`
+or a `StringBuilder`. The cache hands the same instance to every caller, at the same time. A `JsonNode` parses its
+content lazily the first time it is read, and isn't thread-safe while it does, so two requests reading one cached
+`JsonObject` at once can get an empty or broken result. A stream's position moves as one caller reads it.
+
+```cs
+[Cache(Duration = "00:05:00")]
+Task<JsonObject> GetLayoutAsync(string locale);   // MC0025: every caller shares one JsonObject
+```
+
+Return an immutable type instead: a record, a string (`node.ToJsonString()`), a `byte[]` you never change, or a
+`JsonElement` (`JsonDocument.Parse(json).RootElement.Clone()`), which is read-only and safe to share.
+Collections such as `List<T>` and arrays are not reported: they are safe to read from several threads, but don't change
+a cached one ([cached objects are shared](../features/memory-cache.md#cached-objects-are-shared)).
+
+## MC0026
+
+A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`.
+
+The cache key is built from the method's arguments only. A result that depends on the current request or user, such
+as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
+name the user, and the next caller gets it, whoever they are. Refresh-ahead and fail-safe also load values outside
+the request, in a new scope with no `HttpContext`.
+
+```cs
+public sealed class Orders(IHttpContextAccessor http, AppDb db) : IOrders   // MC0026
+{
+    public Task<List<Order>> MineAsync() => db.Orders.Where(o => o.UserId == http.HttpContext!.User.Id()).ToListAsync();
+}
+```
+
+Make what the result depends on a parameter of the cached method, so it becomes part of the key:
+`Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
+See [Getting started](../getting-started.md#per-user-data).
+

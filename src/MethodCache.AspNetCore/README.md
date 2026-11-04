@@ -41,6 +41,15 @@ maps them under `/ops/cache` instead.
 | `POST` | `invalidate-method` | Removes every entry of one cached method, also from the distributed cache and the other instances. Body: `{ "methodId": "[MyApp]MyApp.IUserService.GetUserAsync" }`, an id that `methods` lists |
 | `POST` | `clear` | Removes every entry. Body: `{}` |
 
+The `POST` endpoints take a JSON body, also `clear`, whose body is `{}`:
+
+```bash
+curl -X POST https://localhost:5001/methodcache/clear -H "Content-Type: application/json" -d "{}"
+```
+
+That is on purpose: a browser sends a JSON request to another site only after a CORS preflight, so a page on another
+site can't make a signed-in admin's browser empty the cache. A request without a JSON body is answered with 415 or 400.
+
 Answers other than 200, 204 and 404:
 
 - **400**, and nothing changes: a query parameter the endpoint doesn't take, a missing or empty `storedKey` or

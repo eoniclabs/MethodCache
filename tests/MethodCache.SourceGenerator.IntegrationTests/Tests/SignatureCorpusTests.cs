@@ -595,7 +595,13 @@ public class SignatureCorpusTests
         ["CultureInfo parameter"] = ("Task<string> Get(System.Globalization.CultureInfo culture)", "Task<string> Get(System.Globalization.CultureInfo culture) => Task.FromResult(\"v\");", "MC0019"),
         ["object result"] = ("Task<object> Get(int id)", "Task<object> Get(int id) => Task.FromResult<object>(id);", "MC0020"),
         ["interface result"] = ("ValueTask<IComparable> Get(int id)", "ValueTask<IComparable> Get(int id) => new(id);", "MC0020"),
-        ["abstract class result"] = ("System.IO.Stream Get(int id)", "System.IO.Stream Get(int id) => System.IO.Stream.Null;", "MC0020"),
+        ["abstract class result"] = ("System.Text.Encoding Get(int id)", "System.Text.Encoding Get(int id) => System.Text.Encoding.UTF8;", "MC0020"),
+        ["JsonObject result"] = ("Task<System.Text.Json.Nodes.JsonObject> Get(int id)", "Task<System.Text.Json.Nodes.JsonObject> Get(int id) => Task.FromResult(new System.Text.Json.Nodes.JsonObject());", "MC0025"),
+        ["JsonNode result"] = ("Task<System.Text.Json.Nodes.JsonNode?> Get(int id)", "Task<System.Text.Json.Nodes.JsonNode?> Get(int id) => Task.FromResult<System.Text.Json.Nodes.JsonNode?>(null);", "MC0025"),
+        ["list of JsonObject result"] = ("Task<List<System.Text.Json.Nodes.JsonObject>> Get(int id)", "Task<List<System.Text.Json.Nodes.JsonObject>> Get(int id) => Task.FromResult(new List<System.Text.Json.Nodes.JsonObject>());", "MC0025"),
+        ["Stream result"] = ("System.IO.Stream Get(int id)", "System.IO.Stream Get(int id) => System.IO.Stream.Null;", "MC0025"),
+        ["MemoryStream result"] = ("ValueTask<System.IO.MemoryStream> Get(int id)", "ValueTask<System.IO.MemoryStream> Get(int id) => new(new System.IO.MemoryStream());", "MC0025"),
+        ["StringBuilder in a tuple result"] = ("(int Id, System.Text.StringBuilder Text) Get(int id)", "(int Id, System.Text.StringBuilder Text) Get(int id) => (id, new());", "MC0025"),
         ["list of objects result"] = ("Task<List<object>> Get(int id)", "Task<List<object>> Get(int id) => Task.FromResult(new List<object>());", "MC0020"),
     };
 

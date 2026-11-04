@@ -75,7 +75,12 @@ builder.Services.AddMethodCache();                               // after your r
   (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
   the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
-- Cached objects are shared between callers: return immutable types such as records.
+- Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
+  `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
+- The key holds only the method's arguments. A cached implementation must not read the current user or request
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026): pass the user or tenant id
+  as an argument instead.
+- Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.

@@ -31,7 +31,24 @@ public interface IReportService
 ```
 <!-- endSnippet -->
 
-Durations accept an invariant positive decimal followed by `s`, `m`, `h` or `d` (case-insensitive), or `[d.]hh:mm:ss` with up to seven fractional second digits. Examples: `"30s"`, `"1.5h"`, `"1.00:00:00"`. Outer whitespace is ignored. The result must be an exact positive whole number of ticks; fractional ticks are rejected. Bare integers, zero, negatives, exponents, decimal commas, combined units and overflow are errors. The same parser is used for attributes and configuration; invalid explicit attributes produce [MC0004](../user-guide/DIAGNOSTICS.md#mc0004) even without analyzers. `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`, and `TimeSpan.Zero` in the builder (`WithSlidingExpiration`, `WithRefreshAhead`, `WithFailSafe`) does the same. Timeout and retry windows must stay positive.
+## Writing a duration
+
+Attributes, `appsettings.json` and runtime configuration read durations the same way:
+
+| Write | Means | Example |
+|---|---|---|
+| a number and `s` | seconds | `"30s"`, `"0.5s"` |
+| a number and `m` | minutes | `"5m"`, `"1.5m"` |
+| a number and `h` | hours | `"24h"`, `"1.5h"` |
+| a number and `d` | days | `"1d"`, `"7d"` |
+| `hh:mm:ss` or `d.hh:mm:ss` | a `TimeSpan` | `"00:05:00"`, `"1.00:00:00"` |
+| `"off"` | turned off (`SlidingExpiration`, `RefreshAhead` and `FailSafe` only) | `"off"` |
+
+- Units are case-insensitive and the number uses a `.` for decimals, whatever the culture.
+- Milliseconds are written as seconds (`"0.25s"`) or as a `TimeSpan` (`"00:00:00.250"`). There is no `ms` unit.
+- A bare number (`"300"`), zero, a negative value and combined units (`"1h30m"`) are errors: at build time in an
+  attribute ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)), and at startup in `appsettings.json`.
+- In code, pass a `TimeSpan`; `TimeSpan.Zero` turns `SlidingExpiration`, `RefreshAhead` or `FailSafe` off.
 
 ## Duration
 
