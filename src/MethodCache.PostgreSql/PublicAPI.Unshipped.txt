@@ -8,6 +8,8 @@ MethodCache.PostgreSql.PostgreSqlOptions.ConnectionString.get -> string!
 MethodCache.PostgreSql.PostgreSqlOptions.ConnectionString.set -> void
 MethodCache.PostgreSql.PostgreSqlOptions.ConnectionStringFactory.get -> System.Func<System.IServiceProvider!, string!>?
 MethodCache.PostgreSql.PostgreSqlOptions.ConnectionStringFactory.set -> void
+MethodCache.PostgreSql.PostgreSqlOptions.ConfigureDataSource.get -> System.Action<Npgsql.NpgsqlDataSourceBuilder!>?
+MethodCache.PostgreSql.PostgreSqlOptions.ConfigureDataSource.set -> void
 MethodCache.PostgreSql.PostgreSqlOptions.CreateTablesIfMissing.get -> bool
 MethodCache.PostgreSql.PostgreSqlOptions.CreateTablesIfMissing.set -> void
 MethodCache.PostgreSql.PostgreSqlOptions.EnableBackplane.get -> bool

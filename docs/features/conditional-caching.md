@@ -32,8 +32,10 @@ builder.Services.AddMethodCache(config =>
 - The predicate runs once per load, and on each value read from the distributed cache: a value it rejects there is
   skipped and the method runs. It never runs on a hit in memory. If it throws, the result is returned and not stored.
 - `config.Method(...).CacheWhen` gets the method's result type. A `CacheWhen<T>` set elsewhere for a type the method
-  can't return, such as `CacheWhen<string>` on a method that returns `int`, makes the call throw an
-  `InvalidOperationException` instead of silently caching nothing.
+  can't return, such as `CacheWhen<string>` on a method that returns `int`, fails where it is set instead of silently
+  caching nothing: in code with an `InvalidOperationException` at startup, and in a runtime override with an
+  `ArgumentException` that leaves the policy as it was. A generic method's result type depends on the call, so there
+  the call throws the `InvalidOperationException`.
 - It is set for one method in code only, so it can't come from `appsettings.json`. In `Defaults` or a group it fails
   at startup. `.CacheWhen(...)` and `.Configure(o => o.CacheWhen<T>(...))` set the same thing: the last call wins.
   `Any<T>.Value` stands for any argument.

@@ -71,6 +71,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"            builder.Method({ToLiteral(definition.MethodId)}, new string[] {{ {string.Join(", ", definition.ParameterNames.Select(ToLiteral))} }}, {group}, new global::MethodCache.Generated.GeneratedMethodOptions");
                     sb.AppendLine("            {");
                     sb.AppendLine("                CanonicalTagParts = true,");
+                    if (definition.ResultType != null)
+                        sb.AppendLine($"                ResultType = typeof({definition.ResultType}),");
                     foreach (var statement in definition.PolicyStatements)
                     {
                         const string prefix = "policy = policy with { ";
@@ -96,7 +98,7 @@ namespace MethodCache.SourceGenerator
                         continue;
                     }
 
-                    var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}");
+                    var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}") { ResultType = entry.ResultType };
                     definition.ParameterNames.AddRange(entry.ParameterNames);
                     definition.PolicyStatements.AddRange(entry.PolicyStatements);
                     definition.MetadataStatements.AddRange(entry.MetadataStatements);
@@ -124,10 +126,50 @@ namespace MethodCache.SourceGenerator
                         Utils.GetKeyMethodName(method.Method, info.Symbol),
                         new EquatableArray<string>(method.Method.Parameters.Select(p => p.Name)),
                         new EquatableArray<string>(definition.PolicyStatements),
-                        new EquatableArray<string>(definition.MetadataStatements)));
+                        new EquatableArray<string>(definition.MetadataStatements),
+                        ResultTypeOf(method.Method)));
                 }
 
                 return new EquatableArray<PolicyEntry>(entries);
+            }
+
+            /// <summary>
+            /// The source of the method's result type, <c>T</c> of <c>Task&lt;T&gt;</c> and <c>ValueTask&lt;T&gt;</c>, which a
+            /// <c>CacheWhen&lt;T&gt;</c> set for the method is checked against when it is set. Null when the result has
+            /// type parameters, since the method id names the generic definition, or when the policy source can't name it.
+            /// </summary>
+            private static string? ResultTypeOf(IMethodSymbol method)
+            {
+                var type = method.OriginalDefinition.ReturnType;
+                if (Utils.IsTask(type, out var inner) || Utils.IsValueTask(type, out inner))
+                {
+                    if (inner is null) return null;
+                    type = inner;
+                }
+
+                if (type.TypeKind == TypeKind.Dynamic) return "object";
+                return Nameable(type) ? Utils.GetFullyQualifiedName(type) : null;
+            }
+
+            // A type the policy source, outside any user type, can name in typeof: no type parameters and nothing private
+            private static bool Nameable(ITypeSymbol type)
+            {
+                switch (type)
+                {
+                    case IArrayTypeSymbol array:
+                        return Nameable(array.ElementType);
+                    case INamedTypeSymbol named:
+                        for (var current = named; current != null; current = current.ContainingType)
+                        {
+                            if (current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
+                                current.TypeArguments.Any(argument => !Nameable(argument)))
+                                return false;
+                        }
+
+                        return true;
+                    default:
+                        return false;
+                }
             }
 
             private static void PopulateFromCacheAttribute(PolicyDefinition definition, AttributeData cacheAttr)
@@ -231,6 +273,7 @@ namespace MethodCache.SourceGenerator
                 public List<string> ParameterNames { get; } = new();
                 public List<string> PolicyStatements { get; } = new();
                 public List<string> MetadataStatements { get; } = new();
+                public string? ResultType { get; init; }
             }
         }
     }

@@ -25,6 +25,12 @@ internal sealed class PolicyLoadChecks
     /// the source's policies, or <see langword="null"/>.
     /// </summary>
     public TagProblem? FindTagProblem(IReadOnlyCollection<PolicyDraft> drafts) => _findTagProblem(drafts);
+
+    /// <summary>
+    /// The longest <c>Duration</c> the cache keeps an entry, <see cref="MethodCacheMemoryOptions.MaxExpiration"/>, or
+    /// <see langword="null"/> when the application's own cache manager holds the results.
+    /// </summary>
+    public TimeSpan? MaxDuration { get; init; }
 }
 
 /// <summary>A source that checks its policies with the <see cref="PolicyLoadChecks"/> the resolver gives it.</summary>

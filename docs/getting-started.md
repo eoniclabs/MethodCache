@@ -89,9 +89,10 @@ lifetime). Select the generated module with `FromAssemblyOf<ProductService>()`; 
 implementation must exist for each missing service. Zero or multiple candidates give an error naming the service,
 module and candidates. Explicit DI registrations always retain their implementation and lifetime.
 
-When multiple assemblies generate decorators for the same interface, select one module with
-`FromAssemblyOf<SomeTypeInThatAssembly>()`. No entry-assembly or alphabetical preference is applied. The same
-module selection and candidate data work under JIT and Native AOT.
+When multiple assemblies generate decorators for the same interface, choose the one that wins with
+`FromAssemblyOf<SomeTypeInThatAssembly>()`. Choosing a module only settles such a tie: the services other modules
+generate stay cached. No entry-assembly or alphabetical preference is applied. The same module selection and
+candidate data work under JIT and Native AOT.
 
 Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
 key; an interface registered only keyed is not also registered without a key. The service key is part of the cache

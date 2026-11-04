@@ -49,9 +49,10 @@ builder.Services.AddMethodCache(config => config.Method((IFxRatesClient c) => c.
 - List each interface once. It must be non-generic and come from another assembly; for your own interfaces, put
   `[Cache]` on the methods. A method with overloads can't be listed yet.
 - The attribute can live in a class library, such as your infrastructure project. Select its generated module
-  explicitly with `MethodCacheBuilder.FromAssemblyOf<T>()`, using a type declared in that assembly. This also
-  bootstraps the module under Native AOT without relying on discovery of loaded assemblies.
-- When multiple assemblies generate the same interface, select exactly one module. Calling and entry assemblies
+  explicitly with `MethodCacheBuilder.FromAssemblyOf<T>()`, using a type declared in that assembly. This bootstraps
+  the module under Native AOT without relying on discovery of loaded assemblies; your own `[Cache]` interfaces in
+  other assemblies stay cached.
+- When multiple assemblies generate the same interface, the module you select wins. Calling and entry assemblies
   have no special precedence. An ambiguous registration throws `InvalidOperationException` naming the candidates.
 
 <!-- snippet: third-party-module-selection -->

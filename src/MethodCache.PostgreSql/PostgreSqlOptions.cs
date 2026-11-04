@@ -1,4 +1,5 @@
 using System.Text;
+using Npgsql;
 
 namespace MethodCache.PostgreSql;
 
@@ -21,6 +22,27 @@ public sealed class PostgreSqlOptions
 
     /// <summary>Resolves the connection string once from the completed container; takes precedence over ConnectionString.</summary>
     public Func<IServiceProvider, string>? ConnectionStringFactory { get; set; }
+
+    /// <summary>
+    /// Configures each data source MethodCache builds from the connection string, for what a connection string can't
+    /// hold: a password provider for passwordless login to a cloud database, such as an Azure Entra ID or AWS IAM
+    /// token, client certificates or a custom server certificate check. It is called for the pool of cache commands
+    /// and for the connection that listens for invalidations; MethodCache then sets again the few settings each
+    /// needs, such as no pooling for the listening connection.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// mc.UsePostgreSql(o =>
+    /// {
+    ///     o.ConnectionString = "Host=mydb.postgres.database.azure.com;Database=app;Username=app-identity;SSL Mode=Require";
+    ///     o.ConfigureDataSource = dataSource => dataSource.UsePeriodicPasswordProvider(
+    ///         async (_, token) => (await credential.GetTokenAsync(
+    ///             new TokenRequestContext(["https://ossrdbms-aad.database.windows.net/.default"]), token)).Token,
+    ///         TimeSpan.FromMinutes(55), TimeSpan.FromSeconds(5));
+    /// });
+    /// </code>
+    /// </example>
+    public Action<NpgsqlDataSourceBuilder>? ConfigureDataSource { get; set; }
 
     /// <summary>
     /// The schema of the cache tables.

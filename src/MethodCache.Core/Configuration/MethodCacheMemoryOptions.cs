@@ -76,7 +76,8 @@ namespace MethodCache
         private TimeSpan _maxExpiration = TimeSpan.FromDays(7);
 
         /// <summary>
-        /// Maximum expiration time for cache entries.
+        /// The longest an entry is kept, 7 days by default and at most 365 days. A longer <c>Duration</c> fails where it
+        /// is set: at startup, in a runtime override or in a manual call.
         /// </summary>
         public TimeSpan MaxExpiration
         {

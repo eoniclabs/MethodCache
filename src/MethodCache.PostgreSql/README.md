@@ -52,6 +52,26 @@ builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
 
 MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's data sources, `DbContext` and `IDistributedCache` are left alone.
 
+### Passwordless login
+
+A database that logs in with a token instead of a password, such as Azure Database for PostgreSQL with Microsoft Entra ID or Amazon RDS with IAM, gets the token through `ConfigureDataSource`. MethodCache calls it for its connection pool and for the connection that listens for invalidations:
+
+<!-- snippet: postgresql-passwordless -->
+```cs
+builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
+{
+    // No password: each new connection logs in with a token, refreshed before it expires
+    options.ConnectionString = "Host=mydb.postgres.database.azure.com;Database=app;Username=app-identity;SSL Mode=Require";
+    options.ConfigureDataSource = dataSource => dataSource.UsePeriodicPasswordProvider(
+        (_, cancellationToken) => getAccessToken(cancellationToken),
+        successRefreshInterval: TimeSpan.FromMinutes(55),
+        failureRefreshInterval: TimeSpan.FromSeconds(5));
+}));
+```
+<!-- endSnippet -->
+
+With Azure.Identity, `getAccessToken` can be `async ct => (await credential.GetTokenAsync(new(["https://ossrdbms-aad.database.windows.net/.default"]), ct)).Token`. `ConfigureDataSource` also sets client certificates or a custom server certificate check, anything an `NpgsqlDataSourceBuilder` takes. MethodCache then sets again the few settings it relies on, such as no pooling for the listening connection.
+
 ## Tables
 
 By default the schema and four tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if PostgreSQL is down, creation is retried in the background and methods run uncached until it succeeds. Instances that start together create the tables once, under an advisory lock.
@@ -99,6 +119,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TableName` | `methodcache` | Table for cache entries; the schema-version table is named after it |
 | `InvalidationsTableName` | `methodcache_invalidations` | Table the backplane uses; the cursor table is named after it |
 | `ConnectionStringFactory` | none | Resolves a connection string once from DI at binding |
+| `ConfigureDataSource` | none | Configures MethodCache's `NpgsqlDataSourceBuilder`s: a password provider for [passwordless login](#passwordless-login), client certificates or a server certificate check |
 | `CreateTablesIfMissing` | `true` | Create the schema and tables at startup |
 | `EnableBackplane` | `true` | Share invalidations with other instances |
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations when no notification arrived |

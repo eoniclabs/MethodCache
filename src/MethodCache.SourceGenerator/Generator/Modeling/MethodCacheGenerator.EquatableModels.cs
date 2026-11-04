@@ -83,8 +83,11 @@ namespace MethodCache.SourceGenerator
             }
         }
 
-        /// <summary>The attribute policy of one cached method, as statements for the generated policy source.</summary>
-        internal sealed record PolicyEntry(string MethodId, string KeyMethod, EquatableArray<string> ParameterNames, EquatableArray<string> PolicyStatements, EquatableArray<string> MetadataStatements);
+        /// <summary>
+        /// The attribute policy of one cached method, as statements for the generated policy source, and the source of
+        /// its result type, or null when it has type parameters.
+        /// </summary>
+        internal sealed record PolicyEntry(string MethodId, string KeyMethod, EquatableArray<string> ParameterNames, EquatableArray<string> PolicyStatements, EquatableArray<string> MetadataStatements, string? ResultType);
 
         /// <summary>What the shared generated files need to know about one interface.</summary>
         internal sealed record InterfaceSummary(

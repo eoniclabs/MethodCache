@@ -78,13 +78,16 @@ builder.Services.AddMethodCache();                               // after your r
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
-  If multiple modules generate the same interface, select exactly one; calling/entry assemblies have no special priority.
+  If multiple modules generate the same interface, the selected one wins; the other modules' services stay cached, and
+  calling/entry assemblies have no special priority.
 - In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
   `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
   `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
-  startup.
+  startup, and so does a `CacheWhen<T>` for a type the method can't return.
+- A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
+  fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
 - For a client from a NuGet package with an interface, use
   `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` instead of a wrapper.
 - Without an attribute, use `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with an explicit,

@@ -116,7 +116,8 @@ var users = await cache.GetOrCreateManyAsync<User>(
 <!-- endSnippet -->
 
 - The factory returns an `IReadOnlyDictionary` with a value for each key it gets, and the call returns one for every
-  key.
+  key. An answer that leaves out a key, or is `null`, fails like a factory that throws, and none of its values is
+  cached.
 - On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.
 - Each key behaves as `GetOrCreateAsync` would for it. When the factory throws, each key it was asked for gets its
   fail-safe value; when a key has none, the factory's exception is thrown.

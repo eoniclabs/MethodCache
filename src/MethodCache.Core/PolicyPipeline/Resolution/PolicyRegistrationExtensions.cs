@@ -13,8 +13,13 @@ internal static class PolicyRegistrationExtensions
         {
             var registrations = provider.GetServices<PolicySourceRegistration>();
             // Read when the resolver is built, after AddMethodCache recorded every decorated method's parameters
-            var parameterNames = provider.GetService<MethodCacheServiceCollectionExtensions.GeneratedParameters>()?.Names;
-            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>(), parameterNames);
+            var parameters = provider.GetService<MethodCacheServiceCollectionExtensions.GeneratedParameters>();
+            // The cache manager that holds the method results, read when the policies load: the built-in one keeps an
+            // entry at most MaxExpiration, and an application's own manager, even one registered later, has its own limits
+            var limits = new PolicyLimits(
+                () => provider.GetService<ICacheManager>() is MethodCache.Extensibility.InMemoryCacheManager memory ? memory.MaxExpiration : null,
+                parameters?.ResultTypes);
+            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>(), parameters?.Names, limits);
         });
 
         services.TryAddSingleton<IPolicyResolver>(provider => provider.GetRequiredService<PolicyResolver>());

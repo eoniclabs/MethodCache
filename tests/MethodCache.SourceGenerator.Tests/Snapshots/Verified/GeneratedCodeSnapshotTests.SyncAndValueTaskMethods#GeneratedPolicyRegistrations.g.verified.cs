@@ -19,10 +19,12 @@ namespace MethodCache.Generated
                 builder.Method("[SnapshotApp]App.IPricing.Price", new string[] { "sku", "quantity" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultType = typeof(global::System.Decimal),
                 });
                 builder.Method("[SnapshotApp]App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultType = typeof(global::System.String),
                 });
             }
         }

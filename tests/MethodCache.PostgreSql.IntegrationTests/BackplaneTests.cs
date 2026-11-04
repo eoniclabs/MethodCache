@@ -682,6 +682,35 @@ public class BackplaneTests(PostgreSqlFixture fixture)
     }
 
     [SkippableFact]
+    public async Task PasswordProvider_LogsInCacheCommandsAndTheListenConnection()
+    {
+        // Passwordless login to a cloud database: the connection string has no password, a provider supplies a token
+        var options = fixture.Options("password_provider");
+        var password = new NpgsqlConnectionStringBuilder(options.ConnectionString).Password;
+        Skip.If(string.IsNullOrEmpty(password), "The test server takes no password.");
+        options.ConnectionString = new NpgsqlConnectionStringBuilder(options.ConnectionString) { Password = null }.ConnectionString;
+        var provided = 0;
+        options.ConfigureDataSource = dataSource => dataSource.UsePasswordProvider(
+            _ => throw new InvalidOperationException("MethodCache opens connections asynchronously."),
+            (_, _) =>
+            {
+                Interlocked.Increment(ref provided);
+                return ValueTask.FromResult(password!);
+            });
+        try
+        {
+            await using var connection = new PostgreSqlConnection(options.ConnectionString, options.ConfigureDataSource);
+            await PostgreSqlTables.CreateIfMissingAsync(connection.DataSource, options, CancellationToken.None);
+            await using var receiver = new PostgreSqlBackplane(connection, options);
+            await receiver.SubscribeAsync(_ => Task.CompletedTask);
+
+            await WaitUntilAsync(() => receiver.Listening);
+            Assert.True(Volatile.Read(ref provided) >= 2, "Both the command pool and the LISTEN connection asked for the password.");
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(new PostgreSqlOptions { ConnectionString = fixture.RequireConnectionString(), SchemaName = options.SchemaName }); }
+    }
+
+    [SkippableFact]
     public async Task Listen_Connects_WhenTheConnectionStringMultiplexes()
     {
         // Multiplexing needs a pool, and the LISTEN connection has none of its own

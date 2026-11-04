@@ -59,6 +59,7 @@ public static class PostgreSqlMethodCacheBuilderExtensions
             var options = new PostgreSqlOptions
             {
                 ConnectionString = configured.ConnectionStringFactory?.Invoke(sp) ?? configured.ConnectionString,
+                ConfigureDataSource = configured.ConfigureDataSource,
                 SchemaName = configured.SchemaName,
                 TableName = configured.TableName,
                 InvalidationsTableName = configured.InvalidationsTableName,
@@ -73,7 +74,11 @@ public static class PostgreSqlMethodCacheBuilderExtensions
                 sp.GetRequiredKeyedService<DistributedCacheOptions>(MethodCache.Infrastructure.OwnedServices.Key).KeyPrefix);
         });
         // One pool for the cache, the tables and the backplane; the container disposes it
-        services.TryAddSingleton(static sp => new PostgreSqlConnection(sp.GetRequiredService<PostgreSqlRuntimeOptions>().Options.ConnectionString));
+        services.TryAddSingleton(static sp =>
+        {
+            var options = sp.GetRequiredService<PostgreSqlRuntimeOptions>().Options;
+            return new PostgreSqlConnection(options.ConnectionString, options.ConfigureDataSource);
+        });
         // UsePostgreSql may be called again to add to the options; the tables are still created once
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PostgreSqlTables>(static sp => new PostgreSqlTables(
             sp.GetRequiredService<PostgreSqlConnection>(),

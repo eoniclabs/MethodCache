@@ -45,6 +45,9 @@ namespace MethodCache.Extensibility
         private readonly CoreTelemetry? _telemetry;
         private readonly HttpResponseStore? _http;
         private readonly MethodCacheMemoryOptions _options;
+
+        /// <summary>The longest an entry is kept, which a longer <c>Duration</c> is rejected against.</summary>
+        internal TimeSpan MaxExpiration => _options.MaxExpiration;
         private readonly Func<string, object?, long>? _weigher;
         private readonly ITimer? _maintenanceTimer;
         private readonly StripedCounter _hits = new();

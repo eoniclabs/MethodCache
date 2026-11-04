@@ -57,7 +57,7 @@ namespace CacheWhen
 
     public static class Startup
     {
-        public static void Configure(IServiceCollection services)
+        public static void Configure(IServiceCollection services, bool mismatch)
         {
             services.AddSingleton<ICatalog, Catalog>();
             services.AddMethodCache(config =>
@@ -68,8 +68,9 @@ namespace CacheWhen
                 config.Method((ICatalog c) => c.FragileAsync(Any<int>.Value))
                     .Configure(o => o.WithDuration(TimeSpan.FromMinutes(1)))
                     .CacheWhen(r => throw new InvalidOperationException(""predicate bug""));
-                config.Method((ICatalog c) => c.MismatchAsync(Any<int>.Value))
-                    .Configure(o => o.CacheWhen<string>(r => r.Length > 0));
+                if (mismatch)
+                    config.Method((ICatalog c) => c.MismatchAsync(Any<int>.Value))
+                        .Configure(o => o.CacheWhen<string>(r => r.Length > 0));
             });
         }
     }
@@ -136,13 +137,17 @@ namespace CacheWhen
     }
 
     [Fact]
-    public async Task APredicateForAnotherResultType_FailsTheCall_InsteadOfCachingNothing()
+    public async Task APredicateForAnotherResultType_FailsWhenThePoliciesLoad_InsteadOfCachingNothing()
     {
-        var (catalog, _, provider) = await CreateAsync();
-        await using var _ = provider;
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(Source, "CacheWhenApp");
+        var services = new ServiceCollection();
+        compiled.Assembly.GetType("CacheWhen.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services, true });
+        await using var provider = services.BuildServiceProvider();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<Task<int>>(catalog, "MismatchAsync", 1));
-        Assert.Contains("CacheWhen<String>", error.Message, StringComparison.Ordinal);
+        // Before any call: the cached service can't be created with a policy that would cache nothing
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService(compiled.Assembly.GetType("CacheWhen.ICatalog")!));
+        Assert.Contains("CacheWhen<String> can't check the Int32 result of [CacheWhenApp]CacheWhen.ICatalog.MismatchAsync", error.Message, StringComparison.Ordinal);
+        Assert.Contains("It is set in mc.Method(...)", error.Message, StringComparison.Ordinal);
     }
 
     private async Task<(object Catalog, Type Type, ServiceProvider Provider)> CreateAsync()
@@ -151,7 +156,7 @@ namespace CacheWhen
         var assembly = compiled.Assembly;
 
         var services = new ServiceCollection();
-        assembly.GetType("CacheWhen.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services });
+        assembly.GetType("CacheWhen.Startup")!.GetMethod("Configure")!.Invoke(null, new object[] { services, false });
         var type = assembly.GetType("CacheWhen.Catalog")!;
         Set(type, "Calls", 0);
 

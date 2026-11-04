@@ -158,18 +158,22 @@ appsettings uses, and it covers all arguments, versions, generic arguments and k
 
 <!-- snippet: keys-method-id -->
 ```cs
-// "[MyApp]MyApp.IInvoiceService.FindAsync(string)": the arguments don't matter
-var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+// "[MyApp]MyApp.IInvoiceService.FindAsync(string)": Any<T>.Value stands for any argument
+var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(Any<string>.Value));
 var entries = admin.ListEntries(methodId: methodId);
 ```
 <!-- endSnippet -->
 
 <!-- snippet: keys-invalidate-method -->
 ```cs
-var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(Any<string>.Value));
 var result = await admin.InvalidateMethodAsync(methodId);   // every result of the method, on every instance
 ```
 <!-- endSnippet -->
+
+`MethodId` reads the method from the call and never creates the service; `Any<T>.Value` stands for any argument.
+`For` creates the service only to learn its type, when the interface has several registrations and the last is a
+singleton factory.
 
 `CacheEntryInfo.MethodId` tells which method an entry belongs to; it is `null` for entries stored through
 `ICacheManager` directly. An application `ICacheManager` stores entries under `MethodCacheKeys.StoredKey(key, version)`;
@@ -206,7 +210,9 @@ see [Manual caching](manual-caching.md).
   results. An instance registration can be configured differently, so `AddMethodCache()` fails when one has the same
   type as another registration under that key; a factory that creates the same type as another registration fails
   when both have been created. Give each its own service key instead. `keys.For<IRates>(...)` returns the key of the
-  last registration, the one `GetService<IRates>()` returns.
+  last registration, the one `GetService<IRates>()` returns. When that one is a scoped or transient factory, which
+  may create another type in each scope, `For` throws an `InvalidOperationException` instead of guessing: register it
+  with its implementation type, give it a service key of its own, or invalidate by tag.
 - **All registrations of a method share its method id and its tags.** A `[CacheInvalidate]` tag, on any registration,
   and `InvalidateMethodAsync` remove the matching entries of all of them.
 - **Generic methods** carry their closed type arguments after the method name, before any implementation type or

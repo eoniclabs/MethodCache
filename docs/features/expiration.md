@@ -44,8 +44,11 @@ builder.Services.AddMethodCache(config =>
 ```
 <!-- endSnippet -->
 
-Without any default, entries live for five minutes. No entry lives
-longer than `MethodCacheMemoryOptions.MaxExpiration` (seven days). See [Memory cache](memory-cache.md).
+Without any default, entries live for five minutes. No entry lives longer than
+`MethodCacheMemoryOptions.MaxExpiration` (seven days), so a longer `Duration` fails where it is set instead of being
+cut short: at startup, in a runtime override or in a manual call. For longer entries, raise the limit, up to 365 days,
+with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
+[Memory cache](memory-cache.md).
 
 ## Sliding expiration
 

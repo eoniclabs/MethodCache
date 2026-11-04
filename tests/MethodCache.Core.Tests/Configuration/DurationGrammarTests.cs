@@ -13,6 +13,8 @@ public class DurationGrammarTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         { ["MethodCache:Defaults:Duration"] = text }).Build();
         var services = new ServiceCollection();
+        // An application's own cache manager, so the corpus' longest durations aren't checked against MaxExpiration
+        services.AddSingleton<ICacheManager, NoOpCacheManager>();
         services.AddSingleton<IReader, Reader>();
         services.AddMethodCache(builder => builder.FromAssemblyOf<DurationGrammarTests>().FromConfiguration(configuration, "MethodCache"));
         using var provider = services.BuildServiceProvider();

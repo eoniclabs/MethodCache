@@ -68,6 +68,39 @@ namespace VendorApp
         Assert.Equal(TimeSpan.FromSeconds(30), selected.Policy.Duration);
     }
 
+    // A library's [CacheInterface] module is selected with FromAssemblyOf, as the docs say; the application's own
+    // cached interfaces, generated in another assembly, must stay cached
+    [Fact]
+    public async Task SelectedModule_ServicesOfAnUnselectedModule_StayCached()
+    {
+        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryOnlyFx", "00:00:30"), "SelectedLibraryModule");
+        var app = await _engine.CompileWithSourceGeneratorAsync("""
+            namespace OwnApp {
+                public interface IPrices { [MethodCache.Cache] int Get(int id); }
+                public sealed class Prices : IPrices { public int Calls; public int Get(int id) => ++Calls; }
+            }
+            """, "UnselectedAppModule");
+        var prices = Activator.CreateInstance(app.Assembly.GetType("OwnApp.Prices")!)!;
+        var pricesType = app.Assembly.GetType("OwnApp.IPrices")!;
+        var client = new FxVendorClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFxVendorClient>(client);
+        services.AddSingleton(pricesType, prices);
+        services.AddMethodCache(b => b.FromAssembly(library.Assembly));
+        await using var provider = services.BuildServiceProvider();
+
+        var cached = provider.GetRequiredService(pricesType);
+        var get = pricesType.GetMethod("Get")!;
+        get.Invoke(cached, [1]);
+        get.Invoke(cached, [1]);
+        var fx = provider.GetRequiredService<IFxVendorClient>();
+        await fx.GetRateAsync("EUR", "SEK");
+        await fx.GetRateAsync("EUR", "SEK");
+
+        Assert.Equal(1, (int)prices.GetType().GetField("Calls")!.GetValue(prices)!);
+        Assert.Equal(1, client.RateCalls);
+    }
+
     [Fact]
     public async Task ListedMethods_AreCached_AndOthersCallTheClient()
     {

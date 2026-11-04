@@ -157,7 +157,8 @@ dotnet add package MethodCache --prerelease
 Details: [Getting started](docs/getting-started.md).
 
 Missing services require explicit `AutoRegister(lifetime)`, with exactly one accessible implementation in the
-selected generated module. Use `FromAssemblyOf<T>()` to select between modules; ambiguous module/candidate choices
+selected generated module. Use `FromAssemblyOf<T>()` to choose the module that wins when several generate the same
+interface; ambiguous module/candidate choices
 and unsupported cacheable bindings fail explicitly. Startup configuration uses `MethodCacheBuilder`.
 
 SQL Server backplane tables require a non-nullable `binary(32)` `Scope` column. Automatic initialization reports
@@ -414,7 +415,7 @@ A keyed `ICacheManager` registration remains independent of the default unkeyed 
 
 Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Registrations of one interface with different implementation types under the same service key each cache their own results too: their keys carry the implementation type. Two registrations of the same implementation type share their results. A constructor parameter marked `[ServiceKey]` receives the application's key. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
 
-Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; `CacheWhen` in defaults or a group; and a tag template that names no parameter of a method it applies to. Calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
+Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; a `Duration` longer than `MaxExpiration`; `CacheWhen` in defaults or a group, or for a type the method can't return; and a tag template that names no parameter of a method it applies to. Calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
 
 The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
 

@@ -95,6 +95,22 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 
 ## With several instances
 
-With [Redis, SQL Server or PostgreSQL](distributed-cache.md), invalidating a tag or key removes it from the distributed cache and
-tells every instance to drop its in-memory copy. You don't need to do anything else.
+With [Redis, SQL Server or PostgreSQL](distributed-cache.md), invalidating a tag or key removes it from the distributed
+cache and sends every other instance a message to drop its in-memory copy. You don't need to do anything else, but the
+other instances drop their copies when the message arrives, not when the call returns: until then they can serve the
+copy they hold. How each provider catches up after a lost connection is in
+[What other instances see](distributed-cache.md#what-other-instances-see).
+
+The `InvalidationResult` that `InvalidateTagAsync` and `InvalidateKeyAsync` return counts how far the invalidation
+got, per tag or key:
+
+| Count | Means |
+|---|---|
+| `Local` | Removed from this instance's memory |
+| `Distributed` | Confirmed by the distributed cache: instances without a copy in memory, and instances that start later, read the new value |
+| `Queued` | Not confirmed by the distributed cache yet. It is retried every `CircuitBreakerDuration`, and until then other instances can serve the old value |
+| `Published` | The message to the other instances was sent. Nothing confirms that each one received it |
+| `PublicationQueued` | Confirmed by the distributed cache, but the message wasn't sent yet; it is retried |
+
+Without a distributed cache only `Local` counts.
 
