@@ -181,25 +181,24 @@ await configurator.ClearAsync();
 The async operations return `ValueTask` and take cancellation last. A method id or expression that reaches no cached
 method, or a method that returns nothing, throws an `ArgumentException` naming the closest cached id before
 anything is stored. A tag template that doesn't fit the method throws too.
-Runtime configuration changes methods; group and global defaults are configured at startup or through configuration files.
-Tags remain additive unless `ClearTags()` is used. `WithEnabled(false)` disables caching; `WithDistributed(false)`
-disables L2 reads and writes. Re-enabling or changing behavior retires the previous generation.
-
-An effective behavior change immediately retires local cached values and in-flight publication guards.
-Already running callers may finish with their earlier result. Audit-only updates and equal effective options retain
-values. Overrides are private to the container, use a fresh private L2 namespace when behavior changes, and disappear
-on restart. Removing an override restores the current shared declarative namespace after method invalidation.
-Invalidation messages retire data on other nodes; they never distribute policy.
-
-`RuntimeOverrideMetadata` retains owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
-when it passes.
-Configuration reload publishes local policy and generation changes before its notification returns. Other nodes reload
-their own configuration; the library does not distribute files. See [distributed guarantees](distributed-cache.md#policy-isolation).
+- Overrides change one method each. Group and global defaults come from startup code or `appsettings.json`.
+- Tags from an override are added to the method's tags unless the override calls `ClearTags()`.
+  `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
+- An override that changes how the method caches drops the entries cached under the old settings at once; calls
+  already running may still return their earlier result. An override that only changes its audit metadata keeps them.
+- Overrides live in this instance's memory: they are lost on restart and don't reach other instances. While an override
+  changes how a method caches, that method's entries in the distributed cache are this instance's own; removing the
+  override invalidates the method and shares entries again
+  ([Distributed cache reference](../reference/distributed.md#policies-and-shared-entries)).
+- `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
+  when it passes.
+- A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
+  its own configuration; MethodCache doesn't distribute files.
 
 ## Seeing the effective policy
 
-`ICacheAdministrator.GetMethods()` shows each method's effective immutable options, where each setting comes from,
-and whether its L2 namespace is shared or private:
+`ICacheAdministrator.GetMethods()` shows each method's effective options, where each setting comes from, and whether
+its distributed cache entries are shared with other instances or its own because of a runtime override:
 
 <!-- snippet: configuration-diagnostics -->
 ```cs
@@ -237,10 +236,11 @@ can't return, such as `CacheWhen<string>` on a method that returns `int`, throws
 startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.
 
-Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+`[Cache]` takes named settings only. `Enabled` and `Distributed` inherit the configured policy when you leave them out,
+and an explicit `false` wins over the lower layers. `FailSafeRetryAfter` sets how long a served fail-safe value is
+reused before the method is tried again (30 seconds by default). `[assembly: CacheInterface(typeof(...), nameof(...))]`
+takes the same named settings.
 
-Published options and policy tags are owned, read-only snapshots. Mutating a collection supplied by application code cannot change an existing policy or bypass its change notifications.
-
-A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
-
-`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `FailSafeRetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.
+Overloaded generic methods have the number of type parameters in their method id: `Get(int)`, `Get``1(int)` and
+`Get``2(int)` are three methods, in `appsettings.json` as well. Options and tags you pass in code are copied, so
+changing the collection afterwards changes nothing.

@@ -80,4 +80,4 @@ change only the timeout. `o.WithFailSafe(TimeSpan.Zero)` turns fail-safe off. In
 > The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 > once.
 
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
+Cancelling a call stops its wait for the distributed cache, a slow method or a fail-safe value. Work that other callers share may finish for them, and a cancelled call doesn't count as a failure.

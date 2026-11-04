@@ -1,11 +1,8 @@
 # MethodCache.SqlServer
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 SQL Server as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table that each instance polls.
+
+Install it at the same version as `MethodCache`.
 
 ## Why this package
 
@@ -28,7 +25,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported.
 
 ## Usage
 
@@ -64,10 +61,10 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 
 ### Required backplane schema
 
-The invalidations table requires `Scope binary(32) NOT NULL` and the indexes `Index_Scope_Id (Scope, Id)` and
-`Index_Scope_CreatedAt (Scope, CreatedAt)`. Automatic initialization rejects incompatible scope columns with a
-logged schema error and does not convert tables or rewrite their rows. An error detected during the bounded
-startup wait also fails startup. With `CreateTablesIfMissing = false`, provision the current schema yourself.
+The invalidations table needs a `Scope binary(32) NOT NULL` column and the indexes `Index_Scope_Id (Scope, Id)` and
+`Index_Scope_CreatedAt (Scope, CreatedAt)`. MethodCache refuses a table without them instead of changing it, and logs
+the error; an error found during the startup wait also fails startup. With `CreateTablesIfMissing = false`, create the
+current schema yourself.
 
 ## When SQL Server is down
 
@@ -103,32 +100,37 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute. Instances that share a `KeyPrefix` keep them as long as the longest retention any of them has used |
 
-## Internals
+## How it works
 
-- Cache commands never join your `TransactionScope`: MethodCache sets `Enlist=false` on its connection string, so a scope that rolls back doesn't undo cache writes or invalidations, and the cache's connections never turn it into a distributed transaction.
-- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows: every instance runs one `DELETE` of the rows that expired every 5 minutes (the shortest interval that cache allows), so each delete stays small. With a very large table, keep an index on `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one). Your app's `IDistributedCache` is left alone.
-- Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
+- Cache commands never join your `TransactionScope`: MethodCache sets `Enlist=false` on its connection string, so a
+  scope that rolls back doesn't undo cache writes or invalidations, and never becomes a distributed transaction.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
-- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
-- Keys are stored as `mc:` followed by a SHA-256 hash of the exact UTF-16 key, so keys that SQL collation would treat as equal (casing, trailing spaces, NULs, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
-- Invalidating a key writes a format-independent logical tombstone and removes the current physical row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
-- Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
-- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's old rows from the invalidations table when it starts and then every minute, apart from polling, so a large delete never holds back invalidations. Rows are kept for the longest `BackplaneRetention` of the prefix's instances, stored in a row of the cache table (`mc-backplane-retention:` and the prefix's hash), so an instance with a shorter setting, during a rolling deployment say, never deletes rows another one still needs. To shorten the retention for good, delete that row once every instance uses the new setting. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again without blocking. After five seconds, a separate `NOWAIT` locking probe can retire gaps proven absent. Still-locked gaps and timed-out probes are retried without holding back newer invalidations or other committed gap messages; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
-- An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started) may have missed invalidations, so it clears its in-memory cache.
-- Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
+- Expired rows are removed by one `DELETE` every 5 minutes on each instance. With a very large table, keep an index on
+  `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one).
+- Values are JSON by default. A method whose results don't read back unchanged stays in memory only, with one warning
+  ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)).
+  For MessagePack, add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()`.
+- Keys are stored as a SHA-256 hash of the exact key, so keys that SQL collation would treat as equal (casing,
+  trailing spaces) stay distinct, and keys of any length fit.
+- Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as
+  missing, so no tag tables are needed. An older invalidation that arrives late never undoes a newer one.
+- Every invalidation also adds a row to the invalidations table. Other instances read new rows every
+  `BackplanePollingInterval` and drop their in-memory copies. A long-running transaction elsewhere never holds back
+  newer invalidations.
+- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed
+  invalidations, so it clears its in-memory cache.
+- Each instance deletes its prefix's old invalidation rows every minute. Rows are kept for the longest
+  `BackplaneRetention` any instance of the prefix has used, so a rolling deployment never deletes rows another instance
+  still needs. Rows of a prefix that no application uses any more are never deleted; delete them by hand.
+- `DistributedCacheOptions.KeyPrefix` keeps applications that share the tables apart. The first instance that uses a
+  prefix fixes its minimum `TagRetention`; a shorter setting fails at startup.
 
-Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
-Initialized permanent HTTP epochs are read without rewriting their rows. Initialization and retention repair
-remain atomic, and each HTTP lookup still reads the shared generation records.
-The transport reuses only its latest bounded command-text shape; it never caches generation values.
-Reordered and duplicate epoch keys retain their caller positions.
+The exact behavior is in the
+[distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).
 
-Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
-are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
-have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
+## Upgrading from before 1.0
 
-For a known unversioned schema, drain all nodes, back up the database and apply the delivered
-[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql) migration. Unknown schema
-versions fail fast; initialization never silently migrates existing tables.
+An invalidations table from before 1.0 has no schema version, and MethodCache refuses it. Stop every old instance,
+back up the database and run
+[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql)
+before starting the new version.

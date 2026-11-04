@@ -29,6 +29,18 @@ release.
 - The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
   how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
 
+### Documentation
+
+- The `MethodCache` package carries the user documentation in its `docs` folder, with `llms-full.txt`, so a coding
+  agent can read the docs for the installed version. The README has a prompt to give your agent.
+- New [How do I…?](docs/how-to.md) page with short answers to common questions, and reference pages with the exact
+  rules for [registration](docs/reference/registration.md), the [distributed cache](docs/reference/distributed.md) and
+  [HTTP caching](docs/reference/http-caching.md).
+- The README, the NuGet READMEs and the guides were rewritten to say what you do and see, without implementation
+  detail. New sections: why an interface is needed, invalidating when the write happens elsewhere, and testing with
+  writes straight to the database.
+- `llms.txt` now lists PostgreSQL and the new pages.
+
 ## 1.0.0-rc.4 (2026-11-04)
 
 ### Breaking changes since 1.0.0-rc.3

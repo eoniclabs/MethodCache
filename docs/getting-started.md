@@ -9,7 +9,8 @@ the add-on packages):
 dotnet add package MethodCache --prerelease
 ```
 
-The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the .NET 10 SDK. The same minimum applies to every add-on package.
+The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
+.NET 10 SDK, as every add-on package does.
 
 ## 1. Start from a service
 
@@ -80,37 +81,18 @@ builder.Services.AddMethodCache();                               // after your r
 <!-- endSnippet -->
 
 `AddMethodCache()` wraps every registered interface that has cached methods in its generated decorator and keeps the
-lifetime you chose. Register cacheable services before this call. A later cacheable registration fails at host
-startup, or when a generated decorator first binds without a host. Unrelated services may be registered later.
-Calling `AddMethodCache` again decorates newly added services and keeps existing decorators intact.
+lifetime you chose. Register your cached services before it: a cached service registered after it fails at startup
+with an error that says so.
 
-Missing implementations are registered only with explicit `AutoRegister(ServiceLifetime.Scoped)` (or another
-lifetime). Select the generated module with `FromAssemblyOf<ProductService>()`; exactly one accessible concrete
-implementation must exist for each missing service. Zero or multiple candidates give an error naming the service,
-module and candidates. Explicit DI registrations always retain their implementation and lifetime.
+- Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, each with its own
+  entries.
+- Several registrations of one interface with different classes, resolved as `IEnumerable<IProductService>`, each cache
+  their own results.
+- Generic interfaces such as `IRepository<User>` are cached for each closed type a class implements.
+- A service you haven't registered is registered only when you ask: `AddMethodCache(mc => mc.AutoRegister(ServiceLifetime.Scoped))`.
 
-When multiple assemblies generate decorators for the same interface, choose the one that wins with
-`FromAssemblyOf<SomeTypeInThatAssembly>()`. Choosing a module only settles such a tie: the services other modules
-generate stay cached. No entry-assembly or alphabetical preference is applied. The same module selection and
-candidate data work under JIT and Native AOT.
-
-Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
-key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
-keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
-integer or `Guid` ([Keys](features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
-rejected, since its implementation is created for whichever key is requested; register concrete keys instead.
-A constructor parameter marked `[ServiceKey]` receives your key, as without MethodCache.
-
-Several registrations of one interface, such as `AddScoped<IPriceProvider, StorePrices>()` and
-`AddScoped<IPriceProvider, PartnerPrices>()` resolved as `IEnumerable<IPriceProvider>`, each cache their own results;
-the implementation type is part of their keys. Two registrations of the same implementation type share their results
-([Keys](features/keys.md#things-to-know)).
-Open generic registrations and closed types without a generated binding also give a named startup error.
-
-Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
-implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
-`AddScoped(typeof(IRepository<>), typeof(Repository<>))` gives a named binding error at startup or first binding
-without a host; register generated closed types instead.
+[Registration](reference/registration.md) has the exact rules, including open generic registrations and several
+assemblies that generate the same interface.
 
 ### Registering with a factory
 
@@ -138,17 +120,18 @@ builder.Services.AddMethodCache();
 
 - Synchronous methods, `Task<T>` and `ValueTask<T>` can be cached. A method that returns nothing has nothing to
   cache, so `[Cache]` on it is a build error ([MC0003](user-guide/DIAGNOSTICS.md#mc0003),
-  [MC0004](user-guide/DIAGNOSTICS.md#mc0004)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
+  [MC0022](user-guide/DIAGNOSTICS.md#mc0022)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
   ([MC0015](user-guide/DIAGNOSTICS.md#mc0015)): return a list.
-  Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
-  Custom async-only managers bypass their synchronous caching path; see [Generated decorators](features/source-generator.md).
+- Synchronous methods use the memory cache only, also with a distributed cache configured
+  ([Generated decorators](features/source-generator.md#synchronous-methods)).
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.
 - Without a `Duration`, entries live five minutes (the built-in default) unless you set a
   default ([Expiration](features/expiration.md#duration)).
-- `null` results are cached. Turn that off with `CacheNullValues` on the [memory cache](features/memory-cache.md), or
-  per method with [conditional caching](features/conditional-caching.md).
+- `null` results are cached. To skip null for one method, give it a
+  [condition](features/conditional-caching.md) (`CacheWhen(x => x is not null)`); `CacheNullValues = false` on the
+  [memory cache](features/memory-cache.md) turns it off for every method.
 - The cached object is returned as is, not copied. Treat cached results as read-only.
 
 ## Next steps
@@ -157,3 +140,4 @@ builder.Services.AddMethodCache();
 - Remove entries when data changes: [Invalidation](features/invalidation.md).
 - Change durations without a redeploy: [Configuration](features/configuration.md).
 - Share the cache between instances: [Distributed cache](features/distributed-cache.md).
+- Look up a task or a question: [How do I…?](how-to.md).

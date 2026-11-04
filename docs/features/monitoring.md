@@ -34,7 +34,7 @@ explicit scopes:
 | `LocalMethodEntries` | Method results resident in this instance |
 | `LocalHttpEntries` | HTTP representations resident in this instance |
 | `LocalHttpBytes` | HTTP storage cost in bytes; separate from method weight |
-| `ObservedDistributedEntries` | Bounded HTTP observations, never a global L2 count |
+| `ObservedDistributedEntries` | HTTP responses this instance recently saw in the distributed cache (at most 1024); not a count of what is stored there |
 | `TotalWeight` | Resident method weight in the configured weigher's units; one per entry without a weigher |
 
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
@@ -85,14 +85,11 @@ Configure your application's authentication scheme as well as the authorization 
 Development environment allows anonymous admin requests so you can try the endpoints locally.
 It also exposes Development-only `/demo/queries` and `/demo/reset` routes to count source reads and restore
 the demonstration data; those routes are not part of the MethodCache admin package.
-The sample price endpoint rejects missing, null and negative prices before writes or invalidation; rejected requests
-leave both stored products and the cache unchanged.
-
 ## Health check
 
-`AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when L2 is unavailable,
-either recovery queue has work, or a configured backplane is unknown, connecting or disconnected. A successful L2
-probe does not prove that invalidation subscription is established. Reports include `managerCapability`,
+`AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when the distributed cache doesn't answer,
+invalidations are waiting to be retried, or the backplane is connecting or disconnected. The distributed cache and the
+backplane are reported separately. Reports include `managerCapability`,
 `statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `queued` and
 `publicationQueued`, plus local storage statistics; the
 [package README](../../src/MethodCache.AspNetCore/README.md#health-check) lists every key. Backend exception text is
@@ -130,24 +127,26 @@ builder.Services.AddOpenTelemetry()
 Each completed cache call has one `methodcache.requests` outcome, `methodcache.result`: `hit`, `miss`, `stale`,
 `revalidated`, `bypass` or `error`. `methodcache.kind` is `method`, `manual` or `http`, and `methodcache.method` (a
 method id) or `methodcache.http.client` (a client name) says which; manual calls by key carry neither. Every attribute
-is in the `methodcache.` namespace, apart from `error.type`. A failed fast probe is not a separate miss.
-Refreshes record their actual origin duration without another user request. Flight joiners and L2 hits do not record
-origin loads. A bulk call has one outcome and measures its actual batch factory, rather than the per-key publication
-of the already produced values.
+is in the `methodcache.` namespace, apart from `error.type`. `methodcache.load.duration` measures your method when it
+actually runs, background refreshes included; callers that join a running load and values read from the distributed
+cache record none. A bulk call has one outcome and measures its one batch factory call.
 
 Histograms use seconds, with bucket boundaries from 5 ms to 10 s. Local entry/HTTP byte instruments are observable
 up-down counters. Invalidation counters count
 distinct targets at each stage, not operation totals; do not add stages together. See the
 [full instrument table](../../src/MethodCache.OpenTelemetry/README.md#metrics).
 
-Spans cover actual origin loads, individual distributed operations and invalidation. Pure hits have no spans. Keys
+Spans cover runs of your method, individual distributed operations and invalidation. Pure hits have no spans. Keys
 and tags require explicit Core options; keys are hashed by default when enabled. Metrics never include keys, tags,
-URLs, user ids or tenant ids. The library adds no baggage and copies no request HTTP/URL attributes. Normal ambient
-.NET activity context and application-owned baggage continue to flow; configure their export in the app.
+URLs, user ids or tenant ids. MethodCache adds no baggage and copies no HTTP or URL attributes; your application's
+own activity context and baggage flow as usual.
 
 ## Standard .NET listeners
 
-OpenTelemetry is optional. A `MeterListener` can subscribe directly; retain it for the measurement lifetime:
+OpenTelemetry is optional. The meter and activity source are named `MethodCache` (`MethodCacheTelemetry.Name`), so
+`dotnet-counters monitor --counters MethodCache` and any `MeterListener` see them. For Prometheus, use OpenTelemetry's
+Prometheus exporter with `AddMethodCacheInstrumentation()`. A `MeterListener` subscribes like this; keep it alive for
+as long as you want measurements:
 
 <!-- snippet: monitoring-console-metrics -->
 ```cs
@@ -164,7 +163,7 @@ listener.Start(); // keep the listener alive for as long as measurements are nee
 ```
 <!-- endSnippet -->
 
-Identity options belong to Core and do not depend on an exporter:
+The privacy options are set in `AddMethodCache` and apply whatever listens:
 
 <!-- snippet: monitoring-metrics-provider-registration -->
 ```cs
@@ -177,5 +176,5 @@ builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 ```
 <!-- endSnippet -->
 
-For generated calls through a custom manager, Core can observe whether its supplied factory ran. Standalone calls to
-an application-owned manager must be instrumented by that implementation; its storage capabilities are not assumed.
+With your own `ICacheManager`, MethodCache still measures whether a cached method's factory ran; anything else your
+manager does is its own to instrument.

@@ -25,79 +25,53 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
-- **One attribute, zero boilerplate.** Keys are built from the method and its arguments, including records and collections (`GetAsync:42`, `ByIdsAsync:[3:1:2:3]`; values of different types never share a key, nested ones included); your service stays plain code.
-  Register services before `AddMethodCache`; missing registrations need explicit `AutoRegister(lifetime)` and an
-  unambiguous generated module. Startup configuration uses `MethodCacheBuilder`.
-- **Fast.** A hit with simple arguments allocates nothing on .NET 10, on x64 is about 10 % faster than hand-written `IMemoryCache` code, faster than HybridCache and 8 to 9 times faster than FusionCache.
-- **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
-  Previously compiled contract-1 vendor decorators keep working without regeneration, with both inline and materialized keys.
-- **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
-- **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
-- **Third-party clients too.** `[assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync))]` caches chosen methods of an SDK client's own interface, no wrapper needed.
-- **HTTP responses as well.** `AddHttpCaching()` (package `MethodCache.HttpCaching`) on an `HttpClient` honors `Cache-Control` and revalidates with ETags. Register `AddMethodCache` too: Core owns a separate 100 MiB HTTP budget, or uses its configured native Redis/SQL Server/PostgreSQL transport exclusively. `KeepCookies` preserves cookies and bypasses response caching; confirmed mutations retire shared generations. Graceful async disposal retries pending invalidations once and reports any lost count; recovery is not durable across process exit. Local client-tag invalidation reclaims matching bodies through a scan of resident HTTP entries.
-- **One line to go distributed.** `AddMethodCache(mc => mc.UseRedis(...))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)` (packages `MethodCache.Redis`, `MethodCache.SqlServer` and `MethodCache.PostgreSql`) shares results between instances and keeps every instance's memory cache in sync.
-- **Built for production.** Stampede protection, fail-safe, a W-TinyLFU memory cache that stays within its size limit under load, admin endpoints, a health check and OpenTelemetry tracing and metrics.
+Register your services as usual and call `AddMethodCache()` after them. `GetUserAsync(42)` then runs once and comes
+from memory until it expires or `RenameAsync(42, ...)` invalidates user 42, and only user 42.
 
-Documentation, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache
+- **One attribute, zero boilerplate.** Keys are built from the method and its arguments; your service stays plain code.
+- **Fast.** A cache hit allocates nothing and on x64 is about 10 % faster than hand-written `IMemoryCache` code.
+- **Compile-time.** A source generator writes the decorators, analyzers catch mistakes in the editor, and it works
+  with Native AOT.
+- **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it
+  changed.
+- **Tune it without redeploying.** Durations and tags come from attributes, defaults, `appsettings.json` (reloaded
+  live) or runtime overrides.
+- **Third-party clients, HTTP responses, distributed caches.** Cache an SDK client's own interface, `HttpClient`
+  responses (`MethodCache.HttpCaching`), and share results through Redis, SQL Server or PostgreSQL
+  (`MethodCache.Redis`, `MethodCache.SqlServer`, `MethodCache.PostgreSql`). Install add-ons at the same version.
+- **Built for production.** Stampede protection, fail-safe, a size-bounded memory cache, admin endpoints, a health
+  check and OpenTelemetry tracing and metrics.
 
-## Additional behavior
+## Common questions
 
-With a distributed cache, values are JSON by default, public fields included, so value tuples and structs with
-fields are shared. Each value is read back before it is shared; a method whose values don't come back unchanged
-(private setters, a derived type returned as its base type, `object`) is cached in memory only for that type, with
-one warning. Entries an earlier build wrote for types with public fields are read without those fields until they
-expire.
+- **Why does it need an interface?** The generator writes a class that implements your interface and checks the cache
+  before it calls your implementation. Without an interface, use `ICacheManager.GetOrCreateAsync` with a key you choose.
+- **When does `[CacheInvalidate]` run?** After the method, or its task, succeeds. Never when it throws.
+- **The data changes somewhere else.** Invalidate after the write with
+  `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"))`.
+  `keys.Tag` formats the tag exactly as the cached method does.
+- **Can I build the tag string myself?** Only with `MethodCacheKeys.Part` around each value: a `Guid` is written
+  without hyphens, an enum as its number, and `:` is escaped. Analyzer MC0024 warns about hand-built tags.
+- **How do I cache null, or skip some results?** `CacheNullValues` sets it for every method; `CacheWhen` decides per
+  method which results to store.
+- **A test writes to the database directly.** Call `ICacheAdministrator.ClearAsync()` after the write, or register
+  `NoOpCacheManager` to turn caching off.
+- **Are synchronous methods cached?** In memory only, also with a distributed cache.
+- **How do I see what's cached?** `ICacheAdministrator`, the admin endpoints in `MethodCache.AspNetCore`, and the
+  `MethodCache` meter.
 
-Manual `TryGetAsync` reads a fresh entry, including a cached null, also when refresh-ahead is due. This lookup does not start a factory or background refresh.
+More in [How do I…?](https://github.com/eoniclabs/MethodCache/blob/main/docs/how-to.md).
 
-Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+## Documentation
 
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
+This package carries its documentation in its `docs` folder
+(`~/.nuget/packages/methodcache/<version>/docs/`), so a coding agent can read the docs for the version you
+installed. Start with `docs/ai/methodcache.md` and `docs/how-to.md`. Online:
+[documentation](https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md), [getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md),
+[build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md) and
+[llms-full.txt](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/llms-full.txt).
 
-Bulk reads guard their source work against key, tag and clear invalidation: an invalidated batch result is returned to its caller but is not published. Collection subclasses keep their own public properties and fields in hashed keys, as well as their elements. Static tags do not format arguments; templates format only the parameters they reference. Redis backplane publications honor caller cancellation, and a cancelled unsubscribe acknowledgement does not fail application shutdown. SQL Server backplane gaps never hold newer invalidations behind a locked transaction, and HTTP variant schema changes retire their publication epoch once; a failed deletion after a successful rotation does not retire a newer concurrent publication.
+To have an agent add caching, give it the prompt in
+[Using a coding agent](https://github.com/eoniclabs/MethodCache#using-a-coding-agent).
 
-Published policy tags are owned, read-only snapshots. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
-
-A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
-
-Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Registrations of one interface with different implementation types under the same service key each cache their own results too: their keys carry the implementation type. Two registrations of the same implementation type share their results. A constructor parameter marked `[ServiceKey]` receives the application's key. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
-
-Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; a `Duration` longer than `MaxExpiration`; `CacheWhen` in defaults or a group, or for a type the method can't return; and a tag template that names no parameter of a method it applies to. Calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
-
-The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
-
-With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
-
-Long namespace and type names work with `EmitCompilerGeneratedFiles`; generated files use short, stable names when needed.
-
-Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
-
-SQL Server backplane tables require a non-nullable `binary(32)` `Scope` column. Incompatible schemas are reported
-without automatic upgrades; see the MethodCache.SqlServer package guide.
-
-The cache manager has four operations with cancellation last and immutable options. `WithEnabled(false)` bypasses
-caching; `WithDistributed(false)` uses only memory. Policy changes retire local generations. Declarative settings
-share a stable L2 namespace, while runtime overrides use private namespaces. Invalidation results distinguish local
-mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane sends. See
-[configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md) and [distributed guarantees](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md).
-
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md) and [keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md).
-
-Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md).
-
-Core emits `MethodCache` metrics and activities through the container's `IMeterFactory`; the OpenTelemetry add-on
-only subscribes with `AddMethodCacheInstrumentation()`. Keys/tags are off by default, histograms use seconds, and pure
-hits have no spans. Administrator statistics distinguish local method/HTTP entries and HTTP bytes; `TotalWeight`
-uses the configured weigher's units (one per method entry by default), with no object-memory estimate.
-
-Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
-invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
-
-Memory-only asynchronous misses avoid allocating closures for inactive fail-safe and distributed-write branches.
-
-Logical-key lookups and invalidations use the same framing and optional version as storage, including keys starting
-with NUL. Admin mutations return 503 while distributed invalidation awaits confirmation; recovery remains owned by
-the cache. Incompatible distributed scope contracts use memory only and report an actionable unhealthy status.
-See [manual keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#versions-and-the-stored-key) and [monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md).
-
-Generated method keys and policy ids include the service assembly simple name (without its version), so equally named interfaces in different assemblies stay isolated. Get the key of a call from `IMethodCacheKeys.For` and a method's id from `IMethodCacheKeys.MethodId`; the admin method list shows every id.
+Source, benchmarks and a runnable demo: https://github.com/eoniclabs/MethodCache

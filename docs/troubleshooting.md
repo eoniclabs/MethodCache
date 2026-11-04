@@ -35,7 +35,7 @@
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis, SQL Server or PostgreSQL](features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  [Redis, SQL Server or PostgreSQL](features/distributed-cache.md) with its backplane, so invalidations reach all of them.
   The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](features/fail-safe.md)).
 
@@ -76,7 +76,7 @@ key.
 | `InvalidOperationException` from `IMethodCacheKeys.For` saying it can't tell which key to return | The interface has several registrations and the last is a scoped or transient factory, which may create another type in each scope. Register it with its implementation type, give it a service key of its own, or invalidate by tag ([Cache keys](features/keys.md#building-a-key-yourself)) |
 | `InvalidOperationException` from `GetOrCreateManyAsync`: the bulk factory did not return a value for a key | The factory must return a value for each key it is asked for. Nothing it returned is cached; keys with a fail-safe value get it ([Manual caching](features/manual-caching.md)) |
 | `InvalidOperationException` from `AddMethodCache` naming an implementation type | An instance registration of a cached interface has the same type as another registration under the same service key. Give each its own service key ([Cache keys](features/keys.md#things-to-know)) |
-| `InvalidOperationException` from `AddMethodCache` naming two distributed caches | `UseRedis` and `UseSqlServer` were both called; use one |
+| `InvalidOperationException` from `AddMethodCache` naming two distributed caches | More than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` was called; use one |
 
 ## A caller changed a cached object, and others see the change
 

@@ -6,12 +6,14 @@
 
 <p align="center"><a href="../README.md">README</a> · <a href="getting-started.md">Getting started</a> · <a href="troubleshooting.md">Troubleshooting</a> · <a href="user-guide/DIAGNOSTICS.md">Build diagnostics</a></p>
 
-Start with [Getting started](getting-started.md). Each page below covers one feature, and every C# example on these
-pages is compiled and tested in CI.
+Start with [Getting started](getting-started.md), or look up a task in [How do I…?](how-to.md). Each page below covers
+one feature, and every C# example on these pages is compiled and tested in CI. The reference pages give the exact
+rules, for when a guide isn't enough.
 
 ## Caching methods
 
 - [Getting started](getting-started.md): put `[Cache]` on an interface method and register it.
+- [How do I…?](how-to.md): short answers to common questions, each with a link to the details.
 - [Generated decorators](features/source-generator.md): supported signatures and forwarded interface members.
 - [Cache keys](features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
@@ -28,16 +30,24 @@ pages is compiled and tested in CI.
 
 ## Running in production
 
-- [Distributed cache](features/distributed-cache.md): owned Redis, SQL Server and PostgreSQL providers.
+- [Distributed cache](features/distributed-cache.md): share results between instances with Redis, SQL Server or PostgreSQL.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
 - [Testing](features/testing.md): test with caching on, or turn it off.
 - [Security](security.md): what each package protects against, and what it leaves to you.
 
+## Reference
+
+- [Registration](reference/registration.md): how `AddMethodCache()` finds and wraps services, and keyed or generic registrations.
+- [Distributed cache](reference/distributed.md): which calls use it, backplanes, invalidation results and serialization.
+- [HTTP caching](reference/http-caching.md): variants, replaced responses, invalidation and administration details.
+
 ## For coding agents
 
 - [Agent instructions](ai/methodcache.md): rules to copy into Copilot, Cursor or Claude Code instructions.
+- The `MethodCache` package carries these pages in its `docs` folder, and the README has a prompt to give your
+  agent ([Using a coding agent](../README.md#using-a-coding-agent)).
 - [llms.txt](../llms.txt) and [llms-full.txt](../llms-full.txt): these docs for language models, as an index and in one file.
 
 ## When something is wrong
@@ -54,6 +64,3 @@ pages is compiled and tested in CI.
 [Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
 between releases.
 
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](features/configuration.md) and [keys](features/keys.md).
-
-- [Distributed wire contract 1](developer/distributed-wire-v1.md): provider framing, entry formats, permanent epochs and schema migration.

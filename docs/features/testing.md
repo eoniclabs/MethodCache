@@ -25,6 +25,28 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](monitoring.md)).
 
+## When a test writes to the database directly
+
+A test that changes data without going through a `[CacheInvalidate]` method, such as seeding rows or calling a
+repository, leaves the cached results as they were. Clear the cache after the write, or invalidate what it changed:
+
+<!-- snippet: testing-direct-write -->
+```cs
+await database.SaveAsync(changed);   // the test changes the data behind the cache's back
+
+// Remove everything cached...
+await provider.GetRequiredService<ICacheAdministrator>().ClearAsync();
+
+// ...or only what the write changed
+var cache = provider.GetRequiredService<ICacheManager>();
+var keys = provider.GetRequiredService<IMethodCacheKeys>();
+await cache.InvalidateTagAsync(keys.Tag<IProductService>(p => p.GetAsync(changed.Id, default), "product:{id}"));
+```
+<!-- endSnippet -->
+
+`ClearAsync` also removes the entries from a distributed cache and the other instances, so use a cache of the test's
+own (a new service provider, or its own `KeyPrefix`) when tests run in parallel against a shared Redis or database.
+
 ## Turning method caching off
 
 Register `NoOpCacheManager` after `AddMethodCache()` and every call reaches your implementation:
@@ -40,7 +62,7 @@ services.AddSingleton<ICacheManager, NoOpCacheManager>();   // after AddMethodCa
 <!-- endSnippet -->
 
 For code that uses [manual caching](manual-caching.md), pass a `NoOpCacheManager` directly, or mock the four
-operations on `ICacheManager`. The options-builder convenience overload delegates to that interface contract:
+operations on `ICacheManager` (the short forms are extension methods that call them):
 
 <!-- snippet: manual-testing -->
 ```cs
@@ -49,8 +71,8 @@ var reader = new OrderReader(cache, repository);
 ```
 <!-- endSnippet -->
 
-`NoOpCacheManager` is in the `MethodCache` namespace and sealed. It disables method caching; HTTP response storage remains
-independent. Configure HTTP caching separately and use its administrator for invalidation.
+`NoOpCacheManager` is in the `MethodCache` namespace. It turns off method caching only; responses of an `HttpClient`
+with `AddHttpCaching` are still cached.
 
 ## Time
 
@@ -60,4 +82,3 @@ independent. Configure HTTP caching separately and use its administrator for inv
 > This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 > eviction and the background revalidation timeout.
 
-The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.

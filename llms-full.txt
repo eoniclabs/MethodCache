@@ -11,24 +11,23 @@ All user documentation in one file, generated from the repository. Source: https
 
 Copy this file into your project as agent instructions, for example as `.github/copilot-instructions.md`, a Cursor
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
-correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md
-
-Bulk source reads are guarded against key, tag and clear invalidation; invalidated candidates are not published. Collection subclasses with public state are hashed with both that state and their elements. Static tags do not format arguments, and templates format only the parameters they reference.
+correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md. The `MethodCache` package
+carries the same docs in its `docs` folder (`~/.nuget/packages/methodcache/<version>/docs/`): `how-to.md` answers
+common questions and `reference/` has the exact rules.
 
 ## Adding caching to a service
 
 1. The `MethodCache` package contains the library, the source generator and the analyzers. Nothing else is needed
-   for in-memory caching. All packages require .NET 10 and the .NET 10 SDK.
+   for in-memory caching. All packages target .NET 10; install add-ons at the same version as `MethodCache`.
 2. Put `[Cache]` on the **interface** method, never on the class. Put `[CacheInvalidate(Tags = [...])]` on the
    interface methods that change the data. Don't change the implementation.
 3. Register services as usual, then call `builder.Services.AddMethodCache()` **after** them. Later cacheable
-   registrations fail at host startup or first generated binding. Missing services require explicit
-   `AutoRegister(lifetime)` and exactly one accessible implementation in the selected generated module.
+   registrations fail at host startup. A cached interface without a registration needs
+   `AutoRegister(lifetime)` and exactly one class that implements it.
 4. Use `MethodCacheBuilder` for startup, in one `AddMethodCache(mc => mc...)` call: `Defaults`, `Group`, typed
    `Method`, `Memory`, `Distributed`, `Telemetry`, `FromConfiguration`, `FromAssemblyOf<T>()` and the integrations'
    `UseRedis` / `UseSqlServer` / `UsePostgreSql` (one of them) / `UseMessagePack`. Don't use `services.Configure<...>` for MethodCache
-   options. Choose a module explicitly when multiple assemblies generate the same interface. Keep all add-on/Core
-   versions identical.
+   options.
 
 ```cs
 using MethodCache;
@@ -71,10 +70,12 @@ builder.Services.AddMethodCache();                               // after your r
   is not part of the key. Every value that changes the result must be a parameter.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
-- Dynamic tag arguments use `MethodCacheKeys.Part` formatting: colons and backslashes in strings are escaped,
-  null has its own marker, and numeric/date formatting is invariant. Use the same helper for manual invalidation.
-  Tags share an application-defined namespace; different literal templates can still select the same tag. Prefer
+- Tag values are formatted like `MethodCacheKeys.Part`: `:` and `\` in strings are escaped, a `Guid` is written
+  without hyphens, an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture. Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
+- `[CacheInvalidate]` runs after the method, or its task, succeeds; never when it throws.
+- Synchronous `[Cache]` methods use the memory cache only, also with Redis, SQL Server or PostgreSQL. Make a method
+  async to share its results between instances.
 - Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
   (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
@@ -99,9 +100,9 @@ builder.Services.AddMethodCache();                               // after your r
   prefixed key such as `$"order:{id}"`.
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache`) after `AddMethodCache()` to turn method caching
-  off. HTTP response storage remains independent; use its own options and administrator.
+  off. When a test writes to the database directly, call `ICacheAdministrator.ClearAsync()` after the write.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
-  `InvalidateKeyAsync(key, version: 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
+  `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
   `cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`. For every entry of one method, use
   `ICacheAdministrator.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))`.
@@ -111,43 +112,27 @@ builder.Services.AddMethodCache();                               // after your r
   Never build a tag with string interpolation (`$"price:{model}"`): tags escape `:` and `\` in strings and write a
   `Guid` without hyphens and an enum as its number, so a hand-built tag can silently match nothing (MC0024).
 - Several registrations of one interface with different implementation types each cache their own results.
-- Use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
-- `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL Server/PostgreSQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
+- For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
+  `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
+  settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
+  warning: return records with public properties.
+- `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
+  send cookies as a `Cookie` header, or set `KeepCookies = true`, which turns response caching off.
+- Generated keys and method ids start with the service assembly's name in brackets. Never write a key or method id by
+  hand: get keys from `IMethodCacheKeys.For`, tags from `IMethodCacheKeys.Tag` and ids from `IMethodCacheKeys.MethodId`.
+- Telemetry: `MethodCacheTelemetryOptions` (`mc.Telemetry(...)`) records keys and tags on spans only when you turn it
+  on, hashed by default. `AddMethodCacheInstrumentation()` (package `MethodCache.OpenTelemetry`) subscribes
+  OpenTelemetry to the `MethodCache` meter and activity source.
 
 ## Namespaces
 
 - `MethodCache`: `[Cache]`, `[CacheInvalidate]`, `[CacheInterface]`, `ICacheManager`, `ICacheAdministrator`,
   `IRuntimeCacheConfigurator`, `IMethodCacheKeys`, `MethodCacheKeys`, `MethodCacheMemoryOptions`, `Any<T>`,
   `ICacheKeyProvider`.
-- `MethodCache`: also `NoOpCacheManager` (sealed). Serializer, transport and atomic-store interfaces are internal.
+- `MethodCache`: also `NoOpCacheManager` (sealed).
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`. Everything else is a method on its builder:
   `FromConfiguration`, `Distributed(...)`, `Telemetry(...)`, `UseRedis` (package `MethodCache.Redis`), `UseSqlServer`
   (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`) and `UseMessagePack` (package `MethodCache.Serialization.MessagePack`).
-
-SQL Server backplane gap discovery remains non-blocking even for long transactions: only a separate non-waiting probe retires old missing identities. HTTP selection-rule changes retire a URL epoch once, preserving newer concurrent publications even if deletion fails after rotation. Gap failure coverage runs without infrastructure in the Core fault-injection suite, with linked SQL integration checks for real locking semantics.
-
-The public ICacheManager contract is GetOrCreateAsync (a state-passing factory, like HybridCache), TryGetAsync,
-InvalidateKeysAsync and InvalidateTagsAsync, all with the caller token last. CacheEntryOptions is immutable. Custom managers store
-entries under MethodCacheKeys.StoredKey(key, version) and use CanCache; generated calls pass keys that already carry their
-version, with Version = null, and generated synchronous calls bypass a custom manager. Runtime configurators expose only
-UpsertAsync/RemoveAsync/ClearAsync (ValueTask) and GetOverrides(). They reject unknown method ids and retire local policy generations. Declarative L2 namespaces are stable; runtime behavior
-changes use private random namespaces. Never reintroduce cache callbacks, a factory context object, public policy pipelines,
-key generators or backplanes. Recovery has independent L2 and publication counters and bounded queues.
-
-Use named attribute settings (`Group = "name"`); `CacheKeyAttribute` and raw keys are unsupported. Omitted flags inherit, explicit false overrides. Duration grammar is shared by configuration and attributes (`30s`, `1.5h`, `[d.]hh:mm:ss`); ordinary durations must be positive. Turn an inherited sliding expiration, refresh-ahead or fail-safe off with `"off"` in attributes/configuration or `TimeSpan.Zero` in the builder. Format dynamic tag arguments with the canonical key-part rules; do not interpolate culture-dependent values manually.
-
-Select JSON with `UseJson(context)` for Native AOT or `UseJson(options)` for explicit settings. Options are owned snapshots. `VerifyRoundTrip` defaults to true but does not prove nested polymorphic/private data preservation. SQL schema changes require explicit migration; do not use automatic DDL to reinterpret existing unversioned tables. Entry format/serializer versions change value namespaces; logical tombstones, wire-v1 invalidations and HTTP epochs remain format-independent.
-
-Core owns container-scoped `IMeterFactory` instruments and its `MethodCache` ActivitySource. The OpenTelemetry package
-only provides AddMethodCacheInstrumentation builder subscriptions. Never add metrics-provider interfaces, manager
-wrappers or baggage propagators. Core MethodCacheTelemetryOptions controls explicit key/tag span opt-ins; hashes are
-the default when keys are enabled. No keys/tags/URLs/user/tenant metric dimensions, copied HTTP attributes or exception
-payloads in spans/logs. Preserve application ambient activity/baggage context. Attributes are namespaced
-(`methodcache.kind`, `methodcache.method`, `methodcache.result` and so on). Histograms use seconds. Report local
-method/HTTP entries, HTTP bytes, observed L2 entries and TotalWeight in configured units, never object-memory estimates.
-Health checks honor failureStatus and independently report L2, backplane subscription and storage/publication queues.
-
-- Generated keys and method ids start with the service assembly simple name in brackets, without its version. Closed generic argument identities include their assemblies. Never write a key or method id by hand: get keys from `IMethodCacheKeys.For` and ids from `IMethodCacheKeys.MethodId`, administration, or typed configuration expressions.
 
 
 ---
@@ -163,7 +148,8 @@ the add-on packages):
 dotnet add package MethodCache --prerelease
 ```
 
-The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the .NET 10 SDK. The same minimum applies to every add-on package.
+The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
+.NET 10 SDK, as every add-on package does.
 
 ## 1. Start from a service
 
@@ -228,37 +214,18 @@ builder.Services.AddMethodCache();                               // after your r
 ```
 
 `AddMethodCache()` wraps every registered interface that has cached methods in its generated decorator and keeps the
-lifetime you chose. Register cacheable services before this call. A later cacheable registration fails at host
-startup, or when a generated decorator first binds without a host. Unrelated services may be registered later.
-Calling `AddMethodCache` again decorates newly added services and keeps existing decorators intact.
+lifetime you chose. Register your cached services before it: a cached service registered after it fails at startup
+with an error that says so.
 
-Missing implementations are registered only with explicit `AutoRegister(ServiceLifetime.Scoped)` (or another
-lifetime). Select the generated module with `FromAssemblyOf<ProductService>()`; exactly one accessible concrete
-implementation must exist for each missing service. Zero or multiple candidates give an error naming the service,
-module and candidates. Explicit DI registrations always retain their implementation and lifetime.
+- Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, each with its own
+  entries.
+- Several registrations of one interface with different classes, resolved as `IEnumerable<IProductService>`, each cache
+  their own results.
+- Generic interfaces such as `IRepository<User>` are cached for each closed type a class implements.
+- A service you haven't registered is registered only when you ask: `AddMethodCache(mc => mc.AutoRegister(ServiceLifetime.Scoped))`.
 
-When multiple assemblies generate decorators for the same interface, choose the one that wins with
-`FromAssemblyOf<SomeTypeInThatAssembly>()`. Choosing a module only settles such a tie: the services other modules
-generate stay cached. No entry-assembly or alphabetical preference is applied. The same module selection and
-candidate data work under JIT and Native AOT.
-
-Keyed registrations (`AddKeyedScoped<IProductService, ProductService>("primary")`) are cached too, under the same
-key; an interface registered only keyed is not also registered without a key. The service key is part of the cache
-keys, so each keyed registration of an interface caches its own results; it must be a string, enum, bool, char,
-integer or `Guid` ([Keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)). A catch-all registration with `KeyedService.AnyKey` is
-rejected, since its implementation is created for whichever key is requested; register concrete keys instead.
-A constructor parameter marked `[ServiceKey]` receives your key, as without MethodCache.
-
-Several registrations of one interface, such as `AddScoped<IPriceProvider, StorePrices>()` and
-`AddScoped<IPriceProvider, PartnerPrices>()` resolved as `IEnumerable<IPriceProvider>`, each cache their own results;
-the implementation type is part of their keys. Two registrations of the same implementation type share their results
-([Keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)).
-Open generic registrations and closed types without a generated binding also give a named startup error.
-
-Generic interfaces work the same way: `IRepository<User>` is cached for every closed type a class in your project
-implements, such as `UserRepository : IRepository<User>`. An open generic registration such as
-`AddScoped(typeof(IRepository<>), typeof(Repository<>))` gives a named binding error at startup or first binding
-without a host; register generated closed types instead.
+[Registration](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md) has the exact rules, including open generic registrations and several
+assemblies that generate the same interface.
 
 ### Registering with a factory
 
@@ -282,17 +249,18 @@ builder.Services.AddMethodCache();
 
 - Synchronous methods, `Task<T>` and `ValueTask<T>` can be cached. A method that returns nothing has nothing to
   cache, so `[Cache]` on it is a build error ([MC0003](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0003),
-  [MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
+  [MC0022](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0022)). So is a lazy `IEnumerable<T>` or `IQueryable<T>`
   ([MC0015](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0015)): return a list.
-  Synchronous methods use L1/origin when the distributed adapter has no bounded native synchronous capability.
-  Custom async-only managers bypass their synchronous caching path; see [Generated decorators](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md).
+- Synchronous methods use the memory cache only, also with a distributed cache configured
+  ([Generated decorators](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md#synchronous-methods)).
 - Exceptions are never cached: the next call runs the method again.
 - Concurrent calls with the same arguments share one call to your method (stampede protection). A caller that cancels
   only stops its own wait.
 - Without a `Duration`, entries live five minutes (the built-in default) unless you set a
   default ([Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration)).
-- `null` results are cached. Turn that off with `CacheNullValues` on the [memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md), or
-  per method with [conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md).
+- `null` results are cached. To skip null for one method, give it a
+  [condition](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md) (`CacheWhen(x => x is not null)`); `CacheNullValues = false` on the
+  [memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md) turns it off for every method.
 - The cached object is returned as is, not copied. Treat cached results as read-only.
 
 ## Next steps
@@ -301,6 +269,190 @@ builder.Services.AddMethodCache();
 - Remove entries when data changes: [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 - Change durations without a redeploy: [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md).
 - Share the cache between instances: [Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md).
+
+
+---
+
+<!-- source: docs/how-to.md -->
+
+# How do I…?
+
+Short answers to common questions, each with a link to the page that has the details. Search this page for a word
+from your question.
+
+## Getting started
+
+**Why does MethodCache need an interface?**
+The source generator writes a class that implements your interface, checks the cache and calls your implementation
+on a miss. Dependency injection hands out that class in place of yours. A class without an interface can't be
+replaced that way: add an interface, or use [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) with `ICacheManager`.
+([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md))
+
+**Can I put `[Cache]` on the class instead?**
+No. Put it on the interface method. On a class member it does nothing, and warning MC0001 says so; its code fix moves
+the attribute to the interface. ([Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md))
+
+**Where do I call `AddMethodCache()`?**
+After you register the services it caches. A cached service registered after it fails when the host starts.
+([Registration reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md#order))
+
+**Why does my method still run on every call?**
+The caller uses the class instead of the interface, the call comes from inside the class, or the service was
+registered after `AddMethodCache()`. ([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#the-method-runs-on-every-call))
+
+**Which return types can be cached?**
+Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `IEnumerable<T>` or `IQueryable<T>`.
+([Generated decorators](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/source-generator.md))
+
+**Are synchronous methods cached in Redis, SQL Server or PostgreSQL?**
+No, synchronous methods use the memory cache only, so they never block on the network. Make the method async to share
+its results between instances. ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#which-calls-use-the-distributed-cache))
+
+## Invalidation
+
+**When does `[CacheInvalidate]` run?**
+After the method, or the task it returns, succeeds. When it throws, nothing is invalidated.
+([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md))
+
+**The data changes somewhere else (an endpoint, a repository, a message handler). How do I invalidate?**
+After the write, call `ICacheManager.InvalidateTagAsync` with a tag from `IMethodCacheKeys.Tag`, which formats it
+exactly as the cached method does:
+`await cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"))`.
+([When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else))
+
+**How do I invalidate after a database transaction commits?**
+Invalidate after `CommitAsync` returns, not inside the transaction: a reader between the invalidation and the commit
+would cache the old data again. If the commit throws, there is nothing to invalidate.
+([When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else))
+
+**Can I build a tag string myself, such as `$"price:{model}"`?**
+Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
+as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture, and escapes `:` and `\` in strings,
+so `gemma3:4b` becomes `gemma3\:4b`. A tag formatted differently matches nothing, silently. Analyzer MC0024 warns
+about hand-built tags and its code fix adds `MethodCacheKeys.Part`. ([Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md))
+
+**How do I invalidate one call of a cached method?**
+`await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
+([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code))
+
+**How do I invalidate every entry of one method?**
+`await admin.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))` with `ICacheAdministrator`.
+([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code))
+
+**How do I invalidate everything for a tenant or a user?**
+Add a tag such as `"tenant:{tenantId}"` to every method that returns that tenant's data, and invalidate that tag.
+([Tag templates](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tag-templates))
+
+**Does an invalidation reach my other instances?**
+Yes, with Redis, SQL Server or PostgreSQL configured. Other instances drop their copy when the message arrives: at once
+with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
+([With several instances](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#with-several-instances))
+
+**How do I pass a version and a cancellation token?**
+`InvalidateKeyAsync(key, ct)`, `InvalidateKeyAsync(key, 2, ct)`, `TryGetAsync<Order>(key, ct)` and
+`TryGetAsync<Order>(key, 2, ct)`: the token always comes last. ([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md))
+
+## Expiration and what gets cached
+
+**How do I set how long a result is cached?**
+`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"1.5h"`. Change it without a rebuild in `appsettings.json`.
+([Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md), [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
+
+**How do I refresh a value before it expires?**
+`RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
+in the background. ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead))
+
+**How do I keep serving the last value when the database is down?**
+`FailSafe`: when the method throws or is slower than `FailSafeTimeout`, the last good value is returned.
+([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md))
+
+**Is `null` cached?**
+Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off for every method. For one method, use
+`CacheWhen`: `mc.Method((IProductService s) => s.FindAsync(Any<int>.Value)).CacheWhen(product => product is not null)`.
+([Null values](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#null-values), [CacheWhen](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md#cachewhen))
+
+**How do I cache only some results?**
+`CacheWhen` decides per method from the result whether to store it. ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md))
+
+**How do I skip the cache for one call?**
+With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method, add a second interface method without
+`[Cache]` that reads the source directly. ([Skipping the cache for one call](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md#skipping-the-cache-for-one-call))
+
+**How do I turn caching off for a method without a rebuild?**
+`"Enabled": false` for that method in `appsettings.json`, or `IRuntimeCacheConfigurator` at runtime.
+([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md))
+
+**What does the `Weigher` look like?**
+`Func<string, object?, long>`: `(key, value) => weight`, called once when an entry is stored. Set it with
+`WeightLimit` to bound the memory cache by size. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
+
+**Can callers change a cached object?**
+They share the same instance, so a change is seen by every caller. Return immutable types such as records.
+([Cached objects are shared](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared))
+
+## Keys
+
+**How are keys built?**
+From the assembly, interface, method and the arguments' values. A `CancellationToken` is not part of the key.
+([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md))
+
+**My argument is a class with private fields. What happens?**
+Arguments whose only state is private are rejected; implement `ICacheKeyProvider` on the type.
+([Types whose state is private](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private))
+
+**How do I cache something without an attribute?**
+`ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with a prefixed key such as `$"order:{id}"`.
+([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md))
+
+**How do I cache a client from a NuGet package?**
+`[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` caches chosen methods of its
+own interface. ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md))
+
+## Running in production
+
+**How do I share the cache between instances?**
+`AddMethodCache(mc => mc.UseRedis("..."))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)`.
+([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
+
+**A result type stays in memory only, with a warning. Why?**
+It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
+Return records with public properties, or register a serializer with `UseJson(options)`.
+([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization))
+
+**What happens when Redis is down?**
+Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
+after a failure, and invalidations are retried. ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
+
+**How do I see what's cached?**
+`ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
+show the same. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md))
+
+**How do I get metrics into Prometheus?**
+Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
+`MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too.
+([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
+
+**How do I publish with Native AOT?**
+Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md))
+
+## Testing
+
+**How do I turn caching off in tests?**
+Register `NoOpCacheManager` after `AddMethodCache()`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#turning-method-caching-off))
+
+**A test writes to the database directly. How do I keep the cache from serving old data?**
+Call `ICacheAdministrator.ClearAsync()` after the write, or invalidate the affected tag with `IMethodCacheKeys.Tag`.
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly))
+
+**How do I test expiration without waiting?**
+Register a fake `TimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
+
+## Coding agents
+
+**How do I have an agent add MethodCache to my project?**
+Give it the prompt in the README's [Using a coding agent](https://github.com/eoniclabs/MethodCache/blob/main/README.md#using-a-coding-agent). The `MethodCache` package
+carries these docs in its `docs` folder, and [agent instructions](https://github.com/eoniclabs/MethodCache/blob/main/docs/ai/methodcache.md) has the rules to copy into your
+agent's instructions.
 
 
 ---
@@ -318,9 +470,6 @@ the containing type and the interface, including `unmanaged` and base class cons
 `scoped` parameters on forwarded members. Each overload has its own
 [method id](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson) and its own cache entries.
 
-Memory-only `Task<T>` and `ValueTask<T>` misses avoid allocating closures for inactive fail-safe and
-distributed-write branches. Enabling those features retains their origin and invalidation behavior.
-
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
@@ -329,8 +478,8 @@ implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` mem
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
-Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generator gives those files
-short, stable names while preserving the declared types and cache identities.
+Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generated files get short, stable
+names.
 
 Unsupported cached method shapes receive a [generator diagnostic](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
@@ -339,17 +488,6 @@ interface is cacheable. See [keys](https://github.com/eoniclabs/MethodCache/blob
 [configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md) for generated policy identifiers.
 
 ## Registration
-
-Generated runtime calls use the versioned `MethodCache.Generated` facade. Module initializers record descriptors
-only; `AddMethodCache` validates contract versions before executing descriptors or factories. Each invocation
-captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
-binding. A retired invocation may finish its origin call but cannot publish into the current generation.
-
-The reviewed contract-1 surface is frozen before the first release. Generated inline keys use the bound
-`KeyBuilder` constructor and `AppendPart` with ref lookups, including records, collections and key providers.
-`StartKey`, `BindKey`, `KeyPrefix` and `TextKey` are internal. Compatibility checks execute the explicit
-.NET 10 `Contract1Final` vendor images; earlier unpublished development checkpoints remain historical.
-After release, precompiled contract-1 decorators must run on newer 1.x Core versions without regeneration.
 
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
@@ -363,25 +501,24 @@ builder.Services.AddScoped<IUserService>(sp =>
 builder.Services.AddMethodCache();
 ```
 
-The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
-with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
-It checks semantic runtime references as well. Frozen vendor binaries exercise contract compatibility without
-regenerating source during ordinary tests, including under Native AOT.
+`AddMethodCache` decorates the services you registered before it. A service you didn't register is registered only
+with `AutoRegister(lifetime)`. The rules for keyed, generic, factory and several registrations are in
+[Registration](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md).
 
-`AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
-with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` to choose the module
-that wins when multiple modules offer the same interface; the other modules' services stay cached. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
+## Synchronous methods
 
-Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
-async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses
-synchronous caching and emits a diagnostic once per method/container. Current distributed adapters do not expose
-bounded native synchronous operations through this path, so these calls use L1/origin and report unavailable L2;
-use async methods to share results through L2. Synchronous distributed tag mutations report unsupported invalidation
-after the origin/local mutation; use async mutation methods for distributed invalidation.
+A synchronous `[Cache]` method loads synchronously: concurrent callers with the same arguments share one call, and it
+never blocks on an async load. It uses the memory cache only, also when a distributed cache is configured, so it never
+waits on the network; use an async method to share results between instances. A synchronous `[CacheInvalidate]`
+method clears this instance's memory before it returns, and reaches the distributed cache in the background. With
+your own `ICacheManager`, which has only async operations, synchronous methods aren't cached and a warning is logged
+once per method.
 
-The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
+## Language versions
 
-With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
+C# 12 and newer are supported with the .NET 10 SDK. With C# 13 or newer, generated decorators keep `allows ref struct`
+constraints on generic methods; a type parameter that may be a ref struct, used as an argument or result, is
+[MC0009](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0009).
 
 
 ---
@@ -926,7 +1063,7 @@ change only the timeout. `o.WithFailSafe(TimeSpan.Zero)` turns fail-safe off. In
 > The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
 > once.
 
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
+Cancelling a call stops its wait for the distributed cache, a slow method or a fail-safe value. Work that other callers share may finish for them, and a cancelled call doesn't count as a failure.
 
 
 ---
@@ -1169,25 +1306,24 @@ await configurator.ClearAsync();
 The async operations return `ValueTask` and take cancellation last. A method id or expression that reaches no cached
 method, or a method that returns nothing, throws an `ArgumentException` naming the closest cached id before
 anything is stored. A tag template that doesn't fit the method throws too.
-Runtime configuration changes methods; group and global defaults are configured at startup or through configuration files.
-Tags remain additive unless `ClearTags()` is used. `WithEnabled(false)` disables caching; `WithDistributed(false)`
-disables L2 reads and writes. Re-enabling or changing behavior retires the previous generation.
-
-An effective behavior change immediately retires local cached values and in-flight publication guards.
-Already running callers may finish with their earlier result. Audit-only updates and equal effective options retain
-values. Overrides are private to the container, use a fresh private L2 namespace when behavior changes, and disappear
-on restart. Removing an override restores the current shared declarative namespace after method invalidation.
-Invalidation messages retire data on other nodes; they never distribute policy.
-
-`RuntimeOverrideMetadata` retains owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
-when it passes.
-Configuration reload publishes local policy and generation changes before its notification returns. Other nodes reload
-their own configuration; the library does not distribute files. See [distributed guarantees](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#policy-isolation).
+- Overrides change one method each. Group and global defaults come from startup code or `appsettings.json`.
+- Tags from an override are added to the method's tags unless the override calls `ClearTags()`.
+  `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
+- An override that changes how the method caches drops the entries cached under the old settings at once; calls
+  already running may still return their earlier result. An override that only changes its audit metadata keeps them.
+- Overrides live in this instance's memory: they are lost on restart and don't reach other instances. While an override
+  changes how a method caches, that method's entries in the distributed cache are this instance's own; removing the
+  override invalidates the method and shares entries again
+  ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#policies-and-shared-entries)).
+- `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
+  when it passes.
+- A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
+  its own configuration; MethodCache doesn't distribute files.
 
 ## Seeing the effective policy
 
-`ICacheAdministrator.GetMethods()` shows each method's effective immutable options, where each setting comes from,
-and whether its L2 namespace is shared or private:
+`ICacheAdministrator.GetMethods()` shows each method's effective options, where each setting comes from, and whether
+its distributed cache entries are shared with other instances or its own because of a runtime override:
 
 ```cs
 var diagnostics = app.Services.GetRequiredService<ICacheAdministrator>();
@@ -1223,13 +1359,14 @@ can't return, such as `CacheWhen<string>` on a method that returns `int`, throws
 startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.
 
-Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+`[Cache]` takes named settings only. `Enabled` and `Distributed` inherit the configured policy when you leave them out,
+and an explicit `false` wins over the lower layers. `FailSafeRetryAfter` sets how long a served fail-safe value is
+reused before the method is tried again (30 seconds by default). `[assembly: CacheInterface(typeof(...), nameof(...))]`
+takes the same named settings.
 
-Published options and policy tags are owned, read-only snapshots. Mutating a collection supplied by application code cannot change an existing policy or bypass its change notifications.
-
-A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
-
-`[Cache]` is parameterless and all settings are named. `Enabled` and `Distributed` inherit the policy when omitted; explicitly setting either to `false` overrides a lower layer. An omitted `Version` remains unset; an explicit negative version is an error. `FailSafeRetryAfter` sets the fail-safe retry delay (default 30 seconds). `[assembly: CacheInterface(typeof(...), nameof(...))]` retains its required interface and method arguments and offers the same named settings.
+Overloaded generic methods have the number of type parameters in their method id: `Get(int)`, `Get``1(int)` and
+`Get``2(int)` are three methods, in `appsettings.json` as well. Options and tags you pass in code are copied, so
+changing the collection afterwards changes nothing.
 
 
 ---
@@ -1280,24 +1417,21 @@ var list = await cache.GetOrCreateAsync(
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md) and
   [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
-- `WithEnabled(false)` runs the factory for each call and bypasses reads, joins, stale values and publication.
-- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before caching and after L2 reads.
+- `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
+- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
+  from the distributed cache.
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
   static factory.
 - Configuration files and runtime overrides apply to declared cached methods. Explicit-key calls use their own options.
-- `Build()` copies mutable collections. Later builder changes cannot change published options.
+- `Build()` copies the tags, so changing the builder afterwards changes nothing.
 
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
-`InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
-A custom manager stores an entry under `MethodCacheKeys.StoredKey(key, options?.Version)` in `GetOrCreateAsync`, and
-looks it up or removes it under `MethodCacheKeys.StoredKey(key, version)` in `TryGetAsync` and `InvalidateKeysAsync`,
-so a key and version name the same entry in every method. `options.CanCache(value)` evaluates the result predicate.
-Generated calls pass a key that already carries the method's version and options with `Version = null`, so their
-key is stored as it is.
-Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
-synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
+`InvalidateTagsAsync`. The interface takes every argument; extension methods give the short forms, such as
+`TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key)` and `InvalidateKeyAsync(key, version)`, and take a
+builder action instead of built options. To write your own manager, see
+[Registration](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md#your-own-cache-manager).
 
 ## Reading without loading
 
@@ -1309,20 +1443,18 @@ if (lookup.Found)
 }
 ```
 
-`TryGetAsync` takes the same `version` an entry was stored with.
+`TryGetAsync` takes the `version` an entry was stored with: `TryGetAsync<Order>("order:42", 2)`.
 
 ## Versions and the stored key
 
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
-shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
-version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
+shares a value with the key `entry::v1`. `TryGetAsync` and `InvalidateKeyAsync` take the same key and version you
+cached with: `TryGetAsync<Order>("order:42", 2)`, `InvalidateKeyAsync("order:42", 2)`.
 `ICacheAdministrator` takes the stored key, `MethodCacheKeys.StoredKey(key, version)`, which is what
 `CacheEntryInfo.StoredKey` shows; treat its format as opaque. To invalidate a versioned entry through `ICacheManager`,
-pass the key and its version, `InvalidateKeyAsync(key, version: 2)`, not the stored key.
+pass the key and its version, `InvalidateKeyAsync(key, 2)`, not the stored key.
 
 ## Many keys at once
-
-Key, tag and clear invalidation also guard the batch factory while it reads its source. Its caller can receive the in-flight result, but invalidated candidates are not published into memory or the distributed cache. Individual callers can still load and publish these keys during the batch; a fresh concurrent value wins.
 
 `GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
 and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
@@ -1362,9 +1494,9 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - The four operations on `ICacheManager` can be mocked directly. The options-builder convenience overload
   delegates to that interface. You can also pass a `NoOpCacheManager` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
 
-Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
-
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
+- `TryGetAsync` returns a fresh entry, a cached `null` included, also when refresh-ahead is due; it never runs a
+  factory or starts a refresh.
+- An entry invalidated while `GetOrCreateManyAsync`'s factory runs is returned to that caller but not stored.
 
 
 ---
@@ -1495,17 +1627,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
     .AddHttpCaching();
 ```
 
-The [package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) covers settings, storage, private and shared caches,
-limits and metrics. This page covers the rules the cache follows and Core-owned storage. See
-[Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#methodcachehttpcaching) for the threat model.
-
-Responses without custom key headers or `Vary` fields use direct variant selection, avoiding temporary sets
-and sorting. Private caches still isolate `Authorization` and `Cookie`; configured headers and `Vary` retain
-their combined, case-insensitive selection rules.
-
-A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
-
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
+The [package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.HttpCaching/README.md) covers settings, private and shared caches, limits
+and metrics. This page covers the rules the cache follows. [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md#methodcachehttpcaching) has the
+threat model, and the [HTTP caching reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/http-caching.md) the exact behavior.
 
 ## Freshness and validation
 
@@ -1545,48 +1669,24 @@ Concurrent writers with the same variant selection share its namespace, includin
 
 ## Writes and invalidation
 
-A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
-the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
-background revalidation that was already in flight can still complete, but it stores its response under the old
-generation, so later requests fetch the updated response. With native Redis, SQL Server or PostgreSQL configured, the generation is shared by every instance, even when backplane
-messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
-SQL Server and PostgreSQL read already initialized, permanent generation records without rewriting them. Missing or
-non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
-The transport retains only its latest bounded command-text shape. It does not cache generation values;
-reordered or duplicate keys still return generations in the caller's order.
+- A successful `POST`, `PUT`, `PATCH` or `DELETE` invalidates the cached responses for its URL before it returns: the
+  URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A `GET` already in flight can't
+  store its older response over it.
+- With Redis, SQL Server or PostgreSQL configured, every instance sees the invalidation at once, even when backplane
+  messages are lost.
+- If the invalidation can't be confirmed, the call throws `HttpCacheInvalidationException`. The write may have
+  succeeded at the origin, so don't retry it automatically. A `GET` that throws it is safe to retry.
+- To invalidate from code, use `ICacheAdministrator`: one response by the id `ListEntries` gives, a client's
+  responses by its tag (`http:` followed by `MethodCacheKeys.Part(clientName)`) or the tags in `HttpCacheOptions.Tags`,
+  or everything with `ClearAsync`.
 
-The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
-URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
-the retired bodies from that slot, releasing their byte budget immediately. Generation records never expire on
-their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
-cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
-to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
-bounded recovery. The origin mutation may have succeeded: do not automatically retry it. A GET or HEAD whose answer
-replaces a stored response that can't be retired throws the same exception; it is safe to retry. Cancelling the caller stops
-its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
-tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
-bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
-lost when the process exits; other nodes may retain old responses until they expire.
+## Storage
 
-## Core storage and administration
-
-`AddHttpCaching` requires an explicit `AddMethodCache` registration in the same container. Either registration
-order works. Without L2, Core uses a separate HTTP byte budget (100 MiB by default), independent of method entries.
-Bodies exceeding the whole HTTP budget remain streamed and are not stored. Headers and metadata are charged too.
-With MethodCache Redis, SQL Server or PostgreSQL configured, HTTP responses live exclusively in that owned L2; the application's
-unrelated `IDistributedCache` is never a fallback. HTTP entries use an internal codec, independent of method serializers.
-The former `HttpCacheStorageOptions`, `IHttpCacheStorage` and `HttpCacheEntry` public extension points are removed.
-
-`ICacheAdministrator` lists actual local representations, or at most 1024 historical local L2 observations.
-`Storage=ObservedDistributed` is not verified backend presence or a global inventory; observations contain no body,
-credentials, cookie header or raw URL query. An unknown observation id returns NotFound. Removing a known id retires
-its URL generation and all variants. `Clear` retires the shared global generation. Client tags are
-`http:` followed by `MethodCacheKeys.Part(clientName)`; configured static `HttpCacheOptions.Tags` participate too.
-The HTTP administration and byte statistics also work with a NoOp method manager.
-
-Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and their byte budget.
-Its work grows with the resident entry count; URL invalidation and other configured application tags use their indexes.
-This keeps the implicit client tag out of the publication index while preserving administration and generation checks.
+Responses are stored in MethodCache's memory cache, in a budget of their own (`MaxHttpBytes`, 100 MiB by default,
+headers included) next to method results. With Redis, SQL Server or PostgreSQL configured, they are stored there
+instead, so every instance shares them. A response larger than the budget is streamed to the caller and not stored.
+`AddHttpCaching` needs `AddMethodCache` in the same container, in either order. The admin endpoints and
+`ICacheAdministrator` list and remove cached responses; they never show bodies, credentials, cookies or query strings.
 
 ## Transport and cookies
 
@@ -1597,8 +1697,8 @@ A handler that already has cookies off is left alone, so a cookie-free handler s
 never share entries, and they all use the settings given there. A client has at most one cache: calling
 `AddHttpCaching` again for one client, or twice, adds no second cache and applies every settings delegate. To give
 one client other settings, use `services.Configure<HttpCacheOptions>("name", o => ...)`.
-`KeepCookies=true` preserves the transport configuration and completely bypasses response caching, validation and
-stale fallback. `only-if-cached` then returns 504. A successful unsafe mutation still retires shared generations.
+`KeepCookies=true` leaves the transport's cookies on and turns response caching, validation and stale fallback off for
+that client. `only-if-cached` then returns 504, and a successful write still invalidates its URL.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP
 caching.
 
@@ -1611,20 +1711,12 @@ per named client, unless you set `AllowUnverifiedTransport`. Set it only when yo
 transport sends no automatic cookies or hidden caller identity. A known transport with automatic cookies turned on
 always bypasses.
 
-HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
-
-Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
-
 
 ---
 
 <!-- source: docs/features/distributed-cache.md -->
 
 # Distributed cache
-
-The [web demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.WebDemo) includes two-instance request examples and automated
-Redis outage/restart scenarios. Both hosts share a transactional SQLite database, and query counters distinguish
-Redis hits from source reads. Its tests own their Redis container and never stop a developer's Redis.
 
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
@@ -1641,21 +1733,18 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(connectionString));   // M
 builder.Services.AddMethodCache(mc => mc.UsePostgreSql(connectionString));   // MethodCache.PostgreSql
 ```
 
-Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
-
-Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
-
-The PostgreSQL backplane keeps invalidations in a table, like SQL Server, and announces each one with `NOTIFY`, so other instances read it at once instead of at their next poll. Ids are handed out in commit order, so it needs no gap checks. Its `LISTEN` connection reconnects with the same doubling delay and reads what it missed when it is back; until then, polling delivers every invalidation.
+The [web demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.WebDemo) runs two instances that share Redis, including what happens when
+Redis goes down.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    A([Call a cached method]):::dark --> B{In memory?<br/>L1}
+    A([Call a cached method]):::dark --> B{In memory?}
     B -- yes --> R([Return the value]):::amber
-    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL? L2}
+    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL?}
     C -- yes --> D[Keep it in memory]:::light --> R
-    C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
+    C -- no --> E[Run your method]:::dark --> F[Write it to memory<br/>and the distributed cache]:::light --> R
     classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
     classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
     classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
@@ -1664,16 +1753,16 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant A as Instance A
-    participant L2 as Redis / SQL Server / PostgreSQL
+    participant D as Redis / SQL Server / PostgreSQL
     participant B as Instance B
     A->>A: [CacheInvalidate] or InvalidateTagsAsync
-    A->>L2: Remove the key, or stamp the tag
+    A->>D: Remove the key, or stamp the tag
     A-->>B: Backplane message (pub/sub, NOTIFY, or the next poll)
     B->>B: Drop the in-memory copy
-    Note over B: The next call reads L2 or runs the method
+    Note over B: The next call reads the distributed cache or runs the method
 ```
 
-- Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
+- Results live in memory and in the distributed cache. An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
@@ -1681,41 +1770,14 @@ sequenceDiagram
 - Redis, Microsoft SQL Server and PostgreSQL are supported. Other stores are not; the storage interfaces are
   internal. Use one of them: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws.
   `Distributed(...)` and `UseMessagePack()` without one log a warning at startup, since they have nothing to apply to.
-- `[Cache]` methods and `GetOrCreateAsync` need no changes.
-- MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
+- `[Cache]` methods and `GetOrCreateAsync` need no changes. Synchronous `[Cache]` methods use only the memory cache,
+  so they never wait on the network; a synchronous `[CacheInvalidate]` reaches the other instances in the background.
+- MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone
+  and is never used as a fallback.
 
 > [!IMPORTANT]
 > Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
 > are ignored with one warning.
-
-## Policy isolation
-
-Declared methods with equal effective startup/configuration options share a stable L2 namespace. A behavior-changing
-runtime override uses a private namespace for that method and container. Equal overrides on different nodes cannot
-share private values. Removing an override invalidates the declared method before allowing shared L2 reads again.
-The logical key from `MethodCacheKeys` remains suitable for invalidation across policy variants.
-
-A received method invalidation retires data for all closed generic and keyed registrations, without changing the
-receiver's policy. Dissemination is best effort: a missed message can leave remote L1 values until expiry or reconnect.
-L2 metadata rejects values loaded before invalidation, including writes that land after a timeout and retry.
-
-Entries retain load start, first publication time and an absolute deadline. L2 reads apply the receiver's null policy
-and result predicate, and cap remaining lifetime by the stored deadline, its own duration from first publication and
-`MaxExpiration`. A slow factory does not consume the value's duration; it reduces the remaining metadata-retention margin.
-Synchronous methods currently use L1 and the origin when these providers cannot offer a bounded native synchronous
-operation. This emits a diagnostic once per method/container. Synchronous invalidation retires local data immediately
-and leaves L2 recovery owned by the cache.
-
-## Invalidation results
-
-`InvalidateKeysAsync` and `InvalidateTagsAsync` validate the full batch and count distinct targets. `Requested` and
-`Local` count targets, including local no-ops. `Distributed` counts confirmed L2 metadata; `Queued` counts unconfirmed
-L2 targets. With L2 configured, their sum equals `Requested`. `Published` counts backplane sends and
-`PublicationQueued` counts confirmed L2 targets whose sends need retry. A send does not confirm receipt by every node.
-There are no distributed counters without L2 and no publication counters without a backplane.
-
-Cancellation before mutation leaves data untouched. Afterwards it cancels the caller's wait while owned recovery
-continues. Storage and publication have separate bounded queues, exposed through administration and health checks.
 
 ## When the distributed cache is down
 
@@ -1742,7 +1804,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to the owned Redis, SQL Server and PostgreSQL providers:
+`DistributedCacheOptions` apply to Redis, SQL Server and PostgreSQL alike:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc.Distributed(options =>
@@ -1759,9 +1821,9 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
-| `KeyPrefix` | `methodcache:` | One startup-immutable prefix for values, metadata, HTTP epochs and the backplane; give each application its own |
-| `VerifyRoundTrip` | `true` | Verify the serialized representation before publishing; not a proof of semantic equality |
-| `SerializerVersion` | `1` | Positive value-format identity; increment when changing serializer settings |
+| `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Give each application that shares a store its own. It can't change while the app runs |
+| `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
+| `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
 ## What other instances see
 
@@ -1789,25 +1851,14 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 
 ## Serialization
 
-Values are written as JSON with System.Text.Json, public fields included, so value tuples and structs with fields
-are shared as they are. Every value an instance writes is read back and written again first; when that doesn't give
-the same bytes and type, that value and every later value of the method with that type stay in the instance's memory
-only, and one warning names the method and the type. Each value is checked, since one with default data (an `Id` of
-0 behind a private setter) can come back unchanged where the next one doesn't. A serializer that never writes the same
-bytes twice (encryption with a fresh nonce) can't be compared that way, so for it only the type is checked. State
-the serializer never writes at all (a class that keeps its data only in private fields, which JSON writes as `{}`)
-reads back as the same bytes, so the check can't see that it is lost: make such state serializable, or register a
-serializer that writes it. That happens with properties that have a
-private or protected setter, public readonly fields of a type that also has a parameterless constructor, a derived
-type returned as its declared base type (an `Animal` method returning a `Dog`, even after it returned plain
-`Animal`s), and `object`, with JSON and MessagePack alike. A value the serializer throws on (a cycle, a delegate
-field) stays in memory the same way. A collection declared as an interface (`IReadOnlyList<int>`,
-`IEnumerable<int>`) may come back as another implementation, a `List<int>` for an array, and is still shared. The
-check looks at the type of the value itself, not of what it holds: a `Dog` inside a `List<Animal>` or in a property
-declared `Animal` is shared without its `Dog` data. To share such values, register a serializer that reads them back,
-through `UseJson` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
-setter, `[JsonDerivedType]` on the base type). The `MethodCache.Serialization.MessagePack` package makes values
-smaller and faster to read:
+Values are written as JSON with System.Text.Json, public fields included, so records, value tuples and structs are
+shared as they are. Each value is read back once before it is shared. A value that doesn't come back the same, such as
+a class with private setters, a `Dog` returned from a method declared to return `Animal`, or `object`, stays in that
+instance's memory only, with one warning that names the method and the type. Register your own
+`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` to share such values (`[JsonInclude]`,
+`[JsonDerivedType]`). [Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization) has the exact rules.
+
+The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
@@ -1819,25 +1870,6 @@ Entries written in the other format read as misses and are replaced, so switchin
 [MessagePack package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md)).
 
-## Owned storage and compatibility
-
-Use `MethodCacheBuilder.UseRedis`, `UseSqlServer` or `UsePostgreSql`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
-
-`TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
-
-Entry keys include the entry format and `SerializerVersion` (default 1); logical invalidation metadata does not. Raise the method `Version` or `DistributedCacheOptions.SerializerVersion` when changing result schemas or serializer settings. Content type only identifies the serialization family. Wire contract 1 frames key, application-tag, method and clear as separate operations. Unknown optional fields are ignored; incompatible mandatory frames retire local entries and produce one payload-free warning.
-
-SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
-
-PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server. `ConfigureDataSource` logs in without a password, with a token from Microsoft Entra ID or AWS IAM ([Passwordless login](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md#passwordless-login)).
-
-Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
-
-Redis, SQL Server and PostgreSQL own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
-keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
-lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
-backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
-
 ## Keep invalidations from being evicted
 
 > [!WARNING]
@@ -1847,6 +1879,15 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
 > as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.
+
+## Changing result types and upgrading
+
+- Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
+  so values the previous version wrote are not read.
+- Run the same MethodCache version on every instance that shares a store.
+- SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
+  before 1.0, or a login that may not create tables, see the
+  [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) and [PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md) guides.
 
 ## Limits
 
@@ -1860,12 +1901,8 @@ The [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.R
 [PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md) READMEs cover their options, shared connections, table creation,
 outage settings and how each stores keys and invalidations. The PostgreSQL guide compares all three; the SQL Server
 guide has the schema migration for an existing invalidations table. [Benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers)
-measures them side by side.
-
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
-
-SQL Server backplane initialization requires a non-nullable `binary(32)` `Scope` column. Incompatible scope columns
-are reported without automatic schema upgrades; see the [SQL Server guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md#required-backplane-schema).
+measures them side by side. The exact guarantees, such as what a cancelled call leaves behind and how each
+backplane recovers, are in the [distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).
 
 
 ---
@@ -1904,7 +1941,7 @@ explicit scopes:
 | `LocalMethodEntries` | Method results resident in this instance |
 | `LocalHttpEntries` | HTTP representations resident in this instance |
 | `LocalHttpBytes` | HTTP storage cost in bytes; separate from method weight |
-| `ObservedDistributedEntries` | Bounded HTTP observations, never a global L2 count |
+| `ObservedDistributedEntries` | HTTP responses this instance recently saw in the distributed cache (at most 1024); not a count of what is stored there |
 | `TotalWeight` | Resident method weight in the configured weigher's units; one per entry without a weigher |
 
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
@@ -1953,14 +1990,11 @@ Configure your application's authentication scheme as well as the authorization 
 Development environment allows anonymous admin requests so you can try the endpoints locally.
 It also exposes Development-only `/demo/queries` and `/demo/reset` routes to count source reads and restore
 the demonstration data; those routes are not part of the MethodCache admin package.
-The sample price endpoint rejects missing, null and negative prices before writes or invalidation; rejected requests
-leave both stored products and the cache unchanged.
-
 ## Health check
 
-`AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when L2 is unavailable,
-either recovery queue has work, or a configured backplane is unknown, connecting or disconnected. A successful L2
-probe does not prove that invalidation subscription is established. Reports include `managerCapability`,
+`AddHealthChecks().AddMethodCache()` reports the selected `failureStatus` (default `Degraded`) when the distributed cache doesn't answer,
+invalidations are waiting to be retried, or the backplane is connecting or disconnected. The distributed cache and the
+backplane are reported separately. Reports include `managerCapability`,
 `statisticsAvailable`, `distributedCacheAvailable` when applicable, `backplaneStatus`, `queued` and
 `publicationQueued`, plus local storage statistics; the
 [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#health-check) lists every key. Backend exception text is
@@ -1996,24 +2030,26 @@ builder.Services.AddOpenTelemetry()
 Each completed cache call has one `methodcache.requests` outcome, `methodcache.result`: `hit`, `miss`, `stale`,
 `revalidated`, `bypass` or `error`. `methodcache.kind` is `method`, `manual` or `http`, and `methodcache.method` (a
 method id) or `methodcache.http.client` (a client name) says which; manual calls by key carry neither. Every attribute
-is in the `methodcache.` namespace, apart from `error.type`. A failed fast probe is not a separate miss.
-Refreshes record their actual origin duration without another user request. Flight joiners and L2 hits do not record
-origin loads. A bulk call has one outcome and measures its actual batch factory, rather than the per-key publication
-of the already produced values.
+is in the `methodcache.` namespace, apart from `error.type`. `methodcache.load.duration` measures your method when it
+actually runs, background refreshes included; callers that join a running load and values read from the distributed
+cache record none. A bulk call has one outcome and measures its one batch factory call.
 
 Histograms use seconds, with bucket boundaries from 5 ms to 10 s. Local entry/HTTP byte instruments are observable
 up-down counters. Invalidation counters count
 distinct targets at each stage, not operation totals; do not add stages together. See the
 [full instrument table](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md#metrics).
 
-Spans cover actual origin loads, individual distributed operations and invalidation. Pure hits have no spans. Keys
+Spans cover runs of your method, individual distributed operations and invalidation. Pure hits have no spans. Keys
 and tags require explicit Core options; keys are hashed by default when enabled. Metrics never include keys, tags,
-URLs, user ids or tenant ids. The library adds no baggage and copies no request HTTP/URL attributes. Normal ambient
-.NET activity context and application-owned baggage continue to flow; configure their export in the app.
+URLs, user ids or tenant ids. MethodCache adds no baggage and copies no HTTP or URL attributes; your application's
+own activity context and baggage flow as usual.
 
 ## Standard .NET listeners
 
-OpenTelemetry is optional. A `MeterListener` can subscribe directly; retain it for the measurement lifetime:
+OpenTelemetry is optional. The meter and activity source are named `MethodCache` (`MethodCacheTelemetry.Name`), so
+`dotnet-counters monitor --counters MethodCache` and any `MeterListener` see them. For Prometheus, use OpenTelemetry's
+Prometheus exporter with `AddMethodCacheInstrumentation()`. A `MeterListener` subscribes like this; keep it alive for
+as long as you want measurements:
 
 ```cs
 builder.Services.AddMethodCache();
@@ -2028,7 +2064,7 @@ listener.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
 listener.Start(); // keep the listener alive for as long as measurements are needed
 ```
 
-Identity options belong to Core and do not depend on an exporter:
+The privacy options are set in `AddMethodCache` and apply whatever listens:
 
 ```cs
 // Core emits standard Meter and ActivitySource instruments
@@ -2039,8 +2075,8 @@ builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 }));
 ```
 
-For generated calls through a custom manager, Core can observe whether its supplied factory ran. Standalone calls to
-an application-owned manager must be instrumented by that implementation; its storage capabilities are not assumed.
+With your own `ICacheManager`, MethodCache still measures whether a cached method's factory ran; anything else your
+manager does is its own to instrument.
 
 
 ---
@@ -2138,11 +2174,6 @@ Moments after the writes stop, the cache is back within the bound.
 > The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
 > object; return immutable types such as records, or copies.
 
-Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
-
-Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
-invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
-
 
 ---
 
@@ -2230,6 +2261,26 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
+## When a test writes to the database directly
+
+A test that changes data without going through a `[CacheInvalidate]` method, such as seeding rows or calling a
+repository, leaves the cached results as they were. Clear the cache after the write, or invalidate what it changed:
+
+```cs
+await database.SaveAsync(changed);   // the test changes the data behind the cache's back
+
+// Remove everything cached...
+await provider.GetRequiredService<ICacheAdministrator>().ClearAsync();
+
+// ...or only what the write changed
+var cache = provider.GetRequiredService<ICacheManager>();
+var keys = provider.GetRequiredService<IMethodCacheKeys>();
+await cache.InvalidateTagAsync(keys.Tag<IProductService>(p => p.GetAsync(changed.Id, default), "product:{id}"));
+```
+
+`ClearAsync` also removes the entries from a distributed cache and the other instances, so use a cache of the test's
+own (a new service provider, or its own `KeyPrefix`) when tests run in parallel against a shared Redis or database.
+
 ## Turning method caching off
 
 Register `NoOpCacheManager` after `AddMethodCache()` and every call reaches your implementation:
@@ -2243,15 +2294,15 @@ services.AddSingleton<ICacheManager, NoOpCacheManager>();   // after AddMethodCa
 ```
 
 For code that uses [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md), pass a `NoOpCacheManager` directly, or mock the four
-operations on `ICacheManager`. The options-builder convenience overload delegates to that interface contract:
+operations on `ICacheManager` (the short forms are extension methods that call them):
 
 ```cs
 ICacheManager cache = new NoOpCacheManager();   // never caches: the factory runs on every call
 var reader = new OrderReader(cache, repository);
 ```
 
-`NoOpCacheManager` is in the `MethodCache` namespace and sealed. It disables method caching; HTTP response storage remains
-independent. Configure HTTP caching separately and use its administrator for invalidation.
+`NoOpCacheManager` is in the `MethodCache` namespace. It turns off method caching only; responses of an `HttpClient`
+with `AddHttpCaching` are still cached.
 
 ## Time
 
@@ -2260,8 +2311,6 @@ independent. Configure HTTP caching separately and use its administrator for inv
 > `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
 > This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 > eviction and the background revalidation timeout.
-
-The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
 
 
 ---
@@ -2272,41 +2321,16 @@ The web demo uses a shared SQLite database in the temp folder (`methodcache-webd
 
 What each package protects against, what it leaves to you, and the tests that hold it to that.
 
-## Self-hosted CI pilot
-
-The opt-in Actions pilot uses a dedicated Nimbus account and a restricted organization runner group.
-MethodCache is public: neither the caller nor the reusable workflow permits pull-request events. Only
-trusted pushes/manual dispatches on the reviewed main/bootstrap branches can reach the job; checkout
-uses that event's commit, with read-only token permissions and credential persistence disabled.
-The external `MethodCache CI` merge gate remains independent.
-
-The account's Docker access is root-equivalent. A separate account is not a sandbox, and runner groups
-and event guards do not protect against a malicious repository writer. Do not add untrusted forks,
-production secrets or signing credentials. Disposable execution isolation is required before widening
-that trust boundary. The host capacity lease prevents overlapping heavy CI, not hostile code execution.
-`build/ci/tests/test_actions_linux.py` verifies admission, lease lifetime, missing-lock refusal, and
-failure/timeout propagation; the workflow event/ref gates are part of security review.
-
-## Release publishing
-
-`build/ci/publish.sh <tag>` retrieves only the configured BWS publishing secret after packing. The
-NuGet API key goes to a .NET SDK 10.0.300+ CLI through `NUGET_API_KEY` and `NUGET_SYMBOL_API_KEY`, without appearing in command-line
-arguments or shell traces. The BWS token is removed from the upload process's environment; inherited BWS
-and both NuGet publishing credentials are removed from build-step environments. The script refuses a release
-whose `MethodCache CI` status is not green. `build/ci/tests/test_publish.py` covers these boundaries and
-failure paths. The host, release code and SDK remain trusted: this does not isolate malicious code running
-under the same OS user from local credential files.
-
 ## MethodCache (keys, tags, invalidation)
 
 | Threat | What MethodCache does |
 |---|---|
-| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Recursive key generation from providers or JSON getters cannot overwrite another invocation's key arguments. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MC0019. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. Collection subclasses include their own public state alongside their elements in every key generator. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
+| A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Building a key that itself builds keys (an `ICacheKeyProvider`, a getter) can't change another call's key. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MC0019. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. A collection subclass's own public properties are part of the key, with its elements. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
 | Two service libraries declare identical namespace/type names | Generated service keys and policy ids include the assembly simple name, without its version; keyed-service enum types, closed generic arguments and fallback runtime types (including nested object values) also include assembly identity. Assembly-name delimiters are escaped. `AssemblyKeySecurityTests` and the cross-assembly SignatureCorpus regression verify separate values and overrides. Libraries with the same assembly identity are trusted as the same logical library; this is not isolation between AssemblyLoadContexts. |
 | An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
 | A dynamic tag argument impersonates another argument | Dynamic placeholders use canonical key parts: null has its own marker, strings escape colons and backslashes, enums use invariant numbers, and dates keep their full precision. Static template text stays literal. Tags remain an application-defined shared invalidation namespace; they are not an authorization boundary. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
-| A tag built from user text clears the whole distributed cache | L2 metadata preserves every UTF-16 code unit, including lone surrogates, so reading a tag cannot change its invalidation identity. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
+| A tag built from user text clears the whole distributed cache | The distributed cache stores every character of a tag exactly, lone surrogates included, so a tag never turns into another one. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
 | `*` or `?` in user text widens an invalidation | `InvalidateTagsAsync`, `InvalidateKeysAsync` and admin endpoints match exact keys and tags. Group invalidation uses an explicit common tag. |
 | A tenant ID is missing from the cache key or invalidation scope | The console tenant example passes an explicit `Guid` tenant ID in the method arguments and tag, and `DemoTenantSecurityTests` verifies distinct results and selective invalidation. Applications must derive and authorize that tenant from the caller's identity. |
 
@@ -2316,7 +2340,7 @@ under the same OS user from local credential files.
 |---|---|
 | Corrupt, truncated or crafted bytes in the distributed cache | Read as a miss and loaded again: never an exception for the caller, never a `null` that wasn't stored, and lengths in the data are checked against its size before anything is allocated. |
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
-| Someone who can write to Redis, SQL Server or PostgreSQL | **Not prevented.** They can store any well-formed value, which every instance will serve. Owned Redis, SQL Server and PostgreSQL providers use backend-atomic maximum stamps and permanent epoch updates; their internal contracts are not application extension points. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Redis uses injective escaping before UTF-8 encoding, including for atomic stamps, so different UTF-16 keys cannot alias through replacement characters. SQL Server hashes exact UTF-16 cache keys so collation cannot alias distinct data or invalidation metadata keys, including NULs and trailing spaces. SQL Server also scopes backplane messages and cleanup by that exact prefix, independently of database collation. Automatic initialization rejects missing, nullable or incorrectly typed scope columns; it requires `binary(32) NOT NULL`. PostgreSQL stores every key, and each prefix's backplane scope, as the SHA-256 of its exact UTF-16 code units, so NULs and lone surrogates (which PostgreSQL text can't hold) stay distinct. Its notifications carry only the sender's id; the invalidations themselves are read from the table. |
+| Someone who can write to Redis, SQL Server or PostgreSQL | **Not prevented.** They can store any well-formed value, which every instance will serve. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Different keys never share an entry: Redis escapes characters UTF-8 can't hold, and SQL Server hashes each exact key, so collation can't make two keys equal (casing, NULs, trailing spaces). SQL Server keeps each prefix's invalidations apart independently of collation too. PostgreSQL stores every key, and each prefix's backplane scope, as the SHA-256 of its exact UTF-16 code units, so NULs and lone surrogates (which PostgreSQL text can't hold) stay distinct. Its notifications carry only the sender's id; the invalidations themselves are read from the table. |
 | Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
@@ -2342,18 +2366,18 @@ authorization too.
 | Threat | What MethodCache does |
 |---|---|
 | Two users of one `HttpClient` get each other's responses (private cache, the default) | `Authorization` and `Cookie` are part of every response's key, including values that don't parse as a credential, so each caller only gets responses fetched with their own headers. `AddHttpCaching()` disables automatic cookies on known transports after all handler configuration; `KeepCookies=true` preserves the transport and bypasses response caching, validation and stale fallback completely; explicitly supplied cookie headers isolate callers. Unknown transports, and handlers inside the primary transport, bypass caching unless explicitly verified and opted in with `AllowUnverifiedTransport`. A directly constructed cache handler also bypasses known transports with automatic cookies enabled. An empty header and no header are different callers too. Header values are individually length-framed as exact UTF-16, so a comma cannot alias multiple values and isolated surrogates cannot collapse through replacement encoding. |
-| A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. Unstorable full replacements also retire the old body, and selection-rule changes retire its URL epoch once so a newer concurrent publication remains reachable, including when old-entry deletion fails after a successful rotation. |
+| A 200 or 304 changes response privacy or variant selection | Revalidated representations are checked again: `no-store`, `Vary: *` or shared-cache `private` removes previous responses. An omitted `Vary` on a 304 keeps its previous value. A full response that can't be stored still removes the old one, and a change in which headers select a variant drops the URL's older responses without hiding a newer one. |
 | A shared cache (`IsSharedCache = true`) stores a personal response | Responses marked `private`, and responses to requests with any `Authorization` header, are not stored unless they say `public`, `s-maxage` or `must-revalidate` (RFC 9111 section 3.5). |
 | Stale content bypasses required validation | Response or request `no-cache` requires successful validation even with stale-while-revalidate or stale-if-error enabled; origin failures propagate. |
 | A cached response hands out a session | `Set-Cookie` is never stored. The caller the origin answered gets it, including on a `304`; nobody answered from the cache does. |
 | Responses that vary by a header (tenant, language) get mixed | `Vary` and `KeyHeaders` keep one response per value. `Vary: *` is never served from the cache. |
-| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A confirmed `POST`, `PUT`, `PATCH` or `DELETE` atomically advances every relevant shared URL generation before returning, including for bypass/KeepCookies clients. Older origin/304/body writes remain in an obsolete namespace. L2 nodes capture fresh generations in one bounded metadata batch; correctness does not rely on backplane delivery. An unconfirmed mutation throws `HttpCacheInvalidationException`, disposes its response and retains owned recovery after caller cancellation. The origin may have succeeded: do not automatically repeat it. A GET or HEAD whose answer replaces a stored response that can't be retired throws the same exception; it is safe to retry. |
+| A write leaves another caller's stale copy, or serves one caller's copy to another after it | A successful `POST`, `PUT`, `PATCH` or `DELETE` invalidates the URL's stored responses in the shared cache before it returns, also for clients with `KeepCookies`, and a response that was loading at the time is never stored after it. This doesn't depend on the backplane. When the invalidation can't be confirmed, the call throws `HttpCacheInvalidationException` and the cache keeps retrying; the request may have succeeded at the origin, so don't repeat it automatically. A `GET` or `HEAD` that throws it is safe to retry. |
 | Two URLs share an entry | The key is the method and the full URL, with reserved characters kept escaped (`%2F`, `%3F` and `/`, `?` are different URLs). |
 | A followed redirect hands one caller's response to another | The transport drops `Authorization` on a redirect and changes the URL on the same message. A response that ended at another URL or method is never stored under the URL that was requested, and entries are keyed on the request as the caller sent it, before the transport changed it. |
 | A malformed `Cache-Control` hides `private` or `no-store` | A `Cache-Control` or `Vary` field the parser rejects, also next to a valid one, makes the response not storable instead of being ignored. |
 | Clients that get caching from `ConfigureHttpClientDefaults` share entries | Each client's handler gets its own name, so clients (often one per tenant or API key) never read each other's entries. |
-| Lost or replayed HTTP generation metadata | Native atomic revisions only advance; missing/overflowed metadata gets a fresh initialization id. Old values never regain their namespace. Global/client/static-tag components are shared with Core-only tag/clear writes, including across value formats. URL-slot collisions cause extra misses, never shared caller identity. The local reverse index follows the same bounded slots and removes every retired body from an invalidated slot. Native observations keep their separate per-URL index. |
-| Administration becomes a body or credential leak, or a false global inventory | Core exposes only resident metadata or at most 1024 historical, expiring, body-free L2 observations. Ids are bounded hashes; no raw query, credentials or cookie headers enter the observations. `ObservedDistributed` explicitly does not confirm presence or global inventory. Unknown ids are NotFound. |
+| Lost or replayed HTTP invalidation records | Invalidation records only move forward; a lost one only causes misses, and an older response never comes back. Two URLs that share a record can cause an extra miss, never a response for the wrong caller. |
+| Administration becomes a body or credential leak, or a false global inventory | Administration lists only what is in this instance's memory, plus at most 1024 recently seen distributed entries without their bodies. Ids are hashes: no query string, credentials or cookies. The distributed list doesn't claim the entries still exist. An unknown id is not found. |
 | An oversized response exhausts the local HTTP budget | Method and HTTP budgets evict independently. Body reads are bounded by response limits and remaining conservative HTTP cost; oversized responses remain available as streams and are not cached. |
 | Crafted entries in the distributed HTTP cache | Read as a miss, with every length checked against the data. As above, whoever can write that cache can store any response. |
 
@@ -2387,63 +2411,257 @@ context; MethodCache neither adds identity baggage nor strips the application's 
 
 ## The tests
 
-CI checkout collection and result reuse have a separate boundary from application caching. The collector only
-removes coordinator-owned idle macOS clones with verified origin/full commit, terminal job results, and no
-source changes or unexpected local data. It refuses redirected roots/results and keeps active checkouts and
-unknown directories. Reuse requires the full SHA and all expected valid job exits; partial archives, failed
-results and symlinked exit files cannot become a passing status. The regression suite under `build/ci/tests`
-tests these protections. Build jobs still execute repository code as the build-server user; the collector is
-not a sandbox for malicious pull requests.
-
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
 `HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests` and
-`DistributedCacheSecurityTests` (keys, tags and the distributed cache).
+`DistributedCacheSecurityTests` (keys, tags and the distributed cache). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
+[security internals](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/security-internals.md).
 
-MessagePack key identity includes derived state in nested base-class/interface slots and collections. `PolymorphicKeyReviewTests` checks that distinct derived argument data cannot share a cache key.
 
-HTTP age arithmetic saturates during response correction and resident-time accumulation, so an extreme upstream Age value cannot overflow the freshness calculation. `ResponseDelayReviewTests` covers these input boundaries.
+---
 
-Bulk publication guards are tested during key, tag and clear invalidation; in-flight batch results cannot resurrect invalidated entries. Collection-state properties and the generator signature corpus cover tenant/scope state on collection subclasses.
+<!-- source: docs/reference/registration.md -->
 
-Persistent SQL insert locks, including other scopes sharing the table, cannot hold back newer invalidations or other committed gaps. The non-skipping `LongTransactionReviewTests` and `LockedGapReviewTests` in `MethodCache.Core.Tests/FaultInjection` exercise the production gap-discovery protocol without a database. Linked SQL integration variants additionally inject real locks through repeated polls and verify late commit/rollback recovery.
+# Registration reference
 
-## Generated contract and registration boundaries
+The exact rules for how `AddMethodCache()` finds and wraps cached services, for advanced users and coding agents.
+Start with [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#3-register-it).
 
-Generated code uses a versioned facade and captures policy, prefix and local publication generation together.
-A key builder from another binding/snapshot is rejected before lookup. Retired loads cannot publish or serve
-an old-generation fail-safe value. Descriptor/module state is separate from each container's live policy,
-keyed binding and background scope. Unknown contracts fail before descriptor/factory execution; ambiguous
-modules, candidates and unsupported cacheable bindings fail instead of choosing an implementation implicitly.
-The corresponding tests are GeneratedContractTests, QuickStartRegistrationTests and the semantic signature corpus.
+## Order
 
-Policy-isolation tests reject application keys/tags that imitate internal method or namespace identities. Declarative
-fingerprints use invariant length-framed UTF-16 and SHA-256; runtime namespaces use 16 random bytes per behavior change.
-Typed method messages retire data without accepting policy from the sender. L2 reads enforce first-publication deadlines,
-null/result predicates and original load-start tombstones, including after delayed transport completion. Format-5 malformed
-header/truncation tests exercise the current parser. `PolicyBackendContract` runs the same assertions on Redis, SQL Server and PostgreSQL.
+- `AddMethodCache()` wraps every registration of an interface that has cached methods in its generated decorator, and
+  keeps the lifetime and implementation you registered. Register cached services before it.
+- A cached service registered after `AddMethodCache()` fails when the host starts, or, without a host, when its
+  decorator is first created. Other services can be registered later.
+- Calling `AddMethodCache()` again wraps the services added since, and leaves the existing decorators as they are.
+- The container disposes the implementations it creates, and leaves instances you registered yourself open, as
+  without MethodCache. A decorator is disposable only when the interface is.
 
-Generated methods always retain their method/service/type scope; the raw-key escape hatch is removed. Dynamic tag arguments use canonical scalar key formatting, keeping null, escaped strings and full-precision temporal values distinct. Reserved metadata keys and tags remain centrally framed and cannot be selected by caller-controlled strings.
+## Services you didn't register
 
-Wire v1 rejects malformed lengths, mandatory flags/operations and unsupported versions before identity decoding.
-A delivered incompatible frame clears local entries and warns once without its payload. Optional fields are bounded
-and ignored. Entry deadlines are absolute and capped by the scope retention floor; logical key tombstones outlive
-all entry formats and policies. Permanent HTTP epochs use atomic revisions with fresh initialization identities
-after metadata loss or overflow. SQL initialization rejects unversioned/unknown schemas; use the delivered offline
-migration for the known legacy layout. The roundtrip check is optional and cannot detect semantic losses in nested
-derived or private state; explicit serializer configuration remains the application's responsibility.
+- A cached interface without a registration is registered only with `AutoRegister(lifetime)`:
+  `AddMethodCache(mc => mc.AutoRegister(ServiceLifetime.Scoped))`.
+- It needs exactly one accessible class that implements the interface in the generated module. None, or several, is
+  an error that names the service, the module and the candidates.
+- Registrations you made yourself always keep their implementation and lifetime.
 
-Generated-method dictionaries hash keys with SipHash-1-3 under process-secret 128-bit keys (the keyed hash Python and Rust use for their hash tables): ASCII keys as one byte per character, any other key as UTF-16, each under its own key. Full key text is always compared
-ordinally. Hash state is immutable per invocation snapshot and never becomes an L2/wire/admin identity. The
-[algorithm and threat review](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/prefix-hash-security.md) records the 32-bit dictionary output limitation,
-reference sources and validation. `PrefixHashPropertyTests` pins published SipHash vectors in both encodings, arbitrary UTF-16 splits and append
-invalidation; `PrefixCollisionTests` forces collisions through all lookup/publication paths and checks eviction.
+## Several assemblies
 
-The optional cross-platform Actions pool runs only reviewed main/manual code. Its macOS runners use
-the existing login account and therefore share that account's filesystem and credential access; they
-are trusted build hosts, not an isolation boundary. Baloo runs as the limited `bldr` account. Admission
-wrappers cooperate with both external CI coordinators through OS-owned leases; locks limit concurrent
-build load and do not restrict a job's host permissions. Private projects need an explicit trust review
-before joining the reviewed public pool. No production/signing secrets are added by runner setup.
+- Every assembly that references `MethodCache` generates decorators for its own cached interfaces, and all of them are
+  used.
+- When two assemblies generate a decorator for the same interface, choose the one that wins with
+  `FromAssemblyOf<SomeTypeInThatAssembly>()` (or `FromAssembly(...)`). That only settles the tie: the services the other
+  assemblies generate stay cached. There is no preference by entry assembly or name, under JIT and Native AOT alike.
+
+## Keyed registrations
+
+- `AddKeyedScoped<IProductService, ProductService>("primary")` is cached under the same key. An interface registered
+  only keyed is not also registered without one.
+- The service key is part of the cache keys, so each keyed registration caches its own results. It must be a string,
+  enum, `bool`, `char`, integer or `Guid` ([Keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)).
+- A catch-all registration with `KeyedService.AnyKey` is rejected, since its implementation is created for whichever key
+  is requested; register concrete keys instead.
+- A constructor parameter marked `[ServiceKey]` receives your key, as without MethodCache.
+
+## Several registrations of one interface
+
+- `AddScoped<IPriceProvider, StorePrices>()` and `AddScoped<IPriceProvider, PartnerPrices>()`, resolved as
+  `IEnumerable<IPriceProvider>`, each cache their own results: the implementation type is part of their keys.
+- Two registrations of the same implementation type share their results.
+- `IMethodCacheKeys.For` and `Tag` use the last registration, the one `GetService` returns. When that is a scoped or
+  transient factory registration among several, they throw, since the factory may create another type in each scope;
+  register the implementation type, give it a service key of its own, or invalidate by tag.
+
+## Generic interfaces
+
+- `IRepository<User>` is cached for every closed type a class in your project implements, such as
+  `UserRepository : IRepository<User>`.
+- An open generic registration, `AddScoped(typeof(IRepository<>), typeof(Repository<>))`, and a closed type without a
+  generated decorator give an error that names the binding, at startup or on first use without a host. Register the
+  closed types instead.
+
+## Factory registrations
+
+A factory registration is cached like any other: register it before `AddMethodCache()`, and the decorator wraps what
+your factory returns, with the lifetime you chose.
+
+## Your own cache manager
+
+- `services.AddSingleton<ICacheManager, MyManager>()` after `AddMethodCache()` makes the decorators use your manager.
+  `NoOpCacheManager` turns caching off ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
+- A keyed `ICacheManager` registration is independent of the default one, and doesn't stop `AddMethodCache()` from
+  registering its own.
+- Your manager stores an entry under `MethodCacheKeys.StoredKey(key, version)` of the key and version it gets, so a key
+  and a version name the same entry in every operation. Keys from generated decorators already carry the method's
+  version, with `version` set to `null`.
+- With your own manager, which has only async operations, synchronous `[Cache]` methods aren't cached (a warning is
+  logged once per method), and a synchronous `[CacheInvalidate]` method fails with `NotSupportedException`.
+
+
+---
+
+<!-- source: docs/reference/distributed.md -->
+
+# Distributed cache reference
+
+The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanced users and coding agents. Start with
+[Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) for how to use them.
+
+## Which calls use the distributed cache
+
+- `[Cache]` methods that return `Task<T>` or `ValueTask<T>`, and `GetOrCreateAsync`, `GetOrCreateManyAsync` and
+  `TryGetAsync` on `ICacheManager`.
+- **Synchronous `[Cache]` methods use the memory cache only.** None of the three providers has a synchronous API that
+  can be bounded by `OperationTimeout`, so a synchronous method never blocks on the network. MethodCache logs this
+  once per method. A synchronous `[CacheInvalidate]` method clears this instance's memory before it returns and stores
+  the invalidation in the distributed cache and tells the other instances in the background; use an async method to
+  wait for that.
+- `[Cache(Distributed = false)]`, `"Distributed": false` in `appsettings.json` and `WithDistributed(false)` keep a
+  method or call in memory only.
+
+## Policies and shared entries
+
+- Instances share a method's entries when they run it with the same settings from the attribute, startup code and
+  `appsettings.json`. A runtime override that changes how a method caches (`IRuntimeCacheConfigurator`) gives that
+  method entries of its own on that instance, which no other instance reads, even one with an equal override.
+  Removing the override invalidates the method before the instance reads shared entries again.
+- A key from `IMethodCacheKeys.For` or a manual key invalidates the entry under every policy.
+- Invalidating a method (`ICacheAdministrator.InvalidateMethodAsync`) on one instance removes it on the others for
+  every keyed registration and every closed generic type, without changing their settings.
+- A value loaded before an invalidation is never stored after it, also when the write lands after a timeout and retry.
+- Each entry remembers when its load started and when it expires. Reading it applies the reading instance's
+  `CacheNullValues` and `CacheWhen`, and never keeps it longer than its own `Duration` from when it was first stored, or
+  `MaxExpiration`. A slow method doesn't use up the entry's duration.
+
+## Backplanes
+
+- **Redis** sends each invalidation with pub/sub, which reaches the instances connected at that moment. After a lost
+  connection, an instance clears its memory cache once it is subscribed again. Reconnecting retries with a delay that
+  doubles from one second to 30 seconds; the health check reports connected only once the subscription is confirmed.
+  Shutdown stops pending retries, and a cancelled send or unsubscribe never fails shutdown.
+- **SQL Server** stores invalidations in a table that each instance polls (`BackplanePollingInterval`, one second).
+  Identity values are handed out before a transaction commits, so a row can appear after later ones were read; an
+  instance checks the ids it skipped again, without waiting on locks, so a long transaction never holds back newer
+  invalidations. The table needs a `binary(32) NOT NULL` `Scope` column
+  ([SQL Server guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md#required-backplane-schema)).
+- **PostgreSQL** stores invalidations in a table as SQL Server does, and announces each one with `NOTIFY`, so the
+  others read it at once. Ids are handed out in commit order, so there are no gaps to check. The listening connection
+  reconnects with the same doubling delay and reads what it missed; until then polling delivers every invalidation.
+- With `EnableBackplane = false`, another instance keeps an invalidated value in memory until it expires.
+- Disposing the service provider unsubscribes. A backplane that doesn't answer delays shutdown by at most twice
+  `OperationTimeout`.
+- A message from another MethodCache version is ignored, with one warning. A damaged message makes the instance clear
+  its memory cache, with one warning that leaves out the message's contents.
+
+## Invalidation results
+
+`InvalidateKeysAsync` and `InvalidateTagsAsync` check the whole batch first, and count each distinct key or tag once:
+
+- `Requested` and `Local` count every target, also ones that weren't cached.
+- With a distributed cache, `Distributed` (stored) plus `Queued` (to be retried) equals `Requested`.
+- With a backplane, `Published` counts sent messages and `PublicationQueued` the stored targets whose message will be
+  sent again. A sent message doesn't confirm that every instance received it.
+
+## Cancellation
+
+- Cancelling a call stops its wait while it reads the distributed cache, runs a slow method or waits for a fail-safe
+  value, also in bulk reads. Work other callers share may finish for them. A cancelled call is not counted as a
+  failure of the distributed cache.
+- Cancelling an invalidation before it starts changes nothing. Once it has started, cancelling stops the caller's wait;
+  the cache finishes the invalidation and retries what it couldn't store. Storage and message retries have separate,
+  bounded queues, which `ICacheAdministrator.GetInvalidationQueues()` and the health check report.
+
+## Serialization
+
+- Every value an instance writes is first read back and written again. When that doesn't give the same bytes and type,
+  that value and every later value of that method and type stay in memory only, and one warning names them. Each
+  value is checked, since one with default data (an `Id` of 0 behind a private setter) can come back unchanged where
+  the next one doesn't.
+- That happens with properties that have a private or protected setter, public readonly fields of a type that also
+  has a parameterless constructor, a derived type returned as its declared base type (an `Animal` method returning a
+  `Dog`), `object`, and values the serializer throws on (a cycle, a delegate), with JSON and MessagePack alike.
+- State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
+  bytes, so the check can't see that it is lost. The check also looks only at the value's own type: a `Dog` inside a
+  `List<Animal>` is shared without its `Dog` data. Make such state serializable, or register a serializer that writes
+  it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
+- A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
+  `List<int>` for an array, and is still shared.
+- A serializer that never writes the same bytes twice (encryption with a fresh nonce) can't be compared, so only the
+  type is checked. `VerifyRoundTrip = false` turns the check off.
+- The options you pass to `UseJson` are copied, so changing them later has no effect.
+
+## Storage, schemas and compatibility
+
+- `KeyPrefix` and the connection settings are fixed when the container is built; use a new container to change them.
+- The first instance that uses a prefix fixes its minimum `TagRetention`. A later instance may ask for longer, not
+  shorter; a shorter setting fails at startup. Use a new prefix to lower it.
+- Entries are stored per value format and `SerializerVersion`, so switching between JSON and MessagePack, or raising
+  `SerializerVersion`, makes old entries misses. Invalidations apply to every format.
+- An entry's expiry is fixed from when its load started, so a slow write can't extend it.
+- SQL Server and PostgreSQL create their tables on first use (`CreateTablesIfMissing`), and refuse a schema they don't
+  know instead of changing it. SQL Server ships `migrations/0001-version-existing-schema.sql` for an invalidations
+  table from before 1.0: stop the old instances, back up the database and run it before starting the new version.
+  PostgreSQL ships `migrations/0001-create-schema.sql` for logins that may not create tables.
+- `ConnectionStringFactory` is resolved once from dependency injection. PostgreSQL's `ConfigureDataSource` logs in
+  with a token from Microsoft Entra ID or AWS IAM
+  ([Passwordless login](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md#passwordless-login)).
+- How each provider stores its data and messages is described for contributors in
+  [the storage format](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/distributed-wire-v1.md).
+
+
+---
+
+<!-- source: docs/reference/http-caching.md -->
+
+# HTTP caching reference
+
+The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding agents. Start with
+[HTTP response caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/http-caching.md).
+
+## Variants
+
+- Responses are selected by the `Vary` header fields and the configured `KeyHeaders`, compared case-insensitively.
+  A private cache always keeps `Authorization` and `Cookie` apart.
+- Every variant of a URL is kept for at most 365 days; each expires at its own lifetime.
+- When a response changes which headers select its variants, the URL's earlier variants are no longer used, once. The
+  current response still reaches its caller, and the next request stores the new variant. If removing the old entry
+  fails, a foreground request reports the error, and background revalidation logs it.
+
+## Replacing a stored response
+
+- A full response replaces the stored one. When it can't be stored (`no-store`, `private` in a shared cache, a body
+  over the size limit, or a failed write), the old one is removed, so the next caller never falls back to an older
+  body.
+- Stale-while-revalidate respects the request's `max-age`, `min-fresh` and `max-stale`.
+- The `Age` header is corrected by the request and response delay, for first responses and for 304s, and very large
+  values can't overflow.
+- Background revalidation sends the request with its HTTP version, version policy and a shallow copy of its request
+  options. Use option values that stay valid after the original request has finished.
+
+## Invalidation details
+
+- Invalidating a URL starts a new generation for it; responses stored under an older generation are no longer read.
+  With Redis, SQL Server or PostgreSQL the generations are stored there, so they don't depend on the backplane.
+- URLs share 4096 generation slots per `KeyPrefix`, so the stored data stays bounded. Two URLs in one slot can cause an
+  extra miss when either is invalidated. A lost generation record only causes misses, never an older response.
+- If reading the generation fails, the request goes to the origin.
+- Cancelling the caller stops its wait; the cache finishes the invalidation. Disposing the service provider
+  asynchronously waits for pending invalidations and retries queued ones once. Any it can't confirm are logged as a
+  count; other instances may then serve old responses until they expire.
+- Invalidating the client's own tag scans the responses in memory, so its cost grows with their number. URL and
+  configured tags use indexes.
+
+## Administration
+
+- `ICacheAdministrator` lists the responses in memory, or with a distributed cache up to 1024 responses this instance
+  has seen there (`Storage = ObservedDistributed`): not proof that they are still stored, nor a list of everything
+  stored. Ids are hashes; an unknown id returns NotFound.
+- Removing an id removes every variant of its URL. `ClearAsync` removes every response.
+- HTTP administration and byte statistics also work with `NoOpCacheManager` for methods.
+- A client's tag is `http:` followed by `MethodCacheKeys.Part(clientName)` for names up to 128 UTF-16 code units;
+  longer names use `http:#:` followed by the SHA-256 of the name, and administration shows the start of the name and
+  its hash. `HttpCacheOptions.Tags` takes at most 125 non-blank tags of at most 1024 code units; other values fail at
+  startup.
+- HTTP entries have their own format: method serializers, durations, jitter and fail-safe settings don't apply to them.
 
 
 ---
@@ -2485,7 +2703,7 @@ before joining the reviewed public pool. No production/signing secrets are added
 - **The data changed outside the interface**, for example in another service or a database job. Invalidate from that
   code with `ICacheManager.InvalidateTagsAsync` ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code)).
 - **You run several instances** with only the in-memory cache. Each instance has its own cache; add
-  [Redis, SQL Server or PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) with its owned backplane so invalidations reach all of them.
+  [Redis, SQL Server or PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) with its backplane, so invalidations reach all of them.
   The application's `IDistributedCache` is not a MethodCache provider.
 - **Fail-safe returned an expired value** because the method failed ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
 
@@ -2871,14 +3089,10 @@ Migrate one service at a time; both caches can run side by side.
 
 # MethodCache.Redis
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach
+every instance's in-memory cache over Redis pub/sub.
 
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
-Redis as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache over Redis pub/sub.
-
-Backplane publication honors its cancellation token before sending and while waiting for a connection or Redis acknowledgement. Cancellation after a publish was sent cannot recall that message.
+Install it at the same version as `MethodCache`.
 
 ## Usage
 
@@ -2894,13 +3108,6 @@ builder.Services.AddMethodCache(mc => mc
     .Distributed(options => options.KeyPrefix = "orders-api:"));   // data and backplane use the same final prefix
 ```
 
-MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone. The connection opens on first use, so the application starts while Redis is down. It uses `BacklogPolicy.FailFast`, so a cache miss runs your method instead of waiting for Redis. When a connection factory of yours throws (Redis was down at first use, say), the next call asks it again, and the backplane keeps trying to connect and subscribe (after 1 second, then twice as long each time, up to 30 seconds), logging a warning for each failure, until it succeeds or the application stops. Once subscribed after a failure, it clears this instance's in-memory cache, as after a reconnect, since invalidations other instances sent meanwhile never arrived.
-
-Set `Configuration` or `ConnectionMultiplexerFactory`; startup fails when neither is set, so a missing configuration
-section never makes MethodCache connect to `localhost`. The connection is opened on the thread pool: a factory that
-blocks while Redis is slow or down (as `ConnectionMultiplexer.Connect` does) never holds up a call, which is served
-from memory and your method in the meantime.
-
 To share a connection your app already has instead:
 
 ```cs
@@ -2908,39 +3115,43 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
     options.ConnectionMultiplexerFactory = sp => sp.GetRequiredService<IConnectionMultiplexer>()));
 ```
 
-MethodCache doesn't dispose a shared connection; disposing the service provider only removes MethodCache's own
-subscriptions (`DisposeAsync` waits for that). A cancelled Redis unsubscribe acknowledgement does not fail application shutdown; the handler has already been removed locally.
+- Set `Configuration` or `ConnectionMultiplexerFactory`. Startup fails when neither is set, so a missing configuration
+  section never makes MethodCache connect to `localhost`.
+- MethodCache keeps its own cache and connection, so your app's `IDistributedCache` and Redis settings are left alone.
+- The connection opens on first use, on the thread pool, so the application starts while Redis is down and a slow
+  connect never holds up a call.
+- MethodCache doesn't dispose a shared connection. Disposing the service provider removes MethodCache's own
+  subscriptions.
 
 ## How it works
 
-- Entries are stored through `Microsoft.Extensions.Caching.StackExchangeRedis`, so values are written without extra copies.
 - MethodCache reads Redis on an in-memory miss and writes new results to both.
-- Invalidating a key writes a logical tombstone shared by all value formats and policy identities, then removes the current physical value. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag sets are kept in Redis.
-- Invalidation times are written with one Lua script, so an older invalidation that arrives late never undoes a newer one.
-- Every invalidation is also published on the backplane channel, so every instance drops its in-memory copies at once.
-- Pub/sub delivers nothing while a connection is down. When the connection comes back, the instance clears its in-memory cache and reads entries from Redis again.
-- Keys with unpaired UTF-16 surrogates or backslashes are escaped, so two different keys never share a Redis key. Other keys are stored unchanged.
+- Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as
+  missing, so no tag sets are kept in Redis. An older invalidation that arrives late never undoes a newer one.
+- Every invalidation is also published on the `<prefix>invalidations` channel, so every instance drops its in-memory
+  copies at once.
+- Pub/sub delivers nothing while a connection is down. When the instance is subscribed again, it clears its in-memory
+  cache. Reconnecting retries after 1 second, then twice as long each time, up to 30 seconds.
 
 ## Memory and eviction
 
-Invalidations are stored as expiring keys beside the entries. If Redis evicts one under memory pressure, the entries it
-invalidated are served again by every instance until they expire. Set `maxmemory-policy noeviction` on the Redis
-MethodCache uses (or give it a Redis of its own) and enough memory: method invalidation keys have a time to live; HTTP epochs and the scope-retention contract are permanent, so
-`volatile-lru` and the other `volatile-*` policies, the default of some managed Redis services, can evict them too. A
-full Redis with `noeviction` refuses writes, which MethodCache handles like an outage. See
+Invalidations are stored as keys beside the entries. If Redis evicts one under memory pressure, the entries it
+invalidated are served again until they expire. Set `maxmemory-policy noeviction` on the Redis MethodCache uses (or give
+it a Redis of its own) and give it enough memory. The `volatile-*` policies, the default of some managed Redis
+services, can evict them too. A full Redis with `noeviction` refuses writes, which MethodCache handles like an outage.
+See
 [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted).
 
 ## When Redis is down
-
-Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
 
 MethodCache keeps answering from memory and your methods; Redis never fails or stalls a call. Each call is capped at
 `OperationTimeout` (1 second), Redis is skipped for `CircuitBreakerDuration` (10 seconds) after a failure, and
 invalidations are queued and retried instead of throwing. The first failure and the recovery are logged.
 
 The [distributed cache guide](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md)
-covers outages, consistency between instances, MessagePack serialization, limits and the `DistributedCacheOptions`
-that tune all of this.
+covers outages, consistency between instances, serialization and the `DistributedCacheOptions` that tune all of this.
+The exact behavior is in the
+[distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).
 
 ## Options
 
@@ -2950,13 +3161,8 @@ that tune all of this.
 | `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
 
-
-Configure `DistributedCacheOptions.KeyPrefix` once for values, invalidations, permanent HTTP epochs and the
-`<prefix>invalidations` channel. All Configure registrations are applied before the snapshot is frozen.
-Wire v1 supports mixed entry formats; malformed mandatory frames clear local entries and warn once.
-Value and logical tombstone are read in one pipeline. Atomic metadata updates never shorten retention.
-The first node establishes the scope retention floor; a shorter setting is rejected, while longer settings
-use that common bound. Use a new prefix to change it.
+`DistributedCacheOptions.KeyPrefix` applies to values, invalidations and the channel. The first instance that uses a
+prefix fixes its minimum `TagRetention`; a shorter setting fails at startup, so use a new prefix to lower it.
 
 
 ---
@@ -2965,12 +3171,9 @@ use that common bound. Use a new prefix to change it.
 
 # MethodCache.SqlServer
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 SQL Server as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table that each instance polls.
+
+Install it at the same version as `MethodCache`.
 
 ## Why this package
 
@@ -2993,7 +3196,7 @@ Microsoft's `AddDistributedSqlServerCache()` (`SqlServerCache`) can't be used fo
 
 Choose SQL Server when you already run it and a delay of about a second before other instances see an invalidation is fine; choose [Redis](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Redis/README.md) when invalidations must reach other instances at once, or many instances would poll the database.
 
-Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported. Provider, atomic metadata and serializer contracts are internal.
+Only Microsoft SQL Server is supported: the package uses T-SQL locking hints and `Microsoft.Data.SqlClient`. For PostgreSQL, use [MethodCache.PostgreSql](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md), whose backplane also reaches other instances at once; MySQL and other databases are not supported.
 
 ## Usage
 
@@ -3025,10 +3228,10 @@ If the application's login may not create tables, set `CreateTablesIfMissing = f
 
 ### Required backplane schema
 
-The invalidations table requires `Scope binary(32) NOT NULL` and the indexes `Index_Scope_Id (Scope, Id)` and
-`Index_Scope_CreatedAt (Scope, CreatedAt)`. Automatic initialization rejects incompatible scope columns with a
-logged schema error and does not convert tables or rewrite their rows. An error detected during the bounded
-startup wait also fails startup. With `CreateTablesIfMissing = false`, provision the current schema yourself.
+The invalidations table needs a `Scope binary(32) NOT NULL` column and the indexes `Index_Scope_Id (Scope, Id)` and
+`Index_Scope_CreatedAt (Scope, CreatedAt)`. MethodCache refuses a table without them instead of changing it, and logs
+the error; an error found during the startup wait also fails startup. With `CreateTablesIfMissing = false`, create the
+current schema yourself.
 
 ## When SQL Server is down
 
@@ -3062,35 +3265,40 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `BackplanePollingInterval` | 1 second | How often each instance reads new invalidations |
 | `BackplaneRetention` | 1 hour | How long invalidations are kept; at least one minute. Instances that share a `KeyPrefix` keep them as long as the longest retention any of them has used |
 
-## Internals
+## How it works
 
-- Cache commands never join your `TransactionScope`: MethodCache sets `Enlist=false` on its connection string, so a scope that rolls back doesn't undo cache writes or invalidations, and the cache's connections never turn it into a distributed transaction.
-- Entries are stored through MethodCache's own `Microsoft.Extensions.Caching.SqlServer` cache, which also removes expired rows: every instance runs one `DELETE` of the rows that expired every 5 minutes (the shortest interval that cache allows), so each delete stays small. With a very large table, keep an index on `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one). Your app's `IDistributedCache` is left alone.
-- Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
+- Cache commands never join your `TransactionScope`: MethodCache sets `Enlist=false` on its connection string, so a
+  scope that rolls back doesn't undo cache writes or invalidations, and never becomes a distributed transaction.
 - MethodCache reads SQL Server on an in-memory miss and writes new results to both.
-- Invalidation times are stored atomically, so an older invalidation that arrives late never undoes a newer one.
-- Keys are stored as `mc:` followed by a SHA-256 hash of the exact UTF-16 key, so keys that SQL collation would treat as equal (casing, trailing spaces, NULs, Unicode forms) stay distinct. Keys and tags of any length get a fixed-size ID.
-- Invalidating a key writes a format-independent logical tombstone and removes the current physical row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed.
-- Both also add a row to the invalidations table. Other instances read new rows every `BackplanePollingInterval` and drop their in-memory copies.
-- A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
-- Each instance deletes its own prefix's old rows from the invalidations table when it starts and then every minute, apart from polling, so a large delete never holds back invalidations. Rows are kept for the longest `BackplaneRetention` of the prefix's instances, stored in a row of the cache table (`mc-backplane-retention:` and the prefix's hash), so an instance with a shorter setting, during a rolling deployment say, never deletes rows another one still needs. To shorten the retention for good, delete that row once every instance uses the new setting. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Identity values are handed out before a transaction commits, so a row can appear after later ones were read. The ids an instance skipped are checked again without blocking. After five seconds, a separate `NOWAIT` locking probe can retire gaps proven absent. Still-locked gaps and timed-out probes are retried without holding back newer invalidations or other committed gap messages; ids taken by other prefixes' rows in a shared table are recognized as committed and are not checked again.
-- An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started) may have missed invalidations, so it clears its in-memory cache.
-- Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
+- Expired rows are removed by one `DELETE` every 5 minutes on each instance. With a very large table, keep an index on
+  `ExpiresAtTime` (`dotnet sql-cache create` and `CreateTablesIfMissing` add one).
+- Values are JSON by default. A method whose results don't read back unchanged stays in memory only, with one warning
+  ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)).
+  For MessagePack, add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()`.
+- Keys are stored as a SHA-256 hash of the exact key, so keys that SQL collation would treat as equal (casing,
+  trailing spaces) stay distinct, and keys of any length fit.
+- Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as
+  missing, so no tag tables are needed. An older invalidation that arrives late never undoes a newer one.
+- Every invalidation also adds a row to the invalidations table. Other instances read new rows every
+  `BackplanePollingInterval` and drop their in-memory copies. A long-running transaction elsewhere never holds back
+  newer invalidations.
+- An instance that couldn't read the invalidations table for half of `BackplaneRetention` may have missed
+  invalidations, so it clears its in-memory cache.
+- Each instance deletes its prefix's old invalidation rows every minute. Rows are kept for the longest
+  `BackplaneRetention` any instance of the prefix has used, so a rolling deployment never deletes rows another instance
+  still needs. Rows of a prefix that no application uses any more are never deleted; delete them by hand.
+- `DistributedCacheOptions.KeyPrefix` keeps applications that share the tables apart. The first instance that uses a
+  prefix fixes its minimum `TagRetention`; a shorter setting fails at startup.
 
-Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
-Initialized permanent HTTP epochs are read without rewriting their rows. Initialization and retention repair
-remain atomic, and each HTTP lookup still reads the shared generation records.
-The transport reuses only its latest bounded command-text shape; it never caches generation values.
-Reordered and duplicate epoch keys retain their caller positions.
+The exact behavior is in the
+[distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).
 
-Value and logical tombstone are read in one query. Atomic stamps never shorten retention, and HTTP epochs
-are permanent. Configure the shared scope with `DistributedCacheOptions.KeyPrefix`; provider options do not
-have a separate prefix. The first node establishes a common retention bound; shorter settings are rejected.
+## Upgrading from before 1.0
 
-For a known unversioned schema, drain all nodes, back up the database and apply the delivered
-[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql) migration. Unknown schema
-versions fail fast; initialization never silently migrates existing tables.
+An invalidations table from before 1.0 has no schema version, and MethodCache refuses it. Stop every old instance,
+back up the database and run
+[`0001-version-existing-schema.sql`](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/migrations/0001-version-existing-schema.sql)
+before starting the new version.
 
 
 ---
@@ -3099,12 +3307,9 @@ versions fail fast; initialization never silently migrates existing tables.
 
 # MethodCache.PostgreSql
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 PostgreSQL as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table, announced at once with `LISTEN`/`NOTIFY`.
+
+Install it at the same version as `MethodCache`.
 
 ## Why this package
 
@@ -3236,25 +3441,24 @@ key, which doesn't. Redis stays ahead with large values and many concurrent call
 [benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers) for
 value sizes, throughput and how they were measured.
 
-## Internals
+## How it works
 
 - Every operation is one statement, one round trip, except replacing a live value (below). Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
-- New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidation stamps and HTTP epochs, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
+- New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidations, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
 - Values are stored as `bytea`, not `jsonb`: they are already serialized (JSON or MessagePack) and never queried, so PostgreSQL stores the bytes without parsing them. Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table; values from about 2 KB are compressed, with lz4 where the server supports it (PostgreSQL 14 and later).
 - Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
 - Keys are stored as the SHA-256 of their exact UTF-16 code units, so keys PostgreSQL text can't hold (NUL characters, lone surrogates) and keys of any length get a fixed-size id.
-- Invalidating a key writes a format-independent logical tombstone and removes the current row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed. Value and tombstone are read in one query.
+- Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed. A read checks the value and its invalidation in one query.
 - Both also add a row to the invalidations table and `NOTIFY` a channel named after the `KeyPrefix` and table. The notification carries only the sender's id: the table is the truth, and the notification only tells other instances to read it now instead of at their next poll.
 - The cursor row hands out ids in commit order, so a reader never sees a later id before an earlier one commits, and needs no gap tracking.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started), or that sees a new cursor (after a crash, a failover or a restore) or the cursor go back, may have missed invalidations, so it clears its in-memory cache.
 - Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than the longest `BackplaneRetention` of that prefix every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
+- `DistributedCacheOptions.KeyPrefix` keeps applications that share the tables apart. The first instance that uses a
+  prefix fixes its minimum `TagRetention`; a shorter setting fails at startup.
 
-Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
-Initialized permanent HTTP epochs are read without rewriting their rows. Configure the shared scope with
-`DistributedCacheOptions.KeyPrefix`; provider options do not have a separate prefix. The first node establishes a
-common retention bound; shorter settings are rejected.
+The exact behavior is in the
+[distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).
 
 
 ---
@@ -3263,12 +3467,9 @@ common retention bound; shorter settings are rejected.
 
 # MethodCache.AspNetCore
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 Admin endpoints and a health check for MethodCache's in-memory cache.
+
+Install it at the same version as `MethodCache`.
 
 ## Setup
 
@@ -3296,7 +3497,7 @@ maps them under `/ops/cache` instead.
 
 | Method | Path | What it does |
 |--------|------|--------------|
-| `GET` | `stats` | Local hits/misses/evictions, method/HTTP entries, HTTP bytes, observed L2 entries and configured method weight |
+| `GET` | `stats` | This instance's hits, misses, evictions, method and HTTP entries, HTTP bytes and memory weight |
 | `GET` | `methods` | Every cached method: its `methodId`, effective policy and where each setting comes from |
 | `GET` | `entries?storedKeyPrefix=&tag=&methodId=&limit=` | Live entries in the memory of the instance that answers, each with its `storedKey` and `methodId`, ordered by `storedKey` (default limit 100, max 1000). `methodId` must be an id that `methods` lists. Values are not returned |
 | `GET` | `entry?storedKey=` | One entry, by the `storedKey` that `entries` lists, in the memory of the instance that answers, or 404 |
@@ -3336,11 +3537,10 @@ The same operations are available in code through `ICacheAdministrator` in the `
 | `distributedCacheAvailable` | Whether the distributed cache answers; only when one is configured |
 | `error.type` | Only when the check itself failed: the exception type |
 
-There is no estimated method heap size or fabricated custom-manager storage count.
-
-L2 failure, either recovery queue, or an unknown/not established configured backplane uses the registration's
-`failureStatus` (default `Degraded`). A healthy L2 probe alone does not prove backplane subscription. The probe respects
-the distributed operation timeout. Error reports include exception types, never backend exception messages.
+The check reports the registration's `failureStatus` (default `Degraded`) when the distributed cache doesn't answer,
+invalidations are waiting to be retried, or the backplane is connecting or disconnected. The distributed cache and the
+backplane are reported separately. The check waits at most `OperationTimeout`, and reports exception types, never
+exception messages.
 
 ## Limits
 
@@ -3356,15 +3556,11 @@ the distributed operation timeout. Error reports include exception types, never 
 
 # MethodCache.OpenTelemetry
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+MethodCache produces standard .NET metrics and traces. This package adds `AddMethodCacheInstrumentation()` to the
+OpenTelemetry tracer and meter builders, which subscribes to them (`AddMeter` and `AddSource` with
+`MethodCacheTelemetry.Name`). Your app supplies the OpenTelemetry SDK and exporters.
 
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Package smoke tests promote NU1608 to a restore error.
-
-Core produces standard .NET metrics and activities. This package provides just two SDK builder extensions,
-`AddMethodCacheInstrumentation()` for `AddMeter(MethodCacheTelemetry.Name)` and `AddSource(MethodCacheTelemetry.Name)`.
-The package depends on the OpenTelemetry API; your app supplies the SDK and exporters. It does not decorate the cache
-manager or change its registration, lifetime, keyed services or disposal ownership.
+Install it at the same version as `MethodCache`.
 
 ## Setup
 
@@ -3387,13 +3583,14 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 ```
 
-SDK configuration and `AddMethodCache()` can appear in either order. Sampling, resources and export intervals are app
-settings. Core uses the container's `IMeterFactory` and creates a container-owned activity source. The meter/source
-name is `MethodCache`, available as `MethodCacheTelemetry.Name`; version comes from the assembly.
+`AddOpenTelemetry()` and `AddMethodCache()` can come in either order. The meter and activity source are named
+`MethodCache` (`MethodCacheTelemetry.Name`), so any `MeterListener` or `dotnet-counters monitor --counters MethodCache`
+sees them without this package. For Prometheus, use OpenTelemetry's Prometheus exporter with
+`AddMethodCacheInstrumentation()`.
 
 ## Privacy options
 
-Configure `MethodCacheTelemetryOptions` in Core:
+Configure `MethodCacheTelemetryOptions` in `AddMethodCache`:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
@@ -3406,13 +3603,12 @@ builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 | Option | Default | Meaning |
 |---|---|---|
 | `RecordCacheKeys` | `false` | Include keys on operation spans |
-| `HashCacheKeys` | `true` | Record SHA-256 of lossless UTF-16 key bytes instead of raw keys when enabled |
+| `HashCacheKeys` | `true` | Record a SHA-256 hash of each key instead of the key |
 | `RecordCacheTags` | `false` | Include application tags on operation spans |
 
-Hashes are stable identifiers, not anonymization. Raw keys/tags can contain secrets. These options never add metric
-dimensions. The library adds no user/tenant baggage, copies no request HTTP/URL attributes, and records no exception
-messages or stack traces. Application-owned ambient .NET baggage/context still flows normally; the app controls its
-propagation and export. See [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
+A hash is a stable identifier, not anonymization, and keys and tags can contain secrets. These options never add
+metric dimensions. MethodCache adds no baggage, copies no HTTP or URL attributes, and records no exception messages or
+stack traces; your application's own activity context and baggage flow as usual. See [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
 ## Spans
 
@@ -3422,9 +3618,10 @@ propagation and export. See [Security](https://github.com/eoniclabs/MethodCache/
 | `MethodCache.distributed` | Internal | `methodcache.operation`; `error.type` on failure |
 | `MethodCache.invalidate` | Internal | `methodcache.invalidation.type` |
 
-Loads measure only actual origin work, including refreshes. Flight joiners and L2 hits create no origin span. Pure
-hits create no spans. Failures set Error status without an exception description/event payload. Opt-in identities use
-`methodcache.key`, `methodcache.keys` and `methodcache.tags`. `MethodCache.distributed` is an internal span, so the
+`MethodCache.load` covers a run of your method, background refreshes included. Callers that join a running load,
+values read from the distributed cache and memory hits create none. A failure sets the Error status without the
+exception's message. With the privacy options above, keys and tags are recorded as `methodcache.key`,
+`methodcache.keys` and `methodcache.tags`. `MethodCache.distributed` is an internal span, so the
 client spans of the Redis and SqlClient instrumentations nest under it.
 
 Every attribute is in the `methodcache.` namespace, apart from the standard `error.type`:
@@ -3448,8 +3645,8 @@ A manual call has no attribute naming what was cached, so it adds no series per 
 |---|---|---|
 | `methodcache.requests` | Counter / `{request}` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result` |
 | `methodcache.load.duration` | Histogram / `s` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `error.type` on failure |
-| `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; actual locally resident entries |
-| `methodcache.http.size` | ObservableUpDownCounter / `By` | Local HTTP storage cost; zero body storage in L2 mode |
+| `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; entries in this instance's memory |
+| `methodcache.http.size` | ObservableUpDownCounter / `By` | Bytes of HTTP responses in this instance's memory; 0 when they are stored in the distributed cache |
 | `methodcache.invalidations` | Counter / `{invalidation}` | `methodcache.invalidation.type`, `methodcache.invalidation.stage` |
 | `methodcache.distributed.duration` | Histogram / `s` | `methodcache.operation`, `error.type` on failure |
 | `methodcache.distributed.queue` | ObservableUpDownCounter / `{invalidation}` | `methodcache.invalidation.stage=storage/publication`; distinct pending targets |
@@ -3458,21 +3655,19 @@ The two histograms advise bucket boundaries in seconds, from 5 ms to 10 s (0.005
 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10), like ASP.NET Core's `http.server.request.duration`. A view in your SDK setup
 can replace them.
 
-Exactly one outcome is recorded per completed caller; a failed fast probe is not another miss. Background refresh has
-its own load duration and no extra user request. Bulk calls count once and time the actual batch factory. A cached
-`null` is a hit. `TryGetAsync` can read L2 and retains presence independently of the returned value.
-
-`methodcache.method` values are method ids, including declared generic parameters; arguments and closed runtime types
-do not create series. Invalidation stages count targets separately and must not be summed into an
-operation count. Entry gauges exclude the bounded HTTP observation registry and are never global L2 estimates.
-Method weight is exposed through administrator `TotalWeight` in configured units; no method-object byte estimate or
-hit-ratio instrument is invented. Calculate ratios from counters in the dashboard.
+- Each call records one outcome. A background refresh records a load duration but no request. A bulk call counts once
+  and times its one batch factory call. A cached `null` is a hit.
+- `methodcache.method` is the method id (generic methods once, not per type argument); arguments never create series.
+- Invalidation stages count the same targets at each stage; don't add them together.
+- Entry gauges count this instance's memory only, not the distributed cache.
+- There is no hit-ratio instrument: compute it from `methodcache.requests` in your dashboard. Memory weight is
+  `TotalWeight` on `ICacheAdministrator`.
 
 ## Troubleshooting
 
-If no spans appear, subscribe on the tracer builder and check the SDK's parent sampling policy. If metrics are absent,
-subscribe on the meter builder. Core works with ordinary `MeterListener`/`ActivityListener` without this package or an
-SDK. Late subscribers see current local storage gauges; counters start when their listener attaches.
+If no spans appear, call `AddMethodCacheInstrumentation()` on the tracer builder and check the SDK's sampler. If no
+metrics appear, call it on the meter builder. MethodCache works with any `MeterListener` or `ActivityListener` without
+this package. Counters start when a listener subscribes; gauges show the current state at once.
 
 ## License
 
@@ -3485,17 +3680,14 @@ MIT. See [LICENSE](https://github.com/eoniclabs/MethodCache/blob/main/LICENSE).
 
 # MethodCache.HttpCaching
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
 
+Install it at the same version as `MethodCache`.
+
 Run the [console tour's HttpClient chapter](https://github.com/eoniclabs/MethodCache/tree/main/samples/MethodCache.Demo#httpclient-caching) to see cache hits, ETag validation, `no-store`
-and PUT invalidation against a real local HTTP server with checked origin-call counters.
+and PUT invalidation against a real local HTTP server.
 
 ```cs
 builder.Services.AddMethodCache();
@@ -3504,14 +3696,6 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 ```
 
 That is all. Your typed client keeps calling `GetAsync` as before.
-
-Responses without custom key headers or `Vary` fields use direct variant selection, avoiding temporary sets
-and sorting. Private caches still isolate `Authorization` and `Cookie`; configured headers and `Vary` retain
-their combined, case-insensitive selection rules.
-
-A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
-
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
 
 ## What it does
 
@@ -3565,8 +3749,8 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `MaxResponseBytes` | 10 MiB | Larger responses are not cached. A body without `Content-Length` is read up to this size, then streamed to the caller uncached; dispose the response to release it. Must be positive; `long.MaxValue` means no limit |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
 | `AddDiagnosticHeaders` | `false` | Adds a `MethodCache` member to the RFC 9211 `Cache-Status` header, after any the origin's caches added: `MethodCache; hit; ttl=42` from the cache, or `MethodCache; fwd=uri-miss; fwd-status=200; stored` from the origin (`fwd` is `uri-miss`, `vary-miss`, `stale`, `request`, `method` or `bypass`). A stale response adds `detail=stale-while-revalidate` or `detail=stale-if-error`. `Age` is set either way |
-| `KeepCookies` | `false` | Preserve transport cookies and bypass all response caching; only-if-cached returns 504. Unsafe mutations still invalidate |
-| `Tags` | empty | Static tags in addition to the escaped client tag |
+| `KeepCookies` | `false` | Keep the transport's automatic cookies and turn response caching off for this client; `only-if-cached` returns 504. Successful writes still invalidate |
+| `Tags` | empty | Extra tags on this client's responses, next to its own `http:` tag, for invalidating several clients together |
 | `AllowUnverifiedTransport` | `false` | Cache through a transport other than `SocketsHttpHandler` or `HttpClientHandler`. Only when it sends no automatic cookies or hidden caller identity |
 
 Only GET and HEAD responses are cached. OPTIONS and TRACE go to the origin and change nothing; any other method,
@@ -3574,12 +3758,12 @@ including one the cache doesn't know, invalidates the URL's cached responses whe
 server or in the request) always requires a successful revalidation, even with the stale options on. If reading a response body fails, the request fails; you never get a partly read body.
 
 See [HTTP caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/http-caching.md) for the freshness and revalidation rules, how
-writes invalidate, Core-owned storage, and how `AddHttpCaching()` handles cookies and transports.
+writes invalidate, and how `AddHttpCaching()` handles cookies and transports.
 
 ## Storage
 
-Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size
-is shared by all clients:
+Responses are kept in memory, in a budget of their own next to method results (your app's `IMemoryCache` is not
+touched). The total size, headers included, is shared by all clients; a larger response is streamed and not stored:
 
 ```cs
 builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 * 1024 * 1024)); // default 100 MB
@@ -3587,40 +3771,24 @@ builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 *
 
 ### Sharing responses between instances
 
-Responses use MethodCache's native Redis, SQL Server or PostgreSQL automatically when configured. Core keeps no local
-response or epoch copies in this mode. The application's unrelated `IDistributedCache` is never a fallback.
-Without an owned native transport, responses stay in Core's separate HTTP memory store. Register Core explicitly
-with `AddMethodCache`; either registration order works.
+With Redis, SQL Server or PostgreSQL configured in `AddMethodCache`, responses are stored there instead, so every
+instance shares them: an `ETag` one instance fetched is revalidated by another, and a successful write invalidates the
+URL for all of them, even when backplane messages are lost. Your application's own `IDistributedCache` is never used.
 
 ```cs
 builder.Services.AddMethodCache(cache => cache.UseRedis("localhost:6379"));
 ```
 
-An ETag fetched by one instance is revalidated by another, and a successful unsafe mutation advances the shared
-URL generation before returning. This remains correct without backplane messages. Tag and Clear generations are
-shared with Core-only nodes and across entry formats. Graceful async disposal drains owned generation work,
-retries queued invalidations once through an open circuit breaker, and reports any lost count. Recovery is not
-durable across process exit. A failed generation read bypasses caching. An unconfirmed
-mutation throws `HttpCacheInvalidationException`; the origin may already have succeeded. Do not automatically
-repeat the origin mutation. A GET or HEAD whose answer replaces a stored response that can't be retired throws
-the same exception; it is safe to retry. Core owns bounded invalidation recovery after caller cancellation.
+If a write's invalidation can't be confirmed, the call throws `HttpCacheInvalidationException`. The write may have
+succeeded at the origin, so don't repeat it automatically.
 
-`ICacheAdministrator` lists resident local HTTP representations, or a bounded register of at most 1024 historical
-L2 observations. `ObservedDistributed` is not verified presence or a global inventory. No bodies, credentials,
-cookies or raw queries are kept in that register. Known-id removal retires all URL variants; an unknown id is
-NotFound. `Clear` retires the shared generation without enumerating L2 values. Static `HttpCacheOptions.Tags`
-and the implicit client tag support tag invalidation. For client names up to 128 UTF-16 code units, that tag is
-`http:` plus `MethodCacheKeys.Part(clientName)`; longer names use `http:#:` plus the complete client SHA-256 identity.
-Long client names are accepted. Administration shows a bounded prefix plus their hash. Configure at most 125
-nonblank custom tags of at most 1024 code units each; invalid tag settings fail host startup.
+### Administration
 
-Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
-URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
-therefore grows with the resident entry count while publication avoids the implicit client index.
-
-The former public storage interface/entry/options are removed. HTTP entries use a private codec and are unaffected
-by method serializer, TTL, jitter or fail-safe settings. `MaxHttpBytes` includes body, stored headers and conservative
-metadata costs; oversized responses remain streamed. The default budget is 100 MiB, separate from method entries.
+`ICacheAdministrator` and the admin endpoints list and remove cached responses, without bodies, credentials, cookies
+or query strings. Each client's responses carry the tag `http:` followed by `MethodCacheKeys.Part(clientName)`, plus
+the tags in `HttpCacheOptions.Tags` (at most 125, each at most 1024 characters). The
+[HTTP caching reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/http-caching.md) has the
+details.
 
 ### Time
 
@@ -3637,13 +3805,10 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 |---|---|
 | `methodcache.requests` | `methodcache.kind=http`, `methodcache.http.client` (the static client name), `methodcache.result` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error`) |
 | `methodcache.load.duration` (s) | `methodcache.kind=http`, `methodcache.http.client` for actual origin work, including background refresh |
-| `methodcache.http.size` (By) | Actual resident HTTP storage cost |
+| `methodcache.http.size` (By) | Bytes the cached responses take in memory |
 
-HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
-
-Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
-
-Named options are validated at host startup: `MaxResponseBytes` must be positive (`long.MaxValue` for no limit), freshness/retention durations must be non-negative, and background revalidation timeout must be positive and at most 4,294,967,294 milliseconds. Stale-if-error respects the caller’s `max-age`, `min-fresh` and `max-stale` constraints.
+Invalid settings fail when the host starts: `MaxResponseBytes` must be positive (`long.MaxValue` for no limit),
+durations can't be negative, and `BackgroundRevalidationTimeout` must be positive and at most about 49 days.
 
 
 ---
@@ -3652,13 +3817,10 @@ Named options are validated at host startup: `MaxResponseBytes` must be positive
 
 # MethodCache.Serialization.MessagePack
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 Stores MethodCache's distributed cache values (Redis, SQL Server or PostgreSQL) as compact MessagePack
 instead of the default System.Text.Json: smaller entries and faster reads.
+
+Install it at the same version as `MethodCache`.
 
 ## Install
 
@@ -4345,68 +4507,3 @@ policy ids and key prefixes, keeping different overloads distinct; earlier keys 
   add them in your migration before deploying. Rows without a scope are ignored and deleted once they are older than
   `BackplaneRetention`. Cache rows written by a pre-release build (unhashed keys) become misses and expire normally.
   Upgrade every instance that shares the tables together, and restart them with empty in-memory caches.
-
-
----
-
-<!-- source: docs/developer/distributed-wire-v1.md -->
-
-# Distributed contract 1
-
-This contract is independent of the generated-code ABI and of value entry formats. Keep the checked-in
-`tests/MethodCache.Core.Tests/Fixtures/wire-v1.json` vectors unchanged throughout 1.x. The frozen generator
-vendor binaries in `CompatTests/Baselines/Contract1` are a separate compatibility fixture.
-
-## Backplane envelope
-
-Transport text is ASCII `MC1:` followed by Base64. Before decoding, reject encoded lengths exceeding the
-4 MiB binary-frame bound. The binary frame starts with version (u8, 1), operation (u8: key=1, application
-tag=2, method=3, clear=4), flags (u16 LE), and body length (i32 LE). Upper flag bits are mandatory and
-unknown bits reject the frame; lower optional bits may be ignored.
-
-The body is TLV: field (u8; bit 7 means mandatory, lower seven bits identify the field), length (i32 LE),
-then bytes. Required fields are sender=1 (UTF-16 LE, at most 1,024 code units), target=2 (UTF-16 LE; omitted
-for clear), and timestamp=3 (i64 LE Unix milliseconds). Duplicate known fields, negative/out-of-frame
-lengths, odd UTF-16 lengths, missing required fields, unsupported mandatory fields/operations and invalid
-timestamps reject the frame. Unknown optional fields are skipped after validating their bounds.
-
-Each rejection clears local cached data and emits a payload-free warning once per provider instance.
-This does not repair messages the transport never delivered. Key, tag, method and clear are separate
-operations; application text, including NUL or a method-marker-looking tag, never selects an internal one.
-SQL Server and PostgreSQL store envelope version 1 in the message-type column and the same envelope text in the target
-column; row sender must match.
-
-## Metadata and epochs
-
-Logical key/tag/method/clear metadata keys contain neither value-format nor policy identity. Existing
-method identity text encoding remains stable, preserving exact UTF-16 units. A normal timestamp is eight
-signed LE bytes. An HTTP-marked timestamp is that stamp followed by version=1, 16 opaque initialization
-bytes (the .NET Guid byte representation), and u64 BE revision; future trailing data is preserved.
-
-Ensure initializes only missing epoch state. Advance increments every time; after overflow or missing state
-it uses a fresh initialization ID. An old/retried Advance can increment again but cannot restore an older
-ID. Redis compares/increments bytes in single-key Lua operations, including beyond Lua's exact numeric
-range. SQL Server uses key/range update locks and two unsigned 32-bit revision halves. PostgreSQL reads, compares and
-writes the stamp in one `INSERT ... ON CONFLICT DO UPDATE`, under that row's lock. Updating a marked method
-tag/clear stamp advances its HTTP revision in the same operation. Marked metadata has no TTL.
-
-A scope's permanent retention contract is established on first use. A shorter node configuration is rejected.
-Longer requests retain the existing common minimum, which caps all value deadlines; establishing a different
-common bound requires a new KeyPrefix. Atomic maximum writes never shorten existing stamp lifetimes.
-
-## Value format 6
-
-Physical value namespace is `KeyPrefix + e6:s{SerializerVersion}:`, followed by the framed policy/logical key.
-Other post formats use their own `eN` namespace. SerializerVersion is an independent application schema
-identity; changing serializer settings/result schemas requires raising it or the method Version.
-
-Header: version u8; kind u8 (null/value plus explicit-set bit); flags u16 LE; extension length i32 LE (0–4096);
-load-start, first-publication, logical deadline, physical deadline as four i64 LE Unix millisecond values;
-tag count i32 LE (0–10,000); extensions; length-prefixed UTF-16 LE tags; content-type length u8 and bytes;
-serialized payload. Unknown mandatory flags and malformed frames become misses. Every read checks the
-logical key tombstone, even for entries written by another post format. Native Redis, SQL Server and PostgreSQL providers batch
-value and tombstone retrieval; fallback test stores retain separate per-operation timeouts.
-
-Deadlines are bounded from source start by common metadata retention minus skew. Physical store expiry
-is absolute, so delayed serialization/transport never extends it. Round-trip checks are enabled by default,
-can be explicitly disabled, and do not prove nested polymorphic/private data preservation.

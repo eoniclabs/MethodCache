@@ -1,11 +1,8 @@
 # MethodCache.AspNetCore
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 Admin endpoints and a health check for MethodCache's in-memory cache.
+
+Install it at the same version as `MethodCache`.
 
 ## Setup
 
@@ -35,7 +32,7 @@ maps them under `/ops/cache` instead.
 
 | Method | Path | What it does |
 |--------|------|--------------|
-| `GET` | `stats` | Local hits/misses/evictions, method/HTTP entries, HTTP bytes, observed L2 entries and configured method weight |
+| `GET` | `stats` | This instance's hits, misses, evictions, method and HTTP entries, HTTP bytes and memory weight |
 | `GET` | `methods` | Every cached method: its `methodId`, effective policy and where each setting comes from |
 | `GET` | `entries?storedKeyPrefix=&tag=&methodId=&limit=` | Live entries in the memory of the instance that answers, each with its `storedKey` and `methodId`, ordered by `storedKey` (default limit 100, max 1000). `methodId` must be an id that `methods` lists. Values are not returned |
 | `GET` | `entry?storedKey=` | One entry, by the `storedKey` that `entries` lists, in the memory of the instance that answers, or 404 |
@@ -75,11 +72,10 @@ The same operations are available in code through `ICacheAdministrator` in the `
 | `distributedCacheAvailable` | Whether the distributed cache answers; only when one is configured |
 | `error.type` | Only when the check itself failed: the exception type |
 
-There is no estimated method heap size or fabricated custom-manager storage count.
-
-L2 failure, either recovery queue, or an unknown/not established configured backplane uses the registration's
-`failureStatus` (default `Degraded`). A healthy L2 probe alone does not prove backplane subscription. The probe respects
-the distributed operation timeout. Error reports include exception types, never backend exception messages.
+The check reports the registration's `failureStatus` (default `Degraded`) when the distributed cache doesn't answer,
+invalidations are waiting to be retried, or the backplane is connecting or disconnected. The distributed cache and the
+backplane are reported separately. The check waits at most `OperationTimeout`, and reports exception types, never
+exception messages.
 
 ## Limits
 

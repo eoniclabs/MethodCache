@@ -1,14 +1,10 @@
 # MethodCache.OpenTelemetry
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
+MethodCache produces standard .NET metrics and traces. This package adds `AddMethodCacheInstrumentation()` to the
+OpenTelemetry tracer and meter builders, which subscribes to them (`AddMeter` and `AddSource` with
+`MethodCacheTelemetry.Name`). Your app supplies the OpenTelemetry SDK and exporters.
 
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Package smoke tests promote NU1608 to a restore error.
-
-Core produces standard .NET metrics and activities. This package provides just two SDK builder extensions,
-`AddMethodCacheInstrumentation()` for `AddMeter(MethodCacheTelemetry.Name)` and `AddSource(MethodCacheTelemetry.Name)`.
-The package depends on the OpenTelemetry API; your app supplies the SDK and exporters. It does not decorate the cache
-manager or change its registration, lifetime, keyed services or disposal ownership.
+Install it at the same version as `MethodCache`.
 
 ## Setup
 
@@ -33,13 +29,14 @@ builder.Services.AddOpenTelemetry()
 ```
 <!-- endSnippet -->
 
-SDK configuration and `AddMethodCache()` can appear in either order. Sampling, resources and export intervals are app
-settings. Core uses the container's `IMeterFactory` and creates a container-owned activity source. The meter/source
-name is `MethodCache`, available as `MethodCacheTelemetry.Name`; version comes from the assembly.
+`AddOpenTelemetry()` and `AddMethodCache()` can come in either order. The meter and activity source are named
+`MethodCache` (`MethodCacheTelemetry.Name`), so any `MeterListener` or `dotnet-counters monitor --counters MethodCache`
+sees them without this package. For Prometheus, use OpenTelemetry's Prometheus exporter with
+`AddMethodCacheInstrumentation()`.
 
 ## Privacy options
 
-Configure `MethodCacheTelemetryOptions` in Core:
+Configure `MethodCacheTelemetryOptions` in `AddMethodCache`:
 
 <!-- snippet: otel-baggage -->
 ```cs
@@ -54,13 +51,12 @@ builder.Services.AddMethodCache(mc => mc.Telemetry(options =>
 | Option | Default | Meaning |
 |---|---|---|
 | `RecordCacheKeys` | `false` | Include keys on operation spans |
-| `HashCacheKeys` | `true` | Record SHA-256 of lossless UTF-16 key bytes instead of raw keys when enabled |
+| `HashCacheKeys` | `true` | Record a SHA-256 hash of each key instead of the key |
 | `RecordCacheTags` | `false` | Include application tags on operation spans |
 
-Hashes are stable identifiers, not anonymization. Raw keys/tags can contain secrets. These options never add metric
-dimensions. The library adds no user/tenant baggage, copies no request HTTP/URL attributes, and records no exception
-messages or stack traces. Application-owned ambient .NET baggage/context still flows normally; the app controls its
-propagation and export. See [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
+A hash is a stable identifier, not anonymization, and keys and tags can contain secrets. These options never add
+metric dimensions. MethodCache adds no baggage, copies no HTTP or URL attributes, and records no exception messages or
+stack traces; your application's own activity context and baggage flow as usual. See [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 
 ## Spans
 
@@ -70,9 +66,10 @@ propagation and export. See [Security](https://github.com/eoniclabs/MethodCache/
 | `MethodCache.distributed` | Internal | `methodcache.operation`; `error.type` on failure |
 | `MethodCache.invalidate` | Internal | `methodcache.invalidation.type` |
 
-Loads measure only actual origin work, including refreshes. Flight joiners and L2 hits create no origin span. Pure
-hits create no spans. Failures set Error status without an exception description/event payload. Opt-in identities use
-`methodcache.key`, `methodcache.keys` and `methodcache.tags`. `MethodCache.distributed` is an internal span, so the
+`MethodCache.load` covers a run of your method, background refreshes included. Callers that join a running load,
+values read from the distributed cache and memory hits create none. A failure sets the Error status without the
+exception's message. With the privacy options above, keys and tags are recorded as `methodcache.key`,
+`methodcache.keys` and `methodcache.tags`. `MethodCache.distributed` is an internal span, so the
 client spans of the Redis and SqlClient instrumentations nest under it.
 
 Every attribute is in the `methodcache.` namespace, apart from the standard `error.type`:
@@ -96,8 +93,8 @@ A manual call has no attribute naming what was cached, so it adds no series per 
 |---|---|---|
 | `methodcache.requests` | Counter / `{request}` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result` |
 | `methodcache.load.duration` | Histogram / `s` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `error.type` on failure |
-| `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; actual locally resident entries |
-| `methodcache.http.size` | ObservableUpDownCounter / `By` | Local HTTP storage cost; zero body storage in L2 mode |
+| `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; entries in this instance's memory |
+| `methodcache.http.size` | ObservableUpDownCounter / `By` | Bytes of HTTP responses in this instance's memory; 0 when they are stored in the distributed cache |
 | `methodcache.invalidations` | Counter / `{invalidation}` | `methodcache.invalidation.type`, `methodcache.invalidation.stage` |
 | `methodcache.distributed.duration` | Histogram / `s` | `methodcache.operation`, `error.type` on failure |
 | `methodcache.distributed.queue` | ObservableUpDownCounter / `{invalidation}` | `methodcache.invalidation.stage=storage/publication`; distinct pending targets |
@@ -106,21 +103,19 @@ The two histograms advise bucket boundaries in seconds, from 5 ms to 10 s (0.005
 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10), like ASP.NET Core's `http.server.request.duration`. A view in your SDK setup
 can replace them.
 
-Exactly one outcome is recorded per completed caller; a failed fast probe is not another miss. Background refresh has
-its own load duration and no extra user request. Bulk calls count once and time the actual batch factory. A cached
-`null` is a hit. `TryGetAsync` can read L2 and retains presence independently of the returned value.
-
-`methodcache.method` values are method ids, including declared generic parameters; arguments and closed runtime types
-do not create series. Invalidation stages count targets separately and must not be summed into an
-operation count. Entry gauges exclude the bounded HTTP observation registry and are never global L2 estimates.
-Method weight is exposed through administrator `TotalWeight` in configured units; no method-object byte estimate or
-hit-ratio instrument is invented. Calculate ratios from counters in the dashboard.
+- Each call records one outcome. A background refresh records a load duration but no request. A bulk call counts once
+  and times its one batch factory call. A cached `null` is a hit.
+- `methodcache.method` is the method id (generic methods once, not per type argument); arguments never create series.
+- Invalidation stages count the same targets at each stage; don't add them together.
+- Entry gauges count this instance's memory only, not the distributed cache.
+- There is no hit-ratio instrument: compute it from `methodcache.requests` in your dashboard. Memory weight is
+  `TotalWeight` on `ICacheAdministrator`.
 
 ## Troubleshooting
 
-If no spans appear, subscribe on the tracer builder and check the SDK's parent sampling policy. If metrics are absent,
-subscribe on the meter builder. Core works with ordinary `MeterListener`/`ActivityListener` without this package or an
-SDK. Late subscribers see current local storage gauges; counters start when their listener attaches.
+If no spans appear, call `AddMethodCacheInstrumentation()` on the tracer builder and check the SDK's sampler. If no
+metrics appear, call it on the meter builder. MethodCache works with any `MeterListener` or `ActivityListener` without
+this package. Counters start when a listener subscribes; gauges show the current state at once.
 
 ## License
 

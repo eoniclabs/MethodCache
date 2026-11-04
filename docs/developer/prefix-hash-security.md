@@ -42,7 +42,7 @@ sampling, sketch sizing, eviction and expiration algorithms are unchanged. Dicti
 apply to the sketch. As before, randomized bucket placement can differ across process starts; exact per-key
 admission choices are not a portable identity or contract. Hit-rate workloads must still pass the gate.
 
-An earlier SipHash-2-4 candidate failed the section-10 timing gate (see design-prefix-preflight.md). This
+An earlier SipHash-2-4 candidate failed the section-10 timing gate (the preflight report is in the git history). This
 implementation differs: one compression round and three finalization rounds instead of two and four, the prefix
 state is finished in locals instead of copied, and whole code units are packed instead of fed byte by byte. Its
 section-10 results are recorded in its pull request.
