@@ -269,6 +269,7 @@ builder.Services.AddMethodCache();
 - Remove entries when data changes: [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 - Change durations without a redeploy: [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md).
 - Share the cache between instances: [Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md).
+- Look up a task or a question: [How do I…?](https://github.com/eoniclabs/MethodCache/blob/main/docs/how-to.md).
 
 
 ---
@@ -2744,7 +2745,7 @@ key.
 | `InvalidOperationException` from `IMethodCacheKeys.For` saying it can't tell which key to return | The interface has several registrations and the last is a scoped or transient factory, which may create another type in each scope. Register it with its implementation type, give it a service key of its own, or invalidate by tag ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#building-a-key-yourself)) |
 | `InvalidOperationException` from `GetOrCreateManyAsync`: the bulk factory did not return a value for a key | The factory must return a value for each key it is asked for. Nothing it returned is cached; keys with a fail-safe value get it ([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md)) |
 | `InvalidOperationException` from `AddMethodCache` naming an implementation type | An instance registration of a cached interface has the same type as another registration under the same service key. Give each its own service key ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#things-to-know)) |
-| `InvalidOperationException` from `AddMethodCache` naming two distributed caches | `UseRedis` and `UseSqlServer` were both called; use one |
+| `InvalidOperationException` from `AddMethodCache` naming two distributed caches | More than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` was called; use one |
 
 ## A caller changed a cached object, and others see the change
 
@@ -3894,6 +3895,18 @@ release.
   `MethodCacheKeys.Part`.
 - The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
   how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
+
+### Documentation
+
+- The `MethodCache` package carries the user documentation in its `docs` folder, with `llms-full.txt`, so a coding
+  agent can read the docs for the installed version. The README has a prompt to give your agent.
+- New [How do I…?](https://github.com/eoniclabs/MethodCache/blob/main/docs/how-to.md) page with short answers to common questions, and reference pages with the exact
+  rules for [registration](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md), the [distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md) and
+  [HTTP caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/http-caching.md).
+- The README, the NuGet READMEs and the guides were rewritten to say what you do and see, without implementation
+  detail. New sections: why an interface is needed, invalidating when the write happens elsewhere, and testing with
+  writes straight to the database.
+- `llms.txt` now lists PostgreSQL and the new pages.
 
 ## 1.0.0-rc.4 (2026-11-04)
 
