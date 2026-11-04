@@ -15,20 +15,21 @@ internal sealed class MethodCacheKeyRecorder(
     // Recording decorators are shared, so the calls of one For call are collected per thread; loads record synchronously
     [ThreadStatic] private static List<(string Key, string MethodId)>? t_keys;
 
-    // One recording decorator per registration and container, so its methods subscribe to their policies once
-    private readonly ConcurrentDictionary<(Type Service, object? Key), object> _decorators = new();
+    // One recording decorator per registration and container, so its methods subscribe to their policies once; MethodId
+    // gets its own, which never creates the implementation, since a method's id doesn't depend on the implementation type
+    private readonly ConcurrentDictionary<(Type Service, object? Key, bool IdOnly), object> _decorators = new();
 
     public string For<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
-        => RecordCall(call, serviceKey, nameof(For)).Key;
+        => RecordCall(call, serviceKey, nameof(For), idOnly: false).Key;
 
     public string MethodId<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
-        => RecordCall(call, serviceKey, nameof(MethodId)).MethodId;
+        => RecordCall(call, serviceKey, nameof(MethodId), idOnly: true).MethodId;
 
-    private (string Key, string MethodId) RecordCall<TService>(Func<TService, object?> call, object? serviceKey, string operation)
+    private (string Key, string MethodId) RecordCall<TService>(Func<TService, object?> call, object? serviceKey, string operation, bool idOnly)
         where TService : class
     {
         ArgumentNullException.ThrowIfNull(call);
-        var decorator = (TService)_decorators.GetOrAdd((typeof(TService), serviceKey), Create);
+        var decorator = (TService)_decorators.GetOrAdd((typeof(TService), serviceKey, idOnly), Create);
 
         var outer = t_keys;
         var keys = t_keys = new List<(string Key, string MethodId)>(1);
@@ -55,9 +56,9 @@ internal sealed class MethodCacheKeyRecorder(
         return default!;
     }
 
-    private object Create((Type Service, object? Key) registration)
+    private object Create((Type Service, object? Key, bool IdOnly) registration)
     {
-        if (!parameters.Recorders.TryGetValue(registration, out var found))
+        if (!parameters.Recorders.TryGetValue((registration.Service, registration.Key), out var found))
         {
             var key = registration.Key == null ? string.Empty : $" with service key {registration.Key}";
             throw new InvalidOperationException(
@@ -66,7 +67,8 @@ internal sealed class MethodCacheKeyRecorder(
         }
 
         // Of several registrations under one service key, the last one: the one GetService and GetKeyedService return
-        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(found.RecordingSuffix(root)));
+        var suffix = registration.IdOnly ? found.KeyedSuffix : found.RecordingSuffix(root);
+        var services = new GeneratedServices(DecoratorServices.From(root).ForKeyRecording(suffix));
         try
         {
             return found.Registration.Decorate(new MethodCacheServiceCollectionExtensions.RegistrationServiceProvider(root, services), null!);

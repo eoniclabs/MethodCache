@@ -42,7 +42,11 @@ public sealed class MethodCacheBuilder
     /// <summary>Sets defaults for one named method group.</summary>
     public MethodCacheBuilder Group(string name, Action<CacheEntryOptions.Builder> configure)
     { Configuration.ForGroup(name).Configure(configure); return this; }
-    /// <summary>Selects the module generated in this type's assembly and roots its module initializer.</summary>
+    /// <summary>
+    /// Adds the module generated in this type's assembly, also under Native AOT, and lets it win when several modules
+    /// generate the same interface. Services the other modules generate stay cached. With <see cref="AutoRegister"/>,
+    /// only the selected modules register missing services.
+    /// </summary>
     public MethodCacheBuilder FromAssemblyOf<T>()
     {
         var assembly = typeof(T).Assembly;
@@ -50,7 +54,10 @@ public sealed class MethodCacheBuilder
         Assemblies.Add(assembly);
         return this;
     }
-    /// <summary>Selects an explicitly named generated module assembly; use FromAssemblyOf for static AOT roots.</summary>
+    /// <summary>
+    /// Adds the module generated in <paramref name="assembly"/>, as <see cref="FromAssemblyOf{T}"/> does; prefer
+    /// <see cref="FromAssemblyOf{T}"/>, which also roots the assembly for Native AOT.
+    /// </summary>
     public MethodCacheBuilder FromAssembly(Assembly assembly)
     {
         ArgumentNullException.ThrowIfNull(assembly);

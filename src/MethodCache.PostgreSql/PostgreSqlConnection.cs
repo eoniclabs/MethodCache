@@ -3,8 +3,8 @@ using Npgsql;
 namespace MethodCache.PostgreSql;
 
 /// <summary>
-/// The connection pool MethodCache owns: one <see cref="NpgsqlDataSource"/> for cache commands, and the settings of
-/// the separate, unpooled connection each instance keeps open for <c>LISTEN</c>.
+/// The connections MethodCache owns: one pooled <see cref="NpgsqlDataSource"/> for cache commands, and an unpooled one
+/// for the connection each instance keeps open for <c>LISTEN</c>.
 /// </summary>
 internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
 {
@@ -13,7 +13,11 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
     internal const string DefaultApplicationName = "MethodCache";
     internal static readonly TimeSpan ListenKeepAlive = TimeSpan.FromSeconds(30);
 
-    internal PostgreSqlConnection(string connectionString)
+    /// <param name="connectionString">The application's connection string.</param>
+    /// <param name="configureDataSource">
+    /// <see cref="PostgreSqlOptions.ConfigureDataSource"/>, applied to both data sources before the settings each needs.
+    /// </param>
+    internal PostgreSqlConnection(string connectionString, Action<NpgsqlDataSourceBuilder>? configureDataSource = null)
     {
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
@@ -28,7 +32,7 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
         // must not undo cache writes or invalidations, and creating the tables runs a transaction of its own
         builder.Enlist = false;
         CommandConnectionString = builder.ConnectionString;
-        DataSource = NpgsqlDataSource.Create(CommandConnectionString);
+        DataSource = Build(CommandConnectionString, configureDataSource, static commands => commands.Enlist = false);
 
         // LISTEN holds one connection for as long as the instance runs, so it doesn't take a slot in the pool, and
         // without a pool it can't multiplex. The keepalive notices a connection that died silently, so the instance
@@ -36,6 +40,27 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
         var listen = new NpgsqlConnectionStringBuilder(CommandConnectionString) { Pooling = false, Multiplexing = false, MaxAutoPrepare = 0 };
         if (listen.KeepAlive == 0) listen.KeepAlive = (int)ListenKeepAlive.TotalSeconds;
         ListenConnectionString = listen.ConnectionString;
+        ListenDataSource = Build(ListenConnectionString, configureDataSource, static listening =>
+        {
+            listening.Pooling = false;
+            listening.Multiplexing = false;
+            listening.MaxAutoPrepare = 0;
+            listening.Enlist = false;
+        });
+    }
+
+    /// <summary>
+    /// A data source for <paramref name="connectionString"/>, configured by the application and then given the settings
+    /// MethodCache relies on, which the application's configuration may have changed.
+    /// </summary>
+    private static NpgsqlDataSource Build(string connectionString, Action<NpgsqlDataSourceBuilder>? configure,
+        Action<NpgsqlConnectionStringBuilder> require)
+    {
+        if (configure == null) return NpgsqlDataSource.Create(connectionString);
+        var builder = new NpgsqlDataSourceBuilder(connectionString);
+        configure(builder);
+        require(builder.ConnectionStringBuilder);
+        return builder.Build();
     }
 
     /// <summary>Whether <paramref name="connectionString"/> sets <paramref name="keyword"/>, written with any case or spaces.</summary>
@@ -58,7 +83,18 @@ internal sealed class PostgreSqlConnection : IAsyncDisposable, IDisposable
 
     internal string ListenConnectionString { get; }
 
-    public ValueTask DisposeAsync() => DataSource.DisposeAsync();
+    /// <summary>Opens the connection that listens for invalidations; each is a connection of its own, never pooled.</summary>
+    internal NpgsqlDataSource ListenDataSource { get; }
 
-    public void Dispose() => DataSource.Dispose();
+    public async ValueTask DisposeAsync()
+    {
+        await DataSource.DisposeAsync().ConfigureAwait(false);
+        await ListenDataSource.DisposeAsync().ConfigureAwait(false);
+    }
+
+    public void Dispose()
+    {
+        DataSource.Dispose();
+        ListenDataSource.Dispose();
+    }
 }

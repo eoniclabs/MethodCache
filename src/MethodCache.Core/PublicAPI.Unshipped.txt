@@ -194,6 +194,8 @@ MethodCache.Generated.GeneratedMethodOptions.FailSafeTimeout.init -> void
 MethodCache.Generated.GeneratedMethodOptions.GeneratedMethodOptions() -> void
 MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.init -> void
+MethodCache.Generated.GeneratedMethodOptions.ResultType.get -> System.Type?
+MethodCache.Generated.GeneratedMethodOptions.ResultType.init -> void
 MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.init -> void
 MethodCache.Generated.GeneratedMethodOptions.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>?

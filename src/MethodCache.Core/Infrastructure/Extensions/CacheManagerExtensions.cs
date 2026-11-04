@@ -144,6 +144,7 @@ namespace MethodCache
 
                 if (missingKeys.Count > 0 && !bypass)
                 {
+                    memory.EnsureWithinMaxExpiration(options, nameof(options));
                     missingKeys = await TakeDistributedHitsAsync(memory, missingKeys, results, options, cancellationToken).ConfigureAwait(false);
                 }
 
@@ -179,7 +180,7 @@ namespace MethodCache
             Exception? failure = null;
             using (var origin = memory.Telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
             {
-                try { produced = await factory(keys, cancellationToken).ConfigureAwait(false); }
+                try { produced = EnsureComplete(await factory(keys, cancellationToken).ConfigureAwait(false), keys); }
                 catch (Exception error)
                 {
                     origin?.Fail(error);
@@ -318,7 +319,22 @@ namespace MethodCache
         private static async Task<IReadOnlyDictionary<string, T>> RunFactoryAsync<T>(
             Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
             IReadOnlyList<string> keys, CancellationToken token)
-            => await factory(keys, token).ConfigureAwait(false);
+            => EnsureComplete(await factory(keys, token).ConfigureAwait(false), keys);
+
+        /// <summary>
+        /// Rejects an answer without a value for every requested key before any of it is stored, so a wrong answer
+        /// fails like a factory that throws, never with part of the batch cached.
+        /// </summary>
+        private static IReadOnlyDictionary<string, T> EnsureComplete<T>(IReadOnlyDictionary<string, T>? values, IReadOnlyList<string> keys)
+        {
+            if (values == null) throw new InvalidOperationException("Bulk cache factory returned null instead of a value for each key.");
+            foreach (var key in keys)
+            {
+                if (!values.ContainsKey(key)) throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
+            }
+
+            return values;
+        }
 
         private static async Task ForwardAsync<T>(Task<T> source, TaskCompletionSource<T> target)
         {

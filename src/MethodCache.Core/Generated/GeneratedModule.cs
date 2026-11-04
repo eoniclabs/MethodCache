@@ -35,8 +35,12 @@ public static class GeneratedCode
                     RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
         }
 
-        var modules = Modules.Values.Where(entry => requested.Length == 0 || requested.Contains(entry.Module.GetType().Assembly)).ToArray();
-        // Validate the entire selected bootstrap before executing any descriptor or factory.
+        // Selecting assemblies decides which module wins when several generate the same interface; every other module
+        // still caches its own services. A module this runtime can't read is skipped only when the app selected others.
+        var modules = Modules.Values
+            .Where(entry => entry.Version == 1 || requested.Length == 0 || requested.Contains(entry.Module.GetType().Assembly))
+            .ToArray();
+        // Validate the entire bootstrap before executing any descriptor or factory.
         foreach (var (version, module) in modules)
             if (version != 1)
                 throw new InvalidOperationException($"MethodCache module {module.GetType().Assembly.GetName().Name} requires generator contract {version}; this runtime supports contract 1. Upgrade MethodCache to a compatible version.");
@@ -93,6 +97,12 @@ public sealed class GeneratedMethodOptions
     public int? Version { get; init; }
     /// <summary>The method's static or parameterized tag templates.</summary>
     public IReadOnlyCollection<string>? Tags { get; init; }
+    /// <summary>
+    /// The method's result type, <c>T</c> of <c>Task&lt;T&gt;</c> and <c>ValueTask&lt;T&gt;</c>, which a
+    /// <c>CacheWhen&lt;T&gt;</c> set for the method is checked against when it is set; null when the result type has
+    /// type parameters, and omitted by earlier contract-1 generators.
+    /// </summary>
+    public Type? ResultType { get; init; }
 }
 
 /// <summary>Builds descriptor data without exposing the policy pipeline or DI implementation.</summary>
@@ -105,6 +115,7 @@ public sealed class GeneratedModuleBuilder
     internal Dictionary<Type, List<CandidateRegistration>> Candidates { get; } = [];
     internal HashSet<Type> DeclaredServices { get; } = [];
     internal Dictionary<string, string[]> ParameterNames { get; } = new(StringComparer.Ordinal);
+    internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);
     internal List<PolicySnapshot> Policies { get; } = [];
 
     /// <summary>Records a cacheable interface definition so unsupported registrations fail explicitly.</summary>
@@ -148,6 +159,7 @@ public sealed class GeneratedModuleBuilder
         ArgumentNullException.ThrowIfNull(parameterNames);
         ArgumentNullException.ThrowIfNull(options);
         ParameterNames[methodId] = parameterNames.ToArray();
+        if (options.ResultType is { } resultType) ResultTypes[methodId] = resultType;
         var fields = CachePolicyFields.None;
         var policy = CachePolicy.Empty;
         if (options.Duration is { } duration) { policy = policy with { Duration = duration }; fields |= CachePolicyFields.Duration; }
@@ -179,7 +191,10 @@ public sealed class GeneratedModuleBuilder
         var parameters = (MethodCacheServiceCollectionExtensions.GeneratedParameters)services
             .First(d => d.ServiceType == typeof(MethodCacheServiceCollectionExtensions.GeneratedParameters)).ImplementationInstance!;
         foreach (var id in methodIds)
+        {
             if (ParameterNames.TryGetValue(id, out var names)) parameters.Names[id] = names;
+            if (ResultTypes.TryGetValue(id, out var resultType)) parameters.ResultTypes[id] = resultType;
+        }
         services.AddSingleton(new ModulePolicyMarker(Module, serviceType));
         services.AddSingleton(new PolicySourceRegistration(new AttributeSource(Policies.Where(p => methodIds.Contains(p.MethodId)).ToArray()), 10));
     }

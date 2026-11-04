@@ -93,6 +93,23 @@ public class PostgreSqlServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void UsePostgreSql_ConfigureDataSource_ConfiguresMethodCachesDataSources()
+    {
+        var configured = 0;
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.UsePostgreSql(options =>
+        {
+            options.ConnectionString = "Host=localhost;Database=cache;Username=app";
+            options.ConfigureDataSource = _ => configured++;
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<PostgreSqlConnection>();
+
+        configured.Should().Be(2, "the pool for cache commands and the LISTEN connection each log in");
+    }
+
+    [Fact]
     public void UsePostgreSql_UnreadableConnectionString_FailsWhenTheCacheIsCreated()
     {
         var services = new ServiceCollection();

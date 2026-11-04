@@ -32,6 +32,7 @@ internal partial class InMemoryCacheManager
             ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(state, cancellationToken).AsTask())) : factory(state, cancellationToken);
         // A CacheWhen<T> that can never see this result type is a configuration error, reported before the factory runs
         CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
+        EnsureWithinMaxExpiration(options, nameof(options));
         var policy = options.Runtime;
         if (policy == null)
         {
@@ -40,6 +41,21 @@ internal partial class InMemoryCacheManager
         }
         return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, policy.MethodId,
             () => factory(state, cancellationToken).AsTask(), policy, cancellationToken));
+    }
+
+    /// <summary>
+    /// Throws when an application's own call asks to keep an entry longer than the cache keeps any, before its factory
+    /// runs, instead of removing the entry early. A generated call's duration was checked when its policy was set.
+    /// </summary>
+    internal void EnsureWithinMaxExpiration(CacheEntryOptions options, string parameterName)
+    {
+        if (options.Runtime == null && options.Duration is { } duration && duration > _options.MaxExpiration)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, duration,
+                $"The Duration {duration} is longer than MethodCacheMemoryOptions.MaxExpiration ({_options.MaxExpiration}), the longest " +
+                "MethodCache keeps an entry, so it would be removed early. Shorten the Duration, or raise MaxExpiration with " +
+                "mc.Memory(o => o.MaxExpiration = ...).");
+        }
     }
 
     /// <inheritdoc />

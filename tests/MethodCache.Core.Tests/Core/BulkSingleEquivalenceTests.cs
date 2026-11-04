@@ -93,6 +93,37 @@ public sealed class BulkSingleEquivalenceTests
         Assert.False((await harness.Cache.TryGetAsync<string>("c")).Found);
     }
 
+    // Only the bulk path can get an answer without a requested key; it then fails as a single load whose factory throws
+    [Theory]
+    [InlineData(ManagerKind.Memory)]
+    [InlineData(ManagerKind.Custom)]
+    public async Task BulkLoad_FactoryLeavesOutAKey_ThrowsAndCachesNoneOfTheBatch(ManagerKind kind)
+    {
+        using var harness = new Harness(kind);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
+            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("a", "a1"))), Cached));
+
+        Assert.Contains("did not return a value for key 'b'", error.Message, StringComparison.Ordinal);
+        Assert.False((await harness.Cache.TryGetAsync<string>("a")).Found);
+        Assert.False((await harness.Cache.TryGetAsync<string>("b")).Found);
+    }
+
+    [Theory]
+    [InlineData(ManagerKind.Memory)]
+    [InlineData(ManagerKind.Custom)]
+    public async Task BulkLoad_FactoryLeavesOutAKeyWithAStaleValue_ServesTheStaleValues(ManagerKind kind)
+    {
+        using var harness = new Harness(kind);
+        await LoadAsync(harness.Cache, CallPath.Bulk, ["a", "b"], new Source(key => key + "1"), FailSafe);
+        harness.Time.Advance(TimeSpan.FromMinutes(2));
+
+        var served = await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
+            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("a", "a2"))), FailSafe);
+
+        Assert.Equal(Values(("a", "a1"), ("b", "b1")), served);
+    }
+
     [Theory]
     [MemberData(nameof(AllPaths))]
     public async Task Load_CacheWhenRejectsOneValue_ReturnsBothAndCachesOnlyTheAccepted(ManagerKind kind, CallPath path)

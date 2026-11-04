@@ -103,7 +103,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   are named as reflection sees them: a tuple is `System.ValueTuple<int, string>` (element names dropped), `nint` is
   `System.IntPtr` and `dynamic` is `object`. Runtime overrides by method id use the same format, and the parameter
   list is also part of the method's cache keys. The admin endpoints list every method id ([Monitoring](monitoring.md)),
-  and `IMethodCacheKeys.MethodId<T>(s => s.FindAsync(0))` returns the id of a call ([Cache keys](keys.md)).
+  and `IMethodCacheKeys.MethodId<T>(s => s.FindAsync(Any<int>.Value))` returns the id of a call ([Cache keys](keys.md)).
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead` and `FailSafe` (each but `Duration` a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled` and `Distributed`. A group under `Groups` and a method under
   `Methods` can also set `ClearTags` (`true` or `false`): `true` makes their `Tags` replace the lower layers' instead of
@@ -223,7 +223,7 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 
 | Setting | Rule | Checked |
 |---------|------|---------|
-| `Duration` | A positive time span | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup |
+| `Duration` | A positive time span, and with the built-in memory cache at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup. Longer than `MaxExpiration`: at startup from `[Cache]`, code and JSON, an `ArgumentException` from a runtime override, and an `ArgumentOutOfRangeException` from a manual call |
 | `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
 | `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](../user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
@@ -233,8 +233,9 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
 `With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
 `WithFailSafeRetryAfter`. `CacheWhen<T>` is configured in code for one method; a `CacheWhen<T>` for a type the method
-can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException` on the
-call instead of silently caching nothing. Cache callbacks and context predicates are not supported.
+can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException` at
+startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
+context predicates are not supported.
 
 Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
 

@@ -447,35 +447,30 @@ namespace Microsoft.Extensions.DependencyInjection
             /// </summary>
             internal bool Shared => Group.Count > 1;
 
-            /// <summary>The implementation type a factory registration created, once one decorator was built.</summary>
-            internal Type? ObservedType { get; set; }
-
             /// <summary>What this registration adds to the method part of its cache keys, given the type it creates.</summary>
             internal string? SuffixFor(Type implementationType)
                 => Shared ? ImplementationPart(implementationType) + KeyedSuffix : KeyedSuffix;
 
             /// <summary>
-            /// The suffix for <see cref="IMethodCacheKeys"/>, which records keys without creating the decorator: a
-            /// factory registration that shares its interface creates one implementation to learn its type.
+            /// The suffix for <see cref="IMethodCacheKeys.For{TService}"/>, which records keys without creating the
+            /// decorator. A factory registration that shares its interface creates the implementation to learn its type:
+            /// a singleton is the instance the application gets, so that is safe. A scoped or transient factory may create
+            /// another type in the caller's scope than in any scope created here, so a guessed key could miss the entry
+            /// it should invalidate; that fails instead, without creating anything.
             /// </summary>
             internal string? RecordingSuffix(IServiceProvider root)
             {
                 if (!Shared) return KeyedSuffix;
-                if ((ImplementationType ?? ObservedType) is { } known) return SuffixFor(known);
+                if (ImplementationType is { } known) return SuffixFor(known);
                 if (Lifetime == ServiceLifetime.Singleton) return SuffixFor(root.GetRequiredKeyedService(typeof(object), InnerKey).GetType());
-                var scope = root.CreateAsyncScope();
-                try
-                {
-                    return SuffixFor(scope.ServiceProvider.GetRequiredKeyedService(typeof(object), InnerKey).GetType());
-                }
-                finally
-                {
-                    // Not blocking on an asynchronous disposal: it finishes in the background, and a failure is observed
-                    var disposal = scope.DisposeAsync();
-                    if (disposal.IsCompleted) disposal.GetAwaiter().GetResult();
-                    else _ = disposal.AsTask().ContinueWith(static task => _ = task.Exception, CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-                }
+                var lifetime = Lifetime == ServiceLifetime.Scoped ? "Scoped" : "Transient";
+                var service = ServiceType.Name;
+                throw new InvalidOperationException(
+                    $"IMethodCacheKeys.For<{service}> can't tell which key to return: {ServiceType} has more than one registration" +
+                    $"{(ServiceKey == null ? string.Empty : $" with service key {ServiceKey}")}, so each caches its results under its " +
+                    $"implementation type, and the last one is registered with a factory, which may create another type in each scope. " +
+                    $"Register it with its implementation type, as in Add{lifetime}<{service}, MyRates>(), give it a service key of its own, " +
+                    "or invalidate its entries by tag instead.");
             }
         }
 
@@ -498,7 +493,6 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 var type = registration.ImplementationType ?? inner.GetType();
                 if (_byType.TryGetValue(type, out var existing)) return existing;
-                if (registration.ImplementationType == null) registration.ObservedType ??= type;
                 root.GetRequiredService<ImplementationClaims>().Claim(registration, type);
                 return _byType.GetOrAdd(type, static (key, self) => self.Create(self.SuffixFor(key)), this);
             }
@@ -644,6 +638,9 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             private readonly Dictionary<(Type Service, object? Key), List<DecoratedRegistration>> _groups = [];
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+
+            // Each cached method's result type, which a CacheWhen<T> set for the method is checked against
+            internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);
 
             // The service key part of each registration; an implementation part before it is skipped when matching
             internal List<(string Prefix, string Suffix, string Method)> KeyBindings { get; } = [];

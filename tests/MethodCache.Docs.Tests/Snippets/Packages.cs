@@ -146,6 +146,21 @@ namespace Docs.Packages
             }));
             // end-snippet
         }
+
+        public static void Passwordless(WebApplicationBuilder builder, Func<CancellationToken, ValueTask<string>> getAccessToken)
+        {
+            // begin-snippet: postgresql-passwordless
+            builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
+            {
+                // No password: each new connection logs in with a token, refreshed before it expires
+                options.ConnectionString = "Host=mydb.postgres.database.azure.com;Database=app;Username=app-identity;SSL Mode=Require";
+                options.ConfigureDataSource = dataSource => dataSource.UsePeriodicPasswordProvider(
+                    (_, cancellationToken) => getAccessToken(cancellationToken),
+                    successRefreshInterval: TimeSpan.FromMinutes(55),
+                    failureRefreshInterval: TimeSpan.FromSeconds(5));
+            }));
+            // end-snippet
+        }
     }
 
     public static class AspNetCore

@@ -55,4 +55,48 @@ public class PostgreSqlConnectionTests
         listen.Host.Should().Be("localhost");
         listen.Database.Should().Be("cache");
     }
+
+    [Fact]
+    public void ConfigureDataSource_ConfiguresTheCommandPoolAndTheListenConnection()
+    {
+        var configured = 0;
+        using var connection = new PostgreSqlConnection("Host=localhost;Database=cache", dataSource =>
+        {
+            configured++;
+            dataSource.ConnectionStringBuilder.Timeout = 3;
+        });
+
+        configured.Should().Be(2);
+        new NpgsqlConnectionStringBuilder(connection.DataSource.ConnectionString).Timeout.Should().Be(3);
+        new NpgsqlConnectionStringBuilder(connection.ListenDataSource.ConnectionString).Timeout.Should().Be(3);
+    }
+
+    [Fact]
+    public void ConfigureDataSource_CannotUndoTheSettingsMethodCacheNeeds()
+    {
+        using var connection = new PostgreSqlConnection("Host=localhost;Database=cache", dataSource =>
+        {
+            dataSource.ConnectionStringBuilder.Enlist = true;
+            dataSource.ConnectionStringBuilder.Pooling = true;
+            dataSource.ConnectionStringBuilder.Multiplexing = true;
+            dataSource.ConnectionStringBuilder.MaxAutoPrepare = 10;
+        });
+        var commands = new NpgsqlConnectionStringBuilder(connection.DataSource.ConnectionString);
+        var listen = new NpgsqlConnectionStringBuilder(connection.ListenDataSource.ConnectionString);
+
+        commands.Enlist.Should().BeFalse("cache commands never join the application's TransactionScope");
+        commands.Multiplexing.Should().BeTrue("the pool is the application's to tune");
+        listen.Pooling.Should().BeFalse();
+        listen.Multiplexing.Should().BeFalse();
+        listen.MaxAutoPrepare.Should().Be(0);
+        listen.Enlist.Should().BeFalse();
+    }
+
+    [Fact]
+    public void WithoutConfigureDataSource_TheListenConnectionIsUnpooled()
+    {
+        using var connection = new PostgreSqlConnection("Host=localhost;Database=cache");
+
+        new NpgsqlConnectionStringBuilder(connection.ListenDataSource.ConnectionString).Pooling.Should().BeFalse();
+    }
 }

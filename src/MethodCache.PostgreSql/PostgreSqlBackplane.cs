@@ -599,7 +599,7 @@ internal sealed class PostgreSqlBackplane : IBackplane, IAsyncDisposable, IDispo
         {
             try
             {
-                var connection = new NpgsqlConnection(_connection.ListenConnectionString);
+                var connection = _connection.ListenDataSource.CreateConnection();
                 await using (connection.ConfigureAwait(false))
                 {
                     connection.Notification += OnNotification;

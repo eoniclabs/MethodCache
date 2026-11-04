@@ -79,30 +79,68 @@ public class MultipleRegistrationTests
     }
 
     [Fact]
-    public void For_SeveralFactoryRegistrations_UsesTheTypeTheLastFactoryCreates()
+    public void For_SeveralRegistrationsTheLastASingletonFactory_UsesTheTypeOfTheInstanceTheAppGets()
     {
         using var provider = Build(services => services
-            .AddScoped<IRates>(_ => new RatesA())
-            .AddScoped<IRates>(_ => new RatesB()));
+            .AddSingleton<IRates>(_ => new RatesA())
+            .AddSingleton<IRates>(_ => new RatesB()));
 
         Assert.Equal(Prefix + TypeB + ":1", provider.GetRequiredService<IMethodCacheKeys>().For<IRates>(rates => rates.Get(1)));
     }
 
-    [Fact]
-    public async Task For_ScopedFactoryWithSlowAsyncDisposal_ReturnsWithoutWaitingForTheDisposal()
+    // A scoped or transient factory may create another type in the caller's scope than in any scope For could create,
+    // so a key with a guessed type could miss the entry it should invalidate
+    [Theory]
+    [InlineData(ServiceLifetime.Scoped)]
+    [InlineData(ServiceLifetime.Transient)]
+    public void For_SeveralRegistrationsTheLastAScopedOrTransientFactory_FailsWithoutCreatingIt(ServiceLifetime lifetime)
     {
-        var disposal = new TaskCompletionSource();
-        var disposed = new TaskCompletionSource();
-        using var provider = Build(services => services
-            .AddScoped<IRates>(_ => new RatesA())
-            .AddScoped<IRates>(_ => new SlowDisposingRates(disposal.Task, disposed)));
+        var created = 0;
+        using var provider = Build(services =>
+        {
+            services.AddSingleton<IRates, RatesA>();
+            services.Add(ServiceDescriptor.Describe(typeof(IRates), _ => { created++; return new RatesB(); }, lifetime));
+        });
+        var keys = provider.GetRequiredService<IMethodCacheKeys>();
 
-        var key = provider.GetRequiredService<IMethodCacheKeys>().For<IRates>(rates => rates.Get(1));
+        var error = Assert.Throws<InvalidOperationException>(() => keys.For<IRates>(rates => rates.Get(1)));
 
-        Assert.Equal(Prefix + "#[MethodCache.Core.Tests]MethodCache.Core.Tests.Core.MultipleRegistrationTests+SlowDisposingRates:1", key);
-        Assert.False(disposed.Task.IsCompleted);
-        disposal.SetResult();
-        await disposed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Contains("registered with a factory", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"Add{lifetime}<IRates, MyRates>()", error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, created);
+    }
+
+    [Fact]
+    public async Task For_ScopedFactoryCreatingAnotherTypePerScope_NeverReturnsAKeyThatMissesTheEntry()
+    {
+        var useB = false;
+        await using var provider = Build(services => services
+            .AddScoped<IRates, RatesA>()
+            .AddScoped<IRates>(_ => useB ? new RatesB() : new SlowDisposingRates(Task.CompletedTask, new())));
+        var keys = provider.GetRequiredService<IMethodCacheKeys>();
+        useB = true;
+        using (var scope = provider.CreateScope()) scope.ServiceProvider.GetRequiredService<IRates>().Get(1);
+
+        Assert.Throws<InvalidOperationException>(() => keys.For<IRates>(rates => rates.Get(1)));
+    }
+
+    [Theory]
+    [InlineData(ServiceLifetime.Singleton)]
+    [InlineData(ServiceLifetime.Scoped)]
+    [InlineData(ServiceLifetime.Transient)]
+    public void MethodId_FactoryRegistrations_CreatesNothing(ServiceLifetime lifetime)
+    {
+        var created = 0;
+        using var provider = Build(services =>
+        {
+            services.AddSingleton<IRates, RatesA>();
+            services.Add(ServiceDescriptor.Describe(typeof(IRates), _ => { created++; return new RatesB(); }, lifetime));
+        });
+
+        var id = provider.GetRequiredService<IMethodCacheKeys>().MethodId<IRates>(rates => rates.Get(0));
+
+        Assert.Equal(MethodCache.Core.PolicyPipeline.Model.MethodIds.For(typeof(IRates), nameof(IRates.Get)), id);
+        Assert.Equal(0, created);
     }
 
     [Fact]

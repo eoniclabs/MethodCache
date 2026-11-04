@@ -54,8 +54,8 @@ namespace MyApp
         public static IReadOnlyList<CacheEntryInfo> ListMethod(IMethodCacheKeys keys, ICacheAdministrator admin)
         {
             // begin-snippet: keys-method-id
-            // "[MyApp]MyApp.IInvoiceService.FindAsync(string)": the arguments don't matter
-            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+            // "[MyApp]MyApp.IInvoiceService.FindAsync(string)": Any<T>.Value stands for any argument
+            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(Any<string>.Value));
             var entries = admin.ListEntries(methodId: methodId);
             // end-snippet
             return entries;
@@ -64,7 +64,7 @@ namespace MyApp
         public static async Task<InvalidationResult> InvalidateMethod(IMethodCacheKeys keys, ICacheAdministrator admin)
         {
             // begin-snippet: keys-invalidate-method
-            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(""));
+            var methodId = keys.MethodId<IInvoiceService>(invoices => invoices.FindAsync(Any<string>.Value));
             var result = await admin.InvalidateMethodAsync(methodId);   // every result of the method, on every instance
             // end-snippet
             return result;

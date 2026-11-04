@@ -4,6 +4,55 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Changes since 1.0.0-rc.3
+
+### Breaking changes since 1.0.0-rc.3
+
+A third API review before 1.0.0 found settings that were accepted and then silently did something else. They now
+fail where they are set. No API is removed.
+
+- `FromAssemblyOf<T>()` and `FromAssembly(...)` choose the module that wins when several assemblies generate the same
+  interface; the services the other modules generate stay cached. Before, they turned caching off for every interface
+  outside the selected assemblies, without a warning. With `AutoRegister`, only the selected modules register missing
+  services, as before.
+- A `Duration` longer than `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) fails where it is set: at
+  startup from `[Cache]`, code or `appsettings.json` (a reload with one is rejected and the previous policies stay),
+  with an `ArgumentException` from a runtime override, and with an `ArgumentOutOfRangeException` from a manual
+  `GetOrCreateAsync` or `GetOrCreateManyAsync` before the factory runs. Before, the entry was removed after
+  `MaxExpiration` instead. Shorten the `Duration`, or raise the limit with `mc.Memory(o => o.MaxExpiration = ...)`.
+  With your own `ICacheManager` nothing changes.
+- A `CacheWhen<T>` for a type the method can't return, such as `CacheWhen<string>` on a method that returns `int`,
+  fails where it is set: at startup from code, and with an `ArgumentException` from
+  `IRuntimeCacheConfigurator.UpsertAsync`, which leaves the policy as it was. Before, the override was accepted and
+  every call of the method threw. A generic method's result type depends on the call, so there the call still throws.
+- `IMethodCacheKeys.For` throws an `InvalidOperationException` when the interface has several registrations and the
+  last one is a scoped or transient factory, which may create another type in each scope. Before, it returned the key
+  of the type the factory created in a scope of its own, which could miss the caller's entry. Register the service with
+  its implementation type, give it a service key of its own, or invalidate by tag.
+
+### Added
+
+- **`MethodCache.PostgreSql`**: `PostgreSqlOptions.ConfigureDataSource` configures MethodCache's
+  `NpgsqlDataSourceBuilder`s, for passwordless login with a token from Microsoft Entra ID or AWS IAM, client
+  certificates or a custom server certificate check. It applies to the connection pool and to the connection that
+  listens for invalidations.
+
+### Fixed
+
+- **`MethodCache`**: `GetOrCreateManyAsync` checks the factory's answer before it caches any of it. An answer that
+  leaves out a key, or is `null`, fails like a factory that throws: keys with a fail-safe value get it, and nothing
+  from the answer is cached. Before, the values for the other keys were cached before the call threw.
+- **`MethodCache`**: `IMethodCacheKeys.MethodId` no longer creates the service; it reads the method from the call.
+
+### Documentation
+
+- [Invalidation](docs/features/invalidation.md#with-several-instances) says what each count of `InvalidationResult`
+  confirms, and [What other instances see](docs/features/distributed-cache.md#what-other-instances-see) how Redis,
+  SQL Server and PostgreSQL catch up after a lost backplane connection.
+
+Code that earlier release candidates generated keeps working. It doesn't name the methods' result types, so for it a
+`CacheWhen<T>` of the wrong type is still reported by the call.
+
 ## 1.0.0-rc.3 (2026-11-04)
 
 The packages are on nuget.org only. GitHub Packages no longer has the MethodCache packages, so remove a

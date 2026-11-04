@@ -24,7 +24,7 @@ builder.Services.AddMethodCache(cache => cache
 | `MaxItems` | 10,000 | The most entries kept, also when a `Weigher` is set |
 | `WeightLimit` | 1000 MB | The most total weight kept; needs a `Weigher` |
 | `Weigher` | none | Returns an entry's cost, for example its size in bytes |
-| `MaxExpiration` | 7 days | No entry lives longer, whatever its duration |
+| `MaxExpiration` | 7 days | No entry lives longer: a longer `Duration` fails where it is set. At most 365 days |
 | `JitterMaxDuration` | zero | Adds a random extra lifetime up to this value, so entries created together don't expire together |
 | `CacheNullValues` | `true` | Caches `null` results like any other value |
 | `MaxHttpBytes` | 100 MiB | The most bytes the HTTP response cache keeps in memory, bodies and headers included. Shared by all HTTP clients and separate from `MaxItems` and `WeightLimit` |

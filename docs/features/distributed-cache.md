@@ -153,9 +153,16 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 
 ## What other instances see
 
-- An invalidation reaches another instance when the backplane delivers it. Until then, and for good if the message is
-  lost or the instance is disconnected from the backplane, that instance serves its in-memory copy until it expires,
-  as without a backplane. Instances without a copy read the distributed cache, which is already right.
+- An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then
+  that instance serves its in-memory copy. Instances without a copy read the distributed cache, which is already
+  right. When an instance loses its backplane connection:
+  - With SQL Server and PostgreSQL, invalidations are rows in a table, so the instance reads the ones it missed when
+    it reconnects. An instance that couldn't read the table for half of `BackplaneRetention` may have missed some, so
+    it clears its whole in-memory cache.
+  - With Redis, a message reaches only the instances connected when it is sent, so the instance clears its whole
+    in-memory cache when its connection comes back.
+  - With `EnableBackplane = false`, no instance hears of another's invalidations: each serves its in-memory copy until
+    it expires.
 - Messages carry no values, so a late, repeated or reordered message only makes an instance read the distributed cache
   again.
 - An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
@@ -212,7 +219,7 @@ Entry keys include the entry format and `SerializerVersion` (default 1); logical
 
 SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
 
-PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server.
+PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server. `ConfigureDataSource` logs in without a password, with a token from Microsoft Entra ID or AWS IAM ([Passwordless login](../../src/MethodCache.PostgreSql/README.md#passwordless-login)).
 
 Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
 

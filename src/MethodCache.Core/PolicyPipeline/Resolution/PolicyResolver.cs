@@ -20,6 +20,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private readonly ConcurrentDictionary<string, PolicyAggregator> _aggregators = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, PolicyResolutionResult> _resolutions = new(StringComparer.Ordinal);
     private readonly IReadOnlyDictionary<string, string[]>? _parameterNames;
+    private readonly PolicyLimits _limits;
     private readonly bool _knowsCachedMethods;
     private readonly List<Task> _watcherTasks = new();
     private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
@@ -47,11 +48,16 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     /// The parameter names of each cached method, which tag templates from code, configuration and runtime overrides
     /// are checked against; without them templates aren't checked.
     /// </param>
+    /// <param name="limits">
+    /// What the cache can honor: the longest duration, and each cached method's result type for checking
+    /// <c>CacheWhen&lt;T&gt;</c>; without them neither is checked.
+    /// </param>
     public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations, ILogger<PolicyResolver>? logger = null,
-        IReadOnlyDictionary<string, string[]>? parameterNames = null)
+        IReadOnlyDictionary<string, string[]>? parameterNames = null, PolicyLimits? limits = null)
     {
         _logger = (ILogger?)logger ?? NullLogger.Instance;
         _parameterNames = parameterNames;
+        _limits = limits ?? PolicyLimits.None;
         if (registrations == null)
         {
             throw new ArgumentNullException(nameof(registrations));
@@ -399,7 +405,18 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private PolicyLoadChecks ChecksFor(LayerKey key)
         => new(
             () => _knowsCachedMethods ? CachedMethodIds() : Array.Empty<string>(),
-            drafts => FindTagProblems(key, drafts.Select(draft => (draft.MethodId, draft.Policy, draft.Fields)), replaceAll: true).FirstOrDefault());
+            drafts => FindTagProblems(key, drafts.Select(draft => (draft.MethodId, draft.Policy, draft.Fields)), replaceAll: true).FirstOrDefault())
+        {
+            MaxDuration = _limits.MaxDuration
+        };
+
+    /// <summary>
+    /// Why a runtime override for <paramref name="methodId"/> can't be honored: a duration longer than the cache
+    /// keeps entries, or a <c>CacheWhen&lt;T&gt;</c> for a type the method's result can never be. <see langword="null"/>
+    /// when it can.
+    /// </summary>
+    internal string? FindOverrideContradiction(string methodId, CachePolicy policy, CachePolicyFields fields)
+        => _limits.Contradiction(methodId, "a runtime override", isMethod: true, policy, fields);
 
     /// <summary>
     /// The first tag template problem a runtime override for <paramref name="methodId"/> would cause, or
@@ -442,6 +459,19 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         {
             throw new InvalidOperationException(
                 $"The tag '{problem.Tag}' set in {problem.Where} reaches the cached method '{problem.MethodId}', but {problem.Reason}.");
+        }
+
+        // Configuration checks its own values as it reads them, so its errors name the configuration path
+        foreach (var (methodId, aggregator) in _aggregators.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
+        {
+            foreach (var layer in aggregator.Layers)
+            {
+                if (layer.Key.Priority == PolicySourcePriority.ConfigurationFiles) continue;
+                if (_limits.Contradiction(methodId, Describe(layer, methodId), !MethodIds.IsDefaults(methodId), layer.Policy, layer.Fields) is { } contradiction)
+                {
+                    throw new InvalidOperationException(contradiction);
+                }
+            }
         }
     }
 
@@ -552,6 +582,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             // Configuration checks its own tags and names their paths, so this is a tag from another configuration
             PolicySourcePriority.ConfigurationFiles => "configuration",
             PolicySourcePriority.RuntimeOverrides => "a runtime override",
+            PolicySourcePriority.Attributes when layer.Policy.Provenance.LastOrDefault()?.SourceId == PolicySourceIds.Attributes => "[Cache]",
             _ => $"the policy source '{layer.Policy.Provenance.LastOrDefault()?.SourceId}'"
         };
     }

@@ -64,8 +64,8 @@ It checks semantic runtime references as well. Frozen vendor binaries exercise c
 regenerating source during ordinary tests, including under Native AOT.
 
 `AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
-with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` when multiple
-modules offer the same interface. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
+with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` to choose the module
+that wins when multiple modules offer the same interface; the other modules' services stay cached. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
 
 Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
 async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses

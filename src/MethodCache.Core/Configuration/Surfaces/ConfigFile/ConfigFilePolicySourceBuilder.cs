@@ -45,8 +45,8 @@ internal static class ConfigFilePolicySourceBuilder
     /// <summary>
     /// Reads the cache policies in <paramref name="sectionName"/>, each with the section it comes from. Throws
     /// <see cref="InvalidOperationException"/> for values that are not valid, so a typo is reported instead of
-    /// silently ignored. With <paramref name="checks"/>, a method that isn't cached and a tag template that doesn't
-    /// fit a cached method it reaches are rejected too.
+    /// silently ignored. With <paramref name="checks"/>, a method that isn't cached, a <c>Duration</c> longer than the
+    /// cache keeps entries and a tag template that doesn't fit a cached method it reaches are rejected too.
     /// </summary>
     public static IReadOnlyList<ConfiguredPolicy> Parse(IConfiguration configuration, string sectionName, PolicyLoadChecks? checks = null)
     {
@@ -121,6 +121,14 @@ internal static class ConfigFilePolicySourceBuilder
             }
 
             policies.Add(new ConfiguredPolicy(ParseSection(methodSection, MethodSettings).Build(methodId, methodSection["Notes"]), methodSection));
+        }
+
+        if (checks?.MaxDuration is { } maxDuration &&
+            policies.FirstOrDefault(policy => policy.Draft.Policy.Duration > maxDuration) is { } tooLong)
+        {
+            throw InvalidValue(tooLong.Section, "Duration", tooLong.Section["Duration"] ?? string.Empty,
+                $"at most MethodCacheMemoryOptions.MaxExpiration ({maxDuration}), the longest MethodCache keeps an entry; " +
+                "shorten the Duration, or raise MaxExpiration with mc.Memory(o => o.MaxExpiration = ...)");
         }
 
         if (checks?.FindTagProblem(policies.Select(static policy => policy.Draft).ToArray()) is { } tagProblem)

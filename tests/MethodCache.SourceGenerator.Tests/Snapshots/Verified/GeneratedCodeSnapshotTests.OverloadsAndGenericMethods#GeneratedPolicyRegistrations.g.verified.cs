@@ -19,10 +19,12 @@ namespace MethodCache.Generated
                 builder.Method("[SnapshotApp]App.ICatalog.Get(int)", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultType = typeof(global::System.String),
                 });
                 builder.Method("[SnapshotApp]App.ICatalog.Get(string)", new string[] { "slug" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultType = typeof(global::System.String),
                 });
                 builder.Method("[SnapshotApp]App.ICatalog.Load", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
