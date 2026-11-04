@@ -47,6 +47,9 @@ public class PolicyContractTests(RedisFixture redis)
         services.Configure<DistributedCacheOptions>(o => o.KeyPrefix = "policy-fault:" + Guid.NewGuid().ToString("N") + ":");
         services.AddMethodCache(mc => mc.UseRedis(redis.RequireConfiguration()));
         await using var provider = services.BuildServiceProvider();
+        // A pub/sub connection that comes up after the backplane subscribed counts as a reconnect, which clears memory
+        // the contract expects to keep
+        await RedisFixture.WaitForSubscriberAsync(await provider.GetRequiredService<RedisConnection>().GetAsync());
         var store = Assert.IsAssignableFrom<IAtomicInvalidationStore>(provider.GetRequiredKeyedService<IDistributedCache>("MethodCache"));
         await NativePolicyFaultContract.RunAsync(scenario, store, provider.GetRequiredKeyedService<IBackplane>("MethodCache"));
     }
