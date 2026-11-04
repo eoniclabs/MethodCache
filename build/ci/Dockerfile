@@ -1,6 +1,6 @@
 # The Linux build image for MethodCache CI: .NET 10 SDK, clang for Native AOT, Python, jq and lsof.
 # The SDK base is pinned by digest; a Dockerfile change selects a new owned build image.
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends clang zlib1g-dev python3 jq lsof \
