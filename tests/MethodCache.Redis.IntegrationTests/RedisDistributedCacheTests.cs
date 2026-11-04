@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MethodCache.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -7,6 +8,11 @@ namespace MethodCache.Redis.IntegrationTests;
 /// <summary>
 /// Two service providers sharing one Redis stand in for two application instances.
 /// </summary>
+/// <remarks>
+/// A write tells the other instances to drop the key from memory. One that gets that message while it loads the key
+/// doesn't trust what it read and loads the key itself, so an instance that must read another's value is created
+/// after the write: pub/sub never delivers a message sent before the instance subscribed.
+/// </remarks>
 [Collection(RedisCollection.Name)]
 public sealed class RedisDistributedCacheTests : IAsyncLifetime
 {
@@ -53,7 +59,11 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
         // concern connected nodes, not a first pub/sub handshake retiring an in-flight initial load.
         await RedisFixture.WaitForSubscriberAsync(connection);
 
-        return provider.GetRequiredService<ICacheManager>();
+        var manager = provider.GetRequiredService<ICacheManager>();
+        // Pub/sub keeps nothing for later: an invalidation sent before the node has subscribed never reaches it
+        var backplane = provider.GetRequiredKeyedService<IBackplane>(MethodCache.Infrastructure.OwnedServices.Key);
+        await WaitUntil(() => Task.FromResult(backplane.ConnectionState == BackplaneState.Connected));
+        return manager;
     }
 
     private static async Task<string> Get(ICacheManager node, string key, string value, params string[] tags) =>
@@ -75,9 +85,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     public async Task SecondInstance_ReadsTheValueTheFirstStored()
     {
         var first = await CreateNode();
-        var second = await CreateNode();
-
         await Get(first, "key", "from first");
+        var second = await CreateNode(); // after the write: see the remarks above
 
         (await Get(second, "key", "from second")).Should().Be("from first");
     }
@@ -86,8 +95,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     public async Task TagInvalidation_ReachesTheOtherInstancesMemory()
     {
         var first = await CreateNode();
-        var second = await CreateNode();
         await Get(first, "key", "v1", "users");
+        var second = await CreateNode(); // after the write: see the remarks above
         (await Get(second, "key", "unused", "users")).Should().Be("v1");
 
         await first.InvalidateByTagsAsync("users");
@@ -99,8 +108,8 @@ public sealed class RedisDistributedCacheTests : IAsyncLifetime
     public async Task KeyInvalidation_ReachesTheOtherInstancesMemory()
     {
         var first = await CreateNode();
-        var second = await CreateNode();
         await Get(first, "key", "v1");
+        var second = await CreateNode(); // after the write: see the remarks above
         (await Get(second, "key", "unused")).Should().Be("v1");
 
         await first.InvalidateByKeysAsync("key");
