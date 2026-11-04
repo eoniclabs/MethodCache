@@ -95,7 +95,9 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 
 ## When the write happens somewhere else
 
-`[CacheInvalidate]` covers writes that go through the cached interface. When the data changes somewhere else, such as
+`[CacheInvalidate]` covers writes that go through the cached interface. With Entity Framework Core,
+[`MethodCache.EntityFrameworkCore`](entity-framework-core.md) invalidates after every commit that changes a mapped
+entity, wherever the write happens. When the data changes somewhere else, such as
 an endpoint or a command that writes to the database directly, or a transaction that commits after the
 `[CacheInvalidate]` method has returned, invalidate after the write or the commit. Get the tag from
 `IMethodCacheKeys.Tag`, so you never build it by hand:
@@ -141,20 +143,24 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 
 ### After a database transaction
 
-Invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
+With Entity Framework Core, [`MethodCache.EntityFrameworkCore`](entity-framework-core.md) does this for you. With
+another way to write, such as Dapper or ADO.NET, invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
 reader cache the old data again in between, and a rollback after it has nothing to undo. Pass
 `CancellationToken.None`: once the data has changed, the invalidation must happen even if the caller has gone.
 
 <!-- snippet: invalidation-after-commit -->
 ```cs
-public static async Task RenameAsync(int id, string name, AppDb db, ICacheManager cache, IMethodCacheKeys keys,
-    CancellationToken ct)
+public static async Task RenameAsync(int id, string name, DbConnection connection, ICacheManager cache,
+    IMethodCacheKeys keys, CancellationToken ct)
 {
-    await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+    await using (var transaction = await connection.BeginTransactionAsync(ct))
     {
-        var product = await db.Products.SingleAsync(p => p.Id == id, ct);
-        product.Name = name;
-        await db.SaveChangesAsync(ct);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "update products set name = @name where id = @id";
+        AddParameter(command, "@name", name);
+        AddParameter(command, "@id", id);
+        await command.ExecuteNonQueryAsync(ct);
         await transaction.CommitAsync(ct);
     }
 

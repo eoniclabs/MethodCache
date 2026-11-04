@@ -18,6 +18,7 @@ rules, for when a guide isn't enough.
 - [Cache keys](features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
 - [Invalidation](features/invalidation.md): tags with argument templates, keys and whole methods.
+- [Entity Framework Core](features/entity-framework-core.md): invalidate after every commit that changes a mapped entity.
 - [Fail-safe](features/fail-safe.md): serve the last good value when a dependency fails or is slow.
 - [Conditional caching](features/conditional-caching.md): store only the results you want to keep.
 - [Configuration](features/configuration.md): defaults, groups, `appsettings.json` with live reload, runtime overrides.
@@ -60,7 +61,8 @@ rules, for when a guide isn't enough.
 
 [Redis](../src/MethodCache.Redis/README.md), [SQL Server](../src/MethodCache.SqlServer/README.md),
 [PostgreSQL](../src/MethodCache.PostgreSql/README.md), [ASP.NET Core](../src/MethodCache.AspNetCore/README.md), [OpenTelemetry](../src/MethodCache.OpenTelemetry/README.md),
-[HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md).
+[HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md),
+[Entity Framework Core](../src/MethodCache.EntityFrameworkCore/README.md).
 [Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
 between releases.
 

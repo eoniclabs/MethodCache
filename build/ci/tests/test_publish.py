@@ -8,7 +8,7 @@ import unittest
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / 'publish.sh'
 PACKAGES = ('MethodCache', 'MethodCache.Redis', 'MethodCache.SqlServer', 'MethodCache.PostgreSql',
             'MethodCache.Serialization.MessagePack', 'MethodCache.AspNetCore',
-            'MethodCache.OpenTelemetry', 'MethodCache.HttpCaching')
+            'MethodCache.OpenTelemetry', 'MethodCache.HttpCaching', 'MethodCache.EntityFrameworkCore')
 
 FAKE_TOOL = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -87,7 +87,7 @@ class PublishTests(unittest.TestCase):
             self.assertNotIn('nuget-test-key', result.stdout + result.stderr)
             return result, calls
 
-    def test_nuget_fetches_one_secret_after_pack_and_pushes_eight_without_key_arguments(self):
+    def test_nuget_fetches_one_secret_after_pack_and_pushes_nine_without_key_arguments(self):
         result, calls = self.run_publish()
         self.assertEqual(0, result.returncode, result.stderr)
         pack = next(c for c in calls if c['tool'] == 'dotnet' and c['args'][0] == 'pack')
@@ -97,7 +97,7 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(1, len(secrets))
         self.assertGreater(calls.index(secrets[0]), calls.index(pack))
         pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
-        self.assertEqual(8, len(pushes))
+        self.assertEqual(len(PACKAGES), len(pushes))
         for push in pushes:
             self.assertTrue(push['nuget_key'])
             self.assertFalse(push['bws_token'])
@@ -117,7 +117,7 @@ class PublishTests(unittest.TestCase):
         pack = next(c for c in calls if c['tool'] == 'dotnet' and c['args'][0] == 'pack')
         self.assertFalse(pack['symbol_key'])
         pushes = [c for c in calls if c['args'][:2] == ['nuget', 'push']]
-        self.assertEqual(8, len(pushes))
+        self.assertEqual(len(PACKAGES), len(pushes))
         self.assertTrue(all(c['symbol_key'] for c in pushes))
         self.assertTrue(all('--symbol-api-key' not in c['args'] for c in pushes))
 

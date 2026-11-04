@@ -9,7 +9,7 @@
 #   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS), on net10.0
 #   build/ci/jobs.sh cultures   the unit tests under tr-TR and sv-SE
 #   build/ci/jobs.sh aot        publish and run tests/MethodCache.AotSmokeTest with Native AOT
-#   build/ci/jobs.sh packages   pack all 8 packages, install them in apps (needs METHODCACHE_REDIS_URL,
+#   build/ci/jobs.sh packages   pack all 9 packages, install them in apps (needs METHODCACHE_REDIS_URL,
 #                               METHODCACHE_SQLSERVER_CONNECTION and METHODCACHE_POSTGRESQL_CONNECTION)
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
 #   build/ci/jobs.sh diffcoverage  at least 80% of the lines a change adds under src/ are covered by tests
@@ -98,10 +98,10 @@ job_packages() {
   python3 build/ci/check_package_contracts.py artifacts/packages
   python3 build/ci/check_package_restore.py artifacts/packages
 
-  echo "== All 8 packages were packed"
+  echo "== All 9 packages were packed"
   for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.PostgreSql \
                  MethodCache.Serialization.MessagePack MethodCache.AspNetCore MethodCache.OpenTelemetry \
-                 MethodCache.HttpCaching; do
+                 MethodCache.HttpCaching MethodCache.EntityFrameworkCore; do
     compgen -G "artifacts/packages/$package.[0-9]*.nupkg" > /dev/null || { echo "Missing $package"; exit 1; }
   done
 

@@ -1,0 +1,7 @@
+#nullable enable
+MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions
+MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions.Entity<TEntity>(params string![]! tagTemplates) -> MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions!
+Microsoft.EntityFrameworkCore.MethodCacheDbContextExtensions
+static Microsoft.EntityFrameworkCore.MethodCacheDbContextExtensions.InvalidateAfterCommit(this Microsoft.EntityFrameworkCore.DbContext! context, params string![]! tags) -> void
+Microsoft.Extensions.DependencyInjection.EntityFrameworkCoreMethodCacheBuilderExtensions
+static Microsoft.Extensions.DependencyInjection.EntityFrameworkCoreMethodCacheBuilderExtensions.UseEntityFrameworkCore<TContext>(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions!>? configure = null) -> MethodCache.MethodCacheBuilder!

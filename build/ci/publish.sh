@@ -6,7 +6,7 @@
 #   build/ci/publish.sh v1.3.0-beta
 #
 # Run it on Megatron (or any machine with the .NET 10 SDK, BWS and a .NET SDK 10.0.300+ publishing CLI). It
-# packs the 8 packages from a fresh clone of the tag, so the local checkout does not matter. Running it again is safe: versions already published are skipped.
+# packs the 9 packages from a fresh clone of the tag, so the local checkout does not matter. Running it again is safe: versions already published are skipped.
 set +x
 set -euo pipefail
 
@@ -83,7 +83,7 @@ dotnet pack "$work/src/MethodCache.sln" --configuration Release -p:PublicRelease
 packages=()
 for package in MethodCache MethodCache.Redis MethodCache.SqlServer MethodCache.PostgreSql \
                MethodCache.Serialization.MessagePack MethodCache.AspNetCore MethodCache.OpenTelemetry \
-               MethodCache.HttpCaching; do
+               MethodCache.HttpCaching MethodCache.EntityFrameworkCore; do
   file="$work/packages/$package.$version.nupkg"
   if [ ! -f "$file" ]; then
     echo "Missing $package $version. Does version.json at $tag say $version?" >&2
@@ -108,4 +108,4 @@ done
     "$publish_dotnet" nuget push "$file" --source https://api.nuget.org/v3/index.json --skip-duplicate
   done
 )
-echo "Published $version to nuget.org. Verify the eight packages and their eoniclabs ownership after indexing."
+echo "Published $version to nuget.org. Verify the nine packages and their eoniclabs ownership after indexing."

@@ -5,6 +5,8 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using MethodCache;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 if (args is ["--seed-isolation", ..]) return await SeedIsolationCheck.WorkerAsync(args);
@@ -22,6 +24,7 @@ var checks = new (string Name, Func<Task<string?>> Run)[]
     ("ASP.NET Core admin endpoints and health check", AspNetCoreCheck.RunAsync),
     ("OpenTelemetry metrics and spans, mc.Telemetry and IMethodCacheKeys", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
+    ("Entity Framework Core: invalidation after a commit", EntityFrameworkCoreCheck.RunAsync),
 };
 
 var failed = 0;
@@ -434,5 +437,69 @@ public static class HttpCachingCheck
         }
 
         return tagged == 3 && notModified == 2 ? null : $"revalidation: {tagged} requests, {notModified} answered 304";
+    }
+}
+
+public sealed class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+}
+
+public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options)
+{
+    public DbSet<Product> Products => Set<Product>();
+}
+
+public interface IProductNames
+{
+    [Cache(Duration = "00:10:00", Tags = new[] { "product:{id}" })]
+    Task<string?> GetAsync(int id);
+}
+
+public sealed class ProductNames(ShopDb db) : IProductNames
+{
+    public Task<string?> GetAsync(int id)
+        => db.Products.Where(p => p.Id == id).Select(p => (string?)p.Name).SingleOrDefaultAsync();
+}
+
+public static class EntityFrameworkCoreCheck
+{
+    public static async Task<string?> RunAsync()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<ShopDb>(o => o.UseSqlite(connection));
+        services.AddScoped<IProductNames, ProductNames>();
+        services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef.Entity<Product>("product:{Id}")));
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDb>();
+            await db.Database.EnsureCreatedAsync();
+            db.Products.Add(new Product { Id = 1, Name = "Before" });
+            await db.SaveChangesAsync();
+        }
+
+        async Task<string?> ReadAsync()
+        {
+            await using var scope = provider.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<IProductNames>().GetAsync(1);
+        }
+
+        if (await ReadAsync() != "Before") return "the first read did not return the row";
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDb>();
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            db.Products.Single(p => p.Id == 1).Name = "After";
+            await db.SaveChangesAsync();
+            if (await ReadAsync() != "Before") return "the cache was invalidated before the commit";
+            await transaction.CommitAsync();
+        }
+        return await ReadAsync() == "After" ? null : "the commit did not invalidate product:1";
     }
 }

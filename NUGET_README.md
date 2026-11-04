@@ -38,7 +38,8 @@ from memory until it expires or `RenameAsync(42, ...)` invalidates user 42, and 
   live) or runtime overrides.
 - **Third-party clients, HTTP responses, distributed caches.** Cache an SDK client's own interface, `HttpClient`
   responses (`MethodCache.HttpCaching`), and share results through Redis, SQL Server or PostgreSQL
-  (`MethodCache.Redis`, `MethodCache.SqlServer`, `MethodCache.PostgreSql`). Install add-ons at the same version.
+  (`MethodCache.Redis`, `MethodCache.SqlServer`, `MethodCache.PostgreSql`). `MethodCache.EntityFrameworkCore`
+  invalidates after Entity Framework Core commits. Install add-ons at the same version.
 - **Built for production.** Stampede protection, fail-safe, a size-bounded memory cache, admin endpoints, a health
   check and OpenTelemetry tracing and metrics.
 
@@ -49,7 +50,8 @@ from memory until it expires or `RenameAsync(42, ...)` invalidates user 42, and 
 - **When does `[CacheInvalidate]` run?** After the method, or its task, succeeds. Never when it throws.
 - **The data changes somewhere else.** Invalidate after the write with
   `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"))`.
-  `keys.Tag` formats the tag exactly as the cached method does.
+  `keys.Tag` formats the tag exactly as the cached method does. With Entity Framework Core, `MethodCache.EntityFrameworkCore`
+  invalidates the tags of the entities a commit changed.
 - **Can I build the tag string myself?** Only with `MethodCacheKeys.Part` around each value: a `Guid` is written
   without hyphens, an enum as its number, and `:` is escaped. Analyzer MC0024 warns about hand-built tags.
 - **How do I cache null, or skip some results?** `CacheNullValues` sets it for every method; `CacheWhen` decides per

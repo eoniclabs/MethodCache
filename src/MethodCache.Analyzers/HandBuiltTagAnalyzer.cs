@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace MethodCache.Analyzers
 {
     /// <summary>
-    /// MC0024: an interpolated tag passed to <c>InvalidateTagAsync</c> or <c>InvalidateTagsAsync</c> formats an argument
+    /// MC0024: an interpolated tag passed to <c>InvalidateTagAsync</c>, <c>InvalidateTagsAsync</c> or <c>InvalidateAfterCommit</c> formats an argument
     /// differently from the tags MethodCache builds, so the invalidation can silently match nothing.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -50,7 +50,7 @@ namespace MethodCache.Analyzers
                 IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
                 _ => null
             };
-            if (name is not ("InvalidateTagAsync" or "InvalidateTagsAsync")) return;
+            if (name is not ("InvalidateTagAsync" or "InvalidateTagsAsync" or "InvalidateAfterCommit")) return;
             if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is not IMethodSymbol method ||
                 !IsMethodCacheInvalidation(method))
             {
@@ -73,6 +73,11 @@ namespace MethodCache.Analyzers
         {
             var type = method.ReducedFrom?.ContainingType ?? method.ContainingType;
             if (type is null) return false;
+            // MethodCache.EntityFrameworkCore: db.InvalidateAfterCommit(tags)
+            if (method.Name == "InvalidateAfterCommit")
+            {
+                return type is { Name: "MethodCacheDbContextExtensions", ContainingNamespace: { Name: "EntityFrameworkCore", ContainingNamespace: { Name: "Microsoft", ContainingNamespace.IsGlobalNamespace: true } } };
+            }
             if (IsMethodCacheType(type, "ICacheManager") || IsMethodCacheType(type, "ICacheAdministrator") ||
                 IsMethodCacheType(type, "CacheManagerExtensions"))
             {

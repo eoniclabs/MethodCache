@@ -3,8 +3,8 @@
   <!--
     Installs every MethodCache add-on package from ../../artifacts/packages, the way users get them, and checks that
     each one works in a real app: Redis, SQL Server and PostgreSQL shared between two instances (JSON and
-    MessagePack), the ASP.NET Core admin endpoints and health check, OpenTelemetry metrics and spans, and HttpClient
-    caching. Pack the solution into that folder first. Redis, SQL Server and PostgreSQL come from
+    MessagePack), the ASP.NET Core admin endpoints and health check, OpenTelemetry metrics and spans, HttpClient
+    caching, and invalidation after an Entity Framework Core commit. Pack the solution into that folder first. Redis, SQL Server and PostgreSQL come from
     METHODCACHE_REDIS_URL, METHODCACHE_SQLSERVER_CONNECTION and METHODCACHE_POSTGRESQL_CONNECTION. Not part of the
     solution.
   -->
@@ -28,6 +28,8 @@
     <PackageReference Include="MethodCache.AspNetCore" Version="$(MethodCachePackageVersion)" />
     <PackageReference Include="MethodCache.OpenTelemetry" Version="$(MethodCachePackageVersion)" />
     <PackageReference Include="MethodCache.HttpCaching" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.EntityFrameworkCore" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
 
 </Project>

@@ -111,6 +111,13 @@ builder.Services.AddMethodCache();                               // after your r
   `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag))`.
   Never build a tag with string interpolation (`$"price:{model}"`): tags escape `:` and `\` in strings and write a
   `Guid` without hyphens and an enum as its number, so a hand-built tag can silently match nothing (MC0024).
+- With Entity Framework Core, add package `MethodCache.EntityFrameworkCore` and map each entity type to the tags of
+  the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
+  A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
+  them, also for rows updated or deleted without loading them, `OwnsOne`/`OwnsMany` types and many-to-many links;
+  don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
+  call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
+  without one.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
@@ -132,4 +139,6 @@ builder.Services.AddMethodCache();                               // after your r
 - `MethodCache`: also `NoOpCacheManager` (sealed).
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`. Everything else is a method on its builder:
   `FromConfiguration`, `Distributed(...)`, `Telemetry(...)`, `UseRedis` (package `MethodCache.Redis`), `UseSqlServer`
-  (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`) and `UseMessagePack` (package `MethodCache.Serialization.MessagePack`).
+  (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`), `UseMessagePack` (package `MethodCache.Serialization.MessagePack`)
+  and `UseEntityFrameworkCore<TContext>` (package `MethodCache.EntityFrameworkCore`).
+- `Microsoft.EntityFrameworkCore`: `InvalidateAfterCommit` on a `DbContext` (package `MethodCache.EntityFrameworkCore`).
