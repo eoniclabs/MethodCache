@@ -59,7 +59,7 @@ internal partial class InMemoryCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version, CancellationToken cancellationToken)
         => TryGetPreparedAsync<T>(MethodCacheKeys.StoredKey(key, version), cancellationToken);
 
     internal ValueTask<CacheLookupResult<T>> TryGetPreparedAsync<T>(string key, CancellationToken cancellationToken)
@@ -92,7 +92,7 @@ internal partial class InMemoryCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version, CancellationToken cancellationToken)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         return InvalidateTargetsAsync(ValidateTargets(keys).Select(key => MethodCacheKeys.StoredKey(key, version)), false, cancellationToken);

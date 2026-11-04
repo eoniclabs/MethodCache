@@ -23,6 +23,42 @@ namespace Docs.Invalidation
     }
     // end-snippet
 
+    // begin-snippet: invalidation-elsewhere-interface
+    public interface IPriceSource
+    {
+        const string RateTag = "price:{provider}:{model}";
+
+        [Cache(Duration = "00:05:00", Tags = [RateTag])]
+        Task<decimal?> GetRateAsync(string provider, string model);
+    }
+    // end-snippet
+
+    public sealed class PriceDb
+    {
+        public Dictionary<(string, string), decimal> Rates { get; } = [];
+
+        public Task SaveRateAsync(string provider, string model, decimal rate)
+        {
+            Rates[(provider, model)] = rate;
+            return Task.CompletedTask;
+        }
+    }
+
+    public static class PriceEndpoints
+    {
+        // begin-snippet: invalidation-elsewhere
+        public static async Task UpdateRateAsync(string provider, string model, decimal rate,
+            PriceDb db, ICacheManager cache, IMethodCacheKeys keys)
+        {
+            await db.SaveRateAsync(provider, model, rate);   // written directly, not through IPriceSource
+
+            // The tag GetRateAsync(provider, model) stored its result under, formatted exactly as the decorator does
+            await cache.InvalidateTagAsync(
+                keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag));
+        }
+        // end-snippet
+    }
+
     public static class FromCode
     {
         public static async Task Tags(ICacheManager cache)

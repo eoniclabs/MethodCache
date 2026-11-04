@@ -77,6 +77,10 @@ public interface ICacheAdministrator
     /// while the distributed clear is queued for recovery. When the application registered its own
     /// <see cref="ICacheManager"/>, only HTTP responses are removed; clear the method results through that manager.
     /// </summary>
+    /// <remarks>
+    /// In an integration test that writes to the database directly, past the cached service, call this after the write
+    /// so the next call reads the new data; or invalidate only the affected tags or keys through <see cref="ICacheManager"/>.
+    /// </remarks>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Reports bounded local invalidation recovery queues.</summary>

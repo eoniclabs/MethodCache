@@ -105,6 +105,11 @@ builder.Services.AddMethodCache();                               // after your r
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
   `cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`. For every entry of one method, use
   `ICacheAdministrator.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))`.
+- When data changes outside the cached interface (an endpoint or command writing to the database, or after a
+  transaction commits), invalidate after the write with a tag from `IMethodCacheKeys.Tag`:
+  `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag))`.
+  Never build a tag with string interpolation (`$"price:{model}"`): tags escape `:` and `\` in strings and write a
+  `Guid` without hyphens and an enum as its number, so a hand-built tag can silently match nothing (MC0024).
 - Several registrations of one interface with different implementation types each cache their own results.
 - Use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
 - `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL Server/PostgreSQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.
@@ -776,6 +781,48 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 - To remove every entry of one method, pass its id to `ICacheAdministrator.InvalidateMethodAsync`; get the id from
   `IMethodCacheKeys.MethodId` ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#building-a-key-yourself)).
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag and by method ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
+
+## When the write happens somewhere else
+
+`[CacheInvalidate]` covers writes that go through the cached interface. When the data changes somewhere else, such as
+an endpoint or a command that writes to the database directly, or a transaction that commits after the
+`[CacheInvalidate]` method has returned, invalidate after the write or the commit. Get the tag from
+`IMethodCacheKeys.Tag`, so you never build it by hand:
+
+```cs
+public interface IPriceSource
+{
+    const string RateTag = "price:{provider}:{model}";
+
+    [Cache(Duration = "00:05:00", Tags = [RateTag])]
+    Task<decimal?> GetRateAsync(string provider, string model);
+}
+```
+
+```cs
+public static async Task UpdateRateAsync(string provider, string model, decimal rate,
+    PriceDb db, ICacheManager cache, IMethodCacheKeys keys)
+{
+    await db.SaveRateAsync(provider, model, rate);   // written directly, not through IPriceSource
+
+    // The tag GetRateAsync(provider, model) stored its result under, formatted exactly as the decorator does
+    await cache.InvalidateTagAsync(
+        keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag));
+}
+```
+
+- `keys.Tag<T>(call, template)` fills in the template from the call's arguments exactly as the decorator does. The
+  method never runs. The template must be one of the method's tags, or it throws and lists them, so a template that
+  drifts away from the method fails in your tests instead of silently matching nothing. A `const` on the interface
+  lets the attribute and the call share it.
+- For one entry, `cache.InvalidateKeyAsync(keys.For<IPriceSource>(s => s.GetRateAsync(provider, model)))` removes
+  only that call's result.
+- Don't build the tag with string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped in
+  strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for a
+  model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
+  [MC0024](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024).
+- A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
+  works too: call it after the write.
 
 ## With several instances
 
@@ -2529,6 +2576,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
+| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 
 ## MC0001
 
@@ -2708,6 +2756,31 @@ An explicitly supplied `Version` is negative. Omit it to inherit the configured 
 it, or longer. The refresh window starts that long before an entry expires, so every hit would reload the value. Use a
 window shorter than both, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead
 off.
+
+## MC0024
+
+A tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync` contains a value that
+interpolation writes differently from the tags MethodCache stores, so the invalidation can match nothing and the old
+value stays cached, without an error:
+
+```cs
+// The cached entry is tagged price:ollama:gemma3\:4b, so this removes nothing
+await cache.InvalidateTagAsync($"price:{provider}:{model}");
+```
+
+Tag templates write values in one canonical way: `:` and `\` escaped in strings, a `Guid` as 32 digits without
+hyphens, an enum as its number, `true` and `false` in lower case, and numbers and dates in the invariant culture
+(dates in ISO 8601). Whole numbers come out the same, so `$"user:{id}"` with an `int` is not reported.
+
+Build the tag from a call to the cached method instead, so the template and the formatting come from the method:
+
+```cs
+await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"));
+```
+
+Or format each value with `MethodCacheKeys.Part`, which the code fix does:
+`$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
+A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
 
 
 ---
@@ -3634,6 +3707,31 @@ representation. Configure the serializer for your model. Increment method `Versi
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Breaking changes since 1.0.0-rc.4
+
+- `ICacheManager.TryGetAsync` and `ICacheManager.InvalidateKeysAsync` take every argument: `(key, version,
+  cancellationToken)`. Extension methods give the short forms, so a cancellation token no longer needs a named
+  argument: `TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key, cancellationToken)` and
+  `InvalidateKeysAsync(keys, cancellationToken)`, and with a version `TryGetAsync<T>(key, 2, cancellationToken)`,
+  `InvalidateKeyAsync(key, 2, cancellationToken)`. Calls that passed `version: null` drop it; your own
+  `ICacheManager` keeps working.
+
+### Added
+
+- `IMethodCacheKeys.Tag<T>(call, template)` returns the tag a call to a cached method stores its result under, filled in
+  exactly as the decorator fills it in. Use it to invalidate when the data changes outside the cached interface, such
+  as in an endpoint that writes to the database directly:
+  `cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"))`.
+  The template must be one of the method's tags.
+- Analyzer MC0024 warns when a tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync`
+  writes a value differently from MethodCache's tags, such as a string with `:` (`gemma3:4b`), a `Guid`, an enum or a
+  `bool`. Such an invalidation matched nothing, without an error. The code fix wraps the value in
+  `MethodCacheKeys.Part`.
+- The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
+  how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
 
 ## 1.0.0-rc.4 (2026-11-04)
 

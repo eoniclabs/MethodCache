@@ -93,6 +93,52 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
   `IMethodCacheKeys.MethodId` ([Cache keys](keys.md#building-a-key-yourself)).
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag and by method ([Monitoring](monitoring.md)).
 
+## When the write happens somewhere else
+
+`[CacheInvalidate]` covers writes that go through the cached interface. When the data changes somewhere else, such as
+an endpoint or a command that writes to the database directly, or a transaction that commits after the
+`[CacheInvalidate]` method has returned, invalidate after the write or the commit. Get the tag from
+`IMethodCacheKeys.Tag`, so you never build it by hand:
+
+<!-- snippet: invalidation-elsewhere-interface -->
+```cs
+public interface IPriceSource
+{
+    const string RateTag = "price:{provider}:{model}";
+
+    [Cache(Duration = "00:05:00", Tags = [RateTag])]
+    Task<decimal?> GetRateAsync(string provider, string model);
+}
+```
+<!-- endSnippet -->
+
+<!-- snippet: invalidation-elsewhere -->
+```cs
+public static async Task UpdateRateAsync(string provider, string model, decimal rate,
+    PriceDb db, ICacheManager cache, IMethodCacheKeys keys)
+{
+    await db.SaveRateAsync(provider, model, rate);   // written directly, not through IPriceSource
+
+    // The tag GetRateAsync(provider, model) stored its result under, formatted exactly as the decorator does
+    await cache.InvalidateTagAsync(
+        keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag));
+}
+```
+<!-- endSnippet -->
+
+- `keys.Tag<T>(call, template)` fills in the template from the call's arguments exactly as the decorator does. The
+  method never runs. The template must be one of the method's tags, or it throws and lists them, so a template that
+  drifts away from the method fails in your tests instead of silently matching nothing. A `const` on the interface
+  lets the attribute and the call share it.
+- For one entry, `cache.InvalidateKeyAsync(keys.For<IPriceSource>(s => s.GetRateAsync(provider, model)))` removes
+  only that call's result.
+- Don't build the tag with string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped in
+  strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for a
+  model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
+  [MC0024](../user-guide/DIAGNOSTICS.md#mc0024).
+- A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
+  works too: call it after the write.
+
 ## With several instances
 
 With [Redis, SQL Server or PostgreSQL](distributed-cache.md), invalidating a tag or key removes it from the distributed

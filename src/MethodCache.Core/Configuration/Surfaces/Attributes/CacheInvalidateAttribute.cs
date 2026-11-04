@@ -1,19 +1,18 @@
 namespace MethodCache
 {
     /// <summary>
-    /// Marks a method to automatically invalidate cache entries when executed.
-    /// Use this attribute on write operations (Create, Update, Delete) to keep cache consistent.
+    /// Removes the cached entries with any of <see cref="Tags"/> after this interface method has completed
+    /// successfully. Put it on the methods that change data (create, update, delete).
     /// </summary>
     /// <remarks>
-    /// CacheInvalidateAttribute enables automatic cache invalidation based on tags.
-    /// When a method decorated with this attribute executes, all cache entries with matching tags are removed.
-    ///
-    /// Common patterns:
-    /// - Invalidate by entity type (e.g., "users", "products")
-    /// - Invalidate by specific entity (e.g., "user:123")
-    /// - Invalidate by feature area (e.g., "catalog", "reports")
-    ///
-    /// This works seamlessly with [Cache] attribute's Tags property for automatic cache management.
+    /// <para>The entries are removed after the method returns, or after its <c>Task</c> or <c>ValueTask</c> completes,
+    /// and only when it succeeds: if it throws, nothing is removed. This instance's memory is cleared before the call
+    /// returns to the caller; with a distributed cache, other instances drop their copies when the invalidation message
+    /// reaches them.</para>
+    /// <para>When the data changes somewhere else, such as an endpoint that writes to the database directly or a
+    /// transaction that commits after this method returns, invalidate after the write or commit with
+    /// <c>ICacheManager.InvalidateTagAsync</c> and a tag from <see cref="IMethodCacheKeys.Tag{TService}"/>, or a key from
+    /// <see cref="IMethodCacheKeys.For{TService}"/>.</para>
     /// </remarks>
     /// <example>
     /// Basic usage for write operations:
@@ -41,19 +40,13 @@ namespace MethodCache
     public sealed class CacheInvalidateAttribute : Attribute
     {
         /// <summary>
-        /// Gets or sets the tags identifying which cache entries to invalidate when this method executes.
-        /// All cache entries with any of these tags will be removed from the cache.
+        /// The tags of the entries to remove once the method has completed successfully. An entry with any of them is
+        /// removed. Tags match exactly; there are no wildcards.
         /// </summary>
         /// <remarks>
-        /// Tag matching strategies:
-        /// - Exact match: Invalidates entries with exactly matching tags
-        /// - Coordinate with [Cache] attribute tags for automatic cache coherency
-        /// - Use parameterized tags (e.g., "user:{userId}") for entity-specific invalidation
-        ///
-        /// Best practices:
-        /// - Keep tags consistent between [Cache] and [CacheInvalidate] attributes
-        /// - Use broad tags for full cache clears (e.g., "all-products")
-        /// - Use specific tags for targeted invalidation (e.g., "product:123")
+        /// A template such as <c>"user:{userId}"</c> is filled in from this method's parameter with that name, written the
+        /// same way as on the cached entries (see <see cref="CacheAttribute.Tags"/>), so <c>UpdateUserAsync(42, ...)</c>
+        /// removes the entries tagged <c>user:42</c>.
         /// </remarks>
         /// <example>
         /// <code>

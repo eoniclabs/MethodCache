@@ -16,7 +16,7 @@ public sealed partial class NoOpCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version, CancellationToken cancellationToken)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         cancellationToken.ThrowIfCancellationRequested();
@@ -25,7 +25,7 @@ public sealed partial class NoOpCacheManager
     }
 
     /// <inheritdoc />
-    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default)
+    public ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version, CancellationToken cancellationToken)
     {
         if (version < 0) throw new ArgumentOutOfRangeException(nameof(version));
         return Invalidate(keys, cancellationToken);

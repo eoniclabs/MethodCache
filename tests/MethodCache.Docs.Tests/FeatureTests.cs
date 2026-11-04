@@ -194,6 +194,37 @@ public class FeatureTests(ITestOutputHelper output)
         Assert.Equal(8, orders.Loads);
     }
 
+    private sealed class Prices(PriceDb db) : IPriceSource
+    {
+        public int Calls;
+
+        public Task<decimal?> GetRateAsync(string provider, string model)
+        {
+            Calls++;
+            return Task.FromResult<decimal?>(db.Rates.TryGetValue((provider, model), out var rate) ? rate : null);
+        }
+    }
+
+    [Fact]
+    public async Task Invalidation_WriteElsewhere_TagFromKeysRemovesTheEntry()
+    {
+        var db = new PriceDb();
+        var prices = new Prices(db);
+        var services = new ServiceCollection();
+        services.AddSingleton<IPriceSource>(prices);
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        var source = provider.GetRequiredService<IPriceSource>();
+
+        // A model name with a colon, which a hand-built "price:ollama:gemma3:4b" would miss
+        Assert.Null(await source.GetRateAsync("ollama", "gemma3:4b"));
+        await PriceEndpoints.UpdateRateAsync("ollama", "gemma3:4b", 0.5m, db,
+            provider.GetRequiredService<ICacheManager>(), provider.GetRequiredService<IMethodCacheKeys>());
+
+        Assert.Equal(0.5m, await source.GetRateAsync("ollama", "gemma3:4b"));
+        Assert.Equal(2, prices.Calls);
+    }
+
     [Fact]
     public async Task Invalidation_FromCode_ByTagKeyAndPattern()
     {

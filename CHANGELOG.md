@@ -4,6 +4,31 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Breaking changes since 1.0.0-rc.4
+
+- `ICacheManager.TryGetAsync` and `ICacheManager.InvalidateKeysAsync` take every argument: `(key, version,
+  cancellationToken)`. Extension methods give the short forms, so a cancellation token no longer needs a named
+  argument: `TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key, cancellationToken)` and
+  `InvalidateKeysAsync(keys, cancellationToken)`, and with a version `TryGetAsync<T>(key, 2, cancellationToken)`,
+  `InvalidateKeyAsync(key, 2, cancellationToken)`. Calls that passed `version: null` drop it; your own
+  `ICacheManager` keeps working.
+
+### Added
+
+- `IMethodCacheKeys.Tag<T>(call, template)` returns the tag a call to a cached method stores its result under, filled in
+  exactly as the decorator fills it in. Use it to invalidate when the data changes outside the cached interface, such
+  as in an endpoint that writes to the database directly:
+  `cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"))`.
+  The template must be one of the method's tags.
+- Analyzer MC0024 warns when a tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync`
+  writes a value differently from MethodCache's tags, such as a string with `:` (`gemma3:4b`), a `Guid`, an enum or a
+  `bool`. Such an invalidation matched nothing, without an error. The code fix wraps the value in
+  `MethodCacheKeys.Part`.
+- The XML documentation says when `[CacheInvalidate]` runs, how tag arguments are written, what `Weigher` receives,
+  how to skip caching null for one method, and how to clear the cache after a test writes to the database directly.
+
 ## 1.0.0-rc.4 (2026-11-04)
 
 ### Breaking changes since 1.0.0-rc.3

@@ -98,10 +98,17 @@ namespace MethodCache
         internal MemoryCacheEvictionPolicy EvictionPolicy { get; set; } = MemoryCacheEvictionPolicy.TinyLfu;
 
         /// <summary>
-        /// Optional function returning the weight of an entry (for example its size in bytes). When set, the cache is
-        /// bounded by <see cref="WeightLimit"/> measured in these units as well as by <see cref="MaxItems"/>.
-        /// Must be fast, thread-safe and return a non-negative value.
+        /// Returns the weight of an entry, for example its size in bytes: <c>(key, value) =&gt; weight</c>, where
+        /// <c>key</c> is the entry's stored key and <c>value</c> the cached result, which can be <c>null</c>. When set,
+        /// the cache is bounded by <see cref="WeightLimit"/> measured in these units as well as by <see cref="MaxItems"/>.
+        /// It is called once when an entry is stored, and must be fast, thread-safe and return a non-negative value.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// options.Weigher = (key, value) =&gt; value is string text ? text.Length * 2 : 64;
+        /// options.WeightLimit = 200 * 1024 * 1024;   // about 200 MB
+        /// </code>
+        /// </example>
         public Func<string, object?, long>? Weigher { get; set; }
 
         /// <summary>Throws when the options contradict each other, so the cache fails at startup instead of on use.</summary>
@@ -115,8 +122,13 @@ namespace MethodCache
         /// <summary>
         /// When true, <c>null</c> results are cached like any other value, so a method returning null is not
         /// re-executed on every call (as Microsoft's HybridCache and FusionCache do). Default true; set it to false
-        /// when a null result means "not there yet" and the next call should try again.
+        /// only when null means "not there yet" for every cached method.
         /// </summary>
+        /// <remarks>
+        /// To skip null for one method only, leave this on and give that method a condition:
+        /// <c>config.Method((IProducts p) =&gt; p.FindAsync(Any&lt;int&gt;.Value)).CacheWhen(product =&gt; product is not null)</c>
+        /// in <c>AddMethodCache</c>. Other methods keep caching null, so they need no placeholder value for "none".
+        /// </remarks>
         public bool CacheNullValues { get; set; } = true;
 
         private TimeSpan _jitterMaxDuration = TimeSpan.Zero;

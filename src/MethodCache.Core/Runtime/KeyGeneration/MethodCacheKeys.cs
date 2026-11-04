@@ -141,7 +141,7 @@ public static class MethodCacheKeys
     /// <summary>Formats a <see cref="decimal"/> argument.</summary>
     public static string Part(decimal value) => value.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Formats a <see cref="Guid"/> argument.</summary>
+    /// <summary>Formats a <see cref="Guid"/> argument as 32 digits without hyphens (format <c>N</c>).</summary>
     public static string Part(Guid value) => value.ToString("N");
 
     /// <summary>
