@@ -86,7 +86,9 @@ public class Endpoint
 
             var (_, fixedSource) = await FixAsync(source);
 
-            Assert.Contains("$\"plan:{global::MethodCache.MethodCacheKeys.Part(tenant)}\"", fixedSource);
+            // Inside an interpolation, "::" would start a format clause, so the call needs parentheses
+            Assert.Contains("$\"plan:{(global::MethodCache.MethodCacheKeys.Part(tenant))}\"", fixedSource);
+            Assert.Empty(await AnalyzeAsync(fixedSource));
         }
 
         [Fact]

@@ -125,6 +125,8 @@ namespace MethodCache.Analyzers
         {
             var model = context.SemanticModel;
             var expression = hole.Expression;
+            // A globally qualified call has to be in parentheses inside a hole: (global::MethodCache.MethodCacheKeys.Part(x))
+            while (expression is ParenthesizedExpressionSyntax parenthesized) expression = parenthesized.Expression;
             if (IsPartCall(model, expression, context)) return;
 
             var constant = model.GetConstantValue(expression, context.CancellationToken);
