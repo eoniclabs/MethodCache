@@ -215,6 +215,7 @@ public static class Generic
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"with gone as (delete from products returning id) select count(*) from gone\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"selected_products_cleanup()\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(sql);")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync($\"select 1 {sql}\");")]
         public async Task Raw_SQL_that_may_write_is_reported(string write)
         {
             Assert.Single(await AnalyzeAsync(Method(write)));
@@ -284,6 +285,54 @@ public sealed class Endpoint
     {
         await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
         await changes.ChangedAsync(""products"");
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_generic_InvalidatesCache_interface_method_counts_through_its_implementation()
+        {
+            var source = Usings + @"
+public interface ICacheChanges
+{
+    [InvalidatesCache]
+    Task ChangedAsync<TKey>(TKey key);
+}
+
+public sealed class CacheChanges<TScope> : ICacheChanges
+{
+    public Task ChangedAsync<TKey>(TKey key) => Task.CompletedTask;
+}
+
+public sealed class Endpoint
+{
+    public async Task HandleAsync(CacheChanges<Endpoint> changes, IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        await changes.ChangedAsync(42);
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_write_inside_an_explicit_implementation_of_an_InvalidatesCache_method_is_not_reported()
+        {
+            var source = Usings + @"
+public interface IPublications
+{
+    [InvalidatesCache]
+    Task RevokeAsync(IQueryable<Product> products);
+}
+
+public sealed class Publications : IPublications
+{
+    async Task IPublications.RevokeAsync(IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
     }
 }";
 

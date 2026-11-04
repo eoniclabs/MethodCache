@@ -138,7 +138,8 @@ internal sealed class EntityTags
         DeleteTemplates = deleteTemplates;
         Principals = principals;
         var key = entityType.FindPrimaryKey()?.Properties ?? [];
-        NeedsStoredValues = templates.Concat(deleteTemplates).SelectMany(static t => t.Properties).Any(p => !key.Contains(p));
+        TemplatesNeedStoredValues = templates.SelectMany(static t => t.Properties).Any(p => !key.Contains(p));
+        DeleteTemplatesNeedStoredValues = deleteTemplates.SelectMany(static t => t.Properties).Any(p => !key.Contains(p));
     }
 
     /// <summary>Invalidated when a row is added, changed or deleted.</summary>
@@ -151,7 +152,13 @@ internal sealed class EntityTags
     public IForeignKey[] Principals { get; }
 
     /// <summary>A template reads a property outside the primary key, which a row attached without loading may not hold.</summary>
-    public bool NeedsStoredValues { get; }
+    public bool NeedsStoredValues => TemplatesNeedStoredValues || DeleteTemplatesNeedStoredValues;
+
+    /// <summary>A template in <see cref="Templates"/> reads a property outside the primary key.</summary>
+    public bool TemplatesNeedStoredValues { get; }
+
+    /// <summary>A template in <see cref="DeleteTemplates"/> reads a property outside the primary key.</summary>
+    public bool DeleteTemplatesNeedStoredValues { get; }
 }
 
 /// <summary>One tag template: literal text with placeholders resolved to entity properties.</summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -61,20 +62,23 @@ namespace MethodCache.Analyzers
         private static void AnalyzeBlock(OperationBlockStartAnalysisContext context, Lazy<EntityTagMapping> mapping)
         {
             var writes = new List<IInvocationOperation>();
-            var invalidations = new List<IInvocationOperation>();
+            var calls = new List<IInvocationOperation>();
             context.RegisterOperationAction(operation =>
             {
                 var invocation = (IInvocationOperation)operation.Operation;
                 if (IsBypassingWrite(invocation.TargetMethod)) writes.Add(invocation);
-                else if (IsInvalidation(invocation.TargetMethod)) invalidations.Add(invocation);
+                else calls.Add(invocation);
             }, OperationKind.Invocation);
 
             context.RegisterOperationBlockEndAction(end =>
             {
                 if (writes.Count == 0 || ImplementsCacheInvalidate(end.OwningSymbol)) return;
+                // Looked up only in the few methods with a write, since it reads attributes and interfaces
+                List<IInvocationOperation>? invalidations = null;
                 foreach (var write in writes)
                 {
                     if (!WritesCachedRows(write, mapping)) continue;
+                    invalidations ??= calls.Where(call => IsInvalidation(call.TargetMethod)).ToList();
                     var functions = EnclosingFunctions(write);
                     // An invalidation in the same function, or in a function around it (such as the method that runs
                     // an execution strategy's lambda), covers the write
@@ -107,17 +111,23 @@ namespace MethodCache.Analyzers
 
         private static bool IsSelect(IInvocationOperation write)
         {
-            var sql = write.Arguments.FirstOrDefault(a => a.Parameter?.Name == "sql")?.Value;
+            var argument = write.Arguments.FirstOrDefault(a => a.Parameter?.Name == "sql");
+            var sql = argument?.Value;
             while (sql is IConversionOperation conversion) sql = conversion.Operand;
-            string? text = null;
-            if (sql?.ConstantValue is { HasValue: true, Value: string constant }) text = constant;
-            else if (sql is IInterpolatedStringOperation interpolated)
+            if (sql?.ConstantValue is { HasValue: true, Value: string constant }) return SqlStartsWithSelect(constant);
+            if (sql is not IInterpolatedStringOperation interpolated) return false;
+
+            // ExecuteSql makes each value a parameter, never SQL. ExecuteSqlRaw takes a string, so a value is SQL text
+            // that could hold anything.
+            var raw = argument!.Parameter!.Type.SpecialType == SpecialType.System_String;
+            var text = new StringBuilder();
+            foreach (var part in interpolated.Parts)
             {
-                // The parts between the values; a value is a parameter, never SQL
-                text = string.Concat(interpolated.Parts.Select(part =>
-                    part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } } ? value : "0"));
+                if (part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } }) text.Append(value);
+                else if (raw) return false;
+                else text.Append('0');
             }
-            return text != null && SqlStartsWithSelect(text);
+            return SqlStartsWithSelect(text.ToString());
         }
 
         internal static bool SqlStartsWithSelect(string sql)
@@ -172,11 +182,13 @@ namespace MethodCache.Analyzers
             if (HasCacheInvalidate(method) || HasInvalidatesCache(method)) return true;
             var type = method.ContainingType;
             if (type == null) return false;
+            // Also an explicit implementation, which has another name than the interface method
             foreach (var @interface in type.AllInterfaces)
             {
                 foreach (var member in @interface.GetMembers().OfType<IMethodSymbol>())
                 {
-                    if (HasCacheInvalidate(member) && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member), method))
+                    if ((HasCacheInvalidate(member) || HasMethodCacheAttribute(member, "InvalidatesCacheAttribute"))
+                        && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member), method))
                         return true;
                 }
             }
@@ -202,8 +214,9 @@ namespace MethodCache.Analyzers
             {
                 foreach (var member in @interface.GetMembers(method.Name).OfType<IMethodSymbol>())
                 {
+                    // Compared as definitions, so a generic method or a method of a generic type matches too
                     if (HasMethodCacheAttribute(member, "InvalidatesCacheAttribute")
-                        && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member), method))
+                        && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method.OriginalDefinition))
                         return true;
                 }
             }

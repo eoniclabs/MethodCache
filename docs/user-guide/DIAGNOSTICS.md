@@ -291,7 +291,8 @@ results that read those rows stay until they expire.
   for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
   type is reported.
 - Raw SQL is reported unless it is a single statement that starts with `select`, such as
-  `select pg_advisory_xact_lock(...)`. SQL in a variable is reported.
+  `select pg_advisory_xact_lock(...)`. SQL in a variable, or with values interpolated into `ExecuteSqlRaw`, is
+  reported.
 
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027

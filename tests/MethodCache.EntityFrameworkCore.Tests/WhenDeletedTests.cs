@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MethodCache.EntityFrameworkCore.Tests;
 
@@ -52,6 +53,21 @@ public sealed class WhenDeletedTests
         }
 
         (await shop.Reads.NameBySkuAsync("ham:mer")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_row_changed_without_loading_it_is_not_read_for_its_tags_for_a_deleted_row()
+    {
+        var commands = new CommandLog();
+        await using var shop = await Shop.CreateAsync(tags: ef => ef.Entity<Product>(p => p.WhenDeleted("sku:{Sku}")),
+            configure: services => services.ConfigureDbContext<ShopDb>(o => o.AddInterceptors(commands)));
+        await using var db = await shop.CreateDbAsync();
+        db.Products.Update(new Product { Id = 42, Name = "Renamed", Sku = "ham:mer", CategoryId = 1 });
+        commands.Texts.Clear();
+
+        await db.SaveChangesAsync();
+
+        commands.Texts.Should().NotContain(text => text.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

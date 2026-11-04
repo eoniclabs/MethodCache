@@ -338,8 +338,10 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         save.Rows.Add(row);
         if (takeOld)
         {
-            // Attached without loading: its original values may not be the stored row, which is read before the save
-            if (save.Collecting && tags.NeedsStoredValues && _unloaded.Contains(entry.Entity)) row.NeedsRead = true;
+            // Attached without loading: its original values may not be the stored row, which is read before the save.
+            // A changed row isn't read for its tags for a deleted row alone.
+            var needsStored = tags.TemplatesNeedStoredValues || (deleting && tags.DeleteTemplatesNeedStoredValues);
+            if (save.Collecting && needsStored && _unloaded.Contains(entry.Entity)) row.NeedsRead = true;
             else AddTags(tags.Templates, new Values(entry.OriginalValues), save.Tags);
         }
         if (deleting) MarkDeleted(save, row);
