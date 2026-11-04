@@ -1,7 +1,7 @@
 {
-  "source_commit": "ad880bb0cf2ddf341c2a2cc8a7942cb2e8babd70",
+  "source_commit": "cab184d690392a67114770d0592f5ab9fe735c9a",
   "source_path": "src/MethodCache.Core/PublicAPI.Unshipped.txt",
-  "source_sha256": "7581427196e3518db4e4da02c0efe23bf0880ed067852fbfa18177386e52661b",
+  "source_sha256": "a1545c3dcf73c59db3daf58c4c0bf21614d9c3645a245487878357494920cfda",
   "declarations": [
     "MethodCache.Generated.CachedMethod",
     "MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall",
