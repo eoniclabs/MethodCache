@@ -3,6 +3,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.EventLog;
 
 namespace MethodCache.EntityFrameworkCore.Tests;
 
@@ -183,6 +185,10 @@ public sealed class Shop : IAsyncDisposable
         }
 
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+        // On Windows the default host logs warnings to the Event Log, which a build agent signed in over SSH may not
+        // write to. A failed write throws out of EF Core's error logging, in place of the exception SaveChanges
+        // reports and before EF Core calls the interceptors.
+        if (OperatingSystem.IsWindows()) builder.Logging.AddFilter<EventLogLoggerProvider>(static _ => false);
         var services = builder.Services;
         // MethodCache first: the order against AddDbContext doesn't matter
         services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(tags ?? DefaultTags));

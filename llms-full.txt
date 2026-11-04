@@ -4266,7 +4266,7 @@ representation. Configure the serializer for your model. Increment method `Versi
 
 Invalidates MethodCache tags when Entity Framework Core commits a change. Map an entity type to the tags of the cached
 methods that read it, and every save that adds, changes or deletes one of its rows invalidates them, after the data
-is committed and never on a rollback.
+is committed, never before.
 
 Install it at the same version as `MethodCache`.
 
