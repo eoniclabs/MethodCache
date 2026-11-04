@@ -4,6 +4,26 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Changed
+
+- Analyzer MC0027 reports `ExecuteUpdate` and `ExecuteDelete` only on the entity types the project maps with
+  `ef.Entity<T>(...)`, and on their base and derived types, so writes to tables that nothing caches are no longer
+  reported. A project that maps no type, such as a data layer apart from the startup project, is still reported on
+  every type. Raw SQL that is one statement starting with `select`, such as an advisory lock, is no longer reported.
+
+### Added
+
+- `ef.Entity<User>(user => user.WhenDeleted("posts"))` maps tags that are invalidated only when a row is deleted, with
+  the deleted row's values in the braces. Use it for rows the database deletes with the entity, through
+  `ON DELETE CASCADE` or a trigger, when the entity is saved too often to invalidate them on every change.
+  `user.Tags(...)` in the same call maps tags for any change. A type mapped only with `WhenDeleted` is reported by
+  MC0027 for `ExecuteDelete` alone.
+- `[InvalidatesCache]` marks a method of your own that invalidates, such as a helper around
+  `ICacheManager.InvalidateTagsAsync`. MC0027 counts a call to it as the invalidation and doesn't report the writes
+  inside it.
+
 ## 1.0.0-rc.5 (2026-11-04)
 
 ### Breaking changes since 1.0.0-rc.4

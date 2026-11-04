@@ -120,9 +120,12 @@ builder.Services.AddMethodCache();                               // after your r
   the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
   A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
   them, also for rows updated or deleted without loading them, `OwnsOne`/`OwnsMany` types and many-to-many links;
-  don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
-  call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
-  without one.
+  don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
+  deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
+  on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
+  (MC0027, on mapped types only, and on raw SQL that isn't a single `select`), call `db.InvalidateAfterCommit(tag)`
+  inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
+  invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
@@ -366,9 +369,18 @@ interface whose methods commit their own transaction and carry `[CacheInvalidate
 read before and after it. ([Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#mapping-entities-to-tags))
 
 **My endpoint writes with `ExecuteUpdateAsync`. Why the warning MC0027?**
-It changes rows without EF Core's change tracker, so no entity tags are known for them. Inside a transaction, add
-`db.InvalidateAfterCommit(tag)`; without one, call `ICacheManager.InvalidateTagAsync` after the write.
-([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+It changes rows of a type you map with `ef.Entity<T>(...)` without EF Core's change tracker, so no entity tags are
+known for them. Inside a transaction, add `db.InvalidateAfterCommit(tag)`; without one, call
+`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless the project
+maps no type at all. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**I invalidate through a helper of my own. How do I tell MC0027?**
+Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't
+reported. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
+`ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
+when one is changed. ([Rows the database deletes with a row](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
 
 **Does the Entity Framework Core package work with Cosmos DB or MongoDB?**
 Yes, entity tags and `InvalidateAfterCommit` act on `SaveChanges`. A MongoDB transaction you begin yourself is
@@ -1195,9 +1207,29 @@ startup, because it needs something only a request has, the first save checks th
 Map each entity to the tags of every cached method whose result reads it. A method that reads several tables needs
 a tag that each of their entities invalidates, such as `top-sellers` above for order lines.
 
+### Rows the database deletes with a row
+
 Rows the database changes by itself aren't seen: rows that `ON DELETE CASCADE` removes when the context hadn't loaded
 them, and rows a trigger writes. Give the cached methods that read them a tag that the parent entity invalidates too,
 such as `category:{CategoryId}` on products for a method that lists a category with its products.
+
+When the parent is saved often for reasons that change no cached result, such as a customer whose last sign-in is
+stored, map those tags with `WhenDeleted`. They are invalidated only when a row of that type is deleted, with the
+deleted row's values in the braces:
+
+```cs
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
+    .Entity<Product>("product:{Id}", "category:{CategoryId}")
+    .Entity<OrderLine>("top-sellers")
+    // Every sign-in saves the customer, and changes no cached result. A deleted customer does: the
+    // database deletes their order lines, which the context never loaded
+    .Entity<Customer>(customer => customer.WhenDeleted("top-sellers"))));
+```
+
+`Tags(...)` in the same call maps tags for any change, the same as `Entity<Customer>("...")`, so
+`customer => customer.Tags("customer:{Id}").WhenDeleted("top-sellers")` maps both. A type mapped only with
+`WhenDeleted` doesn't invalidate anything for an added or changed row. A change to an `OwnsOne` or `OwnsMany` type
+or to a many-to-many link doesn't reach those tags either, since it doesn't delete the row they belong to.
 
 ## When the tags are invalidated
 
@@ -1239,7 +1271,28 @@ public static async Task MoveAsync(int id, int categoryId, ShopDb db, Cancellati
 
 `ExecuteUpdate`, `ExecuteDelete` and `Database.ExecuteSql…` change rows without loading them, so no entity tags are
 known for them. Warning [MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) reports such a write when the method around it
-doesn't invalidate anything, also through a call to a `[CacheInvalidate]` method.
+doesn't invalidate anything:
+
+- `ExecuteUpdate` and `ExecuteDelete` on a type the project maps with `Entity<T>(...)`, or on a type it derives from
+  or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
+  tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
+  data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
+- `Database.ExecuteSql…`, unless the SQL is one statement that starts with `select`, such as an advisory lock.
+  MethodCache can't tell which tables other SQL writes.
+
+A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
+your own marked `[InvalidatesCache]` counts as the invalidation:
+
+```cs
+public static class CacheChanges
+{
+    // Invalidates through the app's own plumbing: MC0027 counts a call to it
+    [InvalidatesCache]
+    public static void Changed(this HttpContext http, string tag) => ...;
+}
+```
+
+A method marked `[InvalidatesCache]` isn't reported for the writes inside it either.
 
 Inside a transaction, queue the tags with `InvalidateAfterCommit`. They are invalidated with the entity tags after the
 commit, and dropped on a rollback:
@@ -3377,6 +3430,13 @@ Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUp
 loading them, so EF Core's change tracker never sees the rows, and no entity tags are invalidated for them. Cached
 results that read those rows stay until they expire.
 
+- `ExecuteUpdate` and `ExecuteDelete` are reported on the entity types that the project maps with
+  `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
+  for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
+  type is reported.
+- Raw SQL is reported unless it is a single statement that starts with `select`, such as
+  `select pg_advisory_xact_lock(...)`. SQL in a variable is reported.
+
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
 ```
@@ -3385,9 +3445,10 @@ Invalidate the tags of the rows it changes, in the same method or in a method ar
 execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
 committed with `ICacheManager.InvalidateTagsAsync(...)`
 ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
-A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation. The warning is not reported
-in the implementation of a `[CacheInvalidate]` method either, which invalidates its own tags.
-When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.
+A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation, and so does a call to a method
+of your own marked `[InvalidatesCache]`, such as a helper that invalidates through the app's own plumbing. The warning
+is not reported inside either kind of method, since they invalidate themselves.
+When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.
 
 
 ---
@@ -4280,8 +4341,12 @@ Install it at the same version as `MethodCache`.
   delete the row without loading it first.
 - **The same tags as your methods.** `"product:{Id}"` on the entity matches `"product:{id}"` on a `[Cache]` method,
   formatted the same way, and a name that is not a property stops the host at startup.
-- **A warning where it can't help.** `ExecuteUpdate`, `ExecuteDelete` and raw SQL go past the change tracker; analyzer
-  MC0027 reports them when the method doesn't invalidate.
+- **Rows the database deletes for you.** `Entity<User>(user => user.WhenDeleted("posts"))` invalidates tags only when
+  a user is deleted, for rows that `ON DELETE CASCADE` removes with it, while a user saved on every sign-in clears
+  nothing.
+- **A warning where it can't help.** `ExecuteUpdate` and `ExecuteDelete` on a mapped type and raw SQL go past the
+  change tracker; analyzer MC0027 reports them when the method doesn't invalidate. Mark your own invalidation helpers
+  `[InvalidatesCache]` and a call to them counts.
 
 ## Usage
 
@@ -4333,6 +4398,26 @@ MongoDB. The full guide, with when exactly each tag is invalidated, is
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Changed
+
+- Analyzer MC0027 reports `ExecuteUpdate` and `ExecuteDelete` only on the entity types the project maps with
+  `ef.Entity<T>(...)`, and on their base and derived types, so writes to tables that nothing caches are no longer
+  reported. A project that maps no type, such as a data layer apart from the startup project, is still reported on
+  every type. Raw SQL that is one statement starting with `select`, such as an advisory lock, is no longer reported.
+
+### Added
+
+- `ef.Entity<User>(user => user.WhenDeleted("posts"))` maps tags that are invalidated only when a row is deleted, with
+  the deleted row's values in the braces. Use it for rows the database deletes with the entity, through
+  `ON DELETE CASCADE` or a trigger, when the entity is saved too often to invalidate them on every change.
+  `user.Tags(...)` in the same call maps tags for any change. A type mapped only with `WhenDeleted` is reported by
+  MC0027 for `ExecuteDelete` alone.
+- `[InvalidatesCache]` marks a method of your own that invalidates, such as a helper around
+  `ICacheManager.InvalidateTagsAsync`. MC0027 counts a call to it as the invalidation and doesn't report the writes
+  inside it.
 
 ## 1.0.0-rc.5 (2026-11-04)
 

@@ -286,6 +286,13 @@ Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUp
 loading them, so EF Core's change tracker never sees the rows, and no entity tags are invalidated for them. Cached
 results that read those rows stay until they expire.
 
+- `ExecuteUpdate` and `ExecuteDelete` are reported on the entity types that the project maps with
+  `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
+  for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
+  type is reported.
+- Raw SQL is reported unless it is a single statement that starts with `select`, such as
+  `select pg_advisory_xact_lock(...)`. SQL in a variable is reported.
+
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
 ```
@@ -294,6 +301,7 @@ Invalidate the tags of the rows it changes, in the same method or in a method ar
 execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
 committed with `ICacheManager.InvalidateTagsAsync(...)`
 ([Writes the change tracker doesn't see](../features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
-A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation. The warning is not reported
-in the implementation of a `[CacheInvalidate]` method either, which invalidates its own tags.
-When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.
+A call to a `[CacheInvalidate]` method of a cached interface counts as an invalidation, and so does a call to a method
+of your own marked `[InvalidatesCache]`, such as a helper that invalidates through the app's own plumbing. The warning
+is not reported inside either kind of method, since they invalidate themselves.
+When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.

@@ -31,6 +31,7 @@ internal sealed class EntityTagMap
     public static EntityTagMap Build(IModel model, Type contextType, EntityFrameworkCoreOptions options)
     {
         var mapped = new Dictionary<IReadOnlyEntityType, EntityTagTemplate[]>();
+        var mappedDeleted = new Dictionary<IReadOnlyEntityType, EntityTagTemplate[]>();
         var errors = new List<string>();
         foreach (var (clrType, templates) in options.Entities)
         {
@@ -40,7 +41,8 @@ internal sealed class EntityTagMap
                 errors.Add($"{clrType.Name} is not an entity type of {contextType.Name}.");
                 continue;
             }
-            mapped[entityType] = templates.Select(template => EntityTagTemplate.Parse(template, entityType, errors)).ToArray();
+            mapped[entityType] = templates.Changed.Select(template => EntityTagTemplate.Parse(template, entityType, errors)).ToArray();
+            mappedDeleted[entityType] = templates.Deleted.Select(template => EntityTagTemplate.Parse(template, entityType, errors)).ToArray();
         }
         if (errors.Count > 0)
         {
@@ -49,8 +51,27 @@ internal sealed class EntityTagMap
                 string.Join(Environment.NewLine, errors.Select(static error => "- " + error)));
         }
 
-        // A derived entity type invalidates the tags of every mapped type it derives from
-        var templatesByType = new Dictionary<IReadOnlyEntityType, EntityTagTemplate[]>();
+        var templatesByType = Inherited(model, mapped);
+        var deletedByType = Inherited(model, mappedDeleted);
+        // Only tags for any change reach an owner: a change to an owned or join row doesn't delete its owner
+        var principals = FindPrincipals(model, templatesByType);
+        var byEntityType = new Dictionary<IReadOnlyEntityType, EntityTags>();
+        foreach (var entityType in model.GetEntityTypes())
+        {
+            var templates = templatesByType.GetValueOrDefault(entityType) ?? [];
+            var deleted = deletedByType.GetValueOrDefault(entityType) ?? [];
+            var foreignKeys = principals.GetValueOrDefault(entityType) ?? [];
+            if (templates.Length > 0 || deleted.Length > 0 || foreignKeys.Length > 0)
+                byEntityType[entityType] = new EntityTags(entityType, templates, deleted, foreignKeys);
+        }
+        return new EntityTagMap(byEntityType);
+    }
+
+    /// <summary>A derived entity type invalidates the tags of every mapped type it derives from.</summary>
+    private static Dictionary<IReadOnlyEntityType, EntityTagTemplate[]> Inherited(IModel model,
+        Dictionary<IReadOnlyEntityType, EntityTagTemplate[]> mapped)
+    {
+        var byType = new Dictionary<IReadOnlyEntityType, EntityTagTemplate[]>();
         foreach (var entityType in model.GetEntityTypes())
         {
             var templates = new List<EntityTagTemplate>();
@@ -58,18 +79,9 @@ internal sealed class EntityTagMap
             {
                 if (mapped.TryGetValue(type, out var own)) templates.AddRange(own);
             }
-            if (templates.Count > 0) templatesByType[entityType] = templates.ToArray();
+            if (templates.Count > 0) byType[entityType] = templates.ToArray();
         }
-
-        var principals = FindPrincipals(model, templatesByType);
-        var byEntityType = new Dictionary<IReadOnlyEntityType, EntityTags>();
-        foreach (var entityType in model.GetEntityTypes())
-        {
-            var templates = templatesByType.GetValueOrDefault(entityType) ?? [];
-            var foreignKeys = principals.GetValueOrDefault(entityType) ?? [];
-            if (templates.Length > 0 || foreignKeys.Length > 0) byEntityType[entityType] = new EntityTags(entityType, templates, foreignKeys);
-        }
-        return new EntityTagMap(byEntityType);
+        return byType;
     }
 
     /// <summary>
@@ -119,15 +131,21 @@ internal sealed class EntityTagMap
 /// <summary>What a change to one entity type invalidates.</summary>
 internal sealed class EntityTags
 {
-    public EntityTags(IReadOnlyEntityType entityType, EntityTagTemplate[] templates, IForeignKey[] principals)
+    public EntityTags(IReadOnlyEntityType entityType, EntityTagTemplate[] templates, EntityTagTemplate[] deleteTemplates,
+        IForeignKey[] principals)
     {
         Templates = templates;
+        DeleteTemplates = deleteTemplates;
         Principals = principals;
         var key = entityType.FindPrimaryKey()?.Properties ?? [];
-        NeedsStoredValues = templates.SelectMany(static t => t.Properties).Any(p => !key.Contains(p));
+        NeedsStoredValues = templates.Concat(deleteTemplates).SelectMany(static t => t.Properties).Any(p => !key.Contains(p));
     }
 
+    /// <summary>Invalidated when a row is added, changed or deleted.</summary>
     public EntityTagTemplate[] Templates { get; }
+
+    /// <summary>Invalidated only when a row is deleted, with the deleted row's values.</summary>
+    public EntityTagTemplate[] DeleteTemplates { get; }
 
     /// <summary>Foreign keys to an owner or to each side of a many-to-many join, whose tags a change invalidates too.</summary>
     public IForeignKey[] Principals { get; }

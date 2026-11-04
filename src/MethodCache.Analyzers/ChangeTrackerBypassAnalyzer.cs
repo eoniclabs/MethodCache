@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -9,9 +11,9 @@ using Microsoft.CodeAnalysis.Operations;
 namespace MethodCache.Analyzers
 {
     /// <summary>
-    /// Reports MC0027: in a project that uses MethodCache.EntityFrameworkCore, an <c>ExecuteUpdate</c>,
-    /// <c>ExecuteDelete</c> or raw SQL write goes past EF Core's change tracker, so no entity tags are invalidated for
-    /// it, and the method around it doesn't invalidate anything either.
+    /// Reports MC0027: in a project that uses MethodCache.EntityFrameworkCore, an <c>ExecuteUpdate</c> or
+    /// <c>ExecuteDelete</c> on a mapped entity type, or a raw SQL write, goes past EF Core's change tracker, so no entity
+    /// tags are invalidated for it, and the method around it doesn't invalidate anything either.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class ChangeTrackerBypassAnalyzer : DiagnosticAnalyzer
@@ -25,7 +27,7 @@ namespace MethodCache.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] method.",
+            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. ExecuteUpdate and ExecuteDelete are reported for the entity types the project maps with ef.Entity<T>(...), their base and derived types (ExecuteDelete also for types mapped only with WhenDeleted), or for every type when the project maps none. Raw SQL is reported unless it is a single statement that starts with select. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] or [InvalidatesCache] method.",
             helpLinkUri: HelpLink("MC0027"));
 
         private static readonly ImmutableHashSet<string> QueryableWrites = ImmutableHashSet.Create(
@@ -49,11 +51,14 @@ namespace MethodCache.Analyzers
             {
                 // Only where the app uses MethodCache.EntityFrameworkCore: without it, nothing invalidates entity tags
                 if (start.Compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.MethodCacheDbContextExtensions") == null) return;
-                start.RegisterOperationBlockStartAction(AnalyzeBlock);
+                var compilation = start.Compilation;
+                var cancellationToken = start.CancellationToken;
+                var mapping = new Lazy<EntityTagMapping>(() => EntityTagMapping.Read(compilation, cancellationToken), LazyThreadSafetyMode.ExecutionAndPublication);
+                start.RegisterOperationBlockStartAction(block => AnalyzeBlock(block, mapping));
             });
         }
 
-        private static void AnalyzeBlock(OperationBlockStartAnalysisContext context)
+        private static void AnalyzeBlock(OperationBlockStartAnalysisContext context, Lazy<EntityTagMapping> mapping)
         {
             var writes = new List<IInvocationOperation>();
             var invalidations = new List<IInvocationOperation>();
@@ -69,6 +74,7 @@ namespace MethodCache.Analyzers
                 if (writes.Count == 0 || ImplementsCacheInvalidate(end.OwningSymbol)) return;
                 foreach (var write in writes)
                 {
+                    if (!WritesCachedRows(write, mapping)) continue;
                     var functions = EnclosingFunctions(write);
                     // An invalidation in the same function, or in a function around it (such as the method that runs
                     // an execution strategy's lambda), covers the write
@@ -86,12 +92,71 @@ namespace MethodCache.Analyzers
             return SqlWrites.Contains(method.Name) && type.Name == "RelationalDatabaseFacadeExtensions";
         }
 
+        /// <summary>
+        /// A write to a mapped entity type, or raw SQL that may write. A single statement that starts with select only
+        /// reads, as an advisory lock does.
+        /// </summary>
+        private static bool WritesCachedRows(IInvocationOperation write, Lazy<EntityTagMapping> mapping)
+        {
+            var method = write.TargetMethod;
+            if (SqlWrites.Contains(method.Name)) return !IsSelect(write);
+            if (method.TypeArguments.Length != 1) return true;
+            var needed = method.Name.StartsWith("ExecuteDelete", StringComparison.Ordinal) ? EntityWrites.Delete : EntityWrites.Any;
+            return (mapping.Value.For(method.TypeArguments[0]) & needed) == needed;
+        }
+
+        private static bool IsSelect(IInvocationOperation write)
+        {
+            var sql = write.Arguments.FirstOrDefault(a => a.Parameter?.Name == "sql")?.Value;
+            while (sql is IConversionOperation conversion) sql = conversion.Operand;
+            string? text = null;
+            if (sql?.ConstantValue is { HasValue: true, Value: string constant }) text = constant;
+            else if (sql is IInterpolatedStringOperation interpolated)
+            {
+                // The parts between the values; a value is a parameter, never SQL
+                text = string.Concat(interpolated.Parts.Select(part =>
+                    part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } } ? value : "0"));
+            }
+            return text != null && SqlStartsWithSelect(text);
+        }
+
+        internal static bool SqlStartsWithSelect(string sql)
+        {
+            var i = SkipSpaceAndComments(sql, 0);
+            if (string.Compare(sql, i, "select", 0, 6, StringComparison.OrdinalIgnoreCase) != 0) return false;
+            if (i + 6 < sql.Length && (char.IsLetterOrDigit(sql[i + 6]) || sql[i + 6] == '_')) return false;
+            // One statement: nothing but space and comments after a semicolon
+            var semicolon = sql.IndexOf(';', i);
+            return semicolon < 0 || SkipSpaceAndComments(sql, semicolon + 1) == sql.Length;
+        }
+
+        private static int SkipSpaceAndComments(string sql, int i)
+        {
+            while (i < sql.Length)
+            {
+                if (char.IsWhiteSpace(sql[i])) i++;
+                else if (string.CompareOrdinal(sql, i, "--", 0, 2) == 0)
+                {
+                    var end = sql.IndexOf('\n', i);
+                    i = end < 0 ? sql.Length : end + 1;
+                }
+                else if (string.CompareOrdinal(sql, i, "/*", 0, 2) == 0)
+                {
+                    var end = sql.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                    i = end < 0 ? sql.Length : end + 2;
+                }
+                else break;
+            }
+            return i;
+        }
+
         private static bool IsInvalidation(IMethodSymbol method)
         {
             var type = method.ContainingType;
             if (type == null) return false;
-            // A cached interface's [CacheInvalidate] method invalidates its tags after it runs
-            if (HasCacheInvalidate(method)) return true;
+            // A cached interface's [CacheInvalidate] method invalidates its tags after it runs, and an
+            // [InvalidatesCache] method invalidates by itself
+            if (HasCacheInvalidate(method) || HasInvalidatesCache(method)) return true;
             if (method.Name == "InvalidateAfterCommit") return type.Name == "MethodCacheDbContextExtensions";
             if (!method.Name.StartsWith("Invalidate", System.StringComparison.Ordinal) && method.Name != "ClearAsync") return false;
             for (var ns = type.ContainingNamespace; ns != null && !ns.IsGlobalNamespace; ns = ns.ContainingNamespace)
@@ -104,7 +169,7 @@ namespace MethodCache.Analyzers
         private static bool ImplementsCacheInvalidate(ISymbol owner)
         {
             if (owner is not IMethodSymbol method) return false;
-            if (HasCacheInvalidate(method)) return true;
+            if (HasCacheInvalidate(method) || HasInvalidatesCache(method)) return true;
             var type = method.ContainingType;
             if (type == null) return false;
             foreach (var @interface in type.AllInterfaces)
@@ -118,9 +183,36 @@ namespace MethodCache.Analyzers
             return false;
         }
 
-        private static bool HasCacheInvalidate(IMethodSymbol method)
-            => method.GetAttributes().Any(a => a.AttributeClass is
-                { Name: "CacheInvalidateAttribute", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } });
+        private static bool HasCacheInvalidate(IMethodSymbol method) => HasMethodCacheAttribute(method, "CacheInvalidateAttribute");
+
+        /// <summary>
+        /// The method, the one it overrides or an interface method it implements is marked [InvalidatesCache]: calls
+        /// through the interface and through the class both count.
+        /// </summary>
+        private static bool HasInvalidatesCache(IMethodSymbol method)
+        {
+            method = method.ReducedFrom ?? method;
+            for (var current = method.OriginalDefinition; current != null; current = current.OverriddenMethod?.OriginalDefinition)
+            {
+                if (HasMethodCacheAttribute(current, "InvalidatesCacheAttribute")) return true;
+            }
+            var type = method.ContainingType;
+            if (method.IsStatic || type == null || type.TypeKind == TypeKind.Interface) return false;
+            foreach (var @interface in type.AllInterfaces)
+            {
+                foreach (var member in @interface.GetMembers(method.Name).OfType<IMethodSymbol>())
+                {
+                    if (HasMethodCacheAttribute(member, "InvalidatesCacheAttribute")
+                        && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member), method))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool HasMethodCacheAttribute(IMethodSymbol method, string name)
+            => method.GetAttributes().Any(a => a.AttributeClass is { ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } } attribute
+                && attribute.Name == name);
 
         private static IOperation? InnermostFunction(IOperation operation)
         {

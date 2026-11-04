@@ -115,9 +115,12 @@ builder.Services.AddMethodCache();                               // after your r
   the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
   A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
   them, also for rows updated or deleted without loading them, `OwnsOne`/`OwnsMany` types and many-to-many links;
-  don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
-  call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
-  without one.
+  don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
+  deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
+  on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
+  (MC0027, on mapped types only, and on raw SQL that isn't a single `select`), call `db.InvalidateAfterCommit(tag)`
+  inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
+  invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
