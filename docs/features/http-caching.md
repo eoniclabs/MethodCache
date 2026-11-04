@@ -16,17 +16,9 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 ```
 <!-- endSnippet -->
 
-The [package guide](../../src/MethodCache.HttpCaching/README.md) covers settings, storage, private and shared caches,
-limits and metrics. This page covers the rules the cache follows and Core-owned storage. See
-[Security](../security.md#methodcachehttpcaching) for the threat model.
-
-Responses without custom key headers or `Vary` fields use direct variant selection, avoiding temporary sets
-and sorting. Private caches still isolate `Authorization` and `Cookie`; configured headers and `Vary` retain
-their combined, case-insensitive selection rules.
-
-A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
-
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
+The [package guide](../../src/MethodCache.HttpCaching/README.md) covers settings, private and shared caches, limits
+and metrics. This page covers the rules the cache follows. [Security](../security.md#methodcachehttpcaching) has the
+threat model, and the [HTTP caching reference](../reference/http-caching.md) the exact behavior.
 
 ## Freshness and validation
 
@@ -66,48 +58,24 @@ Concurrent writers with the same variant selection share its namespace, includin
 
 ## Writes and invalidation
 
-A successful `POST`, `PUT`, `PATCH` or `DELETE` starts a new cache generation for its URL before it returns. That is
-the URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A GET or
-background revalidation that was already in flight can still complete, but it stores its response under the old
-generation, so later requests fetch the updated response. With native Redis, SQL Server or PostgreSQL configured, the generation is shared by every instance, even when backplane
-messages are lost. One bounded metadata batch captures the global, URL, client and static-tag generations before origin work.
-SQL Server and PostgreSQL read already initialized, permanent generation records without rewriting them. Missing or
-non-permanent records are still initialized or repaired atomically; every lookup reads shared storage.
-The transport retains only its latest bounded command-text shape. It does not cache generation values;
-reordered or duplicate keys still return generations in the caller's order.
+- A successful `POST`, `PUT`, `PATCH` or `DELETE` invalidates the cached responses for its URL before it returns: the
+  URL you sent it to, also when the response redirects (`303 See Other`) elsewhere. A `GET` already in flight can't
+  store its older response over it.
+- With Redis, SQL Server or PostgreSQL configured, every instance sees the invalidation at once, even when backplane
+  messages are lost.
+- If the invalidation can't be confirmed, the call throws `HttpCacheInvalidationException`. The write may have
+  succeeded at the origin, so don't retry it automatically. A `GET` that throws it is safe to retry.
+- To invalidate from code, use `ICacheAdministrator`: one response by the id `ListEntries` gives, a client's
+  responses by its tag (`http:` followed by `MethodCacheKeys.Part(clientName)`) or the tags in `HttpCacheOptions.Tags`,
+  or everything with `ClearAsync`.
 
-The built-in storage groups URLs into 4096 generation slots per storage prefix, so its metadata stays bounded. Two
-URLs that share a slot can cause an extra cache miss when either is invalidated. Local invalidation also removes
-the retired bodies from that slot, releasing their byte budget immediately. Generation records never expire on
-their own; if the backend evicts one anyway, the next request starts a new generation, so a lost record only causes
-cache misses and never brings back a response from before a write. If reading the generation fails, the request goes
-to the origin. If advancing a generation cannot be confirmed, `HttpCacheInvalidationException` reaches the caller and Core retains
-bounded recovery. The origin mutation may have succeeded: do not automatically retry it. A GET or HEAD whose answer
-replaces a stored response that can't be retired throws the same exception; it is safe to retry. Cancelling the caller stops
-its wait, while owned generation recovery continues. Graceful asynchronous disposal waits for owned advances, then
-tries queued URL invalidations once more even while the circuit breaker is open. Each transport operation remains
-bounded by its configured timeout. Any invalidations still unconfirmed at shutdown are reported as a count and are
-lost when the process exits; other nodes may retain old responses until they expire.
+## Storage
 
-## Core storage and administration
-
-`AddHttpCaching` requires an explicit `AddMethodCache` registration in the same container. Either registration
-order works. Without L2, Core uses a separate HTTP byte budget (100 MiB by default), independent of method entries.
-Bodies exceeding the whole HTTP budget remain streamed and are not stored. Headers and metadata are charged too.
-With MethodCache Redis, SQL Server or PostgreSQL configured, HTTP responses live exclusively in that owned L2; the application's
-unrelated `IDistributedCache` is never a fallback. HTTP entries use an internal codec, independent of method serializers.
-The former `HttpCacheStorageOptions`, `IHttpCacheStorage` and `HttpCacheEntry` public extension points are removed.
-
-`ICacheAdministrator` lists actual local representations, or at most 1024 historical local L2 observations.
-`Storage=ObservedDistributed` is not verified backend presence or a global inventory; observations contain no body,
-credentials, cookie header or raw URL query. An unknown observation id returns NotFound. Removing a known id retires
-its URL generation and all variants. `Clear` retires the shared global generation. Client tags are
-`http:` followed by `MethodCacheKeys.Part(clientName)`; configured static `HttpCacheOptions.Tags` participate too.
-The HTTP administration and byte statistics also work with a NoOp method manager.
-
-Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and their byte budget.
-Its work grows with the resident entry count; URL invalidation and other configured application tags use their indexes.
-This keeps the implicit client tag out of the publication index while preserving administration and generation checks.
+Responses are stored in MethodCache's memory cache, in a budget of their own (`MaxHttpBytes`, 100 MiB by default,
+headers included) next to method results. With Redis, SQL Server or PostgreSQL configured, they are stored there
+instead, so every instance shares them. A response larger than the budget is streamed to the caller and not stored.
+`AddHttpCaching` needs `AddMethodCache` in the same container, in either order. The admin endpoints and
+`ICacheAdministrator` list and remove cached responses; they never show bodies, credentials, cookies or query strings.
 
 ## Transport and cookies
 
@@ -118,8 +86,8 @@ A handler that already has cookies off is left alone, so a cookie-free handler s
 never share entries, and they all use the settings given there. A client has at most one cache: calling
 `AddHttpCaching` again for one client, or twice, adds no second cache and applies every settings delegate. To give
 one client other settings, use `services.Configure<HttpCacheOptions>("name", o => ...)`.
-`KeepCookies=true` preserves the transport configuration and completely bypasses response caching, validation and
-stale fallback. `only-if-cached` then returns 504. A successful unsafe mutation still retires shared generations.
+`KeepCookies=true` leaves the transport's cookies on and turns response caching, validation and stale fallback off for
+that client. `only-if-cached` then returns 504, and a successful write still invalidates its URL.
 Send caller cookies as request headers; a handler that keeps a hidden cookie jar belongs on a client without HTTP
 caching.
 
@@ -131,7 +99,3 @@ transport or below a cache handler you construct yourself, can't be checked. The
 per named client, unless you set `AllowUnverifiedTransport`. Set it only when you have checked that the whole
 transport sends no automatic cookies or hidden caller identity. A known transport with automatic cookies turned on
 always bypasses.
-
-HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
-
-Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.

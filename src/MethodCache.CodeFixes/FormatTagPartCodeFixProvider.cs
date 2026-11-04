@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Threading.Tasks;
@@ -48,7 +49,9 @@ namespace MethodCache.CodeFixes
                         $"Format with {typeName.Replace("global::", string.Empty)}.Part",
                         _ =>
                         {
-                            var call = SyntaxFactory.ParseExpression($"{typeName}.Part({hole.Expression.WithoutTrivia()})")
+                            // Inside an interpolation hole, "::" would start a format clause: keep a global:: call in parentheses
+                            var text = $"{typeName}.Part({hole.Expression.WithoutTrivia()})";
+                            var call = SyntaxFactory.ParseExpression(typeName.StartsWith("global::", StringComparison.Ordinal) ? $"({text})" : text)
                                 .WithTriviaFrom(hole.Expression);
                             return Task.FromResult(context.Document.WithSyntaxRoot(root.ReplaceNode(hole.Expression, call)));
                         },

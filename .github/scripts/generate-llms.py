@@ -80,12 +80,14 @@ def main():
         "",
         "> " + tagline + " A .NET 10 library: a source generator turns `[Cache]` on interface "
         "methods into caching decorators at compile time, with keys built from the arguments, tag invalidation, "
-        "a memory cache plus optional Redis or SQL Server, and policies you can change in appsettings.json or at runtime.",
+        "a memory cache plus optional Redis, SQL Server or PostgreSQL, and policies you can change in appsettings.json or at runtime.",
         "",
         "Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), register services, then call "
         "`builder.Services.AddMethodCache()` after them. Every C# example in these docs is compiled in CI. "
-        "For coding agents, " + "[docs/ai/methodcache.md](" + RAW + "docs/ai/methodcache.md) is a compact rule set "
-        "and [llms-full.txt](" + RAW + "llms-full.txt) has all the docs in one file.",
+        "For coding agents, " + "[docs/ai/methodcache.md](" + RAW + "docs/ai/methodcache.md) is a compact rule set, "
+        "[docs/how-to.md](" + RAW + "docs/how-to.md) answers common questions, the reference pages give the exact rules, "
+        "and [llms-full.txt](" + RAW + "llms-full.txt) has all the docs in one file. The MethodCache NuGet package "
+        "carries the same pages in its docs folder.",
         "",
         "## Docs",
         "",

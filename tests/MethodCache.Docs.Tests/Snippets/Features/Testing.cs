@@ -24,6 +24,21 @@ namespace Docs.Testing
             return provider;
         }
 
+        public static async Task WriteDirectly(IServiceProvider provider, Database database, Product changed)
+        {
+            // begin-snippet: testing-direct-write
+            await database.SaveAsync(changed);   // the test changes the data behind the cache's back
+
+            // Remove everything cached...
+            await provider.GetRequiredService<ICacheAdministrator>().ClearAsync();
+
+            // ...or only what the write changed
+            var cache = provider.GetRequiredService<ICacheManager>();
+            var keys = provider.GetRequiredService<IMethodCacheKeys>();
+            await cache.InvalidateTagAsync(keys.Tag<IProductService>(p => p.GetAsync(changed.Id, default), "product:{id}"));
+            // end-snippet
+        }
+
         public static IServiceProvider WithoutCaching()
         {
             // begin-snippet: testing-without-caching

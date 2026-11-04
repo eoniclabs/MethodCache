@@ -58,7 +58,7 @@ Read this before changing the repository. It is written for human contributors a
 - Raw measurements, profiles, per-launch logs, generated reports and evidence catalogues belong under ignored `artifacts/` or outside the checkout. Never force-add them. Keep benchmark source, approved limits and short result/decision summaries in Git.
 - Public API is locked by PublicApiAnalyzers. Any added, removed or changed public member must be recorded in that project's `PublicAPI.Unshipped.txt`, or the build fails.
 - Every public type and member in `src/` needs an XML doc comment (`CS1591` is an error). Write what it does for a user, and use `<inheritdoc />` on interface implementations and overrides.
-- Nothing is on nuget.org yet, so an API that is replaced is deleted outright. Do not add `[Obsolete]` shims.
+- Until 1.0.0, an API that is replaced is deleted outright. Do not add `[Obsolete]` shims.
 - Library code must use `ConfigureAwait(false)` on every await (`CA2007` is an error in `src/`).
 - New or changed diagnostics need a row in `docs/user-guide/DIAGNOSTICS.md` and an entry in `src/MethodCache.Analyzers/AnalyzerReleases.Unshipped.md` when they come from the analyzers.
 - C# examples in Markdown are not written by hand. They live in `tests/MethodCache.Docs.Tests` between `// begin-snippet: name` and `// end-snippet`, a `.md` file references them with a line `snippet: name`, and `dotnet tool restore && dotnet mdsnippets` copies them in (CI fails when the docs are out of date). Edit the `.cs` file, never the code between `<!-- snippet: -->` and `<!-- endSnippet -->`.
@@ -69,6 +69,18 @@ Read this before changing the repository. It is written for human contributors a
 - Diff coverage: a pull request fails when tests run less than 80% of the lines it adds or changes under `src/` (`build/ci/jobs.sh build diffcoverage` runs the net10.0 tests with coverage and lists the uncovered lines). Test the code you add.
 - CI also runs the CsCheck properties from random seeds (`properties`) and a short soak test (`soak`) on every pull request. Stryker.NET mutation testing on `MethodCache.Core` (`mutation`, a report, never a failure) takes about an hour and is started by hand; see `build/ci/README.md`. The soak tests (`[SoakFact]`, `Category=Soak`) are skipped unless `METHODCACHE_SOAK_SECONDS` is set, and the property tests keep their fixed seed in every other run, so the normal test run stays deterministic.
 - A new CI job goes into `build/ci/jobs.sh` (or `build/ci/windows.ps1`) as a script or `dotnet` command. The external coordinator posts the `MethodCache CI` merge gate. The opt-in GitHub Actions pilot uses those same scripts on an organization runner; it does not replace the merge gate or automatically execute fork pull requests (see `build/ci/README.md`).
+
+## Where documentation goes
+- Guides (`README.md`, `NUGET_README.md`, `docs/features/`, `docs/getting-started.md`, `docs/how-to.md`, the package READMEs and `docs/ai/methodcache.md`) explain what a user does and sees, in plain words. Don't append behavior notes from a fix to them.
+- Exact rules a user may need (edge cases, ordering, limits) go in `docs/reference/`, written without internal terms.
+- How it works inside goes in `docs/developer/`. Status reports and validation logs don't belong in the repository.
+- `MethodCache.Docs.Tests` fails when a guide uses an internal term (`InternalTermsTests`). Say what the user sees instead.
+
+## Design rules
+- `ICacheManager` has four operations, `GetOrCreateAsync` (a state-passing factory, like HybridCache), `TryGetAsync`, `InvalidateKeysAsync` and `InvalidateTagsAsync`, each taking every argument with the cancellation token last; the short forms are extension methods in `CacheManagerExtensions`. `CacheEntryOptions` is immutable.
+- Never reintroduce cache callbacks, a factory context object, public policy pipelines, key generators, backplanes or metrics-provider interfaces as public extension points. Serializer, transport and atomic-store interfaces stay internal.
+- Telemetry: Core owns its `MethodCache` meter (through the container's `IMeterFactory`) and activity source; the OpenTelemetry package only subscribes. No keys, tags, URLs, user or tenant ids as metric dimensions, no copied HTTP attributes, no exception messages in spans or logs, and no baggage of our own. Histograms use seconds. Report memory weight in the weigher's units, never object-size estimates.
+- SQL schema changes ship as explicit migrations; startup never rewrites an existing table.
 
 ## Developer docs
 - `docs/developer/design-spec.md`: design target and acceptance cases for the pre-1.0 implementation PRs; describes planned behavior, not the current API.

@@ -11,9 +11,6 @@ the containing type and the interface, including `unmanaged` and base class cons
 `scoped` parameters on forwarded members. Each overload has its own
 [method id](configuration.md#appsettingsjson) and its own cache entries.
 
-Memory-only `Task<T>` and `ValueTask<T>` misses avoid allocating closures for inactive fail-safe and
-distributed-write branches. Enabling those features retains their origin and invalidation behavior.
-
 Public interface members are forwarded to the implementation: uncached methods, properties, indexers and events.
 Non-public and sealed default interface methods stay on the interface with their own bodies; the decorator doesn't
 implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` member) is warning
@@ -22,8 +19,8 @@ implement them, so `[Cache]` or `[CacheInvalidate]` on one (or on a `static` mem
 
 Keywords and unusual names are escaped, and your own types named like framework types (such as `Task` or `List`)
 don't clash with the generated code. You don't need to rename anything.
-Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generator gives those files
-short, stable names while preserving the declared types and cache identities.
+Long namespace and type names also work with `EmitCompilerGeneratedFiles`: the generated files get short, stable
+names.
 
 Unsupported cached method shapes receive a [generator diagnostic](../user-guide/DIAGNOSTICS.md), with a code fix
 to remove the cache attribute where available. Reference returns, ref struct results and pointer/function pointer
@@ -32,17 +29,6 @@ interface is cacheable. See [keys](keys.md) for argument identity and
 [configuration](configuration.md) for generated policy identifiers.
 
 ## Registration
-
-Generated runtime calls use the versioned `MethodCache.Generated` facade. Module initializers record descriptors
-only; `AddMethodCache` validates contract versions before executing descriptors or factories. Each invocation
-captures one immutable policy/prefix/publication generation, including keyed registration and background-scope
-binding. A retired invocation may finish its origin call but cannot publish into the current generation.
-
-The reviewed contract-1 surface is frozen before the first release. Generated inline keys use the bound
-`KeyBuilder` constructor and `AppendPart` with ref lookups, including records, collections and key providers.
-`StartKey`, `BindKey`, `KeyPrefix` and `TextKey` are internal. Compatibility checks execute the explicit
-.NET 10 `Contract1Final` vendor images; earlier unpublished development checkpoints remain historical.
-After release, precompiled contract-1 decorators must run on newer 1.x Core versions without regeneration.
 
 `AddMethodCache()` wraps every registration of a cached interface in its decorator, and keeps the container's
 ownership as it is: the container disposes the implementations it creates, and leaves instances you registered
@@ -58,22 +44,21 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
-The end-to-end signature corpus under `tests/MethodCache.SourceGenerator.IntegrationTests` checks supported shapes
-with C# 12 and the latest compiler: each generated decorator compiles and runs through the actual DI registration.
-It checks semantic runtime references as well. Frozen vendor binaries exercise contract compatibility without
-regenerating source during ordinary tests, including under Native AOT.
+`AddMethodCache` decorates the services you registered before it. A service you didn't register is registered only
+with `AutoRegister(lifetime)`. The rules for keyed, generic, factory and several registrations are in
+[Registration](../reference/registration.md).
 
-`AddMethodCache` decorates explicit registrations. Missing services require explicit `AutoRegister(lifetime)`
-with exactly one accessible implementation in the selected module. Use `FromAssemblyOf<T>()` to choose the module
-that wins when multiple modules offer the same interface; the other modules' services stay cached. Cacheable late, open generic, AnyKey and unsupported closed bindings fail explicitly.
+## Synchronous methods
 
-Built-in synchronous methods run a synchronous factory with synchronous single-flight. They never wait on an
-async loader or async refresh. Async callers can join a synchronous load. A custom async-only manager bypasses
-synchronous caching and emits a diagnostic once per method/container. Current distributed adapters do not expose
-bounded native synchronous operations through this path, so these calls use L1/origin and report unavailable L2;
-use async methods to share results through L2. Synchronous distributed tag mutations report unsupported invalidation
-after the origin/local mutation; use async mutation methods for distributed invalidation.
+A synchronous `[Cache]` method loads synchronously: concurrent callers with the same arguments share one call, and it
+never blocks on an async load. It uses the memory cache only, also when a distributed cache is configured, so it never
+waits on the network; use an async method to share results between instances. A synchronous `[CacheInvalidate]`
+method clears this instance's memory before it returns, and reaches the distributed cache in the background. With
+your own `ICacheManager`, which has only async operations, synchronous methods aren't cached and a warning is logged
+once per method.
 
-The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
+## Language versions
 
-With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
+C# 12 and newer are supported with the .NET 10 SDK. With C# 13 or newer, generated decorators keep `allows ref struct`
+constraints on generic methods; a type parameter that may be a ref struct, used as an argument or result, is
+[MC0009](../user-guide/DIAGNOSTICS.md#mc0009).

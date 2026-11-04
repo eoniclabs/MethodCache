@@ -64,7 +64,7 @@ No library, process or pair is selected for a favorable result.
 MethodCache is roughly 23–24% slower than the hand-written IMemoryCache hit on this machine, with no
 managed allocation. It is close to HybridCache for GUIDs and slower for integers. FusionCache's measured
 call paths take about 3–3.6 times as long as MethodCache's. These numbers concern
-these native API hit paths; they are not miss, contention, L2, safety-feature or raw storage-engine comparisons.
+these native API hit paths; they are not miss, contention, distributed-cache, safety-feature or raw storage-engine comparisons.
 
 MethodCache's launch-to-launch variation was larger than the other libraries', and BenchmarkDotNet
 flagged one MethodCache distribution as bimodal. Small differences from HybridCache should be treated
@@ -91,13 +91,8 @@ dotnet run -c Release --project benchmarks/MethodCache.Benchmarks -- readme --fi
   --invocationCount 4194304 --unrollFactor 16 --exporters JSON
 ```
 
-Raw reports and logs remain outside Git under
-`/Users/johan/dev/MethodCache-artifacts/postdesign-comparison-2026-10-18/readme-confirmation/`.
-The first, complete adaptive-invocation study is also preserved there under `readme-comparison/`.
-It measured MethodCache at 34.9/42.8 ns for int/GUID but produced short-iteration warnings for those
-cases; the entire eight-case matrix was rerun with fixed invocation counts for the published table.
-The two studies are not pooled. Design-series acceptance remains a separate paired baseline comparison;
-see [the verification record](developer/design-final-validation.md).
+An earlier run with adaptive invocation counts gave short-iteration warnings, so the whole matrix was rerun with the
+fixed counts above for the published table.
 
 ## Distributed cache providers (2026-11-03)
 
@@ -165,9 +160,6 @@ It needs all three servers, so CI only builds it.
 | FusionCache `GetOrSetAsync` | 354 ns | 344 B | 3.8x | 389 ns | 416 B | 3.4x |
 
 Table values are medians across three benchmark runs of both id types. Single runs of the same benchmark differed by up to 14 %.
-Design-series acceptance uses separate baseline/PR comparisons and 95% intervals over paired head/base ratios
-from independent process launches;
-see the [current design verification](developer/design-final-validation.md).
 
 ```text
 BenchmarkDotNet v0.15.4, Linux Ubuntu 24.04.5 LTS (Noble Numbat)

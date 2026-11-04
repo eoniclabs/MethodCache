@@ -1,11 +1,8 @@
 # MethodCache.PostgreSql
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 PostgreSQL as MethodCache's distributed cache. Results are shared between application instances, and invalidations reach every instance's in-memory cache through a table, announced at once with `LISTEN`/`NOTIFY`.
+
+Install it at the same version as `MethodCache`.
 
 ## Why this package
 
@@ -145,22 +142,21 @@ key, which doesn't. Redis stays ahead with large values and many concurrent call
 [benchmarks](https://github.com/eoniclabs/MethodCache/blob/main/docs/benchmarks.md#distributed-cache-providers) for
 value sizes, throughput and how they were measured.
 
-## Internals
+## How it works
 
 - Every operation is one statement, one round trip, except replacing a live value (below). Statements are prepared automatically on each connection (`Max Auto Prepare=32`), a connection that goes back to the pool isn't reset (`No Reset On Close=true`: MethodCache changes no session state), and connections are named `MethodCache` in `pg_stat_activity`. A setting your connection string makes itself is kept, except one: cache commands never join your `TransactionScope` (`Enlist=false`), so a scope that rolls back doesn't undo cache writes or invalidations.
-- New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidation stamps and HTTP epochs, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
+- New cache values (and values that replace an expired one) and backplane messages are written with `synchronous_commit = off`, for that statement only: PostgreSQL acknowledges the write before flushing it to disk. If the server itself crashes, the last fraction of a second of them can be lost. A lost new value is only a miss. A lost message would leave other instances' in-memory copies, but recovery also empties the unlogged cursor table, so every instance sees a new cursor and clears its in-memory cache. A value that replaces a live one takes a second statement, committed as the server's `synchronous_commit` says, like invalidations, which keep the shared cache correct: a crash never brings back a value that was replaced or invalidated.
 - Values are stored as `bytea`, not `jsonb`: they are already serialized (JSON or MessagePack) and never queried, so PostgreSQL stores the bytes without parsing them. Values up to about 8 KB stay in the row, so a read needs no second lookup in the TOAST table; values from about 2 KB are compressed, with lz4 where the server supports it (PostgreSQL 14 and later).
 - Values are JSON written with System.Text.Json (public fields included); a method whose results don't read back unchanged stays in memory only, with one warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)). Add `MethodCache.Serialization.MessagePack` and call `UseMessagePack()` on the `AddMethodCache` builder for MessagePack.
 - Keys are stored as the SHA-256 of their exact UTF-16 code units, so keys PostgreSQL text can't hold (NUL characters, lone surrogates) and keys of any length get a fixed-size id.
-- Invalidating a key writes a format-independent logical tombstone and removes the current row. Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed. Value and tombstone are read in one query.
+- Invalidating a tag stores the time of the invalidation, and entries with that tag written before it are treated as missing, so no tag tables are needed. A read checks the value and its invalidation in one query.
 - Both also add a row to the invalidations table and `NOTIFY` a channel named after the `KeyPrefix` and table. The notification carries only the sender's id: the table is the truth, and the notification only tells other instances to read it now instead of at their next poll.
 - The cursor row hands out ids in commit order, so a reader never sees a later id before an earlier one commits, and needs no gap tracking.
 - A message that fails to apply is retried on the next poll. If it still fails after five polls, the instance clears its in-memory cache in its place and moves on, so one bad message can't hold back the ones after it.
 - An instance that couldn't read the invalidations table, or catch up with it, for half of `BackplaneRetention` (since it last did, or since it started), or that sees a new cursor (after a crash, a failover or a restore) or the cursor go back, may have missed invalidations, so it clears its in-memory cache.
 - Every instance deletes expired entries every 5 minutes, and its own prefix's invalidations older than the longest `BackplaneRetention` of that prefix every minute, in small batches with `FOR UPDATE SKIP LOCKED`, so instances never wait for each other. Rows of a prefix that no running application uses any more are never deleted; delete them by hand.
-- Invalidation matches exact logical keys and application tags. Use a common tag for a group of entries.
+- `DistributedCacheOptions.KeyPrefix` keeps applications that share the tables apart. The first instance that uses a
+  prefix fixes its minimum `TagRetention`; a shorter setting fails at startup.
 
-Wire v1 remains stable across 1.x entry formats. Malformed mandatory frames clear local entries and warn once.
-Initialized permanent HTTP epochs are read without rewriting their rows. Configure the shared scope with
-`DistributedCacheOptions.KeyPrefix`; provider options do not have a separate prefix. The first node establishes a
-common retention bound; shorter settings are rejected.
+The exact behavior is in the
+[distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md).

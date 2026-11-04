@@ -45,7 +45,6 @@ That's the whole setup. `GetUserAsync(42)` runs once and then comes from memory 
 - **One attribute, zero boilerplate.** Keys are built from the method and its arguments (values of different types never share a key, nested ones included); your service stays plain code.
 - **Fast.** A cache hit allocates nothing and on x64 is about 10 % faster than hand-written `IMemoryCache` code, faster than HybridCache and 8 to 9 times faster than FusionCache ([numbers](#performance)).
 - **Compile-time, not runtime.** A Roslyn source generator writes the decorators, analyzers catch mistakes in the editor, and Native AOT is tested in CI.
-  Previously compiled contract-1 vendor decorators keep working without regeneration, with both inline and materialized keys.
 - **Tags that understand your arguments.** `"user:{id}"` becomes `user:42`, so an update invalidates exactly what it changed.
 - **Tune it without redeploying.** Durations and tags come from attributes, a global default, `appsettings.json` (reloaded live) or runtime overrides.
 - **Third-party clients too.** One line caches chosen methods of an SDK or API client's own interface, no wrapper needed ([how](#caching-code-you-dont-own)).
@@ -82,16 +81,8 @@ refresh-ahead and fail-safe use an explicitly advanced demo clock:
   All 11 chapters behaved as described.
 ```
 
-For ASP.NET Core with admin endpoints, OpenTelemetry and two instances sharing Redis, see the
-[web demo](samples/MethodCache.WebDemo/).
-The web demo opens its admin endpoints in Development; in Production they require authentication and the `Admin` role.
-Its price endpoint rejects missing, null and negative prices with HTTP 400, preserving stored and cached data.
-Its SQLite data can be reset, and query counters show which requests actually reach the database.
-
-Chapter 11 of the [console tour](samples/MethodCache.Demo/#httpclient-caching) starts a local HTTP server and
-checks `Cache-Control`, ETag/304, `no-store` and invalidation after PUT in the same run.
-See the [console guide](samples/MethodCache.Demo/) for all eleven chapters and the
-[web guide](samples/MethodCache.WebDemo/) for automated two-instance Redis and outage scenarios.
+See the [console guide](samples/MethodCache.Demo/) for all eleven chapters. For ASP.NET Core with admin endpoints,
+OpenTelemetry and two instances sharing Redis, see the [web demo](samples/MethodCache.WebDemo/).
 
 ## Before and after
 
@@ -150,19 +141,22 @@ the add-on packages):
 dotnet add package MethodCache --prerelease
 ```
 
-1. Put `[Cache]` on interface methods that return data (sync, `Task<T>` or `ValueTask<T>`).
-2. Register your services as usual, then call `builder.Services.AddMethodCache()`. It wraps every registered
-   interface that has cached methods in its generated decorator and keeps the lifetime you chose.
+1. Put `[Cache]` on interface methods that return data (sync, `Task<T>` or `ValueTask<T>`), and
+   `[CacheInvalidate]` on the methods that change it.
+2. Register your services as usual, then call `builder.Services.AddMethodCache()` after them. It wraps every
+   registered interface that has cached methods in its generated decorator and keeps the lifetime you chose.
+3. Build. Analyzers report mistakes as `MC` diagnostics in the editor.
 
-Details: [Getting started](docs/getting-started.md).
+**Why an interface?** The generator writes a class that implements your interface, checks the cache and calls your
+implementation on a miss. Dependency injection hands out that class in place of yours, so nothing in your code
+changes. To cache a class without an interface, add one, use [manual caching](docs/features/manual-caching.md) with
+`ICacheManager`, or, for a client from a NuGet package, [cache its interface](#caching-code-you-dont-own).
 
-Missing services require explicit `AutoRegister(lifetime)`, with exactly one accessible implementation in the
-selected generated module. Use `FromAssemblyOf<T>()` to choose the module that wins when several generate the same
-interface; ambiguous module/candidate choices
-and unsupported cacheable bindings fail explicitly. Startup configuration uses `MethodCacheBuilder`.
+**When the data changes somewhere else** (a repository, a message handler, another service), invalidate after the
+write with `ICacheManager` and a tag from `IMethodCacheKeys.Tag`, so it's formatted exactly as the cached method's tag
+([how](docs/features/invalidation.md#when-the-write-happens-somewhere-else)).
 
-SQL Server backplane tables require a non-nullable `binary(32)` `Scope` column. Automatic initialization reports
-incompatible schemas without upgrading them; see the [SQL Server guide](src/MethodCache.SqlServer/README.md#required-backplane-schema).
+Details: [Getting started](docs/getting-started.md), and [How do I…?](docs/how-to.md) for common questions.
 
 ## Features
 
@@ -172,15 +166,17 @@ Invalidate by tag with `[CacheInvalidate]`, or from code by tag, by key or for a
 
 <!-- snippet: readme-invalidation -->
 ```cs
-await cache.InvalidateTagAsync("user:42");
+await cache.InvalidateTagAsync(keys.Tag<IUserService>(users => users.GetUserAsync(42), "user:{id}"));
 await cache.InvalidateKeyAsync(keys.For<IUserService>(users => users.GetUserAsync(42)));
 await cache.InvalidateTagAsync("tenant:7");   // add this tag to all tenant entries
 ```
 <!-- endSnippet -->
 
-Generated keys look like `[MyApp]MyApp.IUserService.GetUserAsync:42` (a record argument as `(alice:2)`, an array or list as
-`[3:1:2:3]`). `IMethodCacheKeys.For` returns the key of a call, so you never write one by hand, and
-`ICacheAdministrator.InvalidateMethodAsync` removes every entry of one method.
+`IMethodCacheKeys.Tag` and `IMethodCacheKeys.For` return a call's tag and key, formatted exactly as the cached method
+formats them, so you never write one by hand. A hand-built tag misses when it formats a value differently (a `Guid`
+is written without hyphens, an enum as its number, `:` is escaped); analyzer MC0024 warns about those.
+`ICacheAdministrator.InvalidateMethodAsync` removes every entry of one method. `[CacheInvalidate]` runs after the
+method succeeds, never when it throws.
 
 ### Configuration without redeploying
 
@@ -222,11 +218,10 @@ builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379"));       // o
 Results live in memory and in Redis (or SQL Server or PostgreSQL, see
 [Distributed cache](docs/features/distributed-cache.md)).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
-Values are JSON by default; a method whose results JSON can't read back unchanged (private setters, a derived type,
-`object`) is kept in memory only, with a warning. `mc.UseMessagePack()` makes values smaller.
-If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a circuit breaker skips
-Redis until it is back, and invalidations are queued and retried instead of throwing. A value you set directly
-during the outage stays in that instance's memory, and the value it replaced is removed everywhere once Redis is back.
+Synchronous methods use memory only. Values are JSON by default; a method whose results JSON can't read back
+unchanged (private setters, a derived type, `object`) is kept in memory only, with a warning. `mc.UseMessagePack()`
+makes values smaller. If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a
+circuit breaker skips Redis until it is back, and invalidations are queued and retried instead of throwing.
 
 ### Caching code you don't own
 
@@ -275,17 +270,10 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 
 Responses are cached as `Cache-Control` allows and revalidated with `ETag` / `Last-Modified`, so a `304 Not Modified`
 reaches your code as the full cached response. A `POST`, `PUT`, `PATCH` or `DELETE` drops the cached responses for
-that URL. `AddHttpCaching` requires `AddMethodCache`. Configured native Redis, SQL Server or PostgreSQL stores HTTP responses
-exclusively in MethodCache's owned L2; otherwise Core uses its separate `MaxHttpBytes` budget (100 MiB by default).
-Shared atomic generations prevent late old responses becoming visible after a confirmed mutation, even without
-backplane delivery. Graceful async disposal drains HTTP invalidation recovery and reports any unconfirmed targets
-as a count; recovery does not survive process exit. `KeepCookies=true` preserves transport cookies and bypasses response caching; otherwise
-`AddHttpCaching()` turns off automatic cookies
-on the client's handler; send any cookie the API needs as an explicit `Cookie` header. Redirects the transport
-follows are not stored under the URL you asked for, retries (Polly, standard resilience) get full responses, and a
-`GET` with a body goes to the origin.
-Local client-tag invalidation reclaims matching bodies with a scan of resident HTTP entries; its work grows with the entry count.
-See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
+that URL. `AddHttpCaching` requires `AddMethodCache`. With Redis, SQL Server or PostgreSQL configured, responses are
+stored there and shared between instances; otherwise they are kept in memory, up to `MaxHttpBytes` (100 MiB by
+default). `AddHttpCaching()` turns off automatic cookies on the client's handler; send any cookie the API needs as a
+`Cookie` header. See [HTTP response caching](docs/features/http-caching.md) and the [package README](src/MethodCache.HttpCaching/README.md).
 
 ### Monitoring
 
@@ -319,11 +307,6 @@ builder.Services.AddMethodCache(cache => cache.UseJson(AppJsonContext.Default));
 <!-- endSnippet -->
 
 ## Performance
-
-Memory-only asynchronous misses avoid allocating closures for inactive fail-safe and distributed-write branches.
-HTTP responses without custom key headers or `Vary` fields use direct variant selection; private caches still
-isolate `Authorization` and `Cookie`.
-SQL Server reuses command text for repeated generation batch shapes while reading every generation from shared storage.
 
 Warm in-memory hits on an AMD Ryzen 7 5800X (x64, Windows 11), .NET 10.0.13, 2026-10-18. Each library
 uses its native API, default options and the same explicitly immutable payload. Key construction is
@@ -362,7 +345,7 @@ auto-recovery. MethodCache is for when you want caching to be a line of metadata
 
 ## Packages
 
-Requires .NET 10 and the .NET 10 SDK. The pre-1.0 packages no longer target .NET 8 or 9.
+All packages target .NET 10. Install the add-ons at the same version as `MethodCache`.
 
 | Package | What it adds |
 |---|---|
@@ -379,7 +362,7 @@ Requires .NET 10 and the .NET 10 SDK. The pre-1.0 packages no longer target .NET
 
 The [documentation](docs/README.md) has a page per feature, and every C# example in it is compiled and tested in CI:
 
-- [Getting started](docs/getting-started.md)
+- [Getting started](docs/getting-started.md) and [How do I…?](docs/how-to.md), short answers to common questions
 - Caching methods: [generated decorators](docs/features/source-generator.md), [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
   [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
   [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
@@ -389,62 +372,36 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
   [security](docs/security.md)
 - [Troubleshooting](docs/troubleshooting.md), [build diagnostics](docs/user-guide/DIAGNOSTICS.md) and
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
+- Reference, with the exact rules: [registration](docs/reference/registration.md),
+  [distributed cache](docs/reference/distributed.md), [HTTP caching](docs/reference/http-caching.md)
 - Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md)
 - [Console tour, including HttpClient caching](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
-- Using a coding agent? Give it [docs/ai/methodcache.md](docs/ai/methodcache.md). [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt) have the docs for language models, and `context7.json` lets Context7 index them.
 
-## Additional behavior
+## Using a coding agent
 
-Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
+The `MethodCache` package carries this documentation in its `docs` folder, so an agent can read the docs for the
+version you installed without network access. [llms.txt](llms.txt) and [llms-full.txt](llms-full.txt) have the same
+docs online, and `context7.json` lets Context7 index them. Give your agent this prompt:
 
-Manual `TryGetAsync` reads a fresh entry, including a cached null, also when refresh-ahead is due. This lookup does not start a factory or background refresh.
+```text
+Add caching with MethodCache (NuGet package MethodCache) to this project.
 
-Overloaded generic methods include generic arity in their policy ids and key prefixes: `Get(int)`, `Get``1(int)` and `Get``2(int)` remain distinct. Generator and runtime configuration use the same ids; earlier keys for overloaded generic methods become cold misses.
+Before you write code, read the MethodCache docs. The package ships them: look in
+~/.nuget/packages/methodcache/<installed version>/docs/ (on Windows %USERPROFILE%\.nuget\packages\...),
+starting with ai/methodcache.md and how-to.md. If the package isn't installed yet, read
+https://raw.githubusercontent.com/eoniclabs/MethodCache/main/llms-full.txt instead.
 
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. L2 reads pass cancellation to the backend; shared factory work may finish for other callers. Caller cancellation is not reported as a dependency failure.
+Then:
+1. Find reads that are slow or repeated and whose results can be a little old. Make sure each is behind
+   an interface that is registered in dependency injection; add an interface where there is none.
+2. Put [Cache] with a Duration and Tags on those interface methods, and [CacheInvalidate] with the same
+   tags on the methods of the same interfaces that change the data.
+3. Where the data changes somewhere else (another service, a repository, a message handler), invalidate
+   after the write with ICacheManager and a tag from IMethodCacheKeys.Tag or a key from
+   IMethodCacheKeys.For. Never build tag or key strings by hand.
+4. Register the services as before, and call AddMethodCache() after them.
+5. Build, and fix every MC diagnostic.
+6. Add tests that show a cached read and its invalidation.
 
-Bulk reads guard their source work against key, tag and clear invalidation: an invalidated batch result is returned to its caller but is not published. Collection subclasses keep their own public properties and fields in hashed keys, as well as their elements. Static tags do not format arguments; templates format only the parameters they reference. Redis backplane publications honor caller cancellation, and a cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane gaps never hold newer invalidations behind a locked transaction, and HTTP variant schema changes retire their publication epoch once; a failed deletion after a successful rotation does not retire a newer concurrent publication.
-
-Published policy tags are owned, read-only snapshots. Mutating the collection supplied by application code cannot change a published policy or bypass its version/change notifications.
-
-HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
-
-Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
-
-A keyed `ICacheManager` registration remains independent of the default unkeyed manager. Registering another service key does not suppress `AddMethodCache()` or its default administration services.
-
-Keyed registrations of cached interfaces are decorated under their own service key, which is part of their cache keys, so each registration caches its own results; an interface registered only keyed is not also registered without one. A catch-all `KeyedService.AnyKey` registration is rejected with a named binding error; register concrete keys instead. Registrations of one interface with different implementation types under the same service key each cache their own results too: their keys carry the implementation type. Two registrations of the same implementation type share their results. A constructor parameter marked `[ServiceKey]` receives the application's key. Generated decorators are disposable only when the interface is, so the container no longer keeps transient decorators resolved from the root.
-
-Misconfiguration fails when the generic host starts rather than on the first call: invalid values, unknown setting names, a single value for `Tags`, an invalid duration, or an unknown or repeated method id in `appsettings.json`; a `Duration` longer than `MaxExpiration`; `CacheWhen` in defaults or a group, or for a type the method can't return; and a tag template that names no parameter of a method it applies to. Calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws in `AddMethodCache`, since there is one distributed cache. Positive invariant unit durations such as `30s` are accepted. `AddMethodCache(cache => cache.FromConfiguration(configuration))` reads its section at startup, so configuration sources added later apply from the first call.
-
-The attribute-move code fix preserves semantic binding across scopes and files: attribute/type aliases are qualified as needed, and constant arguments are materialized before they leave an implementation class.
-
-With C# 13 or newer, generated decorators preserve `allows ref struct` constraints when the cached values and arguments themselves are ordinary cacheable types. Potentially ref-like type parameters used as cache arguments or results receive MC0009 instead of broken generated code. The packages require .NET 10 and the .NET 10 SDK. C# 12 source remains supported when explicitly selected in that SDK.
-
-Long namespace and type names work with `EmitCompilerGeneratedFiles`; generated files use short, stable names when needed.
-
-Weighted capacity accounting remains nonnegative even for valid weights near `long.MaxValue`. Before an addition could overflow, the engine evicts existing weight; normal capacity/admission behavior is unchanged below that arithmetic limit.
-
-The web demo uses a shared SQLite database in the temp folder (`methodcache-webdemo-products.db`), so concurrent price updates from either demo instance are atomic. Decimal prices retain full precision. The earlier temporary JSON file is left untouched; the SQLite catalog starts with the demo seed data.
-
-The cache manager has four operations with cancellation last and immutable options. `WithEnabled(false)` bypasses
-caching; `WithDistributed(false)` uses only memory. Policy changes retire local generations. Declarative settings
-share a stable L2 namespace, while runtime overrides use private namespaces. Invalidation results distinguish local
-mutation, confirmed L2 metadata, queued recovery and confirmed/queued backplane sends. See
-[configuration](docs/features/configuration.md) and [distributed guarantees](docs/features/distributed-cache.md).
-
-Attribute settings use named arguments, for example `Group`, `Enabled`, `Distributed` and `FailSafeRetryAfter`. Durations accept invariant positive values such as `30s`, `1.5h` or `00:05:00`. Generated keys always preserve method scope; `CacheKeyAttribute` has been removed. See [configuration](docs/features/configuration.md) and [keys](docs/features/keys.md).
-
-Distributed providers use one container-bound `DistributedCacheOptions.KeyPrefix` for data and invalidation. Value formats and serializer schemas have separate namespaces; metadata retention and atomic epochs prevent older physical variants from reappearing after invalidation. SQL Server uses an explicit versioned schema and delivered migration scripts. See [distributed caching](docs/features/distributed-cache.md).
-
-Core emits standard `MethodCache` metrics and activities. The optional OpenTelemetry package subscribes to them;
-cache keys/tags require explicit Core options. [Monitoring](docs/features/monitoring.md) documents the instruments,
-local method/HTTP statistics, configured weight units and independent storage/backplane health.
-
-Dictionary hashes are process-local implementation metadata. Canonical key text, L2 identities, administration and
-invalidation remain stable across processes and restarts; the lookup hash is never stored or transmitted.
-
-Logical-key lookups and invalidations use the same framing and optional version as storage, including keys starting
-with NUL. Admin mutations return 503 while distributed invalidation awaits confirmation; recovery remains owned by
-the cache. Incompatible distributed scope contracts use memory only and report an actionable unhealthy status.
-See [manual keys](docs/features/manual-caching.md#versions-and-the-stored-key) and [monitoring](docs/features/monitoring.md).
+Report which methods you cached, for how long, and how each one is invalidated.
+```

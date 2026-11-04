@@ -2,10 +2,6 @@
 
 # Distributed cache
 
-The [web demo](../../samples/MethodCache.WebDemo/) includes two-instance request examples and automated
-Redis outage/restart scenarios. Both hosts share a transactional SQLite database, and query counters distinguish
-Redis hits from source reads. Its tests own their Redis container and never stop a developer's Redis.
-
 By default each application instance has its own in-memory cache. Add a distributed cache to share results between
 instances and keep them across restarts:
 
@@ -27,21 +23,18 @@ builder.Services.AddMethodCache(mc => mc.UsePostgreSql(connectionString));   // 
 ```
 <!-- endSnippet -->
 
-Redis backplane publication stops waiting when its token is cancelled. A cancelled unsubscribe acknowledgement does not fail application shutdown. SQL backplane identity gaps are not forgotten just because a transaction took longer than five seconds: committed gap rows are read without waiting, and a separate `NOWAIT` locking probe confirms an older identity is absent before it is forgotten. A locked or timed-out probe leaves gaps available for retry while newer invalidations and other committed gap messages are delivered.
-
-Redis backplane recovery retries transient unsubscribe/subscribe failures after reconnect, with a delay that doubles from one second to at most 30 seconds. It reports connected only after subscription acknowledgement and the local recovery clear; shutdown cancels pending retries.
-
-The PostgreSQL backplane keeps invalidations in a table, like SQL Server, and announces each one with `NOTIFY`, so other instances read it at once instead of at their next poll. Ids are handed out in commit order, so it needs no gap checks. Its `LISTEN` connection reconnects with the same doubling delay and reads what it missed when it is back; until then, polling delivers every invalidation.
+The [web demo](../../samples/MethodCache.WebDemo/) runs two instances that share Redis, including what happens when
+Redis goes down.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    A([Call a cached method]):::dark --> B{In memory?<br/>L1}
+    A([Call a cached method]):::dark --> B{In memory?}
     B -- yes --> R([Return the value]):::amber
-    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL? L2}
+    B -- no --> C{In Redis, SQL Server<br/>or PostgreSQL?}
     C -- yes --> D[Keep it in memory]:::light --> R
-    C -- no --> E[Run your method]:::dark --> F[Write it to L1 and L2]:::light --> R
+    C -- no --> E[Run your method]:::dark --> F[Write it to memory<br/>and the distributed cache]:::light --> R
     classDef dark fill:#1E1B3A,stroke:#1E1B3A,color:#F5F3FF
     classDef amber fill:#FFB020,stroke:#FFB020,color:#1E1B3A
     classDef light fill:#F5F3FF,stroke:#1E1B3A,color:#1E1B3A
@@ -50,16 +43,16 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant A as Instance A
-    participant L2 as Redis / SQL Server / PostgreSQL
+    participant D as Redis / SQL Server / PostgreSQL
     participant B as Instance B
     A->>A: [CacheInvalidate] or InvalidateTagsAsync
-    A->>L2: Remove the key, or stamp the tag
+    A->>D: Remove the key, or stamp the tag
     A-->>B: Backplane message (pub/sub, NOTIFY, or the next poll)
     B->>B: Drop the in-memory copy
-    Note over B: The next call reads L2 or runs the method
+    Note over B: The next call reads the distributed cache or runs the method
 ```
 
-- Results live in memory (L1) and in the distributed cache (L2). An in-memory miss reads the distributed cache before
+- Results live in memory and in the distributed cache. An in-memory miss reads the distributed cache before
   running your method, and a new result is written to both.
 - Invalidating a key removes it from the distributed cache. Invalidating a tag records when it happened, so older
   entries with that tag read as misses. A backplane tells every other instance to drop its in-memory copy: at once
@@ -67,41 +60,14 @@ sequenceDiagram
 - Redis, Microsoft SQL Server and PostgreSQL are supported. Other stores are not; the storage interfaces are
   internal. Use one of them: calling more than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` throws.
   `Distributed(...)` and `UseMessagePack()` without one log a warning at startup, since they have nothing to apply to.
-- `[Cache]` methods and `GetOrCreateAsync` need no changes.
-- MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone.
+- `[Cache]` methods and `GetOrCreateAsync` need no changes. Synchronous `[Cache]` methods use only the memory cache,
+  so they never wait on the network; a synchronous `[CacheInvalidate]` reaches the other instances in the background.
+- MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone
+  and is never used as a fallback.
 
 > [!IMPORTANT]
 > Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
 > are ignored with one warning.
-
-## Policy isolation
-
-Declared methods with equal effective startup/configuration options share a stable L2 namespace. A behavior-changing
-runtime override uses a private namespace for that method and container. Equal overrides on different nodes cannot
-share private values. Removing an override invalidates the declared method before allowing shared L2 reads again.
-The logical key from `MethodCacheKeys` remains suitable for invalidation across policy variants.
-
-A received method invalidation retires data for all closed generic and keyed registrations, without changing the
-receiver's policy. Dissemination is best effort: a missed message can leave remote L1 values until expiry or reconnect.
-L2 metadata rejects values loaded before invalidation, including writes that land after a timeout and retry.
-
-Entries retain load start, first publication time and an absolute deadline. L2 reads apply the receiver's null policy
-and result predicate, and cap remaining lifetime by the stored deadline, its own duration from first publication and
-`MaxExpiration`. A slow factory does not consume the value's duration; it reduces the remaining metadata-retention margin.
-Synchronous methods currently use L1 and the origin when these providers cannot offer a bounded native synchronous
-operation. This emits a diagnostic once per method/container. Synchronous invalidation retires local data immediately
-and leaves L2 recovery owned by the cache.
-
-## Invalidation results
-
-`InvalidateKeysAsync` and `InvalidateTagsAsync` validate the full batch and count distinct targets. `Requested` and
-`Local` count targets, including local no-ops. `Distributed` counts confirmed L2 metadata; `Queued` counts unconfirmed
-L2 targets. With L2 configured, their sum equals `Requested`. `Published` counts backplane sends and
-`PublicationQueued` counts confirmed L2 targets whose sends need retry. A send does not confirm receipt by every node.
-There are no distributed counters without L2 and no publication counters without a backplane.
-
-Cancellation before mutation leaves data untouched. Afterwards it cancels the caller's wait while owned recovery
-continues. Storage and publication have separate bounded queues, exposed through administration and health checks.
 
 ## When the distributed cache is down
 
@@ -128,7 +94,7 @@ the backplane message).
 
 ## Options
 
-`DistributedCacheOptions` apply to the owned Redis, SQL Server and PostgreSQL providers:
+`DistributedCacheOptions` apply to Redis, SQL Server and PostgreSQL alike:
 
 <!-- snippet: distributed-outage-options -->
 ```cs
@@ -147,9 +113,9 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
-| `KeyPrefix` | `methodcache:` | One startup-immutable prefix for values, metadata, HTTP epochs and the backplane; give each application its own |
-| `VerifyRoundTrip` | `true` | Verify the serialized representation before publishing; not a proof of semantic equality |
-| `SerializerVersion` | `1` | Positive value-format identity; increment when changing serializer settings |
+| `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Give each application that shares a store its own. It can't change while the app runs |
+| `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
+| `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
 ## What other instances see
 
@@ -177,25 +143,14 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 
 ## Serialization
 
-Values are written as JSON with System.Text.Json, public fields included, so value tuples and structs with fields
-are shared as they are. Every value an instance writes is read back and written again first; when that doesn't give
-the same bytes and type, that value and every later value of the method with that type stay in the instance's memory
-only, and one warning names the method and the type. Each value is checked, since one with default data (an `Id` of
-0 behind a private setter) can come back unchanged where the next one doesn't. A serializer that never writes the same
-bytes twice (encryption with a fresh nonce) can't be compared that way, so for it only the type is checked. State
-the serializer never writes at all (a class that keeps its data only in private fields, which JSON writes as `{}`)
-reads back as the same bytes, so the check can't see that it is lost: make such state serializable, or register a
-serializer that writes it. That happens with properties that have a
-private or protected setter, public readonly fields of a type that also has a parameterless constructor, a derived
-type returned as its declared base type (an `Animal` method returning a `Dog`, even after it returned plain
-`Animal`s), and `object`, with JSON and MessagePack alike. A value the serializer throws on (a cycle, a delegate
-field) stays in memory the same way. A collection declared as an interface (`IReadOnlyList<int>`,
-`IEnumerable<int>`) may come back as another implementation, a `List<int>` for an array, and is still shared. The
-check looks at the type of the value itself, not of what it holds: a `Dog` inside a `List<Animal>` or in a property
-declared `Animal` is shared without its `Dog` data. To share such values, register a serializer that reads them back,
-through `UseJson` with your own `JsonSerializerOptions` or `JsonSerializerContext` (`[JsonInclude]` on the
-setter, `[JsonDerivedType]` on the base type). The `MethodCache.Serialization.MessagePack` package makes values
-smaller and faster to read:
+Values are written as JSON with System.Text.Json, public fields included, so records, value tuples and structs are
+shared as they are. Each value is read back once before it is shared. A value that doesn't come back the same, such as
+a class with private setters, a `Dog` returned from a method declared to return `Animal`, or `object`, stays in that
+instance's memory only, with one warning that names the method and the type. Register your own
+`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` to share such values (`[JsonInclude]`,
+`[JsonDerivedType]`). [Distributed cache reference](../reference/distributed.md#serialization) has the exact rules.
+
+The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
 
 <!-- snippet: distributed-messagepack -->
 ```cs
@@ -209,25 +164,6 @@ Entries written in the other format read as misses and are replaced, so switchin
 [MessagePack package guide](../../src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
-## Owned storage and compatibility
-
-Use `MethodCacheBuilder.UseRedis`, `UseSqlServer` or `UsePostgreSql`. Storage, backplane, atomic metadata and serializers are internal owned services; the application's `IDistributedCache` is never a fallback. Configure `DistributedCacheOptions.KeyPrefix` with `mc.Distributed(o => o.KeyPrefix = ...)` before building the container. All registrations participate, including those registered after provider selection. The bound prefix and connection settings are immutable; use a new container to change them.
-
-`TagRetention` establishes a permanent scope minimum on first use. Later nodes may request at least that minimum; a shorter setting is rejected. Value deadlines remain capped by the established minimum, even when a later node requests longer retention. Use a new prefix to establish a different scope contract. Exact key removals retain tombstones for metadata retention across every entry format and policy identity. Writes use absolute physical deadlines anchored to source start, so slow serialization or transport cannot extend them.
-
-Entry keys include the entry format and `SerializerVersion` (default 1); logical invalidation metadata does not. Raise the method `Version` or `DistributedCacheOptions.SerializerVersion` when changing result schemas or serializer settings. Content type only identifies the serialization family. Wire contract 1 frames key, application-tag, method and clear as separate operations. Unknown optional fields are ignored; incompatible mandatory frames retire local entries and produce one payload-free warning.
-
-SQL Server creates only fresh schema contract 1 automatically. Existing unversioned or incompatible schema fails explicitly. The package includes `migrations/0001-version-existing-schema.sql`; stop all old nodes, back up the database and apply the supported migration before starting the new version. `CreateTablesIfMissing = false` prevents creation while retaining schema validation. `SqlServerOptions.ConnectionStringFactory` resolves once from DI.
-
-PostgreSQL likewise creates only fresh schema version 1 and rejects unknown versions. Its package includes `migrations/0001-create-schema.sql` for logins that may not create tables; `PostgreSqlOptions.CreateTablesIfMissing` and `ConnectionStringFactory` work as for SQL Server. `ConfigureDataSource` logs in without a password, with a token from Microsoft Entra ID or AWS IAM ([Passwordless login](../../src/MethodCache.PostgreSql/README.md#passwordless-login)).
-
-Select JSON with `UseJson(options)` or `UseJson(context)`, or MessagePack with `UseMessagePack`. JSON options are copied and frozen. `DistributedCacheOptions.VerifyRoundTrip` defaults to true and can be disabled explicitly. The check cannot prove semantic equality: a nested derived value may lose fields during its first serialization without changing the outer runtime type or reserialized bytes. Configure polymorphic metadata/source-generated contexts when necessary. `WithDistributed(false)` skips method L2 reads and writes.
-
-Redis, SQL Server and PostgreSQL own their backplane, enabled by default. If `EnableBackplane` is disabled, another instance can
-keep an invalidated method result in L1 until it expires. HTTP storage reads shared generations before native L2
-lookups and does not depend on backplane delivery. Disposing the service provider unsubscribes from the owned
-backplane; a backplane that stalls delays its shutdown by at most twice `OperationTimeout`.
-
 ## Keep invalidations from being evicted
 
 > [!WARNING]
@@ -237,6 +173,15 @@ backplane; a backplane that stalls delays its shutdown by at most twice `Operati
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
 > as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.
+
+## Changing result types and upgrading
+
+- Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
+  so values the previous version wrote are not read.
+- Run the same MethodCache version on every instance that shares a store.
+- SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
+  before 1.0, or a login that may not create tables, see the
+  [SQL Server](../../src/MethodCache.SqlServer/README.md) and [PostgreSQL](../../src/MethodCache.PostgreSql/README.md) guides.
 
 ## Limits
 
@@ -250,9 +195,5 @@ The [Redis](../../src/MethodCache.Redis/README.md), [SQL Server](../../src/Metho
 [PostgreSQL](../../src/MethodCache.PostgreSql/README.md) READMEs cover their options, shared connections, table creation,
 outage settings and how each stores keys and invalidations. The PostgreSQL guide compares all three; the SQL Server
 guide has the schema migration for an existing invalidations table. [Benchmarks](../benchmarks.md#distributed-cache-providers)
-measures them side by side.
-
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
-
-SQL Server backplane initialization requires a non-nullable `binary(32)` `Scope` column. Incompatible scope columns
-are reported without automatic schema upgrades; see the [SQL Server guide](../../src/MethodCache.SqlServer/README.md#required-backplane-schema).
+measures them side by side. The exact guarantees, such as what a cancelled call leaves behind and how each
+backplane recovers, are in the [distributed cache reference](../reference/distributed.md).

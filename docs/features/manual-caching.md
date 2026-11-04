@@ -48,24 +48,21 @@ var list = await cache.GetOrCreateAsync(
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](expiration.md) and
   [Invalidation](invalidation.md).
-- `WithEnabled(false)` runs the factory for each call and bypasses reads, joins, stale values and publication.
-- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before caching and after L2 reads.
+- `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
+- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
+  from the distributed cache.
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
   static factory.
 - Configuration files and runtime overrides apply to declared cached methods. Explicit-key calls use their own options.
-- `Build()` copies mutable collections. Later builder changes cannot change published options.
+- `Build()` copies the tags, so changing the builder afterwards changes nothing.
 
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
-`InvalidateTagsAsync`. The interface accepts immutable options; the helpers accept builder actions or simpler factories.
-A custom manager stores an entry under `MethodCacheKeys.StoredKey(key, options?.Version)` in `GetOrCreateAsync`, and
-looks it up or removes it under `MethodCacheKeys.StoredKey(key, version)` in `TryGetAsync` and `InvalidateKeysAsync`,
-so a key and version name the same entry in every method. `options.CanCache(value)` evaluates the result predicate.
-Generated calls pass a key that already carries the method's version and options with `Version = null`, so their
-key is stored as it is.
-Custom managers own their caching semantics and must preserve presence separately from null/default values. Generated
-synchronous methods use the underlying implementation directly when a custom manager has no internal sync capability.
+`InvalidateTagsAsync`. The interface takes every argument; extension methods give the short forms, such as
+`TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key)` and `InvalidateKeyAsync(key, version)`, and take a
+builder action instead of built options. To write your own manager, see
+[Registration](../reference/registration.md#your-own-cache-manager).
 
 ## Reading without loading
 
@@ -79,20 +76,18 @@ if (lookup.Found)
 ```
 <!-- endSnippet -->
 
-`TryGetAsync` takes the same `version` an entry was stored with.
+`TryGetAsync` takes the `version` an entry was stored with: `TryGetAsync<Order>("order:42", 2)`.
 
 ## Versions and the stored key
 
 An entry stored with `WithVersion` lives under a different key than the unversioned one: `entry` at version 1 never
-shares a value with the key `entry::v1`. Keys that begin with a NUL character are escaped too. `TryGetAsync` and `InvalidateKeysAsync` accept that same logical key and optional
-version; they apply the same framing as storage. `InvalidateKeyAsync(key, version)` is a convenience for one logical key.
+shares a value with the key `entry::v1`. `TryGetAsync` and `InvalidateKeyAsync` take the same key and version you
+cached with: `TryGetAsync<Order>("order:42", 2)`, `InvalidateKeyAsync("order:42", 2)`.
 `ICacheAdministrator` takes the stored key, `MethodCacheKeys.StoredKey(key, version)`, which is what
 `CacheEntryInfo.StoredKey` shows; treat its format as opaque. To invalidate a versioned entry through `ICacheManager`,
-pass the key and its version, `InvalidateKeyAsync(key, version: 2)`, not the stored key.
+pass the key and its version, `InvalidateKeyAsync(key, 2)`, not the stored key.
 
 ## Many keys at once
-
-Key, tag and clear invalidation also guard the batch factory while it reads its source. Its caller can receive the in-flight result, but invalidated candidates are not published into memory or the distributed cache. Individual callers can still load and publish these keys during the batch; a fresh concurrent value wins.
 
 `GetOrCreateManyAsync` checks the local cache for every key, looks up the local misses in the distributed cache,
 and calls the factory once with the keys neither holds. Each key gets the value the cache selects: memory first, then
@@ -134,6 +129,6 @@ var users = await cache.GetOrCreateManyAsync<User>(
 - The four operations on `ICacheManager` can be mocked directly. The options-builder convenience overload
   delegates to that interface. You can also pass a `NoOpCacheManager` ([Testing](testing.md)).
 
-Manual `TryGetAsync` reads a fresh entry, including a cached null, even when refresh-ahead is due. This lookup does not start a factory or background refresh.
-
-Caller cancellation stops the wait during an L2 read or a slow factory, including bulk reads and fail-safe waits. Shared work may finish for other callers; cancellation is not reported as a dependency failure.
+- `TryGetAsync` returns a fresh entry, a cached `null` included, also when refresh-ahead is due; it never runs a
+  factory or starts a refresh.
+- An entry invalidated while `GetOrCreateManyAsync`'s factory runs is returned to that caller but not stored.

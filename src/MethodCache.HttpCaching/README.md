@@ -1,16 +1,13 @@
 # MethodCache.HttpCaching
 
-Requires .NET 10 and the .NET 10 SDK; use the same package version as `MethodCache`.
-
-Install this package and `MethodCache` at the exact same version. Integration packages use Core internals;
-do not override their exact Core dependency. Our package smoke tests promote NU1608 to a restore error.
-
 HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`,
 revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached
 response. It follows RFC 9111.
 
+Install it at the same version as `MethodCache`.
+
 Run the [console tour's HttpClient chapter](https://github.com/eoniclabs/MethodCache/tree/main/samples/MethodCache.Demo#httpclient-caching) to see cache hits, ETag validation, `no-store`
-and PUT invalidation against a real local HTTP server with checked origin-call counters.
+and PUT invalidation against a real local HTTP server.
 
 <!-- snippet: http-basic -->
 ```cs
@@ -21,14 +18,6 @@ builder.Services.AddHttpClient<IGitHubClient, GitHubClient>()
 <!-- endSnippet -->
 
 That is all. Your typed client keeps calling `GetAsync` as before.
-
-Responses without custom key headers or `Vary` fields use direct variant selection, avoiding temporary sets
-and sorting. Private caches still isolate `Authorization` and `Cookie`; configured headers and `Vary` retain
-their combined, case-insensitive selection rules.
-
-A full replacement response also retires the previous cached representation when it cannot be stored, including `no-store`, shared-cache `private`, a body over the size limit, or a failed replacement write. The next caller cannot fall back to an older fresh body. Stale-while-revalidate respects explicit request `max-age`, `min-fresh` and `max-stale` limits.
-
-Concurrent writers with the same variant selection share its namespace, including across processes using distributed storage. The body-free variant index is retained for the maximum supported response lifetime (365 days); individual variants still expire at their own TTL. A change to the selecting headers retires the URL publication epoch exactly once; a concurrent response published after that retirement remains reachable; the current response reaches its caller, and the next request fetches and stores the new schema. If deleting the old entry fails after the epoch was rotated, foreground validation reports that error without rotating again; background validation logs it. A concurrent publication in the new epoch remains reachable.
 
 ## What it does
 
@@ -84,8 +73,8 @@ builder.Services.AddHttpClient<IWeatherClient, WeatherClient>()
 | `MaxResponseBytes` | 10 MiB | Larger responses are not cached. A body without `Content-Length` is read up to this size, then streamed to the caller uncached; dispose the response to release it. Must be positive; `long.MaxValue` means no limit |
 | `KeyHeaders` | empty | Request headers that are always part of the key, for APIs that vary on a header without sending `Vary` |
 | `AddDiagnosticHeaders` | `false` | Adds a `MethodCache` member to the RFC 9211 `Cache-Status` header, after any the origin's caches added: `MethodCache; hit; ttl=42` from the cache, or `MethodCache; fwd=uri-miss; fwd-status=200; stored` from the origin (`fwd` is `uri-miss`, `vary-miss`, `stale`, `request`, `method` or `bypass`). A stale response adds `detail=stale-while-revalidate` or `detail=stale-if-error`. `Age` is set either way |
-| `KeepCookies` | `false` | Preserve transport cookies and bypass all response caching; only-if-cached returns 504. Unsafe mutations still invalidate |
-| `Tags` | empty | Static tags in addition to the escaped client tag |
+| `KeepCookies` | `false` | Keep the transport's automatic cookies and turn response caching off for this client; `only-if-cached` returns 504. Successful writes still invalidate |
+| `Tags` | empty | Extra tags on this client's responses, next to its own `http:` tag, for invalidating several clients together |
 | `AllowUnverifiedTransport` | `false` | Cache through a transport other than `SocketsHttpHandler` or `HttpClientHandler`. Only when it sends no automatic cookies or hidden caller identity |
 
 Only GET and HEAD responses are cached. OPTIONS and TRACE go to the origin and change nothing; any other method,
@@ -93,12 +82,12 @@ including one the cache doesn't know, invalidates the URL's cached responses whe
 server or in the request) always requires a successful revalidation, even with the stale options on. If reading a response body fails, the request fails; you never get a partly read body.
 
 See [HTTP caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/http-caching.md) for the freshness and revalidation rules, how
-writes invalidate, Core-owned storage, and how `AddHttpCaching()` handles cookies and transports.
+writes invalidate, and how `AddHttpCaching()` handles cookies and transports.
 
 ## Storage
 
-Responses are kept in memory, in a cache of their own (your app's `IMemoryCache` is not touched). The total size
-is shared by all clients:
+Responses are kept in memory, in a budget of their own next to method results (your app's `IMemoryCache` is not
+touched). The total size, headers included, is shared by all clients; a larger response is streamed and not stored:
 
 <!-- snippet: http-storage-size -->
 ```cs
@@ -108,10 +97,9 @@ builder.Services.AddMethodCache(cache => cache.Memory(o => o.MaxHttpBytes = 50 *
 
 ### Sharing responses between instances
 
-Responses use MethodCache's native Redis, SQL Server or PostgreSQL automatically when configured. Core keeps no local
-response or epoch copies in this mode. The application's unrelated `IDistributedCache` is never a fallback.
-Without an owned native transport, responses stay in Core's separate HTTP memory store. Register Core explicitly
-with `AddMethodCache`; either registration order works.
+With Redis, SQL Server or PostgreSQL configured in `AddMethodCache`, responses are stored there instead, so every
+instance shares them: an `ETag` one instance fetched is revalidated by another, and a successful write invalidates the
+URL for all of them, even when backplane messages are lost. Your application's own `IDistributedCache` is never used.
 
 <!-- snippet: http-distributed -->
 ```cs
@@ -119,31 +107,16 @@ builder.Services.AddMethodCache(cache => cache.UseRedis("localhost:6379"));
 ```
 <!-- endSnippet -->
 
-An ETag fetched by one instance is revalidated by another, and a successful unsafe mutation advances the shared
-URL generation before returning. This remains correct without backplane messages. Tag and Clear generations are
-shared with Core-only nodes and across entry formats. Graceful async disposal drains owned generation work,
-retries queued invalidations once through an open circuit breaker, and reports any lost count. Recovery is not
-durable across process exit. A failed generation read bypasses caching. An unconfirmed
-mutation throws `HttpCacheInvalidationException`; the origin may already have succeeded. Do not automatically
-repeat the origin mutation. A GET or HEAD whose answer replaces a stored response that can't be retired throws
-the same exception; it is safe to retry. Core owns bounded invalidation recovery after caller cancellation.
+If a write's invalidation can't be confirmed, the call throws `HttpCacheInvalidationException`. The write may have
+succeeded at the origin, so don't repeat it automatically.
 
-`ICacheAdministrator` lists resident local HTTP representations, or a bounded register of at most 1024 historical
-L2 observations. `ObservedDistributed` is not verified presence or a global inventory. No bodies, credentials,
-cookies or raw queries are kept in that register. Known-id removal retires all URL variants; an unknown id is
-NotFound. `Clear` retires the shared generation without enumerating L2 values. Static `HttpCacheOptions.Tags`
-and the implicit client tag support tag invalidation. For client names up to 128 UTF-16 code units, that tag is
-`http:` plus `MethodCacheKeys.Part(clientName)`; longer names use `http:#:` plus the complete client SHA-256 identity.
-Long client names are accepted. Administration shows a bounded prefix plus their hash. Configure at most 125
-nonblank custom tags of at most 1024 code units each; invalid tag settings fail host startup.
+### Administration
 
-Local client-tag invalidation scans resident HTTP entries and reclaims matching bodies and byte budget.
-URL invalidation and other configured application tags use their indexes. Client-wide invalidation work
-therefore grows with the resident entry count while publication avoids the implicit client index.
-
-The former public storage interface/entry/options are removed. HTTP entries use a private codec and are unaffected
-by method serializer, TTL, jitter or fail-safe settings. `MaxHttpBytes` includes body, stored headers and conservative
-metadata costs; oversized responses remain streamed. The default budget is 100 MiB, separate from method entries.
+`ICacheAdministrator` and the admin endpoints list and remove cached responses, without bodies, credentials, cookies
+or query strings. Each client's responses carry the tag `http:` followed by `MethodCacheKeys.Part(clientName)`, plus
+the tags in `HttpCacheOptions.Tags` (at most 125, each at most 1024 characters). The
+[HTTP caching reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/http-caching.md) has the
+details.
 
 ### Time
 
@@ -160,10 +133,7 @@ MethodCache.OpenTelemetry (or `AddMeter("MethodCache")`) picks them up:
 |---|---|
 | `methodcache.requests` | `methodcache.kind=http`, `methodcache.http.client` (the static client name), `methodcache.result` (`hit`, `miss`, `revalidated`, `stale`, `bypass`, `error`) |
 | `methodcache.load.duration` (s) | `methodcache.kind=http`, `methodcache.http.client` for actual origin work, including background refresh |
-| `methodcache.http.size` (By) | Actual resident HTTP storage cost |
+| `methodcache.http.size` (By) | Bytes the cached responses take in memory |
 
-HTTP cache freshness includes request/response delay when correcting the upstream Age header, for both initial responses and 304 validation. Age arithmetic saturates instead of overflowing on extreme headers.
-
-Background HTTP revalidation preserves the request HTTP version, version policy and a shallow copy of its request options. Option values keep their original ownership; use values that remain valid for background work.
-
-Named options are validated at host startup: `MaxResponseBytes` must be positive (`long.MaxValue` for no limit), freshness/retention durations must be non-negative, and background revalidation timeout must be positive and at most 4,294,967,294 milliseconds. Stale-if-error respects the caller’s `max-age`, `min-fresh` and `max-stale` constraints.
+Invalid settings fail when the host starts: `MaxResponseBytes` must be positive (`long.MaxValue` for no limit),
+durations can't be negative, and `BackgroundRevalidationTimeout` must be positive and at most about 49 days.

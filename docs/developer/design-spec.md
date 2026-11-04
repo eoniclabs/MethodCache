@@ -17,7 +17,7 @@ Ledstång: **lättförståeligt, enkelt, tydligt; ingen reproducerbar prestandaf
 Korrekthet och isolering är egna godkännandekrav. Att uppdatera detta dokument innebär inte att en release
 är publicerad eller att implementationstesterna har körts. Dokumentet skapades som PR 0. Johan gav därefter,
 den 2026-10-15, uppdraget att genomföra hela PR-serien som ett sammanhängande mål. Aktuell verifieringsstatus
-finns i design-execution.md; publicering av paket och merge är separata från detta implementationsuppdrag.
+fanns i design-execution.md (borttagen, finns i git-historiken); publicering av paket och merge är separata från detta implementationsuppdrag.
 
 ## 1. Beslut och omfattning
 
@@ -708,7 +708,7 @@ Properties gäller för typer/Unicode/framing. Docs-löften har även en Docs.Te
 
 ### PR 2: användar-API och policyprimitiver
 
-Implementationsresultat och kvarvarande mergegrindar finns i [PR 2:s valideringsrapport](design-pr2-validation.md).
+Implementationsresultat och mergegrindar fanns i PR 2:s valideringsrapport (borttagen, finns i git-historiken).
 
 | ID | Arrangera/agera | Krävt utfall |
 |---|---|---|
