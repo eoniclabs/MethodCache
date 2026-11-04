@@ -21,6 +21,7 @@ GITHUB_REPO="MethodCache"
 PACKAGES=(
     "MethodCache"
     "MethodCache.AspNetCore"
+    "MethodCache.EntityFrameworkCore"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
     "MethodCache.PostgreSql"

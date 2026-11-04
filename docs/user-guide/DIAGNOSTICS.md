@@ -34,6 +34,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
+| [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 
 ## MC0001
 
@@ -216,7 +217,7 @@ off.
 
 ## MC0024
 
-A tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync` contains a value that
+A tag built with string interpolation for `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit` contains a value that
 interpolation writes differently from the tags MethodCache stores, so the invalidation can match nothing and the old
 value stays cached, without an error:
 
@@ -278,3 +279,20 @@ Make what the result depends on a parameter of the cached method, so it becomes 
 `Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
 See [Getting started](../getting-started.md#per-user-data).
 
+## MC0027
+
+Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUpdate`, `ExecuteDelete`,
+`ExecuteSql`, `ExecuteSqlRaw` or `ExecuteSqlInterpolated` (and their `Async` versions). They change rows without
+loading them, so EF Core's change tracker never sees the rows, and no entity tags are invalidated for them. Cached
+results that read those rows stay until they expire.
+
+```cs
+await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
+```
+
+Invalidate the tags of the rows it changes, in the same method or in a method around it, such as the one that runs an
+execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
+committed with `ICacheManager.InvalidateTagsAsync(...)`
+([Writes the change tracker doesn't see](../features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
+The warning is not reported in the implementation of a `[CacheInvalidate]` method, which invalidates its own tags.
+When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.

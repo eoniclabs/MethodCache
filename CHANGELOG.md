@@ -36,6 +36,14 @@ release.
 - Analyzer MC0026 warns when the implementation of a cached interface takes `IHttpContextAccessor`, `HttpContext`,
   `HttpRequest` or a `ClaimsPrincipal` in its constructor: the key holds only the method's arguments, so a result
   that depends on the current user could reach another user.
+- **`MethodCache.EntityFrameworkCore`**, a new package: `AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef =>
+  ef.Entity<Product>("product:{Id}", "products")))` invalidates those tags after every commit that adds, changes or
+  deletes a `Product`, with the old and the new values of a changed row, and drops them on a rollback.
+  `db.InvalidateAfterCommit(tags)` queues other tags for the same moment. Works with `AddDbContext`,
+  `AddDbContextPool`, `AddDbContextFactory` and `TransactionScope`, and with document databases on `SaveChanges`.
+- Analyzer MC0027 warns, in a project that uses `MethodCache.EntityFrameworkCore`, about `ExecuteUpdate`,
+  `ExecuteDelete` and `ExecuteSql…` writes, which go past EF Core's change tracker, when the method around them
+  doesn't invalidate. MC0024 also checks the tags passed to `InvalidateAfterCommit`.
 
 ### Documentation
 

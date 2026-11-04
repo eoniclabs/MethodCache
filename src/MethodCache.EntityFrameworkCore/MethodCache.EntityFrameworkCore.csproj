@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TrackPublicApi>true</TrackPublicApi>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>MethodCache.EntityFrameworkCore</PackageId>
+    <Title>MethodCache for Entity Framework Core</Title>
+    <Description>Invalidates MethodCache tags when Entity Framework Core commits: automatically for mapped entities, and for any tag queued with InvalidateAfterCommit</Description>
+    <PackageTags>cache;methodcache;entity-framework-core;efcore;invalidation;transactions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MethodCache.Core\MethodCache.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MethodCache.EntityFrameworkCore.Tests" />
+  </ItemGroup>
+</Project>

@@ -67,6 +67,7 @@ $GitHubRepo = "MethodCache"
 $Packages = @(
     "MethodCache"
     "MethodCache.AspNetCore"
+    "MethodCache.EntityFrameworkCore"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
     "MethodCache.PostgreSql"

@@ -19,18 +19,20 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <!-- Npgsql 10 brings the 10.0 Microsoft.Extensions packages -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.4" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.9.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageReference Include="FluentAssertions" Version="8.7.0" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.8.118" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.PostgreSql\MethodCache.PostgreSql.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.EntityFrameworkCore\MethodCache.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.HttpCaching\MethodCache.HttpCaching.csproj" />
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>

@@ -358,6 +358,7 @@ All packages target .NET 10. Install the add-ons at the same version as `MethodC
 | [`MethodCache.OpenTelemetry`](src/MethodCache.OpenTelemetry/README.md) | Tracing and metrics |
 | [`MethodCache.Serialization.MessagePack`](src/MethodCache.Serialization.MessagePack/README.md) | MessagePack instead of JSON in the distributed cache |
 | [`MethodCache.HttpCaching`](src/MethodCache.HttpCaching/README.md) | HTTP caching for `HttpClient`: Cache-Control, ETag revalidation, Vary, optionally shared through the distributed cache |
+| [`MethodCache.EntityFrameworkCore`](src/MethodCache.EntityFrameworkCore/README.md) | Invalidation after Entity Framework Core commits: tags per entity type, and a warning for writes it can't see |
 
 ## Documentation
 
@@ -365,7 +366,7 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
 
 - [Getting started](docs/getting-started.md) and [How do I…?](docs/how-to.md), short answers to common questions
 - Caching methods: [generated decorators](docs/features/source-generator.md), [keys](docs/features/keys.md), [expiration](docs/features/expiration.md),
-  [invalidation](docs/features/invalidation.md), [fail-safe](docs/features/fail-safe.md),
+  [invalidation](docs/features/invalidation.md), [Entity Framework Core](docs/features/entity-framework-core.md), [fail-safe](docs/features/fail-safe.md),
   [conditional caching](docs/features/conditional-caching.md), [configuration](docs/features/configuration.md)
 - [Manual caching](docs/features/manual-caching.md) and [third-party code](docs/features/third-party.md)
 - Production: [distributed cache](docs/features/distributed-cache.md), [monitoring](docs/features/monitoring.md),
@@ -375,7 +376,7 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Reference, with the exact rules: [registration](docs/reference/registration.md),
   [distributed cache](docs/reference/distributed.md), [HTTP caching](docs/reference/http-caching.md)
-- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md)
+- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md), [Entity Framework Core](src/MethodCache.EntityFrameworkCore/README.md)
 - [Console tour, including HttpClient caching](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 
 ## Using a coding agent

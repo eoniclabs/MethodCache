@@ -1,19 +1,8 @@
+using System.Data.Common;
 using MethodCache;
-using Microsoft.EntityFrameworkCore;
 
 namespace Docs.InvalidationAfterCommit
 {
-    public sealed class Product
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = "";
-    }
-
-    public sealed class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
-    {
-        public DbSet<Product> Products => Set<Product>();
-    }
-
     public interface IProductReads
     {
         const string ProductTag = "product:{id}";
@@ -25,14 +14,17 @@ namespace Docs.InvalidationAfterCommit
     public static class ProductEndpoints
     {
         // begin-snippet: invalidation-after-commit
-        public static async Task RenameAsync(int id, string name, AppDb db, ICacheManager cache, IMethodCacheKeys keys,
-            CancellationToken ct)
+        public static async Task RenameAsync(int id, string name, DbConnection connection, ICacheManager cache,
+            IMethodCacheKeys keys, CancellationToken ct)
         {
-            await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+            await using (var transaction = await connection.BeginTransactionAsync(ct))
             {
-                var product = await db.Products.SingleAsync(p => p.Id == id, ct);
-                product.Name = name;
-                await db.SaveChangesAsync(ct);
+                await using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = "update products set name = @name where id = @id";
+                AddParameter(command, "@name", name);
+                AddParameter(command, "@id", id);
+                await command.ExecuteNonQueryAsync(ct);
                 await transaction.CommitAsync(ct);
             }
 
@@ -41,5 +33,13 @@ namespace Docs.InvalidationAfterCommit
                 keys.Tag<IProductReads>(r => r.GetNameAsync(id), IProductReads.ProductTag), CancellationToken.None);
         }
         // end-snippet
+
+        private static void AddParameter(DbCommand command, string name, object value)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
+        }
     }
 }

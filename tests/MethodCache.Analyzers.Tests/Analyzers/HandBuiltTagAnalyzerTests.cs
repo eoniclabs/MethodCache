@@ -101,6 +101,29 @@ public class Endpoint
             Assert.False(diagnostic.Properties.ContainsKey(HandBuiltTagAnalyzer.FixableProperty));
         }
 
+        [Fact]
+        public async Task HandBuiltTag_PassedToInvalidateAfterCommit_IsReported()
+        {
+            const string source = @"using System;
+using Microsoft.EntityFrameworkCore;
+
+namespace Microsoft.EntityFrameworkCore
+{
+    public class DbContext { }
+    public static class MethodCacheDbContextExtensions { public static void InvalidateAfterCommit(this DbContext context, params string[] tags) { } }
+}
+
+public class Endpoint
+{
+    public void Run(DbContext db, Guid tenant, int id) => db.InvalidateAfterCommit($""order:{id}"", $""plan:{tenant}"");
+}";
+
+            var diagnostic = Assert.Single(await AnalyzeAsync(source));
+
+            Assert.Equal("MC0024", diagnostic.Id);
+            Assert.Contains("'tenant'", diagnostic.GetMessage());
+        }
+
         private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
         {
             var compilation = CSharpCompilation.Create(

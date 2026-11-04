@@ -12,6 +12,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Cache keys](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/keys.md): how keys are built from the arguments, and how to control them.
 - [Expiration](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/expiration.md): duration, sliding expiration, refresh-ahead and versions.
 - [Invalidation](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/invalidation.md): tags with argument templates, keys and whole methods.
+- [Entity Framework Core](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/entity-framework-core.md): invalidate after every commit that changes a mapped entity.
 - [Fail-safe](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/fail-safe.md): serve the last good value when a dependency fails or is slow.
 - [Conditional caching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/conditional-caching.md): store only the results you want to keep.
 - [Configuration](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/configuration.md): defaults, groups, `appsettings.json` with live reload, runtime overrides.
@@ -38,6 +39,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [MethodCache.OpenTelemetry](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.OpenTelemetry/README.md): MethodCache produces standard .NET metrics and traces.
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`, revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached response.
 - [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Stores MethodCache's distributed cache values (Redis, SQL Server or PostgreSQL) as compact MessagePack instead of the default System.Text.Json: smaller entries and faster reads.
+- [MethodCache.EntityFrameworkCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.EntityFrameworkCore/README.md): Invalidates MethodCache tags when Entity Framework Core commits a change.
 - [Changelog](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/CHANGELOG.md): Changes that a user of the packages notices.
 
 ## Optional

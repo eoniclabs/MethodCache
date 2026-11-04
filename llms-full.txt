@@ -116,6 +116,12 @@ builder.Services.AddMethodCache();                               // after your r
   `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag))`.
   Never build a tag with string interpolation (`$"price:{model}"`): tags escape `:` and `\` in strings and write a
   `Guid` without hyphens and an enum as its number, so a hand-built tag can silently match nothing (MC0024).
+- With Entity Framework Core, add package `MethodCache.EntityFrameworkCore` and map each entity type to the tags of
+  the cached methods that read it: `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}", "products"))`.
+  A name in braces is an entity property. `SaveChanges` then invalidates them after the commit, and a rollback drops
+  them; don't add invalidation code to those writes. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…` (MC0027),
+  call `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write
+  without one.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
@@ -137,7 +143,9 @@ builder.Services.AddMethodCache();                               // after your r
 - `MethodCache`: also `NoOpCacheManager` (sealed).
 - `Microsoft.Extensions.DependencyInjection`: `AddMethodCache`. Everything else is a method on its builder:
   `FromConfiguration`, `Distributed(...)`, `Telemetry(...)`, `UseRedis` (package `MethodCache.Redis`), `UseSqlServer`
-  (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`) and `UseMessagePack` (package `MethodCache.Serialization.MessagePack`).
+  (package `MethodCache.SqlServer`), `UsePostgreSql` (package `MethodCache.PostgreSql`), `UseMessagePack` (package `MethodCache.Serialization.MessagePack`)
+  and `UseEntityFrameworkCore<TContext>` (package `MethodCache.EntityFrameworkCore`).
+- `Microsoft.EntityFrameworkCore`: `InvalidateAfterCommit` on a `DbContext` (package `MethodCache.EntityFrameworkCore`).
 
 
 ---
@@ -343,14 +351,26 @@ exactly as the cached method does:
 ([When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else))
 
 **How do I invalidate after a database transaction commits?**
-Invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a reader
-between the invalidation and the commit would cache the old data again. If the commit throws, there is nothing to
-invalidate. ([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
+With Entity Framework Core, `MethodCache.EntityFrameworkCore` does it: tags mapped to an entity type are invalidated
+after the commit, and dropped on a rollback. ([Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md))
+Otherwise invalidate after `CommitAsync` returns, not inside the transaction, and pass `CancellationToken.None`: a
+reader between the invalidation and the commit would cache the old data again.
+([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
 
 **How do I make sure no write path forgets to invalidate?**
-Send every write through an interface whose methods commit their own transaction and carry `[CacheInvalidate]`: the
-attribute runs after the method succeeds. Test each write path with a cached read before and after it.
-([After a database transaction](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#after-a-database-transaction))
+With Entity Framework Core, map each entity to its tags with `mc.UseEntityFrameworkCore<AppDb>(ef => ef.Entity<Product>("product:{Id}"))`:
+every `SaveChanges` that changes one invalidates them, wherever it runs. Otherwise send every write through an
+interface whose methods commit their own transaction and carry `[CacheInvalidate]`. Test each write path with a cached
+read before and after it. ([Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#mapping-entities-to-tags))
+
+**My endpoint writes with `ExecuteUpdateAsync`. Why the warning MC0027?**
+It changes rows without EF Core's change tracker, so no entity tags are known for them. Inside a transaction, add
+`db.InvalidateAfterCommit(tag)`; without one, call `ICacheManager.InvalidateTagAsync` after the write.
+([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**Does the Entity Framework Core package work with Cosmos DB or MongoDB?**
+Yes, entity tags and `InvalidateAfterCommit` act on `SaveChanges`. A MongoDB transaction you begin yourself is
+invalidated when the context is disposed. ([Document databases](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#document-databases))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -985,7 +1005,9 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
 
 ## When the write happens somewhere else
 
-`[CacheInvalidate]` covers writes that go through the cached interface. When the data changes somewhere else, such as
+`[CacheInvalidate]` covers writes that go through the cached interface. With Entity Framework Core,
+[`MethodCache.EntityFrameworkCore`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md) invalidates after every commit that changes a mapped
+entity, wherever the write happens. When the data changes somewhere else, such as
 an endpoint or a command that writes to the database directly, or a transaction that commits after the
 `[CacheInvalidate]` method has returned, invalidate after the write or the commit. Get the tag from
 `IMethodCacheKeys.Tag`, so you never build it by hand:
@@ -1027,19 +1049,23 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 
 ### After a database transaction
 
-Invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
+With Entity Framework Core, [`MethodCache.EntityFrameworkCore`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md) does this for you. With
+another way to write, such as Dapper or ADO.NET, invalidate after the transaction commits, not before and not inside it. An invalidation before the commit lets a
 reader cache the old data again in between, and a rollback after it has nothing to undo. Pass
 `CancellationToken.None`: once the data has changed, the invalidation must happen even if the caller has gone.
 
 ```cs
-public static async Task RenameAsync(int id, string name, AppDb db, ICacheManager cache, IMethodCacheKeys keys,
-    CancellationToken ct)
+public static async Task RenameAsync(int id, string name, DbConnection connection, ICacheManager cache,
+    IMethodCacheKeys keys, CancellationToken ct)
 {
-    await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+    await using (var transaction = await connection.BeginTransactionAsync(ct))
     {
-        var product = await db.Products.SingleAsync(p => p.Id == id, ct);
-        product.Name = name;
-        await db.SaveChangesAsync(ct);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "update products set name = @name where id = @id";
+        AddParameter(command, "@name", name);
+        AddParameter(command, "@id", id);
+        await command.ExecuteNonQueryAsync(ct);
         await transaction.CommitAsync(ct);
     }
 
@@ -1075,6 +1101,173 @@ got, per tag or key:
 | `PublicationQueued` | Confirmed by the distributed cache, but the message wasn't sent yet; it is retried |
 
 Without a distributed cache only `Local` counts.
+
+
+---
+
+<!-- source: docs/features/entity-framework-core.md -->
+
+# Entity Framework Core
+
+The `MethodCache.EntityFrameworkCore` package invalidates cached results when Entity Framework Core commits a change.
+Map an entity type to the tags of the methods that read it, and every save that adds, changes or deletes one of its
+rows invalidates those tags, after the data is committed. Writes don't need invalidation code of their own, also when
+they happen inline in an endpoint.
+
+Install it at the same version as `MethodCache`.
+
+## Setting it up
+
+The cached reads are ordinary `[Cache]` methods with tags:
+
+```cs
+public interface IProductReads
+{
+    [Cache(Duration = "00:10:00", Tags = ["product:{id}"])]
+    Task<ProductDto?> GetAsync(int id);
+
+    [Cache(Duration = "00:10:00", Tags = ["category:{categoryId}"])]
+    Task<IReadOnlyList<ProductDto>> ListAsync(int categoryId);
+
+    [Cache(Duration = "01:00:00", Tags = ["top-sellers"])]
+    Task<IReadOnlyList<ProductDto>> TopSellersAsync();
+}
+```
+
+Connect the context in `AddMethodCache`, and say which tags a change to each entity type invalidates:
+
+```cs
+builder.Services.AddDbContext<ShopDb>(o => o.UseSqlite(connectionString));
+builder.Services.AddScoped<IProductReads, ProductReads>();
+
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
+    .Entity<Product>("product:{Id}", "category:{CategoryId}")
+    .Entity<OrderLine>("top-sellers")));
+```
+
+`AddDbContext`, `AddDbContextPool` and `AddDbContextFactory` stay as they are, before or after `AddMethodCache`. A
+save is now all a write needs:
+
+```cs
+public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, CancellationToken ct)
+{
+    var product = await db.Products.SingleAsync(p => p.Id == id, ct);
+    product.Price = price;
+    // Invalidates product:{id} and category:{CategoryId} once the save succeeded
+    await db.SaveChangesAsync(ct);
+}
+```
+
+## Mapping entities to tags
+
+`Entity<TEntity>(tags)` takes the tags to invalidate when a row of that type is added, changed or deleted.
+
+- **A name in braces is a property of the entity**, also a shadow property such as a foreign key that has no property
+  in the class. The exact spelling is used first; otherwise the only property that matches without regard to case.
+- **Values are written as cached methods write arguments**: a `Guid` as 32 digits without hyphens, an enum as its
+  number, `:` and `\` escaped in strings. So `"product:{Id}"` on the entity matches `"product:{id}"` on a method, and
+  `"sku:{Sku}"` matches `"sku:{sku}"` for a SKU such as `ham:mer`.
+- **A changed row invalidates the tags of its old and its new values.** Moving a product to another category
+  invalidates `category:1` and `category:2`.
+- **A new row is tagged with its saved values**, so a key the database generates is the real one, not a temporary value.
+  A cached "not found" for that id is invalidated too.
+- **A derived type** invalidates the tags of every mapped type it derives from.
+- **A tag without braces**, such as `"top-sellers"`, is invalidated by any change to that entity type.
+
+The tags are checked against the model when the host starts. A name that is not a property, or a type the context
+doesn't map, stops the host with a message that lists the entity's properties. When the context can't be created at
+startup, because it needs something only a request has, the first save checks them instead.
+
+Map each entity to the tags of every cached method whose result reads it. A method that reads several tables needs
+a tag that each of their entities invalidates, such as `top-sellers` above for order lines.
+
+## When the tags are invalidated
+
+Never before the data is committed: a reader in between would cache the old rows again.
+
+| Situation | Invalidated |
+|---|---|
+| `SaveChanges` without a transaction | After it succeeds |
+| Inside `BeginTransaction` | After `Commit`. `Rollback` drops them |
+| Inside a `TransactionScope` | When the scope completes. An aborted scope drops them |
+| `SaveChanges` throws | Nothing from that save |
+| An execution strategy retries | A failed attempt invalidates nothing early; the retry collects its tags again |
+
+```cs
+public static async Task MoveAsync(int id, int categoryId, ShopDb db, CancellationToken ct)
+{
+    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+    var product = await db.Products.SingleAsync(p => p.Id == id, ct);
+    product.CategoryId = categoryId;
+    await db.SaveChangesAsync(ct);   // nothing invalidated yet: the transaction is open
+    await transaction.CommitAsync(ct);   // product:{id}, the old and the new category:{CategoryId}
+}
+```
+
+- Synchronous `SaveChanges()` and `Commit()` invalidate the memory cache before they return. Redis, SQL Server or
+  PostgreSQL confirm in the background, so the call never waits on the network.
+- An invalidation after a commit never throws: the data is saved, and an exception would make the caller think the
+  save failed. If the distributed cache is down, the invalidation is retried until it is back, and logged as a warning.
+- With several instances, the other instances drop their copies as with any invalidation
+  ([With several instances](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#with-several-instances)).
+- Commit through EF Core: `Commit()` on what `BeginTransaction` returned, or `Database.CommitTransaction()`. A
+  transaction you pass in with `UseTransaction` and commit yourself isn't seen; its tags are invalidated when the
+  context is disposed.
+
+## Writes the change tracker doesn't see
+
+`ExecuteUpdate`, `ExecuteDelete` and `Database.ExecuteSql…` change rows without loading them, so no entity tags are
+known for them. Warning [MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) reports such a write when the method around it
+doesn't invalidate anything.
+
+Inside a transaction, queue the tags with `InvalidateAfterCommit`. They are invalidated with the entity tags after the
+commit, and dropped on a rollback:
+
+```cs
+public static async Task RecalculateAsync(ShopDb db, IMethodCacheKeys keys, int categoryId, CancellationToken ct)
+{
+    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Products
+        .Where(p => p.CategoryId == categoryId)
+        .ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, p => p.Price * 1.1m), ct);
+    // ExecuteUpdateAsync goes past the change tracker: name the tags it changes
+    db.InvalidateAfterCommit(keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}"));
+    await transaction.CommitAsync(ct);
+}
+```
+
+Without a transaction, the write is committed when it returns. Invalidate at once:
+
+```cs
+public static async Task DeleteCategoryAsync(ShopDb db, ICacheManager cache, IMethodCacheKeys keys, int categoryId,
+    CancellationToken ct)
+{
+    // Without a transaction the delete is committed when it returns: invalidate at once
+    await db.Products.Where(p => p.CategoryId == categoryId).ExecuteDeleteAsync(ct);
+    await cache.InvalidateTagAsync(
+        keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}"), CancellationToken.None);
+}
+```
+
+`InvalidateAfterCommit` takes tags exactly as cached methods write them. Build them with `IMethodCacheKeys.Tag`, or
+with `MethodCacheKeys.Part` around each value; [MC0024](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024) reports a hand-built tag
+that formats a value differently. Outside a transaction, queued tags wait for the next successful `SaveChanges`, and
+are invalidated when the context is disposed if none comes.
+
+Writes outside EF Core, such as Dapper or another service, are covered in
+[When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else).
+
+## Document databases
+
+Azure Cosmos DB and MongoDB have EF Core providers. Entity tags and `InvalidateAfterCommit` work with them, since
+both act on `SaveChanges`. Cosmos DB has no transactions you begin yourself in EF Core, so each `SaveChanges` is the
+commit. A MongoDB transaction you begin with `BeginTransaction` isn't seen by the package; its tags are invalidated
+when the context is disposed, after the commit.
+
+## Testing
+
+Use SQLite in memory, or your real database, with the same registration. A test that writes to the database without
+EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)).
 
 
 ---
@@ -2907,6 +3100,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
+| [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 
 ## MC0001
 
@@ -3089,7 +3283,7 @@ off.
 
 ## MC0024
 
-A tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync` contains a value that
+A tag built with string interpolation for `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit` contains a value that
 interpolation writes differently from the tags MethodCache stores, so the invalidation can match nothing and the old
 value stays cached, without an error:
 
@@ -3150,6 +3344,24 @@ public sealed class Orders(IHttpContextAccessor http, AppDb db) : IOrders   // M
 Make what the result depends on a parameter of the cached method, so it becomes part of the key:
 `Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
 See [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#per-user-data).
+
+## MC0027
+
+Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUpdate`, `ExecuteDelete`,
+`ExecuteSql`, `ExecuteSqlRaw` or `ExecuteSqlInterpolated` (and their `Async` versions). They change rows without
+loading them, so EF Core's change tracker never sees the rows, and no entity tags are invalidated for them. Cached
+results that read those rows stay until they expire.
+
+```cs
+await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
+```
+
+Invalidate the tags of the rows it changes, in the same method or in a method around it, such as the one that runs an
+execution strategy: inside a transaction with `db.InvalidateAfterCommit(...)`, or after a write that is already
+committed with `ICacheManager.InvalidateTagsAsync(...)`
+([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
+The warning is not reported in the implementation of a `[CacheInvalidate]` method, which invalidates its own tags.
+When nothing cached reads the rows, turn it off for that line with `#pragma warning disable MC0027`.
 
 
 ---
@@ -4022,6 +4234,71 @@ representation. Configure the serializer for your model. Increment method `Versi
 
 ---
 
+<!-- source: src/MethodCache.EntityFrameworkCore/README.md -->
+
+# MethodCache.EntityFrameworkCore
+
+Invalidates MethodCache tags when Entity Framework Core commits a change. Map an entity type to the tags of the cached
+methods that read it, and every save that adds, changes or deletes one of its rows invalidates them, after the data
+is committed and never on a rollback.
+
+Install it at the same version as `MethodCache`.
+
+## Why this package
+
+- **No invalidation code in your writes.** An endpoint that loads an entity, changes it and calls `SaveChangesAsync`
+  invalidates the right tags by itself.
+- **Never too early.** Inside a transaction the tags wait for the commit, so no reader caches the old rows in between,
+  and a rollback drops them. `TransactionScope` works too.
+- **Old and new values.** Moving a row to another category invalidates both categories.
+- **The same tags as your methods.** `"product:{Id}"` on the entity matches `"product:{id}"` on a `[Cache]` method,
+  formatted the same way, and a name that is not a property stops the host at startup.
+- **A warning where it can't help.** `ExecuteUpdate`, `ExecuteDelete` and raw SQL go past the change tracker; analyzer
+  MC0027 reports them when the method doesn't invalidate.
+
+## Usage
+
+```cs
+builder.Services.AddDbContext<ShopDb>(o => o.UseSqlite(connectionString));
+builder.Services.AddScoped<IProductReads, ProductReads>();
+
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
+    .Entity<Product>("product:{Id}", "category:{CategoryId}")
+    .Entity<OrderLine>("top-sellers")));
+```
+
+```cs
+public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, CancellationToken ct)
+{
+    var product = await db.Products.SingleAsync(p => p.Id == id, ct);
+    product.Price = price;
+    // Invalidates product:{id} and category:{CategoryId} once the save succeeded
+    await db.SaveChangesAsync(ct);
+}
+```
+
+For a write the change tracker doesn't see, queue the tags yourself:
+
+```cs
+public static async Task RecalculateAsync(ShopDb db, IMethodCacheKeys keys, int categoryId, CancellationToken ct)
+{
+    await using var transaction = await db.Database.BeginTransactionAsync(ct);
+    await db.Products
+        .Where(p => p.CategoryId == categoryId)
+        .ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, p => p.Price * 1.1m), ct);
+    // ExecuteUpdateAsync goes past the change tracker: name the tags it changes
+    db.InvalidateAfterCommit(keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}"));
+    await transaction.CommitAsync(ct);
+}
+```
+
+Works with SQL Server, PostgreSQL, SQLite and the other relational providers, and on `SaveChanges` also with Cosmos DB and
+MongoDB. The full guide, with when exactly each tag is invalidated, is
+[Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md).
+
+
+---
+
 <!-- source: CHANGELOG.md -->
 
 # Changelog
@@ -4062,6 +4339,14 @@ release.
 - Analyzer MC0026 warns when the implementation of a cached interface takes `IHttpContextAccessor`, `HttpContext`,
   `HttpRequest` or a `ClaimsPrincipal` in its constructor: the key holds only the method's arguments, so a result
   that depends on the current user could reach another user.
+- **`MethodCache.EntityFrameworkCore`**, a new package: `AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef =>
+  ef.Entity<Product>("product:{Id}", "products")))` invalidates those tags after every commit that adds, changes or
+  deletes a `Product`, with the old and the new values of a changed row, and drops them on a rollback.
+  `db.InvalidateAfterCommit(tags)` queues other tags for the same moment. Works with `AddDbContext`,
+  `AddDbContextPool`, `AddDbContextFactory` and `TransactionScope`, and with document databases on `SaveChanges`.
+- Analyzer MC0027 warns, in a project that uses `MethodCache.EntityFrameworkCore`, about `ExecuteUpdate`,
+  `ExecuteDelete` and `ExecuteSql…` writes, which go past EF Core's change tracker, when the method around them
+  doesn't invalidate. MC0024 also checks the tags passed to `InvalidateAfterCommit`.
 
 ### Documentation
 
