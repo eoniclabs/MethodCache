@@ -51,17 +51,83 @@ namespace MethodCache
             return cacheManager.GetOrCreateAsync(key, factory, static (load, token) => load(token), options, cancellationToken);
         }
 
-        /// <summary>Invalidates one logical key, optionally in a versioned key family.</summary>
+        /// <summary>
+        /// Invalidates one key cached without a version, such as a key from <see cref="IMethodCacheKeys.For{TService}"/>,
+        /// which already carries the method's version.
+        /// </summary>
         /// <param name="cacheManager">The cache manager.</param>
         /// <param name="key">The entry's key.</param>
-        /// <param name="version">
-        /// The version the entry was cached with, or <c>null</c> for an unversioned entry. A key from
-        /// <see cref="IMethodCacheKeys"/> already carries its version: pass <c>null</c> with it.
-        /// </param>
         /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
         public static ValueTask<InvalidationResult> InvalidateKeyAsync(this ICacheManager cacheManager, string key,
-            int? version = null, CancellationToken cancellationToken = default)
-            => cacheManager.InvalidateKeysAsync([key], version, cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.InvalidateKeysAsync([key], null, cancellationToken);
+        }
+
+        /// <summary>Invalidates one key cached with <paramref name="version"/> (<see cref="CacheEntryOptions.Version"/>).</summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="key">The entry's key.</param>
+        /// <param name="version">The version the entry was cached with.</param>
+        /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
+        public static ValueTask<InvalidationResult> InvalidateKeyAsync(this ICacheManager cacheManager, string key,
+            int version, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.InvalidateKeysAsync([key], version, cancellationToken);
+        }
+
+        /// <summary>Invalidates keys cached without a version, such as keys from <see cref="IMethodCacheKeys.For{TService}"/>.</summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="keys">The entries' keys.</param>
+        /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
+        public static ValueTask<InvalidationResult> InvalidateKeysAsync(this ICacheManager cacheManager, IEnumerable<string> keys,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.InvalidateKeysAsync(keys, null, cancellationToken);
+        }
+
+        /// <summary>Invalidates keys cached with <paramref name="version"/> (<see cref="CacheEntryOptions.Version"/>).</summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="keys">The entries' keys.</param>
+        /// <param name="version">The version the entries were cached with.</param>
+        /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
+        public static ValueTask<InvalidationResult> InvalidateKeysAsync(this ICacheManager cacheManager, IEnumerable<string> keys,
+            int version, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.InvalidateKeysAsync(keys, version, cancellationToken);
+        }
+
+        /// <summary>
+        /// Reads a key cached without a version, such as a key from <see cref="IMethodCacheKeys.For{TService}"/>, reporting
+        /// presence separately, including a cached null, zero and false. Never runs a factory.
+        /// </summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="key">The entry's key.</param>
+        /// <param name="cancellationToken">Cancels the read.</param>
+        public static ValueTask<CacheLookupResult<T>> TryGetAsync<T>(this ICacheManager cacheManager, string key,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.TryGetAsync<T>(key, null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Reads a key cached with <paramref name="version"/> (<see cref="CacheEntryOptions.Version"/>), reporting presence
+        /// separately, including a cached null, zero and false. Never runs a factory.
+        /// </summary>
+        /// <param name="cacheManager">The cache manager.</param>
+        /// <param name="key">The entry's key.</param>
+        /// <param name="version">The version the entry was cached with.</param>
+        /// <param name="cancellationToken">Cancels the read.</param>
+        public static ValueTask<CacheLookupResult<T>> TryGetAsync<T>(this ICacheManager cacheManager, string key,
+            int version, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            return cacheManager.TryGetAsync<T>(key, version, cancellationToken);
+        }
 
         /// <summary>Invalidates one application tag.</summary>
         public static ValueTask<InvalidationResult> InvalidateTagAsync(this ICacheManager cacheManager, string tag,

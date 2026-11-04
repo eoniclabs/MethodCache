@@ -100,6 +100,11 @@ builder.Services.AddMethodCache();                               // after your r
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
   `cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`. For every entry of one method, use
   `ICacheAdministrator.InvalidateMethodAsync(keys.MethodId<IProductService>(s => s.GetAsync(0)))`.
+- When data changes outside the cached interface (an endpoint or command writing to the database, or after a
+  transaction commits), invalidate after the write with a tag from `IMethodCacheKeys.Tag`:
+  `cache.InvalidateTagAsync(keys.Tag<IPriceSource>(s => s.GetRateAsync(provider, model), IPriceSource.RateTag))`.
+  Never build a tag with string interpolation (`$"price:{model}"`): tags escape `:` and `\` in strings and write a
+  `Guid` without hyphens and an enum as its number, so a hand-built tag can silently match nothing (MC0024).
 - Several registrations of one interface with different implementation types each cache their own results.
 - Use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; owned storage never falls back to the app's `IDistributedCache`. Configure only `DistributedCacheOptions.KeyPrefix` before building the container; use a new container for connection/prefix changes.
 - `AddHttpCaching()` requires explicit `AddMethodCache()` in the same container, in either order. HTTP uses a separate `MaxHttpBytes` budget (100 MiB), or exclusively the configured native MethodCache Redis/SQL Server/PostgreSQL transport. Never use the app cache as a fallback. Send explicit Cookie headers, or set `KeepCookies=true` to preserve transport cookies and bypass response caching. Confirmed unsafe mutations still advance shared URL epochs.

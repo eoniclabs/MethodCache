@@ -114,10 +114,21 @@ namespace MethodCache
         /// remove them. A template such as <c>"product:{id}"</c> is filled in from the parameter with that name; it
         /// takes a parameter name only, not a property path.
         /// </summary>
+        /// <remarks>
+        /// Arguments are written in one canonical way, the same on every machine: a <see cref="System.Guid"/> as 32 digits
+        /// without hyphens, an enum as its number, <c>true</c>/<c>false</c> in lower case, numbers and dates in the invariant
+        /// culture, and <c>:</c> and <c>\</c> escaped in strings (<c>"gemma3:4b"</c> becomes <c>gemma3\:4b</c>). To invalidate
+        /// from code that doesn't call a <c>[CacheInvalidate]</c> method, such as an endpoint that writes to the database
+        /// directly, get the tag from <see cref="IMethodCacheKeys.Tag{TService}"/> instead of building the string yourself.
+        /// A <c>const</c> on the interface lets the attribute and that call share the template.
+        /// </remarks>
         /// <example>
         /// <code>
         /// [Cache(Tags = ["products", "product:{id}"])]
         /// Task&lt;Product&gt; GetAsync(int id);
+        ///
+        /// // After the endpoint saved product 42
+        /// await cache.InvalidateTagAsync(keys.Tag&lt;IProductService&gt;(s =&gt; s.GetAsync(42), "product:{id}"));
         /// </code>
         /// </example>
         public string[]? Tags { get; set; }

@@ -31,6 +31,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
+| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 
 ## MC0001
 
@@ -210,3 +211,28 @@ An explicitly supplied `Version` is negative. Omit it to inherit the configured 
 it, or longer. The refresh window starts that long before an entry expires, so every hit would reload the value. Use a
 window shorter than both, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead
 off.
+
+## MC0024
+
+A tag built with string interpolation for `InvalidateTagAsync` or `InvalidateTagsAsync` contains a value that
+interpolation writes differently from the tags MethodCache stores, so the invalidation can match nothing and the old
+value stays cached, without an error:
+
+```cs
+// The cached entry is tagged price:ollama:gemma3\:4b, so this removes nothing
+await cache.InvalidateTagAsync($"price:{provider}:{model}");
+```
+
+Tag templates write values in one canonical way: `:` and `\` escaped in strings, a `Guid` as 32 digits without
+hyphens, an enum as its number, `true` and `false` in lower case, and numbers and dates in the invariant culture
+(dates in ISO 8601). Whole numbers come out the same, so `$"user:{id}"` with an `int` is not reported.
+
+Build the tag from a call to the cached method instead, so the template and the formatting come from the method:
+
+```cs
+await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"));
+```
+
+Or format each value with `MethodCacheKeys.Part`, which the code fix does:
+`$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
+A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.

@@ -39,11 +39,11 @@ public class ManualLookupReviewTests
             if (version.HasValue) options.WithVersion(version.Value);
         });
 
-        var hit = await manager.TryGetAsync<string?>("null", version);
+        var hit = await manager.TryGetAsync<string?>("null", version, default);
         Assert.True(hit.Found);
         Assert.Null(hit.Value);
-        Assert.False((await manager.TryGetAsync<string?>("missing", version)).Found);
+        Assert.False((await manager.TryGetAsync<string?>("missing", version, default)).Found);
         time.Advance(TimeSpan.FromMinutes(1));
-        Assert.False((await manager.TryGetAsync<string?>("null", version)).Found);
+        Assert.False((await manager.TryGetAsync<string?>("null", version, default)).Found);
     }
 }

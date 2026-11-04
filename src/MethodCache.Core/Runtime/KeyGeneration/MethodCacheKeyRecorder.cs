@@ -13,7 +13,7 @@ internal sealed class MethodCacheKeyRecorder(
     MethodCacheServiceCollectionExtensions.GeneratedParameters parameters) : IMethodCacheKeys
 {
     // Recording decorators are shared, so the calls of one For call are collected per thread; loads record synchronously
-    [ThreadStatic] private static List<(string Key, string MethodId)>? t_keys;
+    [ThreadStatic] private static List<RecordedCall>? t_keys;
 
     // One recording decorator per registration and container, so its methods subscribe to their policies once; MethodId
     // gets its own, which never creates the implementation, since a method's id doesn't depend on the implementation type
@@ -22,17 +22,32 @@ internal sealed class MethodCacheKeyRecorder(
     public string For<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
         => RecordCall(call, serviceKey, nameof(For), idOnly: false).Key;
 
-    public string MethodId<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
-        => RecordCall(call, serviceKey, nameof(MethodId), idOnly: true).MethodId;
+    public string Tag<TService>(Func<TService, object?> call, string template, object? serviceKey = null) where TService : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(template);
+        var recorded = RecordCall(call, serviceKey, nameof(Tag), idOnly: false);
+        if (!recorded.Policy.Tags.Contains(template, StringComparer.Ordinal))
+        {
+            var tags = recorded.Policy.Tags.Count == 0 ? "no tags" : "the tags " + string.Join(", ", recorded.Policy.Tags.Select(static tag => $"\"{tag}\""));
+            throw new InvalidOperationException(
+                $"\"{template}\" is not a tag of {recorded.Policy.MethodId}, which has {tags}. Pass one of its tags exactly as it is " +
+                "written on the method, so the invalidation and the cached entries use the same tag.");
+        }
 
-    private (string Key, string MethodId) RecordCall<TService>(Func<TService, object?> call, object? serviceKey, string operation, bool idOnly)
+        return CacheTagTemplates.ExpandOne(recorded.Policy, template, recorded.ParameterNames, recorded.Values);
+    }
+
+    public string MethodId<TService>(Func<TService, object?> call, object? serviceKey = null) where TService : class
+        => RecordCall(call, serviceKey, nameof(MethodId), idOnly: true).Policy.MethodId;
+
+    private RecordedCall RecordCall<TService>(Func<TService, object?> call, object? serviceKey, string operation, bool idOnly)
         where TService : class
     {
         ArgumentNullException.ThrowIfNull(call);
         var decorator = (TService)_decorators.GetOrAdd((typeof(TService), serviceKey, idOnly), Create);
 
         var outer = t_keys;
-        var keys = t_keys = new List<(string Key, string MethodId)>(1);
+        var keys = t_keys = new List<RecordedCall>(1);
         try
         {
             call(decorator);
@@ -50,11 +65,15 @@ internal sealed class MethodCacheKeyRecorder(
         return keys.Count == 1 ? keys[0] : throw NoCachedCall(typeof(TService), operation, null, keys.Count);
     }
 
-    internal static T Record<T>(string key, string methodId)
+    internal static T Record<T>(string key, CacheRuntimePolicy policy, string[] parameterNames, object?[] values)
     {
-        (t_keys ?? throw new InvalidOperationException("A recording decorator was called outside IMethodCacheKeys.")).Add((key, methodId));
+        (t_keys ?? throw new InvalidOperationException("A recording decorator was called outside IMethodCacheKeys."))
+            .Add(new RecordedCall(key, policy, parameterNames, values));
         return default!;
     }
+
+    // The call as its load saw it: the key, and the policy and arguments its tags are built from
+    private readonly record struct RecordedCall(string Key, CacheRuntimePolicy Policy, string[] ParameterNames, object?[] Values);
 
     private object Create((Type Service, object? Key, bool IdOnly) registration)
     {

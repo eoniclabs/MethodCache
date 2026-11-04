@@ -5,6 +5,9 @@ namespace MethodCache;
 /// An implementation of your own stores an entry under <see cref="MethodCacheKeys.StoredKey"/> of the key and version
 /// it gets: <c>StoredKey(key, options?.Version)</c> in <see cref="GetOrCreateAsync{TState, T}"/> and
 /// <c>StoredKey(key, version)</c> in the other methods, so a key and version name the same entry in every method.
+/// <para>The interface takes every argument, so an implementation sees the whole contract. Call
+/// <see cref="CacheManagerExtensions"/> for the short forms, such as <c>TryGetAsync&lt;T&gt;(key, cancellationToken)</c>,
+/// <c>InvalidateKeyAsync(key)</c> and <c>InvalidateKeyAsync(key, version, cancellationToken)</c>.</para>
 /// </remarks>
 public interface ICacheManager
 {
@@ -30,7 +33,7 @@ public interface ICacheManager
     /// entry. A key from <see cref="IMethodCacheKeys"/> already carries its version: pass <c>null</c> with it.
     /// </param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version = null, CancellationToken cancellationToken = default);
+    ValueTask<CacheLookupResult<T>> TryGetAsync<T>(string key, int? version, CancellationToken cancellationToken);
 
     /// <summary>Invalidates distinct logical keys in the optional version, returning separate local, storage and publication outcomes.</summary>
     /// <param name="keys">The entries' keys.</param>
@@ -39,7 +42,7 @@ public interface ICacheManager
     /// entries. A key from <see cref="IMethodCacheKeys"/> already carries its version: pass <c>null</c> with it.
     /// </param>
     /// <param name="cancellationToken">Cancels this caller's wait; the invalidation itself is not undone.</param>
-    ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version = null, CancellationToken cancellationToken = default);
+    ValueTask<InvalidationResult> InvalidateKeysAsync(IEnumerable<string> keys, int? version, CancellationToken cancellationToken);
 
     /// <summary>Invalidates distinct application tags, returning separate local, storage and publication outcomes.</summary>
     ValueTask<InvalidationResult> InvalidateTagsAsync(IEnumerable<string> tags, CancellationToken cancellationToken = default);

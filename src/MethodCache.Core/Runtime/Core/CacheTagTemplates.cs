@@ -68,6 +68,20 @@ namespace MethodCache.Infrastructure
         }
 
         /// <summary>
+        /// Fills in one tag template with the call's arguments, formatted exactly as a cached entry's tags are, for
+        /// <see cref="IMethodCacheKeys.Tag{TService}"/>.
+        /// </summary>
+        internal static string ExpandOne(CacheRuntimePolicy policy, string template, string[] parameterNames, object?[] values)
+        {
+            if (!template.Contains('{')) return template;
+            if (parameterNames.Length != values.Length)
+                throw new ArgumentException($"Every parameter name needs exactly one value ({parameterNames.Length} names, {values.Length} values).", nameof(values));
+            return ExpandTag(template, parameterNames, index => !policy.CanonicalTagParts
+                ? Convert.ToString(values[index], CultureInfo.InvariantCulture) ?? "null"
+                : CanonicalTagPart.Format(values[index]));
+        }
+
+        /// <summary>
         /// Replaces the placeholders in one left-to-right pass, as the <c>string.Format</c> that
         /// <see cref="CacheInvalidateAttribute"/> uses does, so an argument whose text looks like a placeholder
         /// (such as <c>"{orgId}"</c>) is kept as it is and the entry gets the tag the invalidation removes.
