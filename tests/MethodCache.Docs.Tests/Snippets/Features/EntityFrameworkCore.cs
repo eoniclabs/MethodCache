@@ -19,12 +19,25 @@ namespace Docs.EntityFrameworkCore
         public int OrderId { get; set; }
         public int ProductId { get; set; }
         public int Quantity { get; set; }
+        public int? CustomerId { get; set; }
+    }
+
+    public sealed class Customer
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public DateTime LastSignInAt { get; set; }
     }
 
     public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options)
     {
         public DbSet<Product> Products => Set<Product>();
         public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+        public DbSet<Customer> Customers => Set<Customer>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+            // Deleting a customer deletes their order lines in the database (ON DELETE CASCADE)
+            => modelBuilder.Entity<OrderLine>().HasOne<Customer>().WithMany().HasForeignKey(l => l.CustomerId).OnDelete(DeleteBehavior.Cascade);
     }
 
     public record ProductDto(int Id, string Name, decimal Price);
@@ -66,6 +79,21 @@ namespace Docs.EntityFrameworkCore
             builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
                 .Entity<Product>("product:{Id}", "category:{CategoryId}")
                 .Entity<OrderLine>("top-sellers")));
+            // end-snippet
+        }
+
+        public static void RegisterWithCustomers(WebApplicationBuilder builder, string connectionString)
+        {
+            builder.Services.AddDbContext<ShopDb>(o => o.UseSqlite(connectionString));
+            builder.Services.AddScoped<IProductReads, ProductReads>();
+
+            // begin-snippet: efcore-when-deleted
+            builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
+                .Entity<Product>("product:{Id}", "category:{CategoryId}")
+                .Entity<OrderLine>("top-sellers")
+                // Every sign-in saves the customer, and changes no cached result. A deleted customer does: the
+                // database deletes their order lines, which the context never loaded
+                .Entity<Customer>(customer => customer.WhenDeleted("top-sellers"))));
             // end-snippet
         }
     }

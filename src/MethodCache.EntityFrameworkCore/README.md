@@ -16,8 +16,12 @@ Install it at the same version as `MethodCache`.
   delete the row without loading it first.
 - **The same tags as your methods.** `"product:{Id}"` on the entity matches `"product:{id}"` on a `[Cache]` method,
   formatted the same way, and a name that is not a property stops the host at startup.
-- **A warning where it can't help.** `ExecuteUpdate`, `ExecuteDelete` and raw SQL go past the change tracker; analyzer
-  MC0027 reports them when the method doesn't invalidate.
+- **Rows the database deletes for you.** `Entity<User>(user => user.WhenDeleted("posts"))` invalidates tags only when
+  a user is deleted, for rows that `ON DELETE CASCADE` removes with it, while a user saved on every sign-in clears
+  nothing.
+- **A warning where it can't help.** `ExecuteUpdate` and `ExecuteDelete` on a mapped type and raw SQL go past the
+  change tracker; analyzer MC0027 reports them when the method doesn't invalidate. Mark your own invalidation helpers
+  `[InvalidatesCache]` and a call to them counts.
 
 ## Usage
 

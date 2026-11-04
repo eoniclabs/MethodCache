@@ -42,6 +42,29 @@ namespace Microsoft.EntityFrameworkCore
 {
     public static class MethodCacheDbContextExtensions { public static void InvalidateAfterCommit(this DbContext context, params string[] tags) { } }
 }
+namespace MethodCache.EntityFrameworkCore
+{
+    public sealed class EntityFrameworkCoreOptions
+    {
+        public EntityFrameworkCoreOptions Entity<TEntity>(params string[] tagTemplates) where TEntity : class => this;
+        public EntityFrameworkCoreOptions Entity<TEntity>(System.Action<EntityTagsBuilder<TEntity>> configure) where TEntity : class => this;
+    }
+    public sealed class EntityTagsBuilder<TEntity> where TEntity : class
+    {
+        public EntityTagsBuilder<TEntity> Tags(params string[] tagTemplates) => this;
+        public EntityTagsBuilder<TEntity> WhenDeleted(params string[] tagTemplates) => this;
+    }
+}
+";
+
+        // A startup file in the same project, apart from the writes
+        private static string Mapping(string mapping) => @"
+using MethodCache.EntityFrameworkCore;
+
+public static class Startup
+{
+    public static void Map(EntityFrameworkCoreOptions ef) => ef" + mapping + @";
+}
 ";
 
         private const string Usings = @"
@@ -53,6 +76,9 @@ using MethodCache;
 using Microsoft.EntityFrameworkCore;
 
 public record Product(int Id, string Name);
+public record DiscountedProduct(int Id, string Name, int Percent) : Product(Id, Name);
+public record RefreshToken(int Id, string Value);
+public record User(int Id, string Name);
 ";
 
         [Theory]
@@ -130,6 +156,205 @@ public sealed class Endpoint(IProducts productCache)
             Assert.Empty(await AnalyzeAsync(source));
         }
 
+        [Theory]
+        [InlineData(".Entity<Product>(\"products\")", "tokens.Where(t => t.Id == id).ExecuteDelete();")]
+        [InlineData(".Entity<Product>(\"products\")", "await tokens.Where(t => t.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<User>(u => u.WhenDeleted(\"publications\"))", "await users.Where(u => u.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<User>(u => u.WhenDeleted(\"publications\"))", "tokens.Where(t => t.Id == id).ExecuteDelete();")]
+        public async Task A_write_to_a_type_without_tags_is_not_reported(string mapping, string write)
+        {
+            Assert.Empty(await AnalyzeAsync(Method(write), mapping: mapping));
+        }
+
+        [Theory]
+        [InlineData(".Entity<Product>(\"products\")", "products.Where(p => p.Id == id).ExecuteDelete();")]
+        [InlineData(".Entity<Product>(\"products\")", "await products.Where(p => p.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<Product>(\"products\")", "discounted.Where(p => p.Id == id).ExecuteDelete();")]
+        [InlineData(".Entity<DiscountedProduct>(\"products\")", "products.Where(p => p.Id == id).ExecuteDelete();")]
+        [InlineData(".Entity<Product>(p => p.Tags(\"products\"))", "await products.Where(p => p.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<User>(u => u.WhenDeleted(\"publications\"))", "users.Where(u => u.Id == id).ExecuteDelete();")]
+        [InlineData(".Entity<User>(u => u.Tags(\"user:{Id}\").WhenDeleted(\"publications\"))", "await users.Where(u => u.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<User>(u => Configure(u))", "await users.Where(u => u.Id == id).ExecuteUpdateAsync(s => { });")]
+        [InlineData(".Entity<Product>(\"products\")", "await db.Database.ExecuteSqlRawAsync(\"delete from refresh_tokens\");")]
+        public async Task A_write_to_a_mapped_type_or_raw_SQL_is_reported(string mapping, string write)
+        {
+            var source = Method(write) + @"
+public static class Builders
+{
+    public static void Configure<T>(MethodCache.EntityFrameworkCore.EntityTagsBuilder<T> builder) where T : class { }
+}";
+            var mappingWithHelper = mapping.Replace("Configure(", "Builders.Configure(", StringComparison.Ordinal);
+
+            Assert.Equal("MC0027", Assert.Single(await AnalyzeAsync(source, mapping: mappingWithHelper)).Id);
+        }
+
+        [Fact]
+        public async Task A_mapping_through_a_type_parameter_reports_every_write()
+        {
+            var source = Method("tokens.Where(t => t.Id == id).ExecuteDelete();") + @"
+public static class Generic
+{
+    public static void Map<T>(MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions ef) where T : class => ef.Entity<T>(""all"");
+}";
+
+            Assert.Single(await AnalyzeAsync(source, mapping: ".Entity<Product>(\"products\")"));
+        }
+
+        [Theory]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"select pg_advisory_xact_lock(42)\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"  -- one writer at a time\\n SELECT pg_advisory_xact_lock(42);\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"/* lock */ select 1\");")]
+        [InlineData("await db.Database.ExecuteSqlInterpolatedAsync($\"select pg_advisory_xact_lock({id})\");")]
+        public async Task Raw_SQL_that_only_selects_is_not_reported(string read)
+        {
+            Assert.Empty(await AnalyzeAsync(Method(read)));
+        }
+
+        [Theory]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"select 1; delete from products\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"with gone as (delete from products returning id) select count(*) from gone\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"selected_products_cleanup()\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(sql);")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync($\"select 1 {sql}\");")]
+        public async Task Raw_SQL_that_may_write_is_reported(string write)
+        {
+            Assert.Single(await AnalyzeAsync(Method(write)));
+        }
+
+        [Fact]
+        public async Task A_call_to_an_InvalidatesCache_method_covers_the_write()
+        {
+            var source = Usings + @"
+public static class CacheChanges
+{
+    [InvalidatesCache]
+    public static void Changed(this DbContext db, string tag) { }
+}
+
+public sealed class Endpoint
+{
+    public async Task HandleAsync(DbContext db, IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        db.Changed(""products"");
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_call_to_a_helper_without_InvalidatesCache_does_not_cover_the_write()
+        {
+            var source = Usings + @"
+public static class CacheChanges
+{
+    public static void Changed(this DbContext db, string tag) { }
+}
+
+public sealed class Endpoint
+{
+    public async Task HandleAsync(DbContext db, IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        db.Changed(""products"");
+    }
+}";
+
+            Assert.Single(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task An_InvalidatesCache_interface_method_counts_through_its_implementation()
+        {
+            var source = Usings + @"
+public interface ICacheChanges
+{
+    [InvalidatesCache]
+    Task ChangedAsync(string tag);
+}
+
+public sealed class CacheChanges : ICacheChanges
+{
+    public Task ChangedAsync(string tag) => Task.CompletedTask;
+}
+
+public sealed class Endpoint
+{
+    public async Task HandleAsync(CacheChanges changes, IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        await changes.ChangedAsync(""products"");
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_generic_InvalidatesCache_interface_method_counts_through_its_implementation()
+        {
+            var source = Usings + @"
+public interface ICacheChanges
+{
+    [InvalidatesCache]
+    Task ChangedAsync<TKey>(TKey key);
+}
+
+public sealed class CacheChanges<TScope> : ICacheChanges
+{
+    public Task ChangedAsync<TKey>(TKey key) => Task.CompletedTask;
+}
+
+public sealed class Endpoint
+{
+    public async Task HandleAsync(CacheChanges<Endpoint> changes, IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+        await changes.ChangedAsync(42);
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_write_inside_an_explicit_implementation_of_an_InvalidatesCache_method_is_not_reported()
+        {
+            var source = Usings + @"
+public interface IPublications
+{
+    [InvalidatesCache]
+    Task RevokeAsync(IQueryable<Product> products);
+}
+
+public sealed class Publications : IPublications
+{
+    async Task IPublications.RevokeAsync(IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_write_inside_an_InvalidatesCache_method_is_not_reported()
+        {
+            var source = Usings + @"
+public sealed class Publications
+{
+    [InvalidatesCache]
+    public async Task RevokeAsync(IQueryable<Product> products)
+    {
+        await products.Where(p => p.Id == 1).ExecuteUpdateAsync(s => { });
+    }
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
         [Fact]
         public async Task Nothing_is_reported_without_MethodCache_EntityFrameworkCore()
         {
@@ -139,7 +364,8 @@ public sealed class Endpoint(IProducts productCache)
         private static string Method(string body) => Usings + @"
 public sealed class Endpoint
 {
-    public async Task HandleAsync(int id, DbContext db, IQueryable<Product> products, ICacheManager cache, ICacheAdministrator admin)
+    public async Task HandleAsync(int id, DbContext db, IQueryable<Product> products, ICacheManager cache, ICacheAdministrator admin,
+        IQueryable<DiscountedProduct> discounted, IQueryable<RefreshToken> tokens, IQueryable<User> users, string sql)
     {
         " + body + @"
     }
@@ -147,7 +373,7 @@ public sealed class Endpoint
     private static Task Run(Func<Task> action) => action();
 }";
 
-        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source, bool withPackage = true)
+        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source, bool withPackage = true, string? mapping = null)
         {
             var trusted = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);
             var references = trusted
@@ -156,6 +382,7 @@ public sealed class Endpoint
                 .Append(MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location));
             var trees = new List<SyntaxTree> { CSharpSyntaxTree.ParseText(source), CSharpSyntaxTree.ParseText(EntityFrameworkCore) };
             if (withPackage) trees.Add(CSharpSyntaxTree.ParseText(MethodCacheEntityFrameworkCore));
+            if (mapping != null) trees.Add(CSharpSyntaxTree.ParseText(Mapping(mapping)));
             var compilation = CSharpCompilation.Create("TestAssembly", trees, references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));

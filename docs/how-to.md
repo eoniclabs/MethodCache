@@ -60,9 +60,18 @@ interface whose methods commit their own transaction and carry `[CacheInvalidate
 read before and after it. ([Entity Framework Core](features/entity-framework-core.md#mapping-entities-to-tags))
 
 **My endpoint writes with `ExecuteUpdateAsync`. Why the warning MC0027?**
-It changes rows without EF Core's change tracker, so no entity tags are known for them. Inside a transaction, add
-`db.InvalidateAfterCommit(tag)`; without one, call `ICacheManager.InvalidateTagAsync` after the write.
-([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+It changes rows of a type you map with `ef.Entity<T>(...)` without EF Core's change tracker, so no entity tags are
+known for them. Inside a transaction, add `db.InvalidateAfterCommit(tag)`; without one, call
+`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless the project
+maps no type at all. ([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**I invalidate through a helper of my own. How do I tell MC0027?**
+Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't
+reported. ([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
+`ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
+when one is changed. ([Rows the database deletes with a row](features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
 
 **Does the Entity Framework Core package work with Cosmos DB or MongoDB?**
 Yes, entity tags and `InvalidateAfterCommit` act on `SaveChanges`. A MongoDB transaction you begin yourself is

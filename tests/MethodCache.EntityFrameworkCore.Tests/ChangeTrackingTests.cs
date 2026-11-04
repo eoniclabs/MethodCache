@@ -222,24 +222,4 @@ public sealed class ChangeTrackingTests
             return ValueTask.FromResult(result);
         }
     }
-
-    /// <summary>The commands contexts run.</summary>
-    private sealed class CommandLog : DbCommandInterceptor
-    {
-        public List<string> Texts { get; } = [];
-
-        public override InterceptionResult<System.Data.Common.DbDataReader> ReaderExecuting(System.Data.Common.DbCommand command,
-            CommandEventData eventData, InterceptionResult<System.Data.Common.DbDataReader> result)
-        {
-            Texts.Add(command.CommandText);
-            return result;
-        }
-
-        public override ValueTask<InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(System.Data.Common.DbCommand command,
-            CommandEventData eventData, InterceptionResult<System.Data.Common.DbDataReader> result, CancellationToken cancellationToken = default)
-        {
-            Texts.Add(command.CommandText);
-            return ValueTask.FromResult(result);
-        }
-    }
 }

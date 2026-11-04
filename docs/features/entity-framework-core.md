@@ -88,9 +88,31 @@ startup, because it needs something only a request has, the first save checks th
 Map each entity to the tags of every cached method whose result reads it. A method that reads several tables needs
 a tag that each of their entities invalidates, such as `top-sellers` above for order lines.
 
+### Rows the database deletes with a row
+
 Rows the database changes by itself aren't seen: rows that `ON DELETE CASCADE` removes when the context hadn't loaded
 them, and rows a trigger writes. Give the cached methods that read them a tag that the parent entity invalidates too,
 such as `category:{CategoryId}` on products for a method that lists a category with its products.
+
+When the parent is saved often for reasons that change no cached result, such as a customer whose last sign-in is
+stored, map those tags with `WhenDeleted`. They are invalidated only when a row of that type is deleted, with the
+deleted row's values in the braces:
+
+<!-- snippet: efcore-when-deleted -->
+```cs
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef
+    .Entity<Product>("product:{Id}", "category:{CategoryId}")
+    .Entity<OrderLine>("top-sellers")
+    // Every sign-in saves the customer, and changes no cached result. A deleted customer does: the
+    // database deletes their order lines, which the context never loaded
+    .Entity<Customer>(customer => customer.WhenDeleted("top-sellers"))));
+```
+<!-- endSnippet -->
+
+`Tags(...)` in the same call maps tags for any change, the same as `Entity<Customer>("...")`, so
+`customer => customer.Tags("customer:{Id}").WhenDeleted("top-sellers")` maps both. A type mapped only with
+`WhenDeleted` doesn't invalidate anything for an added or changed row. A change to an `OwnsOne` or `OwnsMany` type
+or to a many-to-many link doesn't reach those tags either, since it doesn't delete the row they belong to.
 
 ## When the tags are invalidated
 
@@ -134,7 +156,28 @@ public static async Task MoveAsync(int id, int categoryId, ShopDb db, Cancellati
 
 `ExecuteUpdate`, `ExecuteDelete` and `Database.ExecuteSql…` change rows without loading them, so no entity tags are
 known for them. Warning [MC0027](../user-guide/DIAGNOSTICS.md#mc0027) reports such a write when the method around it
-doesn't invalidate anything, also through a call to a `[CacheInvalidate]` method.
+doesn't invalidate anything:
+
+- `ExecuteUpdate` and `ExecuteDelete` on a type the project maps with `Entity<T>(...)`, or on a type it derives from
+  or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
+  tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
+  data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
+- `Database.ExecuteSql…`, unless the SQL is one statement that starts with `select`, such as an advisory lock.
+  MethodCache can't tell which tables other SQL writes.
+
+A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
+your own marked `[InvalidatesCache]` counts as the invalidation:
+
+```cs
+public static class CacheChanges
+{
+    // Invalidates through the app's own plumbing: MC0027 counts a call to it
+    [InvalidatesCache]
+    public static void Changed(this HttpContext http, string tag) => ...;
+}
+```
+
+A method marked `[InvalidatesCache]` isn't reported for the writes inside it either.
 
 Inside a transaction, queue the tags with `InvalidateAfterCommit`. They are invalidated with the entity tags after the
 commit, and dropped on a rollback:

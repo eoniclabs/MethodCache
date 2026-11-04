@@ -1,5 +1,6 @@
 using Docs.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,5 +89,63 @@ public sealed class EntityFrameworkCoreDocsTests : IAsyncLifetime
             s.GetRequiredService<ICacheManager>(), s.GetRequiredService<IMethodCacheKeys>(), 1, CancellationToken.None));
 
         Assert.Empty(await InScopeAsync(s => s.GetRequiredService<IProductReads>().ListAsync(1)));
+    }
+}
+
+/// <summary>Runs the <c>WhenDeleted</c> example on docs/features/entity-framework-core.md against SQLite.</summary>
+public sealed class EntityFrameworkCoreWhenDeletedDocsTests
+{
+    [Fact]
+    public async Task WhenDeleted_tags_wait_for_a_deleted_row()
+    {
+        await using var keepAlive = new SqliteConnection("DataSource=efcore-docs-customers;Mode=Memory;Cache=Shared");
+        await keepAlive.OpenAsync();
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        Setup.RegisterWithCustomers(builder, keepAlive.ConnectionString);
+        await using var app = builder.Build();
+        await app.StartAsync();
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDb>();
+            await db.Database.EnsureCreatedAsync();
+            db.Products.Add(new Product { Id = 1, Name = "Hammer", Price = 10m, CategoryId = 1 });
+            db.Customers.Add(new Customer { Id = 1, Name = "Ada" });
+            await db.SaveChangesAsync();
+        }
+
+        async Task<int> TopSellersAsync()
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            return (await scope.ServiceProvider.GetRequiredService<IProductReads>().TopSellersAsync()).Count;
+        }
+
+        async Task WithDbAsync(Func<ShopDb, Task> action)
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            await action(scope.ServiceProvider.GetRequiredService<ShopDb>());
+        }
+
+        Assert.Equal(1, await TopSellersAsync());
+        // Written past EF Core on purpose: only an invalidation shows it
+#pragma warning disable MC0027
+        await WithDbAsync(db => db.Database.ExecuteSqlRawAsync("insert into Products (Id, Name, Price, CategoryId) values (2, 'Saw', 20, 1)"));
+#pragma warning restore MC0027
+
+        await WithDbAsync(async db =>
+        {
+            (await db.Customers.SingleAsync(c => c.Id == 1)).LastSignInAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal(1, await TopSellersAsync());
+
+        await WithDbAsync(async db =>
+        {
+            db.Customers.Remove(await db.Customers.SingleAsync(c => c.Id == 1));
+            await db.SaveChangesAsync();
+        });
+        Assert.Equal(2, await TopSellersAsync());
+
+        await app.StopAsync();
     }
 }

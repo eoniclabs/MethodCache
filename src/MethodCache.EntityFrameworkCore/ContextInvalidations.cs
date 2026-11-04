@@ -120,7 +120,8 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
                 var state = entry.State;
                 if (state is EntityState.Added or EntityState.Modified or EntityState.Deleted)
                 {
-                    Capture(entry, takeOld: state != EntityState.Added, wasAdded: state == EntityState.Added);
+                    Capture(entry, takeOld: state != EntityState.Added, wasAdded: state == EntityState.Added,
+                        deleting: state == EntityState.Deleted);
                 }
             }
         }
@@ -296,7 +297,8 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         if (_map!.NeedsStoredValues) MarkUnloaded(entry);
         if (_save != null && entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
         {
-            Capture(entry, takeOld: entry.State != EntityState.Added, wasAdded: entry.State == EntityState.Added);
+            Capture(entry, takeOld: entry.State != EntityState.Added, wasAdded: entry.State == EntityState.Added,
+                deleting: entry.State == EntityState.Deleted);
         }
     }
 
@@ -304,7 +306,7 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
     {
         if (_save == null || e.NewState is EntityState.Unchanged or EntityState.Detached) return;
         Capture(e.Entry, takeOld: e.OldState is EntityState.Unchanged or EntityState.Modified or EntityState.Deleted,
-            wasAdded: e.NewState == EntityState.Added);
+            wasAdded: e.NewState == EntityState.Added, deleting: e.NewState == EntityState.Deleted);
     }
 
     /// <summary>
@@ -317,23 +319,42 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
     }
 
     /// <summary>
-    /// Records a row of the running save: the tags of its old values now, its new values after the save. An owned
-    /// row or a many-to-many join row records its owner or both sides of the join too.
+    /// Records a row of the running save: the tags of its old values now, its new values after the save, and its
+    /// tags for a deleted row once it is deleted. An owned row or a many-to-many join row records its owner or both
+    /// sides of the join too.
     /// </summary>
-    private void Capture(EntityEntry entry, bool takeOld, bool wasAdded)
+    private void Capture(EntityEntry entry, bool takeOld, bool wasAdded, bool deleting)
     {
         var save = _save!;
-        if (!_map!.TryGet(entry.Metadata, out var tags) || save.Seen.ContainsKey(entry.Entity)) return;
+        if (!_map!.TryGet(entry.Metadata, out var tags)) return;
+        if (save.Seen.TryGetValue(entry.Entity, out var seen))
+        {
+            // Recorded as changed, now deleted by the save itself, such as a cascade
+            if (deleting) MarkDeleted(save, seen);
+            return;
+        }
         var row = new SavedRow(entry, tags, wasAdded);
         save.Seen.Add(entry.Entity, row);
         save.Rows.Add(row);
         if (takeOld)
         {
-            // Attached without loading: its original values may not be the stored row, which is read before the save
-            if (save.Collecting && tags.NeedsStoredValues && _unloaded.Contains(entry.Entity)) row.NeedsRead = true;
+            // Attached without loading: its original values may not be the stored row, which is read before the save.
+            // A changed row isn't read for its tags for a deleted row alone.
+            var needsStored = tags.TemplatesNeedStoredValues || (deleting && tags.DeleteTemplatesNeedStoredValues);
+            if (save.Collecting && needsStored && _unloaded.Contains(entry.Entity)) row.NeedsRead = true;
             else AddTags(tags.Templates, new Values(entry.OriginalValues), save.Tags);
         }
+        if (deleting) MarkDeleted(save, row);
         foreach (var foreignKey in tags.Principals) CapturePrincipals(entry, foreignKey, takeOld);
+    }
+
+    /// <summary>Adds the tags for a deleted row, from its stored values once they are read.</summary>
+    private static void MarkDeleted(SaveRun save, SavedRow row)
+    {
+        if (row.Deleted) return;
+        row.Deleted = true;
+        if (row.Tags.DeleteTemplates.Length == 0 || (row.NeedsRead && !row.Read)) return;
+        AddTags(row.Tags.DeleteTemplates, new Values(row.Stored ?? row.Entry.OriginalValues), save.Tags);
     }
 
     private void CapturePrincipals(EntityEntry entry, IForeignKey foreignKey, bool takeOld)
@@ -348,7 +369,8 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
     {
         if (FindPrincipal(foreignKey.PrincipalKey, key) is { } principal)
         {
-            Capture(principal, takeOld: principal.State != EntityState.Added, wasAdded: principal.State == EntityState.Added);
+            Capture(principal, takeOld: principal.State != EntityState.Added, wasAdded: principal.State == EntityState.Added,
+                deleting: principal.State == EntityState.Deleted);
             return;
         }
         // The principal isn't tracked: its tags that use only its key come from the foreign key's values
@@ -402,7 +424,9 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
                     : entry.GetDatabaseValues();
                 row.Modified = entry.Properties.Where(static p => p.IsModified).Select(static p => p.Metadata).ToHashSet();
                 row.Stored = stored;
+                row.Read = true;
                 AddTags(row.Tags.Templates, new Values(stored ?? entry.OriginalValues), save.Tags);
+                if (row.Deleted) AddTags(row.Tags.DeleteTemplates, new Values(stored ?? entry.OriginalValues), save.Tags);
             }
         }
         finally
@@ -580,6 +604,12 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         public bool WasAdded { get; } = wasAdded;
 
         public bool NeedsRead { get; set; }
+
+        /// <summary>The stored row was read, so <see cref="Stored"/> holds it, or null for a row that isn't stored.</summary>
+        public bool Read { get; set; }
+
+        /// <summary>The save deletes the row: its tags for a deleted row are added.</summary>
+        public bool Deleted { get; set; }
 
         /// <summary>The stored row of a row attached without loading, read before the save.</summary>
         public PropertyValues? Stored { get; set; }
