@@ -51,29 +51,19 @@ The recorder sees the built-in cache manager: with `NoOpCacheManager` or your ow
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
-that no `[CacheInvalidate]` method of a registered service invalidates. Name the tags your code invalidates in other
-ways, such as with `InvalidateTagAsync`:
+that nothing invalidates. It counts the `[CacheInvalidate]` methods of the registered services, the tags marked
+`InvalidatedElsewhere` on `[Cache]` and the entity mapping of MethodCache.EntityFrameworkCore:
 
 <!-- snippet: testing-tag-coverage -->
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 <!-- endSnippet -->
 
-A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
-MethodCache.EntityFrameworkCore, pass the mapping's tags:
-
-<!-- snippet: efcore-tag-coverage -->
-```cs
-var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
-// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
-var entities = mapping.Entities;
-
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
-```
-<!-- endSnippet -->
+Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+`TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
+value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer MC0028 checks the same within one project while you build; this check sees the whole application.
 

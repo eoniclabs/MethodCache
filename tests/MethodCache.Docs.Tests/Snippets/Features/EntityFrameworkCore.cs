@@ -111,8 +111,8 @@ namespace Docs.EntityFrameworkCore
             // [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
             var entities = mapping.Entities;
 
-            // Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-            Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+            // TagCoverage counts the mapping, so every tag of a cached method is mapped or has another invalidation
+            Assert.Empty(TagCoverage.Uninvalidated(provider));
             // end-snippet
         }
     }

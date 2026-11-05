@@ -4,6 +4,21 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Added
+
+- `[Cache(InvalidatedElsewhere = ["catalog"])]` marks the tags that another application or process invalidates, such as
+  an import worker. Analyzer MC0028 and `TagCoverage` count them as invalidated, on every method that has the tag, so
+  neither a `#pragma` nor a list in the test is needed. Caching itself doesn't change. Analyzer MC0029 reports a tag
+  in `InvalidatedElsewhere` that matches none of the method's `Tags`.
+
+### Changed
+
+- `TagCoverage.Uninvalidated` counts the entity mapping of `mc.UseEntityFrameworkCore` by itself, so
+  `alsoInvalidatedBy: mapping.AllTags` is no longer needed. `alsoInvalidatedBy` remains for tags the code invalidates
+  with `InvalidateTagAsync`.
+
 ## 1.0.0-rc.7 (2026-11-05)
 
 ### Breaking changes since 1.0.0-rc.6

@@ -1,3 +1,4 @@
+using MethodCache.Core.Management;
 using Microsoft.EntityFrameworkCore;
 
 namespace MethodCache.EntityFrameworkCore;
@@ -7,13 +8,14 @@ namespace MethodCache.EntityFrameworkCore;
 /// mapped, for tests and tools that check them. Resolve it from the service provider.
 /// </summary>
 /// <typeparam name="TContext">The context the entity types were mapped for.</typeparam>
+/// <remarks><c>TagCoverage</c> in MethodCache.Testing counts these tags as invalidated by itself.</remarks>
 /// <example>
 /// <code>
 /// var mapping = provider.GetRequiredService&lt;EntityTagMapping&lt;ShopDb&gt;&gt;();
-/// Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+/// Assert.Contains(mapping.Entities, entity =&gt; entity.EntityType == typeof(Product));
 /// </code>
 /// </example>
-public sealed class EntityTagMapping<TContext> where TContext : DbContext
+public sealed class EntityTagMapping<TContext> : IInvalidatedTagSource where TContext : DbContext
 {
     internal EntityTagMapping(EntityFrameworkCoreOptions options)
     {
@@ -28,6 +30,8 @@ public sealed class EntityTagMapping<TContext> where TContext : DbContext
 
     /// <summary>Every tag template of the mapping once, both for any change and for a deleted row, such as <c>"product:{Id}"</c>.</summary>
     public IReadOnlyList<string> AllTags { get; }
+
+    IReadOnlyList<string> IInvalidatedTagSource.InvalidatedTags => AllTags;
 }
 
 /// <summary>An entity type that <see cref="EntityFrameworkCoreOptions.Entity{TEntity}(string[])"/> mapped, and its tags.</summary>

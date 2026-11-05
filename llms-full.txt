@@ -90,7 +90,8 @@ builder.Services.AddMethodCache();                               // after your r
   the method's arguments, and check in the endpoint that the user may read it.
 - Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
-  invalidates. When another project invalidates it, such as a worker, suppress MC0028 for that tag with a `#pragma`.
+  invalidates. When another application invalidates it, such as a worker, list it in
+  `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -114,8 +115,9 @@ builder.Services.AddMethodCache();                               // after your r
 - To test the caching itself, use the `MethodCache.Testing` package: `services.AddMethodCacheTesting()` registers a
   `FakeTimeProvider` and a `CacheRecorder`. `recorder.Loads<IService>(s => s.GetAsync(42))` counts the runs of that
   call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
-  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` checks that every tag
-  has an invalidation. With EF Core, pass `EntityTagMapping<TContext>.AllTags` in `alsoInvalidatedBy`.
+  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
+  counts `[CacheInvalidate]`, `InvalidatedElsewhere` and the EF Core mapping; pass tags invalidated with
+  `InvalidateTagAsync` in `alsoInvalidatedBy`.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -415,9 +417,9 @@ reported. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/
 
 **Why the warning MC0028 on a tag?**
 Nothing in the project invalidates it, so its entries stay until they expire. Invalidate it where the data changes,
-with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another project
-invalidates it, such as a worker, turn the warning off for that tag with `#pragma warning disable MC0028`.
-([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028))
+with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another application
+invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 and `TagCoverage`
+then count it. ([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028), [In another application](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#in-another-application))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -592,9 +594,10 @@ The save invalidates, so the read is fresh either way. Count the runs with `reco
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
 
 **How do I check that every cache tag is invalidated somewhere?**
-`Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` from `MethodCache.Testing`, with the tags
-your code invalidates by hand and, with EF Core, `EntityTagMapping<TContext>.AllTags`. Analyzer MC0028 checks one project
-while you build. ([Every tag has an invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation))
+`Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
+`InvalidatedElsewhere` and the EF Core mapping; pass the tags your code invalidates with `InvalidateTagAsync` in
+`alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
+([Every tag has an invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
@@ -1133,6 +1136,29 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 
+### In another application
+
+When another application or process invalidates a tag, such as a worker that imports the data, list the tag in
+`InvalidatedElsewhere`. Caching works the same; analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) and
+`TagCoverage` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation)) count the tag as invalidated, on every method that
+has it:
+
+```cs
+public interface IRecipeCatalog
+{
+    // The import worker invalidates "recipes" after each import; this application invalidates "recipe:{id}"
+    [Cache(Duration = "1h", Tags = ["recipes", "recipe:{id}"], InvalidatedElsewhere = ["recipes"])]
+    Task<string> GetAsync(int id);
+
+    [CacheInvalidate(Tags = ["recipe:{id}"])]
+    Task RenameAsync(int id, string name);
+}
+```
+
+Write each tag as it is written in `Tags`; one that matches none of them is warning
+[MC0029](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0029). The other application's invalidation reaches this one's memory cache
+only through a shared distributed cache ([With several instances](#with-several-instances)).
+
 ### After a database transaction
 
 With Entity Framework Core, [`MethodCache.EntityFrameworkCore`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md) does this for you. With
@@ -1497,16 +1523,16 @@ EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/Metho
 `MethodCache.Testing`, `recorder.Loads` proves a read is cached and `recorder.InvalidatedTags` lists the tags a save
 invalidated ([Counting loads and invalidations](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#counting-loads-and-invalidations)).
 
-`EntityTagMapping<TContext>` lists what the mapping holds. A test can check that every tag of a cached method is mapped
-or has another invalidation:
+`EntityTagMapping<TContext>` lists what the mapping holds. `TagCoverage` counts the mapping's tags as invalidated, so a
+test can check that every tag of a cached method is mapped or has another invalidation:
 
 ```cs
 var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
 // [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
 var entities = mapping.Entities;
 
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+// TagCoverage counts the mapping, so every tag of a cached method is mapped or has another invalidation
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 
 
@@ -2879,26 +2905,19 @@ MethodCache, over the same database. With EF Core's in-memory provider, give bot
 ## Every tag has an invalidation
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the
-cached methods, from attributes, startup code and configuration, that no `[CacheInvalidate]` method of a registered
-service invalidates. Name the tags your code invalidates in other ways, such as with `InvalidateTagAsync` or in
-another application:
+cached methods, from attributes, startup code and configuration, that nothing invalidates. It counts the
+`[CacheInvalidate]` methods of the registered services, the tags marked `InvalidatedElsewhere` on `[Cache]`
+([In another application](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#in-another-application)) and the entity mapping of
+[`MethodCache.EntityFrameworkCore`](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md):
 
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 
-A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
-`MethodCache.EntityFrameworkCore`, pass the tags of the mapping:
-
-```cs
-var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
-// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
-var entities = mapping.Entities;
-
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
-```
+Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+`TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
+value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.
@@ -3422,6 +3441,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
+| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
 
 ## MC0001
 
@@ -3749,24 +3769,38 @@ These invalidations count, wherever they are in the project:
   `WhenDeleted("...")` in `Entity<T>(e => ...)`.
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
   `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
+- A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
 projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
 ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation)).
 
-Invalidate the tag where the data changes ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)). When another project
-invalidates it, such as a worker that writes the data, turn the warning off for that tag:
+Invalidate the tag where the data changes ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)). When another application or
+process invalidates it, such as a worker that writes the data, list it in `InvalidatedElsewhere`
+([In another application](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#in-another-application)):
 
 ```cs
-// The import worker invalidates it
-#pragma warning disable MC0028
-[Cache(Duration = "1h", Tags = ["catalog"])]
-#pragma warning restore MC0028
+// The import worker invalidates "catalog"
+[Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalog"])]
 Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
+
+## MC0029
+
+A tag in `InvalidatedElsewhere` on `[Cache]` that matches none of the method's `Tags`, such as a misspelled one. It
+marks nothing on the method, so the real tag still counts as never invalidated.
+
+```cs
+[Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalogue"])]   // MC0029
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+Write the tag as it is written in `Tags`. A placeholder matches any value, so `"recipe:{Id}"` matches
+`"recipe:{id}"`. Not reported when the attribute has no `Tags`, because the method's tags then come from
+configuration.
 
 
 ---
@@ -4807,25 +4841,17 @@ The recorder sees the built-in cache manager: with `NoOpCacheManager` or your ow
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
-that no `[CacheInvalidate]` method of a registered service invalidates. Name the tags your code invalidates in other
-ways, such as with `InvalidateTagAsync`:
+that nothing invalidates. It counts the `[CacheInvalidate]` methods of the registered services, the tags marked
+`InvalidatedElsewhere` on `[Cache]` and the entity mapping of MethodCache.EntityFrameworkCore:
 
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 
-A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
-MethodCache.EntityFrameworkCore, pass the mapping's tags:
-
-```cs
-var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
-// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
-var entities = mapping.Entities;
-
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
-```
+Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+`TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
+value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer MC0028 checks the same within one project while you build; this check sees the whole application.
 
@@ -4841,6 +4867,21 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Added
+
+- `[Cache(InvalidatedElsewhere = ["catalog"])]` marks the tags that another application or process invalidates, such as
+  an import worker. Analyzer MC0028 and `TagCoverage` count them as invalidated, on every method that has the tag, so
+  neither a `#pragma` nor a list in the test is needed. Caching itself doesn't change. Analyzer MC0029 reports a tag
+  in `InvalidatedElsewhere` that matches none of the method's `Tags`.
+
+### Changed
+
+- `TagCoverage.Uninvalidated` counts the entity mapping of `mc.UseEntityFrameworkCore` by itself, so
+  `alsoInvalidatedBy: mapping.AllTags` is no longer needed. `alsoInvalidatedBy` remains for tags the code invalidates
+  with `InvalidateTagAsync`.
 
 ## 1.0.0-rc.7 (2026-11-05)
 

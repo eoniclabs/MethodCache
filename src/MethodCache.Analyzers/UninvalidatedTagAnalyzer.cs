@@ -15,7 +15,8 @@ namespace MethodCache.Analyzers
     /// <summary>
     /// Reports MC0028: a tag on a cached method that no invalidation in the project names, so its entries stay until
     /// they expire. The tags and the invalidations are read from the whole compilation and compared at its end, so an
-    /// invalidation in one file covers a tag in another.
+    /// invalidation in one file covers a tag in another. A tag in <c>[Cache(InvalidatedElsewhere = ...)]</c> counts as
+    /// invalidated; MC0029 reports one that matches none of the method's tags.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class UninvalidatedTagAnalyzer : DiagnosticAnalyzer
@@ -25,19 +26,29 @@ namespace MethodCache.Analyzers
         internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             "MC0028",
             "Tag is never invalidated",
-            "Nothing in this project invalidates tag \"{0}\" of '{1}', so its entries stay until they expire. Invalidate it where the data changes, or mark your own invalidation helper [InvalidatesCache]. When another project invalidates it, suppress this warning for the tag.",
+            "Nothing in this project invalidates tag \"{0}\" of '{1}', so its entries stay until they expire. Invalidate it where the data changes, or mark your own invalidation helper [InvalidatesCache]. When another application or process invalidates it, add it to InvalidatedElsewhere on [Cache].",
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "A tag on a [Cache] method is there to be invalidated. The warning is reported when the project invalidates something, but nothing names this tag: no [CacheInvalidate] tag, EF Core mapping (Entity<T>, Tags, WhenDeleted), InvalidateTagAsync, InvalidateTagsAsync or InvalidateAfterCommit call, or call to an [InvalidatesCache] method with the tag as a constant, an interpolated string or IMethodCacheKeys.Tag. A placeholder matches any value. Tags in configuration and invalidations in other projects aren't seen.",
+            description: "A tag on a [Cache] method is there to be invalidated. The warning is reported when the project invalidates something, but nothing names this tag: no [CacheInvalidate] tag, EF Core mapping (Entity<T>, Tags, WhenDeleted), InvalidateTagAsync, InvalidateTagsAsync or InvalidateAfterCommit call, or call to an [InvalidatesCache] method with the tag as a constant, an interpolated string or IMethodCacheKeys.Tag. A tag in InvalidatedElsewhere on any [Cache] counts as invalidated. A placeholder matches any value. Tags in configuration and invalidations in other projects aren't seen.",
             helpLinkUri: HelpLink("MC0028"),
             customTags: WellKnownDiagnosticTags.CompilationEnd);
+
+        internal static readonly DiagnosticDescriptor UnknownElsewhereRule = new DiagnosticDescriptor(
+            "MC0029",
+            "InvalidatedElsewhere names a tag the method doesn't have",
+            "\"{0}\" in InvalidatedElsewhere of '{1}' matches none of its Tags. Write the tag as it is written in Tags.",
+            "Usage",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "InvalidatedElsewhere lists which of the method's tags another application or process invalidates. A tag that matches none of them, such as a misspelled one, leaves the real tag unmarked. A placeholder matches any value. Not reported when the attribute has no Tags, because the tags then come from configuration.",
+            helpLinkUri: HelpLink("MC0029"));
 
         /// <summary>Stands for a placeholder or an interpolated value: any text.</summary>
         private const char Any = TagPattern.Any;
 
         /// <inheritdoc />
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule, UnknownElsewhereRule);
 
         /// <inheritdoc />
         public override void Initialize(AnalysisContext context)
@@ -68,6 +79,12 @@ namespace MethodCache.Analyzers
                 Volatile.Write(ref _invalidates, 1);
                 foreach (var pattern in patterns) Patterns.Add(pattern);
             }
+
+            /// <summary>Tags another application invalidates: covered, but not an invalidation in this project.</summary>
+            public void Elsewhere(IEnumerable<string> patterns)
+            {
+                foreach (var pattern in patterns) Patterns.Add(pattern);
+            }
         }
 
         private static void AnalyzeMethod(SymbolAnalysisContext context, Found found)
@@ -76,13 +93,14 @@ namespace MethodCache.Analyzers
             foreach (var attribute in method.GetAttributes())
             {
                 if (attribute.AttributeClass is not { ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } } type) continue;
+                if (type.Name == "CacheAttribute" && method.ContainingType?.TypeKind == TypeKind.Interface) AnalyzeElsewhere(context, attribute, method, found);
                 var tags = attribute.NamedArguments.FirstOrDefault(a => a.Key == "Tags").Value;
                 if (tags.Kind != TypedConstantKind.Array || tags.IsNull) continue;
                 var values = tags.Values.Select(v => v.Value as string).ToArray();
 
                 if (type.Name == "CacheAttribute" && method.ContainingType?.TypeKind == TypeKind.Interface)
                 {
-                    var elements = TagElements(attribute, context.CancellationToken);
+                    var elements = TagElements(attribute, "Tags", context.CancellationToken);
                     var name = method.ContainingType.Name + "." + method.Name;
                     for (var i = 0; i < values.Length; i++)
                     {
@@ -96,6 +114,32 @@ namespace MethodCache.Analyzers
                     found.Invalidation(values.Where(v => v != null).Select(v => TagPattern.Of(v!)));
                 }
             }
+        }
+
+        /// <summary>Covers the tags in <c>InvalidatedElsewhere</c> and reports one that matches none of the method's tags.</summary>
+        private static void AnalyzeElsewhere(SymbolAnalysisContext context, AttributeData attribute, IMethodSymbol method, Found found)
+        {
+            var elsewhere = Strings(attribute, "InvalidatedElsewhere");
+            if (elsewhere.Count == 0) return;
+            found.Elsewhere(elsewhere.Where(tag => tag != null).Select(tag => TagPattern.Of(tag!)));
+            var tags = Strings(attribute, "Tags").Where(tag => tag != null).Select(tag => TagPattern.Of(tag!)).ToArray();
+            // Without Tags on the attribute the method's tags come from configuration, which the analyzer can't read
+            if (tags.Length == 0) return;
+            var elements = TagElements(attribute, "InvalidatedElsewhere", context.CancellationToken);
+            for (var i = 0; i < elsewhere.Count; i++)
+            {
+                if (elsewhere[i] is not { } tag) continue;
+                var pattern = TagPattern.Of(tag);
+                if (tags.Any(own => TagPattern.Overlaps(own, pattern))) continue;
+                var location = i < elements.Count ? elements[i].GetLocation() : AttributeLocation(attribute, method);
+                context.ReportDiagnostic(Diagnostic.Create(UnknownElsewhereRule, location, tag, method.ContainingType.Name + "." + method.Name));
+            }
+        }
+
+        private static IReadOnlyList<string?> Strings(AttributeData attribute, string name)
+        {
+            var value = attribute.NamedArguments.FirstOrDefault(a => a.Key == name).Value;
+            return value.Kind == TypedConstantKind.Array && !value.IsNull ? value.Values.Select(v => v.Value as string).ToArray() : [];
         }
 
         private static void AnalyzeInvocation(IInvocationOperation invocation, Found found)
@@ -206,11 +250,11 @@ namespace MethodCache.Analyzers
         private static bool IsMethodCacheType(INamedTypeSymbol type, string name)
             => type.Name == name && type.ContainingNamespace is { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true };
 
-        /// <summary>The tag expressions in <c>Tags = [...]</c>, in the order of the attribute's values.</summary>
-        private static IReadOnlyList<SyntaxNode> TagElements(AttributeData attribute, CancellationToken cancellationToken)
+        /// <summary>The tag expressions in <c>Tags = [...]</c> or another named array, in the order of the attribute's values.</summary>
+        private static IReadOnlyList<SyntaxNode> TagElements(AttributeData attribute, string name, CancellationToken cancellationToken)
         {
             if (attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken) is not AttributeSyntax syntax) return [];
-            var tags = syntax.ArgumentList?.Arguments.FirstOrDefault(a => a.NameEquals?.Name.Identifier.ValueText == "Tags")?.Expression;
+            var tags = syntax.ArgumentList?.Arguments.FirstOrDefault(a => a.NameEquals?.Name.Identifier.ValueText == name)?.Expression;
             return tags switch
             {
                 CollectionExpressionSyntax collection => collection.Elements.Cast<SyntaxNode>().ToList(),

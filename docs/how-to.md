@@ -71,9 +71,9 @@ reported. ([Writes the change tracker doesn't see](features/entity-framework-cor
 
 **Why the warning MC0028 on a tag?**
 Nothing in the project invalidates it, so its entries stay until they expire. Invalidate it where the data changes,
-with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another project
-invalidates it, such as a worker, turn the warning off for that tag with `#pragma warning disable MC0028`.
-([MC0028](user-guide/DIAGNOSTICS.md#mc0028))
+with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another application
+invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 and `TagCoverage`
+then count it. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028), [In another application](features/invalidation.md#in-another-application))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -248,9 +248,10 @@ The save invalidates, so the read is fresh either way. Count the runs with `reco
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
 
 **How do I check that every cache tag is invalidated somewhere?**
-`Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` from `MethodCache.Testing`, with the tags
-your code invalidates by hand and, with EF Core, `EntityTagMapping<TContext>.AllTags`. Analyzer MC0028 checks one project
-while you build. ([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
+`Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
+`InvalidatedElsewhere` and the EF Core mapping; pass the tags your code invalidates with `InvalidateTagAsync` in
+`alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
+([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](features/testing.md#time))

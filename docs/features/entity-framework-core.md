@@ -322,8 +322,8 @@ EF Core needs its own invalidation ([Testing](testing.md#when-a-test-writes-to-t
 `MethodCache.Testing`, `recorder.Loads` proves a read is cached and `recorder.InvalidatedTags` lists the tags a save
 invalidated ([Counting loads and invalidations](testing.md#counting-loads-and-invalidations)).
 
-`EntityTagMapping<TContext>` lists what the mapping holds. A test can check that every tag of a cached method is mapped
-or has another invalidation:
+`EntityTagMapping<TContext>` lists what the mapping holds. `TagCoverage` counts the mapping's tags as invalidated, so a
+test can check that every tag of a cached method is mapped or has another invalidation:
 
 <!-- snippet: efcore-tag-coverage -->
 ```cs
@@ -331,7 +331,7 @@ var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
 // [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
 var entities = mapping.Entities;
 
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+// TagCoverage counts the mapping, so every tag of a cached method is mapped or has another invalidation
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 <!-- endSnippet -->

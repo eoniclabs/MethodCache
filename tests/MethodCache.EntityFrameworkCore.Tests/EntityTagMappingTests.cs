@@ -48,12 +48,11 @@ public sealed class EntityTagMappingTests
     }
 
     [Fact]
-    public async Task The_mapping_covers_the_tags_of_the_cached_reads()
+    public async Task Tag_coverage_counts_the_mapping_by_itself()
     {
         await using var shop = await Shop.CreateAsync();
-        var mapping = shop.Services.GetRequiredService<EntityTagMapping<ShopDb>>();
 
-        TagCoverage.Uninvalidated(shop.Services, alsoInvalidatedBy: mapping.AllTags).Should().BeEmpty();
-        TagCoverage.Uninvalidated(shop.Services).Select(t => t.Tag).Should().Contain("product:{id}");
+        // product:{id} on the cached read is invalidated only by the mapping's product:{Id}
+        TagCoverage.Uninvalidated(shop.Services).Should().BeEmpty();
     }
 }
