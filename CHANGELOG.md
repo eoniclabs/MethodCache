@@ -4,7 +4,7 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.7 (2026-11-05)
 
 ### Breaking changes since 1.0.0-rc.6
 
