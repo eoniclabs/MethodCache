@@ -152,11 +152,14 @@ public class CoreTelemetryTests
         };
         ActivitySource.AddActivityListener(activitiesListener);
         var durations = new List<(double Value, Dictionary<string, object?> Tags)>();
+        // Resolve the factory up front: other tests publish instruments on their own threads and can still reach
+        // this callback after the provider is disposed, so the callback must not touch the provider.
+        var meterFactory = provider.GetRequiredService<IMeterFactory>();
         using var metrics = new MeterListener
         {
             InstrumentPublished = (instrument, listener) =>
             {
-                if (instrument.Name == "methodcache.load.duration" && ReferenceEquals(instrument.Meter.Scope, provider.GetRequiredService<IMeterFactory>()))
+                if (instrument.Name == "methodcache.load.duration" && ReferenceEquals(instrument.Meter.Scope, meterFactory))
                     listener.EnableMeasurementEvents(instrument);
             }
         };
