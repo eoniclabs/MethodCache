@@ -36,10 +36,13 @@ public class TelemetryHitAllocationTests
         using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();
         var cache = provider.GetRequiredService<ICacheManager>();
         Assert.IsType<MethodCache.Extensibility.InMemoryCacheManager>(cache).Engine.ForegroundMaintenance = true;
+        // Other tests publish instruments on their own threads and can reach this callback after the provider is
+        // disposed, so the callback compares against a factory resolved here instead of touching the provider.
+        var meterFactory = provider.GetRequiredService<IMeterFactory>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, active) =>
         {
-            if (instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, provider.GetRequiredService<IMeterFactory>())) active.EnableMeasurementEvents(instrument);
+            if (instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, meterFactory)) active.EnableMeasurementEvents(instrument);
         };
         long requests = 0;
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => requests += value);

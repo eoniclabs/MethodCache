@@ -24,11 +24,14 @@ public class GeneratedHitAllocationTests
         var baseline = await MeasureShapes(service);
         Assert.Equal(0, baseline);
         long count = 0;
+        // Other tests publish instruments on their own threads and can reach this callback after the provider is
+        // disposed, so the callback compares against a factory resolved here instead of touching the provider.
+        var meterFactory = provider.GetRequiredService<IMeterFactory>();
         using var listener = new MeterListener
         {
             InstrumentPublished = (instrument, self) =>
             {
-                if (listening && instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, provider.GetRequiredService<IMeterFactory>()))
+                if (listening && instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, meterFactory))
                     self.EnableMeasurementEvents(instrument);
             }
         };
@@ -65,11 +68,12 @@ public class GeneratedHitAllocationTests
         var baseline = MeasureWorkers(service);
         Assert.All(baseline, bytes => Assert.Equal(0, bytes));
         long total = 0;
+        var meterFactory = provider.GetRequiredService<IMeterFactory>(); // the callback must not touch the provider
         using var listener = new MeterListener
         {
             InstrumentPublished = (instrument, self) =>
             {
-                if (instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, provider.GetRequiredService<IMeterFactory>())) self.EnableMeasurementEvents(instrument);
+                if (instrument.Name == "methodcache.requests" && ReferenceEquals(instrument.Meter.Scope, meterFactory)) self.EnableMeasurementEvents(instrument);
             }
         };
         listener.SetMeasurementEventCallback<long>((_, value, _, _) => Interlocked.Add(ref total, value));
