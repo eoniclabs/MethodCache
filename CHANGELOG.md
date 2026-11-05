@@ -28,6 +28,13 @@ release.
   entity mapping, `InvalidateTagAsync`, `InvalidateAfterCommit` or `[InvalidatesCache]` call names it. A placeholder
   matches any value. A project that invalidates nothing, such as a library of cached interfaces, isn't reported; a tag
   another project invalidates is suppressed with a `#pragma`.
+- The `MethodCache.Testing` package, for tests of the caching itself. `services.AddMethodCacheTesting()` registers a
+  `FakeTimeProvider` as the container's clock and a `CacheRecorder`: `Loads<T>(call)` counts how many times a call ran
+  your implementation, and `InvalidatedTags` and `InvalidatedKeys` list what was invalidated.
+  `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy)` lists the tags of cached methods, also from configuration,
+  that no `[CacheInvalidate]` method or listed tag covers, across the whole application.
+- `EntityTagMapping<TContext>` in `MethodCache.EntityFrameworkCore` lists the mapped entity types with their tags, and
+  `AllTags` every tag of the mapping, such as for `TagCoverage`.
 
 ### Documentation
 

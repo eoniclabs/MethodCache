@@ -23,7 +23,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [Monitoring](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/native-aot.md): what to register when you publish with Native AOT.
-- [Testing](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/testing.md): test with caching on, or turn it off.
+- [Testing](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/features/testing.md): test with caching on or off, count loads and invalidations, and check that every tag has an invalidation.
 - [Security](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/security.md): what each package protects against, and what it leaves to you.
 - [Registration reference](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/reference/registration.md): how `AddMethodCache()` finds and wraps services, and keyed or generic registrations.
 - [Distributed cache reference](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/docs/reference/distributed.md): which calls use it, backplanes, invalidation results and serialization.
@@ -40,6 +40,7 @@ Put `[Cache]` and `[CacheInvalidate]` on interface methods (not classes), regist
 - [MethodCache.HttpCaching](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.HttpCaching/README.md): HTTP caching for `HttpClient`, the way a browser does it: responses are cached according to `Cache-Control`, revalidated with `ETag` / `Last-Modified`, and a `304 Not Modified` comes back to your code as the full cached response.
 - [MethodCache.Serialization.MessagePack](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Serialization.MessagePack/README.md): Stores MethodCache's distributed cache values (Redis, SQL Server or PostgreSQL) as compact MessagePack instead of the default System.Text.Json: smaller entries and faster reads.
 - [MethodCache.EntityFrameworkCore](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.EntityFrameworkCore/README.md): Invalidates MethodCache tags when Entity Framework Core commits a change.
+- [MethodCache.Testing](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/src/MethodCache.Testing/README.md): Helpers for tests of the caching itself: a fake clock, a recorder that counts how often your implementation ran and what was invalidated, and a check that every cache tag has something that invalidates it.
 - [Changelog](https://raw.githubusercontent.com/eoniclabs/MethodCache/main/CHANGELOG.md): Changes that a user of the packages notices.
 
 ## Optional

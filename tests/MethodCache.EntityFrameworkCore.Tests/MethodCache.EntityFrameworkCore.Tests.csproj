@@ -28,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.EntityFrameworkCore\MethodCache.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\MethodCache.Testing\MethodCache.Testing.csproj" />
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

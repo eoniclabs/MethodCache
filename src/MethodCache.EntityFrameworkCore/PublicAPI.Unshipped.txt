@@ -9,3 +9,14 @@ Microsoft.EntityFrameworkCore.MethodCacheDbContextExtensions
 static Microsoft.EntityFrameworkCore.MethodCacheDbContextExtensions.InvalidateAfterCommit(this Microsoft.EntityFrameworkCore.DbContext! context, params string![]! tags) -> void
 Microsoft.Extensions.DependencyInjection.EntityFrameworkCoreMethodCacheBuilderExtensions
 static Microsoft.Extensions.DependencyInjection.EntityFrameworkCoreMethodCacheBuilderExtensions.UseEntityFrameworkCore<TContext>(this MethodCache.MethodCacheBuilder! builder, System.Action<MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions!>? configure = null) -> MethodCache.MethodCacheBuilder!
+MethodCache.EntityFrameworkCore.EntityTagMapping<TContext>
+MethodCache.EntityFrameworkCore.EntityTagMapping<TContext>.AllTags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.EntityFrameworkCore.EntityTagMapping<TContext>.Entities.get -> System.Collections.Generic.IReadOnlyList<MethodCache.EntityFrameworkCore.MappedEntity!>!
+MethodCache.EntityFrameworkCore.MappedEntity
+MethodCache.EntityFrameworkCore.MappedEntity.EntityType.get -> System.Type!
+MethodCache.EntityFrameworkCore.MappedEntity.EntityType.init -> void
+MethodCache.EntityFrameworkCore.MappedEntity.MappedEntity(System.Type! EntityType, System.Collections.Generic.IReadOnlyList<string!>! Tags, System.Collections.Generic.IReadOnlyList<string!>! WhenDeleted) -> void
+MethodCache.EntityFrameworkCore.MappedEntity.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.EntityFrameworkCore.MappedEntity.Tags.init -> void
+MethodCache.EntityFrameworkCore.MappedEntity.WhenDeleted.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.EntityFrameworkCore.MappedEntity.WhenDeleted.init -> void

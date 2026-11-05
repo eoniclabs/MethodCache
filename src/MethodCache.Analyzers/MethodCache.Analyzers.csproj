@@ -33,5 +33,6 @@
 
   <ItemGroup>
     <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
+    <Compile Include="../Shared/TagPattern.cs" Link="Internal/TagPattern.cs" />
   </ItemGroup>
 </Project>

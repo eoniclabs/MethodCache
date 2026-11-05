@@ -58,6 +58,8 @@ from memory until it expires or `RenameAsync(42, ...)` invalidates user 42, and 
   method which results to store.
 - **A test writes to the database directly.** Call `ICacheAdministrator.ClearAsync()` after the write, or register
   `NoOpCacheManager` to turn caching off.
+- **How do I test the caching itself?** `MethodCache.Testing` adds a fake clock, a recorder that counts the runs of
+  each call and lists the invalidated tags, and `TagCoverage`, which checks that every tag has an invalidation.
 - **Are synchronous methods cached?** In memory only, also with a distributed cache.
 - **How do I see what's cached?** `ICacheAdministrator`, the admin endpoints in `MethodCache.AspNetCore`, and the
   `MethodCache` meter.

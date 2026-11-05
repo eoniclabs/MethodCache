@@ -8,7 +8,7 @@ import unittest
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / 'publish.sh'
 PACKAGES = ('MethodCache', 'MethodCache.Redis', 'MethodCache.SqlServer', 'MethodCache.PostgreSql',
             'MethodCache.Serialization.MessagePack', 'MethodCache.AspNetCore',
-            'MethodCache.OpenTelemetry', 'MethodCache.HttpCaching', 'MethodCache.EntityFrameworkCore')
+            'MethodCache.OpenTelemetry', 'MethodCache.HttpCaching', 'MethodCache.EntityFrameworkCore', 'MethodCache.Testing')
 
 FAKE_TOOL = '''#!/usr/bin/env python3
 import json, os, pathlib, sys
@@ -87,7 +87,7 @@ class PublishTests(unittest.TestCase):
             self.assertNotIn('nuget-test-key', result.stdout + result.stderr)
             return result, calls
 
-    def test_nuget_fetches_one_secret_after_pack_and_pushes_nine_without_key_arguments(self):
+    def test_nuget_fetches_one_secret_after_pack_and_pushes_ten_without_key_arguments(self):
         result, calls = self.run_publish()
         self.assertEqual(0, result.returncode, result.stderr)
         pack = next(c for c in calls if c['tool'] == 'dotnet' and c['args'][0] == 'pack')

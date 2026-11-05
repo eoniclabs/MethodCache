@@ -219,6 +219,7 @@ namespace MethodCache.Extensibility
             tags = tags.Distinct(StringComparer.Ordinal).ToArray();
             using var activity = _distributed == null ? _telemetry?.BeginInvalidation("tag", tags: tags) : null;
             foreach (var tag in tags) RemoveLocalTag(tag);
+            _telemetry?.Invalidated(true, tags);
             _telemetry?.Invalidations("tag", "local", tags.Length);
             if (_distributed != null)
             {
@@ -454,10 +455,10 @@ namespace MethodCache.Extensibility
                 }
             }
 
-            _telemetry?.Invalidations("key", "local", keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).Count());
-            return _distributed == null
-                ? Task.CompletedTask
-                : _distributed.RemoveAsync(keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray());
+            var removed = keys.Where(static key => !string.IsNullOrWhiteSpace(key)).Distinct(StringComparer.Ordinal).ToArray();
+            _telemetry?.Invalidated(false, removed);
+            _telemetry?.Invalidations("key", "local", removed.Length);
+            return _distributed == null ? Task.CompletedTask : _distributed.RemoveAsync(removed);
         }
 
         /// <inheritdoc />
@@ -480,10 +481,10 @@ namespace MethodCache.Extensibility
                 }
             }
 
-            _telemetry?.Invalidations("tag", "local", tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).Count());
-            return _distributed == null
-                ? Task.CompletedTask
-                : _distributed.InvalidateTagsAsync(tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).ToArray());
+            var removed = tags.Where(static tag => tag != null).Distinct(StringComparer.Ordinal).ToArray();
+            _telemetry?.Invalidated(true, removed);
+            _telemetry?.Invalidations("tag", "local", removed.Length);
+            return _distributed == null ? Task.CompletedTask : _distributed.InvalidateTagsAsync(removed);
         }
 
         /// <inheritdoc />

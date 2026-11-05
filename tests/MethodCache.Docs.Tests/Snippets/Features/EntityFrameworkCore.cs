@@ -1,8 +1,11 @@
 using MethodCache;
+using MethodCache.EntityFrameworkCore;
+using MethodCache.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace Docs.EntityFrameworkCore
 {
@@ -95,6 +98,21 @@ namespace Docs.EntityFrameworkCore
                 // Every sign-in saves the customer, and changes no cached result. A deleted customer does: the
                 // database deletes their order lines, which the context never loaded
                 .Entity<Customer>(customer => customer.WhenDeleted("top-sellers"))));
+            // end-snippet
+        }
+    }
+
+    public static class MappingTests
+    {
+        public static void CheckTags(IServiceProvider provider)
+        {
+            // begin-snippet: efcore-tag-coverage
+            var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+            // [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
+            var entities = mapping.Entities;
+
+            // Every tag of a cached method is mapped, or has a [CacheInvalidate] method
+            Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
             // end-snippet
         }
     }

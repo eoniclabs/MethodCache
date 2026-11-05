@@ -359,6 +359,7 @@ All packages target .NET 10. Install the add-ons at the same version as `MethodC
 | [`MethodCache.Serialization.MessagePack`](src/MethodCache.Serialization.MessagePack/README.md) | MessagePack instead of JSON in the distributed cache |
 | [`MethodCache.HttpCaching`](src/MethodCache.HttpCaching/README.md) | HTTP caching for `HttpClient`: Cache-Control, ETag revalidation, Vary, optionally shared through the distributed cache |
 | [`MethodCache.EntityFrameworkCore`](src/MethodCache.EntityFrameworkCore/README.md) | Invalidation after Entity Framework Core commits: tags per entity type, and a warning for writes it can't see |
+| [`MethodCache.Testing`](src/MethodCache.Testing/README.md) | Test helpers: a fake clock, a recorder of loads and invalidations, and a check that every tag has an invalidation |
 
 ## Documentation
 
@@ -376,7 +377,7 @@ The [documentation](docs/README.md) has a page per feature, and every C# example
   [migrating from IMemoryCache](docs/migration-from-imemorycache.md)
 - Reference, with the exact rules: [registration](docs/reference/registration.md),
   [distributed cache](docs/reference/distributed.md), [HTTP caching](docs/reference/http-caching.md)
-- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md), [Entity Framework Core](src/MethodCache.EntityFrameworkCore/README.md)
+- Package guides: [Redis](src/MethodCache.Redis/README.md), [SQL Server](src/MethodCache.SqlServer/README.md), [PostgreSQL](src/MethodCache.PostgreSql/README.md), [ASP.NET Core](src/MethodCache.AspNetCore/README.md), [OpenTelemetry](src/MethodCache.OpenTelemetry/README.md), [HTTP caching](src/MethodCache.HttpCaching/README.md), [MessagePack](src/MethodCache.Serialization.MessagePack/README.md), [Entity Framework Core](src/MethodCache.EntityFrameworkCore/README.md), [Testing](src/MethodCache.Testing/README.md)
 - [Console tour, including HttpClient caching](samples/MethodCache.Demo/) and [web demo](samples/MethodCache.WebDemo/)
 
 ## Using a coding agent

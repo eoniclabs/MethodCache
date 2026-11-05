@@ -29,6 +29,7 @@
     <PackageReference Include="MethodCache.OpenTelemetry" Version="$(MethodCachePackageVersion)" />
     <PackageReference Include="MethodCache.HttpCaching" Version="$(MethodCachePackageVersion)" />
     <PackageReference Include="MethodCache.EntityFrameworkCore" Version="$(MethodCachePackageVersion)" />
+    <PackageReference Include="MethodCache.Testing" Version="$(MethodCachePackageVersion)" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
 

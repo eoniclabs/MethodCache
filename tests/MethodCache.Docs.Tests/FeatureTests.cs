@@ -296,6 +296,34 @@ public class FeatureTests(ITestOutputHelper output)
         Assert.Equal(2, await CountLoadsAsync(uncached));
     }
 
+    [Fact]
+    public Task Testing_RecorderCountsLoadsAndInvalidations() => global::Docs.Testing.Examples.RecordAsync();
+
+    [Fact]
+    public async Task Testing_TagCoverage_CoversTheTagsOfTheGettingStartedService()
+    {
+        await using var provider = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();
+
+        global::Docs.Testing.Examples.CheckTags(provider);
+    }
+
+    [Fact]
+    public async Task EntityFrameworkCore_MappingCoversTheTagsOfTheCachedReads()
+    {
+        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        var services = new ServiceCollection();
+        services.AddDbContext<global::Docs.EntityFrameworkCore.ShopDb>(o => Microsoft.EntityFrameworkCore.SqliteDbContextOptionsBuilderExtensions.UseSqlite(o, connection));
+        services.AddScoped<global::Docs.EntityFrameworkCore.IProductReads, global::Docs.EntityFrameworkCore.ProductReads>();
+        services.AddMethodCache(mc => mc.UseEntityFrameworkCore<global::Docs.EntityFrameworkCore.ShopDb>(ef => ef
+            .Entity<global::Docs.EntityFrameworkCore.Product>("product:{Id}", "category:{CategoryId}")
+            .Entity<global::Docs.EntityFrameworkCore.OrderLine>("top-sellers")));
+        await using var provider = services.BuildServiceProvider();
+
+        global::Docs.EntityFrameworkCore.MappingTests.CheckTags(provider);
+        var entities = provider.GetRequiredService<global::MethodCache.EntityFrameworkCore.EntityTagMapping<global::Docs.EntityFrameworkCore.ShopDb>>().Entities;
+        Assert.Equal([typeof(global::Docs.EntityFrameworkCore.Product), typeof(global::Docs.EntityFrameworkCore.OrderLine)], entities.Select(e => e.EntityType));
+    }
+
     private static async Task<int> CountLoadsAsync(IServiceProvider provider)
     {
         var loads = 0;

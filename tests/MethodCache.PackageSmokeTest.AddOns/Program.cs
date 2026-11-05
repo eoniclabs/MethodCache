@@ -4,10 +4,13 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using MethodCache;
+using MethodCache.EntityFrameworkCore;
+using MethodCache.Testing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 if (args is ["--seed-isolation", ..]) return await SeedIsolationCheck.WorkerAsync(args);
 
@@ -25,6 +28,7 @@ var checks = new (string Name, Func<Task<string?>> Run)[]
     ("OpenTelemetry metrics and spans, mc.Telemetry and IMethodCacheKeys", OpenTelemetryCheck.RunAsync),
     ("HttpClient caching", HttpCachingCheck.RunAsync),
     ("Entity Framework Core: invalidation after a commit", EntityFrameworkCoreCheck.RunAsync),
+    ("Testing: recorder, fake clock and tag coverage", TestingCheck.RunAsync),
 };
 
 var failed = 0;
@@ -501,5 +505,47 @@ public static class EntityFrameworkCoreCheck
             await transaction.CommitAsync();
         }
         return await ReadAsync() == "After" ? null : "the commit did not invalidate product:1";
+    }
+}
+
+public static class TestingCheck
+{
+    public static async Task<string?> RunAsync()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<ShopDb>(o => o.UseSqlite(connection));
+        services.AddScoped<IProductNames, ProductNames>();
+        services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(ef => ef.Entity<Product>("product:{Id}")));
+        services.AddMethodCacheTesting();
+        await using var provider = services.BuildServiceProvider();
+        var recorder = provider.GetRequiredService<CacheRecorder>();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDb>();
+            await db.Database.EnsureCreatedAsync();
+            db.Products.Add(new Product { Id = 1, Name = "Tea" });
+            await db.SaveChangesAsync();
+        }
+
+        async Task ReadAsync()
+        {
+            await using var scope = provider.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<IProductNames>().GetAsync(1);
+        }
+
+        await ReadAsync();
+        await ReadAsync();
+        if (recorder.Loads<IProductNames>(p => p.GetAsync(1)) != 1) return "the recorder did not count one load for two reads";
+        if (!recorder.InvalidatedTags.Contains("product:1")) return "the recorder did not see the save invalidate product:1";
+        provider.GetRequiredService<FakeTimeProvider>().Advance(TimeSpan.FromMinutes(11));
+        await ReadAsync();
+        if (recorder.Loads<IProductNames>(p => p.GetAsync(1)) != 2) return "advancing the fake clock did not expire the entry";
+        var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+        var uninvalidated = TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags);
+        return uninvalidated.Count == 0 ? null : "tags reported as uninvalidated: " + string.Join(", ", uninvalidated);
     }
 }

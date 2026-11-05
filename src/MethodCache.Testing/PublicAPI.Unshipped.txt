@@ -1,0 +1,18 @@
+#nullable enable
+MethodCache.Testing.CacheRecorder
+MethodCache.Testing.CacheRecorder.Clear() -> void
+MethodCache.Testing.CacheRecorder.InvalidatedKeys.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.Testing.CacheRecorder.InvalidatedTags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.Testing.CacheRecorder.Loads(string! key) -> int
+MethodCache.Testing.CacheRecorder.Loads<TService>(System.Func<TService!, object?>! call, object? serviceKey = null) -> int
+MethodCache.Testing.TagCoverage
+MethodCache.Testing.UninvalidatedTag
+MethodCache.Testing.UninvalidatedTag.MethodId.get -> string!
+MethodCache.Testing.UninvalidatedTag.MethodId.init -> void
+MethodCache.Testing.UninvalidatedTag.Tag.get -> string!
+MethodCache.Testing.UninvalidatedTag.Tag.init -> void
+MethodCache.Testing.UninvalidatedTag.UninvalidatedTag(string! Tag, string! MethodId) -> void
+Microsoft.Extensions.DependencyInjection.MethodCacheTestingServiceCollectionExtensions
+override MethodCache.Testing.UninvalidatedTag.ToString() -> string!
+static MethodCache.Testing.TagCoverage.Uninvalidated(System.IServiceProvider! provider, System.Collections.Generic.IEnumerable<string!>? alsoInvalidatedBy = null) -> System.Collections.Generic.IReadOnlyList<MethodCache.Testing.UninvalidatedTag!>!
+static Microsoft.Extensions.DependencyInjection.MethodCacheTestingServiceCollectionExtensions.AddMethodCacheTesting(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

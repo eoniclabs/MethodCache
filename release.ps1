@@ -68,6 +68,7 @@ $Packages = @(
     "MethodCache"
     "MethodCache.AspNetCore"
     "MethodCache.EntityFrameworkCore"
+    "MethodCache.Testing"
     "MethodCache.HttpCaching"
     "MethodCache.OpenTelemetry"
     "MethodCache.PostgreSql"

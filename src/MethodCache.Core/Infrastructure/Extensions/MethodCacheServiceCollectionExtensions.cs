@@ -121,7 +121,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddOptions<MethodCacheTelemetryOptions>();
             services.TryAddSingleton(static sp => new MethodCache.Core.Telemetry.CoreTelemetry(
                 sp.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>(),
-                sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>()));
+                sp.GetRequiredService<IOptions<MethodCacheTelemetryOptions>>(), sp.GetService<TimeProvider>(),
+                sp.GetService<MethodCache.Core.Telemetry.ICacheEventSink>()));
             services.TryAddSingleton(new GeneratedParameters());
             services.TryAddSingleton(static provider => new RegistrationValidationState(
                 provider.GetService<RegistrationValidation>(), provider.GetService<ILoggerFactory>()?.CreateLogger("MethodCache.Registration")));

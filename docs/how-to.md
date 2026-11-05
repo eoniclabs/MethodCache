@@ -239,12 +239,21 @@ Register `NoOpCacheManager` after `AddMethodCache()`. ([Testing](features/testin
 Call `ICacheAdministrator.ClearAsync()` after the write, or invalidate the affected tag with `IMethodCacheKeys.Tag`.
 ([Testing](features/testing.md#when-a-test-writes-to-the-database-directly))
 
+**How do I count how often my implementation ran, or see what was invalidated?**
+Add `MethodCache.Testing` and call `services.AddMethodCacheTesting()`. `CacheRecorder.Loads<T>(call)` counts the runs of
+one call and `InvalidatedTags` lists the invalidated tags. ([Counting loads and invalidations](features/testing.md#counting-loads-and-invalidations))
+
 **My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
-The save invalidates, so the read is fresh either way. Count the calls that reach your implementation, or change the
-row with SQL or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
+The save invalidates, so the read is fresh either way. Count the runs with `recorder.Loads`, or change the row with SQL
+or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
+
+**How do I check that every cache tag is invalidated somewhere?**
+`Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` from `MethodCache.Testing`, with the tags
+your code invalidates by hand and, with EF Core, `EntityTagMapping<TContext>.AllTags`. Analyzer MC0028 checks one project
+while you build. ([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**
-Register a fake `TimeProvider`. ([Testing](features/testing.md#time))
+Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](features/testing.md#time))
 
 ## Coding agents
 
