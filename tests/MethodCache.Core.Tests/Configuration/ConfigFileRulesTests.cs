@@ -39,9 +39,9 @@ public class ConfigFileRulesTests
     {
         var error = LoadFails(new()
         {
-            [$"MethodCache:Methods:{GetId}:Duration"] = "00:01:00",
+            [$"MethodCache:Methods:{GetId}:Duration"] = "1m",
             ["MethodCache:Methods:second:MethodId"] = GetId,
-            ["MethodCache:Methods:second:Duration"] = "00:02:00"
+            ["MethodCache:Methods:second:Duration"] = "2m"
         });
 
         Assert.Contains($"'MethodCache:Methods:{GetId}'", error.Message, StringComparison.Ordinal);
@@ -57,7 +57,7 @@ public class ConfigFileRulesTests
         var error = LoadFails(new()
         {
             ["MethodCache:Methods:0:MethodId"] = id,
-            ["MethodCache:Methods:0:Duration"] = "00:01:00"
+            ["MethodCache:Methods:0:Duration"] = "1m"
         });
 
         Assert.Contains($"'MethodCache:Methods:0:MethodId' has value '{id}', which is not a method id", error.Message, StringComparison.Ordinal);
@@ -67,7 +67,7 @@ public class ConfigFileRulesTests
     [Fact]
     public void DefaultsIdUsedAsAMethodKey_FailsStartup()
     {
-        var error = LoadFails(new() { ["MethodCache:Methods:*:Duration"] = "00:01:00" });
+        var error = LoadFails(new() { ["MethodCache:Methods:*:Duration"] = "1m" });
 
         Assert.StartsWith("MethodCache configuration 'MethodCache:Methods:*' is not a method id", error.Message, StringComparison.Ordinal);
     }
@@ -93,9 +93,9 @@ public class ConfigFileRulesTests
     {
         var error = LoadFails(new()
         {
-            [$"MethodCache:Defaults:{defaultsSetting}"] = "00:01:00",
-            ["MethodCache:FailSafe:Duration"] = "00:10:00",
-            [$"MethodCache:FailSafe:{blockSetting}"] = "00:00:05"
+            [$"MethodCache:Defaults:{defaultsSetting}"] = "1m",
+            ["MethodCache:FailSafe:Duration"] = "10m",
+            [$"MethodCache:FailSafe:{blockSetting}"] = "5s"
         });
 
         Assert.Contains($"'MethodCache:Defaults:{defaultsSetting}' and 'MethodCache:FailSafe:{blockSetting}'", error.Message, StringComparison.Ordinal);
@@ -109,7 +109,7 @@ public class ConfigFileRulesTests
         var error = LoadFails(new()
         {
             [$"MethodCache:Methods:{GetId}:Metadata:{key}"] = "orders",
-            [$"MethodCache:Defaults:Duration"] = "00:01:00"
+            [$"MethodCache:Defaults:Duration"] = "1m"
         });
 
         Assert.Contains($"'MethodCache:Methods:{GetId}:Metadata:{key}' sets a group in Metadata", error.Message, StringComparison.Ordinal);
@@ -119,7 +119,7 @@ public class ConfigFileRulesTests
     [Fact]
     public void ServicesSection_IsNotRead_AsMethodsWas_Renamed()
     {
-        var error = LoadFails(new() { [$"MethodCache:Services:{GetId}:Duration"] = "00:01:00" });
+        var error = LoadFails(new() { [$"MethodCache:Services:{GetId}:Duration"] = "1m" });
 
         Assert.Contains("'MethodCache:Services' is not a setting MethodCache knows", error.Message, StringComparison.Ordinal);
         Assert.Contains("Methods", error.Message, StringComparison.Ordinal);
@@ -130,7 +130,7 @@ public class ConfigFileRulesTests
     {
         var typo = GetId.Replace("GetAsync", "GetAsnc", StringComparison.Ordinal);
 
-        var error = LoadFails(new() { [$"MethodCache:Methods:{typo}:Duration"] = "00:01:00" });
+        var error = LoadFails(new() { [$"MethodCache:Methods:{typo}:Duration"] = "1m" });
 
         Assert.Contains($"'MethodCache:Methods:{typo}' configures a method that isn't cached", error.Message, StringComparison.Ordinal);
         Assert.Contains($"did you mean '{GetId}'", error.Message, StringComparison.Ordinal);
@@ -144,7 +144,7 @@ public class ConfigFileRulesTests
         var error = LoadFails(new()
         {
             ["MethodCache:Methods:0:MethodId"] = typo,
-            ["MethodCache:Methods:0:Duration"] = "00:01:00"
+            ["MethodCache:Methods:0:Duration"] = "1m"
         });
 
         Assert.Contains("'MethodCache:Methods:0:MethodId'", error.Message, StringComparison.Ordinal);
@@ -154,13 +154,13 @@ public class ConfigFileRulesTests
     [Fact]
     public void ReloadWithAnUnknownMethod_IsRejected_AndThePreviousPoliciesStay()
     {
-        var configuration = Configuration(new() { [$"MethodCache:Methods:{GetId}:Duration"] = "00:01:00" });
+        var configuration = Configuration(new() { [$"MethodCache:Methods:{GetId}:Duration"] = "1m" });
         using var provider = Build(configuration);
         var registry = provider.GetRequiredService<IPolicyRegistry>();
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(GetId).Policy.Duration);
 
-        configuration[$"MethodCache:Methods:{GetId}:Duration"] = "00:05:00";
-        configuration["MethodCache:Methods:typo:Duration"] = "00:02:00";
+        configuration[$"MethodCache:Methods:{GetId}:Duration"] = "5m";
+        configuration["MethodCache:Methods:typo:Duration"] = "2m";
         configuration.Reload();
 
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(GetId).Policy.Duration);
@@ -172,7 +172,7 @@ public class ConfigFileRulesTests
     {
         var configuration = Configuration(new()
         {
-            ["MethodCache:Groups:orders:Duration"] = "00:02:00",
+            ["MethodCache:Groups:orders:Duration"] = "2m",
             ["MethodCache:Groups:orders:Tags:0"] = "orders",
             [$"MethodCache:Methods:{GetId}:Group"] = "orders"
         });
@@ -190,7 +190,7 @@ public class ConfigFileRulesTests
     [Fact]
     public void GroupsSection_WinsOverTheSameGroupInCode_ButNotOverAMethodsOwnSettings()
     {
-        var configuration = Configuration(new() { ["MethodCache:Groups:orders:Duration"] = "00:02:00" });
+        var configuration = Configuration(new() { ["MethodCache:Groups:orders:Duration"] = "2m" });
         using var provider = Build(configuration, mc =>
         {
             mc.Group("orders", o => o.WithDuration(TimeSpan.FromMinutes(1)).WithVersion(3));
@@ -245,13 +245,13 @@ public class ConfigFileRulesTests
     [Fact]
     public void ReloadThatPutsAMethodInAGroupWhoseCodeTagDoesNotFit_IsRejected()
     {
-        var configuration = Configuration(new() { [$"MethodCache:Methods:{GetId}:Duration"] = "00:01:00" });
+        var configuration = Configuration(new() { [$"MethodCache:Methods:{GetId}:Duration"] = "1m" });
         using var provider = Build(configuration, mc => mc.Group("orders", o => o.AddTags("order:{orderId}")));
         var registry = provider.GetRequiredService<IPolicyRegistry>();
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(GetId).Policy.Duration);
 
         configuration[$"MethodCache:Methods:{GetId}:Group"] = "orders";
-        configuration[$"MethodCache:Methods:{GetId}:Duration"] = "00:05:00";
+        configuration[$"MethodCache:Methods:{GetId}:Duration"] = "5m";
         configuration.Reload();
 
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy(GetId).Policy.Duration);
@@ -276,7 +276,7 @@ public class ConfigFileRulesTests
     {
         var configuration = Configuration(new()
         {
-            [$"MethodCache:Methods:{OrderId}:SlidingExpiration"] = "00:01:00",
+            [$"MethodCache:Methods:{OrderId}:SlidingExpiration"] = "1m",
             [$"MethodCache:Methods:{OrderId}:ClearTags"] = "true",
             [$"MethodCache:Methods:{OrderId}:Metadata:owner"] = "team-a"
         });

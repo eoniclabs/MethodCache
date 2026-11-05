@@ -42,12 +42,12 @@ namespace MethodCache.Analyzers
 
         internal static readonly DiagnosticDescriptor InvalidTimeSpanRule = new DiagnosticDescriptor(
             InvalidTimeSpanDiagnosticId,
-            "Invalid time span",
-            "{0} = \"{1}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"",
+            "Invalid duration",
+            "{0} = \"{1}\" is not a duration; write {2}",
             Category,
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and FailSafeRetryAfter on [Cache] and [assembly: CacheInterface] must be positive duration strings, for example \"00:05:00\" or \"1.00:00:00\". FailSafe, SlidingExpiration and RefreshAhead also accept \"off\".",
+            description: "Duration, SlidingExpiration, RefreshAhead, FailSafe, FailSafeTimeout and FailSafeRetryAfter on [Cache] and [assembly: CacheInterface] are a positive number and a unit: s, m, h or d, such as \"30s\", \"10m\", \"1.5h\" or \"7d\". A TimeSpan such as \"00:10:00\" is not accepted; the code fix rewrites it with a unit. FailSafe, SlidingExpiration and RefreshAhead also accept \"off\".",
             helpLinkUri: HelpLink(InvalidTimeSpanDiagnosticId));
 
         internal static readonly DiagnosticDescriptor InvalidVersionRule = new DiagnosticDescriptor(
@@ -101,7 +101,7 @@ namespace MethodCache.Analyzers
                         Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], RefreshAheadNotShorterThanDurationRule, refresh.RefreshAhead, refresh.Lifetime, refresh.LifetimeText);
                     foreach (var (property, text) in InvalidTimeSpans(attribute))
                     {
-                        Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidTimeSpanRule, property, text);
+                        Report(context, AttributeLocation(attribute, context.CancellationToken) ?? method.Locations[0], InvalidTimeSpanRule, property, text, Expected(text));
                     }
                 }
             }
@@ -134,10 +134,14 @@ namespace MethodCache.Analyzers
                     context.ReportDiagnostic(Diagnostic.Create(RefreshAheadNotShorterThanDurationRule, location, refresh.RefreshAhead, refresh.Lifetime, refresh.LifetimeText));
                 foreach (var (property, text) in InvalidTimeSpans(attribute))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text));
+                    context.ReportDiagnostic(Diagnostic.Create(InvalidTimeSpanRule, location, property, text, Expected(text)));
                 }
             }
         }
+
+        /// <summary>The value written with a unit, for a TimeSpan such as "00:10:00", or what a duration looks like.</summary>
+        internal static string Expected(string text)
+            => MethodCache.Internal.DurationParser.Suggest(text) is { } suggestion ? "\"" + suggestion + "\"" : MethodCache.Internal.DurationParser.Expected;
 
         private static IEnumerable<(string Property, string Text)> InvalidTimeSpans(AttributeData attribute)
         {

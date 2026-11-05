@@ -34,10 +34,10 @@ namespace Docs.GettingStarted.After
 
     public interface IProductService
     {
-        [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+        [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
         Task<Product> GetAsync(int id, CancellationToken ct = default);
 
-        [Cache(Duration = "00:01:00", Tags = ["products"])]
+        [Cache(Duration = "1m", Tags = ["products"])]
         Task<List<Product>> SearchAsync(string text, int page);
 
         [CacheInvalidate(Tags = ["products", "product:{id}"])]

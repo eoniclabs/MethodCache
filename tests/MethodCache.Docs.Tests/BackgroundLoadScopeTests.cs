@@ -142,13 +142,13 @@ public class BackgroundLoadSeveralServicesTests
 
 public interface IScopedLeft
 {
-    [Cache(Duration = "00:00:10")]
+    [Cache(Duration = "10s")]
     Task<int> GetAsync(int id);
 }
 
 public interface IScopedRight
 {
-    [Cache(Duration = "00:00:10")]
+    [Cache(Duration = "10s")]
     Task<int> GetAsync(int id);
 }
 
@@ -205,10 +205,10 @@ public sealed class ScopedRight(ScopeLog log) : ScopedPart(log), IScopedRight;
 
 public interface IScopedQuotes
 {
-    [Cache(Duration = "00:01:00", RefreshAhead = "00:00:30")]
+    [Cache(Duration = "1m", RefreshAhead = "30s")]
     Task<int> GetRefreshedAsync(int id);
 
-    [Cache(Duration = "00:01:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.5")]
+    [Cache(Duration = "1m", FailSafe = "1h", FailSafeTimeout = "0.5s")]
     Task<int> GetFailSafeAsync(int id);
 }
 

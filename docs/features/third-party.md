@@ -18,7 +18,7 @@ Name the interface and the methods to cache in an assembly attribute, anywhere i
 <!-- snippet: readme-cache-interface -->
 ```cs
 [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
-    Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    Duration = "1m", Tags = ["fx", "fx:{from}"])]
 ```
 <!-- endSnippet -->
 
@@ -74,7 +74,7 @@ Define an interface in your project with the calls you need, and put the setting
 ```cs
 public interface IRates
 {
-    [Cache(Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    [Cache(Duration = "1m", Tags = ["fx", "fx:{from}"])]
     Task<decimal> GetAsync(string from, string to);
 }
 

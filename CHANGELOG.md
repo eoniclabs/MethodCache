@@ -4,6 +4,43 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Breaking changes since 1.0.0-rc.6
+
+- A duration is a number and a unit: `"30s"`, `"10m"`, `"1.5h"`, `"7d"`. A `TimeSpan` such as `"00:10:00"` is no longer
+  accepted: in an attribute it is error MC0004, whose message and code fix give the value with a unit (`"10m"`), and
+  in `appsettings.json` startup fails with the value to write instead. One way to write a duration keeps an
+  application consistent. `TimeSpan` arguments in code are unchanged.
+
+### Changed
+
+- MC0027 reports raw SQL only when it names the table of a mapped entity type (by class, `DbSet`, `ToTable` or
+  `[Table]` name, in any case, so `ai_model_prices` matches `AiModelPrice`), runs a procedure or block (`call`,
+  `exec`, `do`), or can't be read. Statements that only `select` or `set` a session setting, such as
+  `SET LOCAL lock_timeout`, are never reported. A project that maps no type still reports all other raw SQL.
+- MC0026 also reports a cached implementation that takes a class whose constructor takes per-request state, such as a
+  `DbContext` that takes `IHttpContextAccessor`, directly or through `IDbContextFactory<T>`.
+
+### Added
+
+- Analyzer MC0028 reports a tag on a `[Cache]` method that nothing in the project invalidates: no `[CacheInvalidate]`,
+  entity mapping, `InvalidateTagAsync`, `InvalidateAfterCommit` or `[InvalidatesCache]` call names it. A placeholder
+  matches any value. A project that invalidates nothing, such as a library of cached interfaces, isn't reported; a tag
+  another project invalidates is suppressed with a `#pragma`.
+
+### Documentation
+
+- Entity Framework Core: a row-level security section, with a context of their own for cached reads, and what happens
+  when a save of a row the context didn't load can't read it (PostgreSQL and SQL Server don't change the row either,
+  and the save throws `DbUpdateConcurrencyException`). EF Core query filters don't hide the row from that read.
+- The PostgreSQL, Redis and SQL Server package READMEs show how to share only invalidations, such as for a worker that
+  changes data an API caches. The agent guide lists every feature guide and says when to read it.
+- Testing: how to prove a read is cached when every save invalidates.
+- Monitoring: prometheus-net 8 exports MethodCache's instruments with no setup, and how its names and types differ
+  from OpenTelemetry's Prometheus exporter.
+- Examples use durations with a unit throughout.
+
 ## 1.0.0-rc.6 (2026-11-04)
 
 ### Changed

@@ -34,10 +34,10 @@ using MethodCache;
 
 public interface IProductService
 {
-    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
     Task<Product> GetAsync(int id, CancellationToken ct = default);
 
-    [Cache(Duration = "00:01:00", Tags = ["products"])]
+    [Cache(Duration = "1m", Tags = ["products"])]
     Task<List<Product>> SearchAsync(string text, int page);
 
     [CacheInvalidate(Tags = ["products", "product:{id}"])]
@@ -76,16 +76,21 @@ builder.Services.AddMethodCache();                               // after your r
 - `[CacheInvalidate]` runs after the method, or its task, succeeds; never when it throws.
 - Synchronous `[Cache]` methods use the memory cache only, also with Redis, SQL Server or PostgreSQL. Make a method
   async to share its results between instances.
-- Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
+- Durations are a number and a unit: `"30s"`, `"10m"`, `"1.5h"`, `"7d"`. A `TimeSpan` such as `"00:10:00"` is an
+  error (MC0004). Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
   (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
   the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
 - Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
   `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
 - The key holds only the method's arguments. A cached implementation must not read the current user or request
-  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026): pass the user or tenant id
-  as an argument instead.
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026), directly or through a
+  `DbContext` set up for the signed-in user: pass the user or tenant id as an argument instead. With row-level
+  security, give cached reads a context of their own from `IDbContextFactory<T>` that sets what the policies read from
+  the method's arguments, and check in the endpoint that the user may read it.
 - Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
+- Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
+  invalidates. When another project invalidates it, such as a worker, suppress MC0028 for that tag with a `#pragma`.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -93,7 +98,7 @@ builder.Services.AddMethodCache();                               // after your r
   calling/entry assemblies have no special priority.
 - In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
   `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
-  `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
+  a number and a unit, `"5m"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return.
@@ -123,13 +128,15 @@ builder.Services.AddMethodCache();                               // after your r
   don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
   deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
   on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
-  (MC0027, on mapped types only, and on raw SQL that isn't a single `select`), call `db.InvalidateAfterCommit(tag)`
-  inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
+  (MC0027, on mapped types only, and on raw SQL that names a mapped table, runs a procedure or can't be read), call
+  `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
   invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
-  `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
-  settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
+  `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
+  data an API caches, or several API instances), add `.Defaults(o => o.WithDistributed(false))` in every process:
+  invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
   warning: return records with public properties.
 - `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
   send cookies as a `Cookie` header, or set `KeepCookies = true`, which turns response caching off.
@@ -138,6 +145,28 @@ builder.Services.AddMethodCache();                               // after your r
 - Telemetry: `MethodCacheTelemetryOptions` (`mc.Telemetry(...)`) records keys and tags on spans only when you turn it
   on, hashed by default. `AddMethodCacheInstrumentation()` (package `MethodCache.OpenTelemetry`) subscribes
   OpenTelemetry to the `MethodCache` meter and activity source.
+
+## Guides
+
+Each guide is in the package's `docs/features/` folder and at
+https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one for the task before writing code:
+
+- `expiration.md`: durations, sliding expiration, refresh-ahead.
+- `invalidation.md`: tags, `[CacheInvalidate]`, invalidating from code, after a transaction, with several instances.
+- `entity-framework-core.md`: entity tags after `SaveChanges`, writes past the change tracker, row-level security.
+- `keys.md`: how arguments become keys, `ICacheKeyProvider`.
+- `configuration.md`: `appsettings.json`, groups, startup code, runtime changes.
+- `distributed-cache.md`: Redis, SQL Server and PostgreSQL, sharing only invalidations, serialization.
+- `memory-cache.md`: size limits, eviction, shared cached objects.
+- `fail-safe.md`: serving the last good value when the method fails.
+- `conditional-caching.md`: results that are returned but not cached.
+- `manual-caching.md`: `ICacheManager.GetOrCreateAsync` with your own keys.
+- `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
+- `http-caching.md`: caching `HttpClient` responses.
+- `monitoring.md`: metrics, activities, the admin endpoints.
+- `testing.md`: tests with and without caching, time.
+- `native-aot.md`: trimming and Native AOT.
+- `source-generator.md`: what the generated decorator does.
 
 ## Namespaces
 
@@ -193,10 +222,10 @@ using MethodCache;
 
 public interface IProductService
 {
-    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
     Task<Product> GetAsync(int id, CancellationToken ct = default);
 
-    [Cache(Duration = "00:01:00", Tags = ["products"])]
+    [Cache(Duration = "1m", Tags = ["products"])]
     Task<List<Product>> SearchAsync(string text, int page);
 
     [CacheInvalidate(Tags = ["products", "product:{id}"])]
@@ -290,7 +319,8 @@ anything else the result depends on must be an argument too:
   (MC0026).
 - **Row-level security.** When the database filters rows by a setting on the connection, such as the current user,
   the same call returns different rows for different users. Make that setting an argument of the cached method, or
-  don't cache the method.
+  don't cache the method. With Entity Framework Core, give the cached reads a context of their own
+  ([Row-level security](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#row-level-security)).
 - **Scoped services.** A scoped `DbContext` works as usual for a normal call. A refresh-ahead or fail-safe load can
   outlive the request, so it runs on a new instance from a new DI scope, with no `HttpContext`
   ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do
@@ -378,6 +408,12 @@ maps no type at all. ([Writes the change tracker doesn't see](https://github.com
 Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't
 reported. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
 
+**Why the warning MC0028 on a tag?**
+Nothing in the project invalidates it, so its entries stay until they expire. Invalidate it where the data changes,
+with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another project
+invalidates it, such as a worker, turn the warning off for that tag with `#pragma warning disable MC0028`.
+([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028))
+
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
 when one is changed. ([Rows the database deletes with a row](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
@@ -389,6 +425,11 @@ invalidated at the context's next save or when it is disposed. ([Document databa
 **I update a row from a request without loading it. Is the old category still invalidated?**
 Yes. A row saved with `Update`, `Attach` or `Remove(new Product { Id = id })` is read once before the save, so the
 tags of its stored values are invalidated too. ([Mapping entities to tags](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#mapping-entities-to-tags))
+
+**With row-level security, what if the user can't read the row that is saved without loading it?**
+Then the values your code set are used for the old tags. PostgreSQL and SQL Server don't let the save change that row
+either: it changes nothing and throws `DbUpdateConcurrencyException`. EF Core query filters don't hide the row from
+that read. ([Saves of rows the context didn't load](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#saves-of-rows-the-context-didnt-load))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -420,7 +461,7 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 ## Expiration and what gets cached
 
 **How do I set how long a result is cached?**
-`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
+`[Cache(Duration = "10m")]`, with a number and a unit: `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
 `appsettings.json`. ([Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration),
 [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
 
@@ -466,6 +507,11 @@ Not as it is: the key holds only the method's arguments, so one user's result re
 tenant id as an argument. Warning MC0026 reports such services. The same goes for row-level security on the
 connection. ([Per-user data](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#per-user-data))
 
+**My database uses row-level security on the connection. How do I cache reads?**
+Give the cached reads a context of their own from `IDbContextFactory<T>`, not the one set up for the signed-in user,
+and pass what the policies filter on, such as the tenant id, as an argument. Check in the endpoint that the user may
+read it. ([Row-level security](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#row-level-security))
+
 ## Keys
 
 **How are keys built?**
@@ -496,8 +542,10 @@ Return records with public properties, or register a serializer with `UseJson(op
 ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))`. Values stay in each
-process's memory, and invalidations reach every process. ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only))
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
+stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
+one app. ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only))
 
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
@@ -514,7 +562,8 @@ them. Send `-H "Content-Type: application/json" -d "{}"`.
 
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
-`MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too.
+`MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
+prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`.
 ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
 
 **How do I publish with Native AOT?**
@@ -528,6 +577,10 @@ Register `NoOpCacheManager` after `AddMethodCache()`. ([Testing](https://github.
 **A test writes to the database directly. How do I keep the cache from serving old data?**
 Call `ICacheAdministrator.ClearAsync()` after the write, or invalidate the affected tag with `IMethodCacheKeys.Tag`.
 ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly))
+
+**My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
+The save invalidates, so the read is fresh either way. Count the calls that reach your implementation, or change the
+row with SQL or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
@@ -833,26 +886,27 @@ refresh-ahead with an explicitly advanced clock and checked source-call counts.
 public interface IReportService
 {
     // Gone ten minutes after it was stored
-    [Cache(Duration = "00:10:00")]
+    [Cache(Duration = "10m")]
     Task<Report> GetAsync(int year);
 
     // Kept while it is read at least every five minutes, but never longer than an hour
-    [Cache(Duration = "01:00:00", SlidingExpiration = "00:05:00")]
+    [Cache(Duration = "1h", SlidingExpiration = "5m")]
     Task<Session> GetSessionAsync(string id);
 
     // Reloaded in the background when it is read in its last minute, so callers never wait
-    [Cache(Duration = "00:10:00", RefreshAhead = "00:01:00")]
+    [Cache(Duration = "10m", RefreshAhead = "1m")]
     Task<PriceList> GetPricesAsync(string region);
 
     // Changing the version changes every key, so values cached by the previous version are ignored
-    [Cache(Duration = "1.00:00:00", Version = 2)]
+    [Cache(Duration = "1d", Version = 2)]
     Task<Report> GetYearlyAsync(int year);
 }
 ```
 
 ## Writing a duration
 
-Attributes, `appsettings.json` and runtime configuration read durations the same way:
+Attributes, `appsettings.json` and runtime configuration read durations the same way: a number and a unit, such as
+`"10m"` or `"24h"`.
 
 | Write | Means | Example |
 |---|---|---|
@@ -860,13 +914,13 @@ Attributes, `appsettings.json` and runtime configuration read durations the same
 | a number and `m` | minutes | `"5m"`, `"1.5m"` |
 | a number and `h` | hours | `"24h"`, `"1.5h"` |
 | a number and `d` | days | `"1d"`, `"7d"` |
-| `hh:mm:ss` or `d.hh:mm:ss` | a `TimeSpan` | `"00:05:00"`, `"1.00:00:00"` |
 | `"off"` | turned off (`SlidingExpiration`, `RefreshAhead` and `FailSafe` only) | `"off"` |
 
 - Units are case-insensitive and the number uses a `.` for decimals, whatever the culture.
-- Milliseconds are written as seconds (`"0.25s"`) or as a `TimeSpan` (`"00:00:00.250"`). There is no `ms` unit.
-- A bare number (`"300"`), zero, a negative value and combined units (`"1h30m"`) are errors: at build time in an
-  attribute ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)), and at startup in `appsettings.json`.
+- Milliseconds are written as seconds (`"0.25s"`). There is no `ms` unit.
+- A bare number (`"300"`), zero, a negative value, combined units (`"1h30m"`) and a `TimeSpan` (`"00:05:00"`) are
+  errors: at build time in an attribute ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004), whose code fix rewrites a
+  `TimeSpan` as `"5m"`), and at startup in `appsettings.json`, with the value to write instead.
 - In code, pass a `TimeSpan`; `TimeSpan.Zero` turns `SlidingExpiration`, `RefreshAhead` or `FailSafe` off.
 
 ## Duration
@@ -947,10 +1001,10 @@ Give cached methods tags, and list the same tags on the methods that change the 
 ```cs
 public interface IOrderService
 {
-    [Cache(Duration = "00:10:00", Tags = ["orders", "order:{orderId}"])]
+    [Cache(Duration = "10m", Tags = ["orders", "order:{orderId}"])]
     Task<Order> GetAsync(int orderId);
 
-    [Cache(Duration = "00:05:00", Tags = ["orders", "customer:{customerId}:orders", "customer:{customerId}"])]
+    [Cache(Duration = "5m", Tags = ["orders", "customer:{customerId}:orders", "customer:{customerId}"])]
     Task<List<Order>> ListForCustomerAsync(int customerId);
 
     // Removes this order and the customer's list, nothing else
@@ -1035,7 +1089,7 @@ public interface IPriceSource
 {
     const string RateTag = "price:{provider}:{model}";
 
-    [Cache(Duration = "00:05:00", Tags = [RateTag])]
+    [Cache(Duration = "5m", Tags = [RateTag])]
     Task<decimal?> GetRateAsync(string provider, string model);
 }
 ```
@@ -1141,13 +1195,13 @@ The cached reads are ordinary `[Cache]` methods with tags:
 ```cs
 public interface IProductReads
 {
-    [Cache(Duration = "00:10:00", Tags = ["product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["product:{id}"])]
     Task<ProductDto?> GetAsync(int id);
 
-    [Cache(Duration = "00:10:00", Tags = ["category:{categoryId}"])]
+    [Cache(Duration = "10m", Tags = ["category:{categoryId}"])]
     Task<IReadOnlyList<ProductDto>> ListAsync(int categoryId);
 
-    [Cache(Duration = "01:00:00", Tags = ["top-sellers"])]
+    [Cache(Duration = "1h", Tags = ["top-sellers"])]
     Task<IReadOnlyList<ProductDto>> TopSellersAsync();
 }
 ```
@@ -1190,7 +1244,8 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
 - **A row you change without loading it is read once before it is saved**, for its stored values. That covers
   `Update(product)` with values from a request, `Attach` with a few properties set, and `Remove(new Product { Id = id })`:
   the category it had in the database is invalidated, not the empty value of a new object. A row the context loaded
-  is never read again.
+  is never read again. With row-level security, see
+  [Saves of rows the context didn't load](#saves-of-rows-the-context-didnt-load).
 - **A new row is tagged with its saved values**, so a key the database generates is the real one, not a temporary value.
   A cached "not found" for that id is invalidated too.
 - **A derived type** invalidates the tags of every mapped type it derives from.
@@ -1277,8 +1332,12 @@ doesn't invalidate anything:
   or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
   tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
   data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
-- `Database.ExecuteSql…`, unless the SQL is one statement that starts with `select`, such as an advisory lock.
-  MethodCache can't tell which tables other SQL writes.
+- `Database.ExecuteSql…` when the SQL names the table of a mapped type, runs code (`call`, `exec`, `do`), or can't be
+  read, such as SQL in a variable. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
+  any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
+  `set` a session setting never count. In a project that maps no type, all other raw SQL is reported.
+- A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
+  ([MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
 
 A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
 your own marked `[InvalidatesCache]` counts as the invalidation:
@@ -1332,6 +1391,81 @@ doesn't drop them, since they don't belong to it.
 Writes outside EF Core, such as Dapper or another service, are covered in
 [When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else).
 
+## Row-level security
+
+When the database filters rows by a setting on the connection, such as the signed-in user's id, cached reads and
+saves of rows the context didn't load work as follows.
+
+### Cached reads
+
+A cached result is shared by every caller with the same arguments, and a refresh-ahead or fail-safe load runs after
+the request, without its user. So a cached read can't use a context that is set up for the signed-in user. Give the
+cached reads a context of their own, and pass what the policies filter on as an argument:
+
+```cs
+// For cached reads: a context of its own, which nothing sets up from the request
+public sealed class ReadDb(DbContextOptions<ReadDb> options) : DbContext(options)
+{
+    public DbSet<Recipe> Recipes => Set<Recipe>();
+}
+
+public interface IRecipeReads
+{
+    [Cache(Duration = "10m", Tags = ["recipes:{householdId}"])]
+    Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId);
+}
+
+public sealed class RecipeReads(IDbContextFactory<ReadDb> factory) : IRecipeReads
+{
+    public async Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId)
+    {
+        // Its own context and connection for each call, also for a refresh that runs after the request
+        await using var db = await factory.CreateDbContextAsync();
+        // The policies read the household from the argument, which is part of the key, not from the request
+        await db.Database.OpenConnectionAsync();
+        await db.Database.ExecuteSqlAsync($"select set_config('app.household', {householdId.ToString()}, false)");
+        return await db.Recipes.Where(r => r.HouseholdId == householdId)
+            .Select(r => new RecipeDto(r.Id, r.Title)).ToListAsync();
+    }
+}
+```
+
+Register it next to the app's context:
+
+```cs
+// Requests read and write through the app's context, set up for the signed-in user
+builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(connectionString).AddInterceptors(signedIn));
+// Cached reads use their own
+builder.Services.AddDbContextFactory<ReadDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddScoped<IRecipeReads, RecipeReads>();
+
+// The writes' context is the one connected to MethodCache
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef => ef
+    .Entity<Recipe>("recipes:{HouseholdId}")));
+```
+
+- The household is part of the key: each household has its own entry, and a refresh reads the same rows.
+- The endpoint checks that the signed-in user belongs to the household before it calls `ListAsync`, as it checks any
+  id it takes from a request. For the cached call, the policy no longer does.
+- For data every user may read, such as a shared catalog, the read context can connect as a database user that the
+  policies let read all of it, and the method needs no argument for it.
+- Warning [MC0026](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0026) reports a cached implementation that takes the request's
+  state, or takes a class whose constructor does, such as a context that takes `IHttpContextAccessor`. It doesn't see
+  a setting that an interceptor makes on the connection.
+
+### Saves of rows the context didn't load
+
+A row changed or deleted without loading it is read for its stored values before the save
+([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on the save's connection:
+
+- **EF Core query filters don't apply to it**, so a row that a tenant filter hides from queries is still read.
+- **Row-level security does.** When a policy hides the row from the user, the read finds nothing, and the values your
+  code set are used for the old tags. PostgreSQL and SQL Server hide that row from EF Core's `UPDATE` and `DELETE`
+  too, also when a PostgreSQL policy lets the user change rows: the save changes nothing and throws
+  `DbUpdateConcurrencyException`. So a save never changes a row whose old tags weren't read.
+- On a database that lets a user change a row they can't read, load the row before you change it, or queue the old
+  tags yourself with `InvalidateAfterCommit`.
+
 ## Document databases
 
 Azure Cosmos DB and MongoDB have EF Core providers. Entity tags and `InvalidateAfterCommit` work with them, since
@@ -1345,7 +1479,8 @@ then is read once when it is saved, as a row changed without loading is, if its 
 ## Testing
 
 Use SQLite in memory, or your real database, with the same registration. A test that writes to the database without
-EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)).
+EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)), and a test that
+proves a read is cached needs a write that doesn't invalidate ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached)).
 
 
 ---
@@ -1377,7 +1512,7 @@ or in `appsettings.json`:
 ```json
 {
   "MethodCache": {
-    "FailSafe": { "Duration": "01:00:00", "Timeout": "00:00:00.200", "RetryAfter": "00:00:30" }
+    "FailSafe": { "Duration": "1h", "Timeout": "0.2s", "RetryAfter": "30s" }
   }
 }
 ```
@@ -1409,7 +1544,7 @@ settings as `FailSafe`, `FailSafeTimeout` and `FailSafeRetryAfter`:
 ```cs
 public interface IAccountService
 {
-    [Cache(Duration = "00:05:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.200")]
+    [Cache(Duration = "5m", FailSafe = "1h", FailSafeTimeout = "0.2s")]
     Task<Rates> GetRatesAsync();
 
     [Cache(FailSafe = "off")]   // a balance must never be old, so an error is better
@@ -1538,7 +1673,7 @@ builder.Services.AddMethodCache(config =>
 });
 ```
 
-- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
+- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "10m")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
@@ -1568,16 +1703,16 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 ```json
 {
   "MethodCache": {
-    "Defaults": { "Duration": "00:15:00" },
-    "FailSafe": { "Duration": "01:00:00" },
+    "Defaults": { "Duration": "15m" },
+    "FailSafe": { "Duration": "1h" },
     "Groups": {
-      "user-data": { "SlidingExpiration": "00:10:00" }
+      "user-data": { "SlidingExpiration": "10m" }
     },
     "Methods": {
       "[MyApp]MyApp.IUserService.GetProfileAsync": {
-        "Duration": "01:00:00",
-        "SlidingExpiration": "00:10:00",
-        "RefreshAhead": "00:05:00",
+        "Duration": "1h",
+        "SlidingExpiration": "10m",
+        "RefreshAhead": "5m",
         "Tags": ["users"],
         "Version": 1,
         "Notes": "Profiles change rarely"
@@ -1607,9 +1742,10 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
   fails at startup.
-- Durations are written as in attributes: `"30s"`, `"5m"`, `"1.5h"`, `"7d"` or `"hh:mm:ss"` (including
-  `"d.hh:mm:ss"`); see [Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration). A bare number such as `"300"` is rejected
-  rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations are written as in attributes, with a unit: `"30s"`, `"5m"`, `"1.5h"`, `"7d"`; see
+  [Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration). A bare number such as `"300"` is rejected rather than
+  interpreted as days, and a `TimeSpan` such as `"00:05:00"` is rejected with the value to write instead (`"5m"`).
+- `Tags` is a list (`["users"]`), and a method's `FailSafe` is one duration: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section. Setting the same value in
   that block and in `Defaults` (for example `FailSafe.Timeout` and `Defaults.FailSafeTimeout`) is an error.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
@@ -1617,7 +1753,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 
   ```bash
   MethodCache__Methods__0__MethodId="[MyApp]MyApp.IUserService.FindAsync(int)"
-  MethodCache__Methods__0__Duration="00:02:00"
+  MethodCache__Methods__0__Duration="2m"
   ```
 
   A method can be listed once. Listing it both by name and under an index, for example by name in
@@ -1886,7 +2022,7 @@ Name the interface and the methods to cache in an assembly attribute, anywhere i
 
 ```cs
 [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
-    Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    Duration = "1m", Tags = ["fx", "fx:{from}"])]
 ```
 
 ```cs
@@ -1934,7 +2070,7 @@ Define an interface in your project with the calls you need, and put the setting
 ```cs
 public interface IRates
 {
-    [Cache(Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    [Cache(Duration = "1m", Tags = ["fx", "fx:{from}"])]
     Task<decimal> GetAsync(string from, string to);
 }
 
@@ -2429,8 +2565,13 @@ own activity context and baggage flow as usual.
 
 OpenTelemetry is optional. The meter and activity source are named `MethodCache` (`MethodCacheTelemetry.Name`), so
 `dotnet-counters monitor --counters MethodCache` and any `MeterListener` see them. For Prometheus, use OpenTelemetry's
-Prometheus exporter with `AddMethodCacheInstrumentation()`. A `MeterListener` subscribes like this; keep it alive for
-as long as you want measurements:
+Prometheus exporter with `AddMethodCacheInstrumentation()`.
+
+prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter puts the meter name in front, as in
+`methodcache_methodcache_requests{methodcache_result="hit"}`. It starts listening at the first scrape, exports counters
+as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
+
+A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
 ```cs
 builder.Services.AddMethodCache();
@@ -2661,6 +2802,14 @@ await cache.InvalidateTagAsync(keys.Tag<IProductService>(p => p.GetAsync(changed
 
 `ClearAsync` also removes the entries from a distributed cache and the other instances, so use a cache of the test's
 own (a new service provider, or its own `KeyPrefix`) when tests run in parallel against a shared Redis or database.
+
+## Proving that a result is cached
+
+A test that changes a row and reads it again proves caching only when the change doesn't invalidate. With
+`MethodCache.EntityFrameworkCore`, a save through the connected context invalidates, so the second read is fresh
+whether or not it is cached. Count the calls that reach your implementation instead, or change the row past
+MethodCache: with SQL, or through a context type that isn't connected to MethodCache, over the same database. With
+EF Core's in-memory provider, give both contexts the same `InMemoryDatabaseRoot`.
 
 ## Turning method caching off
 
@@ -3154,7 +3303,7 @@ generator and the analyzer run, each problem is reported once.
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
 | [MC0001](#mc0001) | Warning | `[Cache]` or `[CacheInvalidate]` on a class member | Move to the interface |
-| [MC0004](#mc0004) | Error | A time span that is not a positive `TimeSpan` | |
+| [MC0004](#mc0004) | Error | A duration that is not a positive number and a unit, such as `"10m"` | Write a `TimeSpan` with a unit |
 | [MC0003](#mc0003) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
 | [MC0022](#mc0022) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
 | [MC0005](#mc0005) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
@@ -3177,8 +3326,9 @@ generator and the analyzer run, each problem is reported once.
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
-| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
+| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
+| [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
 
 ## MC0001
 
@@ -3188,7 +3338,7 @@ interface, so it only reads attributes on interface methods, and this one is ign
 ```csharp
 public interface IUserService
 {
-    [Cache(Duration = "00:05:00")]      // here
+    [Cache(Duration = "5m")]      // here
     Task<User> GetAsync(int id);
 }
 
@@ -3205,8 +3355,13 @@ removes it when the member implements no interface. To cache an interface you do
 ## MC0004
 
 `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe`, `FailSafeTimeout` or `FailSafeRetryAfter` on `[Cache]` or
-`[assembly: CacheInterface]` is not a positive time span. Use the `TimeSpan` format: `"00:05:00"` (five minutes),
-`"01:00:00"` (an hour) or `"1.00:00:00"` (a day). `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`.
+`[assembly: CacheInterface]` is not a duration. Write a positive number and a unit: `"30s"`, `"5m"`, `"1.5h"` or `"7d"`
+([Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration)). `SlidingExpiration`, `RefreshAhead` and
+`FailSafe` also accept `"off"`.
+
+A `TimeSpan` such as `"00:10:00"` is reported with the same value in units, `"10m"`.
+
+**Code fix:** writes a `TimeSpan` with a unit.
 
 ## MC0003
 
@@ -3356,7 +3511,7 @@ An explicitly supplied `Version` is negative. Omit it to inherit the configured 
 
 `RefreshAhead` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` or `SlidingExpiration` next to
 it, or longer. The refresh window starts that long before an entry expires, so every hit would reload the value. Use a
-window shorter than both, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead
+window shorter than both, such as `Duration = "10m", RefreshAhead = "1m"`, or `"off"` to turn refresh-ahead
 off.
 
 ## MC0024
@@ -3393,7 +3548,7 @@ content lazily the first time it is read, and isn't thread-safe while it does, s
 `JsonObject` at once can get an empty or broken result. A stream's position moves as one caller reads it.
 
 ```cs
-[Cache(Duration = "00:05:00")]
+[Cache(Duration = "5m")]
 Task<JsonObject> GetLayoutAsync(string locale);   // MC0025: every caller shares one JsonObject
 ```
 
@@ -3405,7 +3560,10 @@ a cached one ([cached objects are shared](https://github.com/eoniclabs/MethodCac
 ## MC0026
 
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
-`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`.
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
+when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
+directly or through a factory such as `IDbContextFactory<T>`. The analyzer looks one level down, and doesn't see a
+setting that an interceptor makes on the connection.
 
 The cache key is built from the method's arguments only. A result that depends on the current request or user, such
 as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
@@ -3419,8 +3577,16 @@ public sealed class Orders(IHttpContextAccessor http, AppDb db) : IOrders   // M
 }
 ```
 
+```cs
+public sealed class TenantDb(DbContextOptions<TenantDb> options, IHttpContextAccessor http) : DbContext(options) { ... }
+
+public sealed class Catalog(TenantDb db) : ICatalog   // MC0026: TenantDb's constructor takes IHttpContextAccessor
+```
+
 Make what the result depends on a parameter of the cached method, so it becomes part of the key:
 `Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
+For a context set up for the signed-in user, give the cached reads a context of their own
+([Row-level security](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#row-level-security)).
 See [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#per-user-data).
 
 ## MC0027
@@ -3434,9 +3600,13 @@ results that read those rows stay until they expire.
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
   for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
   type is reported.
-- Raw SQL is reported unless it is a single statement that starts with `select`, such as
-  `select pg_advisory_xact_lock(...)`. SQL in a variable, or with values interpolated into `ExecuteSqlRaw`, is
-  reported.
+- Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
+  can't be read: SQL in a variable, or with values interpolated into `ExecuteSqlRaw`. A table is known by its class
+  name, the name of its `DbSet` and a name given with `ToTable` or `[Table]`, compared without case and underscores and
+  with or without a plural ending, so `ai_model_prices` matches `AiModelPrice`. A table renamed in another project
+  isn't recognized. When the project maps no type, all raw SQL is reported.
+- Statements that only `select`, such as `select pg_advisory_xact_lock(...)`, or `set` a session setting, such as
+  `SET LOCAL lock_timeout = '5s'`, are never reported.
 
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
@@ -3450,6 +3620,59 @@ A call to a `[CacheInvalidate]` method of a cached interface counts as an invali
 of your own marked `[InvalidatesCache]`, such as a helper that invalidates through the app's own plumbing. The warning
 is not reported inside either kind of method, since they invalidate themselves.
 When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.
+
+A generic helper, such as a retention job's `PurgeAsync<TEntity>()`, is reported, since any type could reach it.
+When the types it gets are never cached, turn the warning off in the helper and say why. When some are, have it take
+the tags and invalidate them, and mark it `[InvalidatesCache]` so the calls that pass them count too:
+
+```cs
+public static class Retention
+{
+    // Called for audit and log types only, which nothing caches
+#pragma warning disable MC0027
+    public static Task<int> PurgeAsync<TEntity>(DbSet<TEntity> rows, DateTime before) where TEntity : class, IStamped
+        => rows.Where(r => r.CreatedAt < before).ExecuteDeleteAsync();
+#pragma warning restore MC0027
+}
+```
+
+## MC0028
+
+A tag on a `[Cache]` method that nothing in the project invalidates, in a project that invalidates something. Its
+entries stay until they expire, so a change to the data they hold isn't seen until then.
+
+```cs
+public interface ICatalog
+{
+    [Cache(Duration = "1h", Tags = ["catalog"])]   // MC0028 when nothing invalidates "catalog"
+    Task<IReadOnlyList<Recipe>> ListAsync();
+}
+```
+
+These invalidations count, wherever they are in the project:
+
+- A `[CacheInvalidate]` tag in the project, or on a method of another project's interface that the project calls.
+- An entity mapping of `MethodCache.EntityFrameworkCore`: `Entity<T>("...")`, and `Tags("...")` or
+  `WhenDeleted("...")` in `Entity<T>(e => ...)`.
+- A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
+  `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
+
+A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
+`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
+projects aren't seen.
+
+Invalidate the tag where the data changes ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)). When another project
+invalidates it, such as a worker that writes the data, turn the warning off for that tag:
+
+```cs
+// The import worker invalidates it
+#pragma warning disable MC0028
+[Cache(Duration = "1h", Tags = ["catalog"])]
+#pragma warning restore MC0028
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
 
 
 ---
@@ -3489,7 +3712,7 @@ public async Task RenameAsync(int id, string name)
 </td><td>
 
 ```cs
-[Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+[Cache(Duration = "10m", Tags = ["user:{id}"])]
 Task<User> GetUserAsync(int id);
 
 [CacheInvalidate(Tags = ["user:{id}"])]
@@ -3573,6 +3796,20 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
   connect never holds up a call.
 - MethodCache doesn't dispose a shared connection. Disposing the service provider removes MethodCache's own
   subscriptions.
+
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
+
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+
+See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
 
 ## How it works
 
@@ -3665,6 +3902,20 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
     options.BackplanePollingInterval = TimeSpan.FromMilliseconds(500);
 }));
 ```
+
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+
+The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
 
 ## Tables
 
@@ -3802,6 +4053,20 @@ builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
 ```
 
 MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's data sources, `DbContext` and `IDistributedCache` are left alone.
+
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+
+The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
 
 ### Passwordless login
 
@@ -4347,7 +4612,8 @@ Install it at the same version as `MethodCache`.
   nothing.
 - **A warning where it can't help.** `ExecuteUpdate` and `ExecuteDelete` on a mapped type and raw SQL go past the
   change tracker; analyzer MC0027 reports them when the method doesn't invalidate. Mark your own invalidation helpers
-  `[InvalidatesCache]` and a call to them counts.
+  `[InvalidatesCache]` and a call to them counts. MC0028 reports a tag on a cached method that nothing in the project
+  invalidates.
 
 ## Usage
 
@@ -4388,6 +4654,8 @@ public static async Task RecalculateAsync(ShopDb db, IMethodCacheKeys keys, int 
 Works with SQL Server, PostgreSQL, SQLite and the other relational providers, and on `SaveChanges` also with Cosmos DB and
 MongoDB. The full guide, with when exactly each tag is invalidated, is
 [Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md).
+With row-level security, cached reads need a context of their own: see
+[Row-level security](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#row-level-security).
 
 
 ---
@@ -4399,6 +4667,41 @@ MongoDB. The full guide, with when exactly each tag is invalidated, is
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Breaking changes since 1.0.0-rc.6
+
+- A duration is a number and a unit: `"30s"`, `"10m"`, `"1.5h"`, `"7d"`. A `TimeSpan` such as `"00:10:00"` is no longer
+  accepted: in an attribute it is error MC0004, whose message and code fix give the value with a unit (`"10m"`), and
+  in `appsettings.json` startup fails with the value to write instead. One way to write a duration keeps an
+  application consistent. `TimeSpan` arguments in code are unchanged.
+
+### Changed
+
+- MC0027 reports raw SQL only when it names the table of a mapped entity type (by class, `DbSet`, `ToTable` or
+  `[Table]` name, in any case, so `ai_model_prices` matches `AiModelPrice`), runs a procedure or block (`call`,
+  `exec`, `do`), or can't be read. Statements that only `select` or `set` a session setting, such as
+  `SET LOCAL lock_timeout`, are never reported. A project that maps no type still reports all other raw SQL.
+- MC0026 also reports a cached implementation that takes a class whose constructor takes per-request state, such as a
+  `DbContext` that takes `IHttpContextAccessor`, directly or through `IDbContextFactory<T>`.
+
+### Added
+
+- Analyzer MC0028 reports a tag on a `[Cache]` method that nothing in the project invalidates: no `[CacheInvalidate]`,
+  entity mapping, `InvalidateTagAsync`, `InvalidateAfterCommit` or `[InvalidatesCache]` call names it. A placeholder
+  matches any value. A project that invalidates nothing, such as a library of cached interfaces, isn't reported; a tag
+  another project invalidates is suppressed with a `#pragma`.
+
+### Documentation
+
+- Entity Framework Core: a row-level security section, with a context of their own for cached reads, and what happens
+  when a save of a row the context didn't load can't read it (PostgreSQL and SQL Server don't change the row either,
+  and the save throws `DbUpdateConcurrencyException`). EF Core query filters don't hide the row from that read.
+- The PostgreSQL, Redis and SQL Server package READMEs show how to share only invalidations, such as for a worker that
+  changes data an API caches. The agent guide lists every feature guide and says when to read it.
+- Testing: how to prove a read is cached when every save invalidates.
+- Examples use durations with a unit throughout.
 
 ## 1.0.0-rc.6 (2026-11-04)
 

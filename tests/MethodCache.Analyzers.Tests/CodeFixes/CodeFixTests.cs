@@ -29,7 +29,7 @@ public interface IUserService
 
 public class UserService : IUserService
 {
-    [Cache(Duration = ""00:05:00"")]
+    [Cache(Duration = ""5m"")]
     public Task<string> GetAsync(int id) => Task.FromResult("""");
 }";
 
@@ -39,7 +39,7 @@ using MethodCache;
 public interface IUserService
 {
     /// <summary>Gets a user.</summary>
-    [Cache(Duration = ""00:05:00"")]
+    [Cache(Duration = ""5m"")]
     Task<string> GetAsync(int id);
 }
 
@@ -158,6 +158,23 @@ public interface IUserService
             Assert.Contains(@"new[] { ""users"", ""user:{userId}"", ""tenant:{tenant}:user:{userId}"" }", fixedSources[0]);
         }
 
+        [Theory]
+        [InlineData("public interface IPrices { [Cache(Duration = \"00:10:00\", RefreshAhead = \"1m\")] Task<decimal> GetAsync(int id); }",
+            "Write Duration as \"10m\"", "Duration = \"10m\", RefreshAhead = \"1m\"")]
+        [InlineData("public interface IPrices { [Cache(Duration = \"1h\", FailSafe = \"1.00:00:00\")] Task<decimal> GetAsync(int id); }",
+            "Write FailSafe as \"1d\"", "Duration = \"1h\", FailSafe = \"1d\"")]
+        [InlineData("[assembly: CacheInterface(typeof(System.ICloneable), \"Clone\", Duration = \"00:00:00.2\")]",
+            "Write Duration as \"0.2s\"", "Duration = \"0.2s\"")]
+        public async Task MC0004_WritesATimeSpanWithAUnit(string declaration, string expectedTitle, string expected)
+        {
+            var source = "using System.Threading.Tasks;\nusing MethodCache;\n" + declaration;
+
+            var (title, fixedSources) = await FixAsync(new DurationUnitCodeFixProvider(), "MC0004", source);
+
+            Assert.Equal(expectedTitle, title);
+            Assert.Contains(expected, fixedSources[0]);
+        }
+
         [Fact]
         public void EveryDiagnostic_LinksToItsSectionInTheGuide()
         {
@@ -200,7 +217,7 @@ public interface IUserService
         [InlineData("using MethodCache; using Text = System.String;", "[Cache(Tags = new Text[] { Duration })]", true)]
         public async Task MoveAttributeReview_PreservesBindingAcrossDocuments(string usings, string attribute, bool sameDocument)
         {
-            var service = usings + " public class Svc : ISvc { private const string Duration = \"00:01:00\"; " + attribute + " public int Get(int id) => id; }";
+            var service = usings + " public class Svc : ISvc { private const string Duration = \"1m\"; " + attribute + " public int Get(int id) => id; }";
             var contract = "public interface ISvc { int Get(int id); }";
             var (_, changed) = await FixAsync(new MoveAttributeToInterfaceCodeFixProvider(), "MC0001", sameDocument ? [service + contract] : [service, contract]);
             var compilation = CSharpCompilation.Create("Fixed", changed.Select(text => CSharpSyntaxTree.ParseText(text)), References(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));

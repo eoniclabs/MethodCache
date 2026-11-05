@@ -116,7 +116,7 @@ public class PolicyResolverTests
     public async Task ConfigurationDefaults_ReachAttributeOnlyMethods_AndFollowReloads()
     {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:Defaults:SlidingExpiration"] = "00:00:30" })
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:Defaults:SlidingExpiration"] = "30s" })
             .Build();
 
         var resolver = new PolicyResolver(new[]
@@ -133,7 +133,7 @@ public class PolicyResolverTests
         var watcher = resolver.WatchAsync(MethodId, watchCts.Token).GetAsyncEnumerator(watchCts.Token);
         var nextChange = watcher.MoveNextAsync();
 
-        configuration["MethodCache:Defaults:SlidingExpiration"] = "00:01:00";
+        configuration["MethodCache:Defaults:SlidingExpiration"] = "1m";
         configuration.Reload();
 
         Assert.True(await nextChange);
@@ -150,9 +150,9 @@ public class PolicyResolverTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["MethodCache:Defaults:Duration"] = "00:01:00",
-                [$"MethodCache:Methods:{MethodId}:Duration"] = "00:02:00",
-                ["MethodCache:Methods:My.IOrderService.GetOrdr:Duration"] = "00:03:00"
+                ["MethodCache:Defaults:Duration"] = "1m",
+                [$"MethodCache:Methods:{MethodId}:Duration"] = "2m",
+                ["MethodCache:Methods:My.IOrderService.GetOrdr:Duration"] = "3m"
             })
             .Build();
         var logger = new ListLogger();

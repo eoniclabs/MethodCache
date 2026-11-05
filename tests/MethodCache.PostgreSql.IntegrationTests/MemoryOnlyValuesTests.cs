@@ -12,7 +12,7 @@ public class MemoryOnlyValuesTests(PostgreSqlFixture postgres)
 {
     public interface IStock
     {
-        [Cache(Duration = "01:00:00", Tags = ["stock:{id}"])]
+        [Cache(Duration = "1h", Tags = ["stock:{id}"])]
         Task<int> GetAsync(int id);
     }
 

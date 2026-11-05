@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -22,8 +23,9 @@ namespace MethodCache.Analyzers
     }
 
     /// <summary>
-    /// The entity types that the compilation maps with <c>EntityFrameworkCoreOptions.Entity&lt;T&gt;</c>. Read once per
-    /// compilation, from every file, so a write in one file is checked against a mapping in another.
+    /// The entity types that the compilation maps with <c>EntityFrameworkCoreOptions.Entity&lt;T&gt;</c>, and the names
+    /// their tables may have. Read once per compilation, from every file, so a write in one file is checked against a
+    /// mapping in another.
     /// </summary>
     internal sealed class EntityTagMapping
     {
@@ -31,6 +33,9 @@ namespace MethodCache.Analyzers
         private const string BuilderType = "MethodCache.EntityFrameworkCore.EntityTagsBuilder`1";
 
         private readonly Dictionary<ITypeSymbol, EntityWrites> _types;
+
+        /// <summary>Normalized names the tables of those types may have (<see cref="SqlText.Normalize"/>).</summary>
+        private readonly HashSet<string> _tables = new HashSet<string>(StringComparer.Ordinal);
 
         private EntityTagMapping(Dictionary<ITypeSymbol, EntityWrites>? types) => _types = types ?? new Dictionary<ITypeSymbol, EntityWrites>(SymbolEqualityComparer.Default);
 
@@ -59,6 +64,13 @@ namespace MethodCache.Analyzers
             return writes;
         }
 
+        /// <summary>
+        /// Whether SQL names a table of a type whose changes invalidate tags: its class name, the name of a
+        /// <c>DbSet</c> of it, or a name given with <c>ToTable</c> or <c>[Table]</c>, in any case, with or without
+        /// underscores and a plural ending. Call only when <see cref="IsUnknown"/> is false.
+        /// </summary>
+        public bool NamesTable(List<SqlText.Word> words) => words.Any(word => _tables.Contains(SqlText.Normalize(word.Text)));
+
         public static EntityTagMapping Read(Compilation compilation, CancellationToken cancellationToken)
         {
             var options = compilation.GetTypeByMetadataName(OptionsType);
@@ -66,22 +78,46 @@ namespace MethodCache.Analyzers
             var builder = compilation.GetTypeByMetadataName(BuilderType);
 
             var types = new Dictionary<ITypeSymbol, EntityWrites>(SymbolEqualityComparer.Default);
+            var contexts = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            var tableNames = new List<(ImmutableArray<ITypeSymbol> Entities, string Name)>();
             foreach (var tree in compilation.SyntaxTrees)
             {
                 SemanticModel? model = null;
-                foreach (var name in tree.GetRoot(cancellationToken).DescendantNodes().OfType<GenericNameSyntax>())
+                foreach (var invocation in tree.GetRoot(cancellationToken).DescendantNodes().OfType<InvocationExpressionSyntax>())
                 {
-                    if (name.Identifier.ValueText != "Entity" || name.TypeArgumentList.Arguments.Count != 1) continue;
-                    if (name.Parent is not MemberAccessExpressionSyntax access || access.Name != name
-                        || access.Parent is not InvocationExpressionSyntax invocation) continue;
+                    if (invocation.Expression is not MemberAccessExpressionSyntax access) continue;
+                    var name = access.Name;
+                    var isEntity = name is GenericNameSyntax { Identifier.ValueText: "Entity", TypeArgumentList.Arguments.Count: 1 };
+                    var isContext = name is GenericNameSyntax { Identifier.ValueText: "UseEntityFrameworkCore", TypeArgumentList.Arguments.Count: 1 };
+                    var isTable = name.Identifier.ValueText == "ToTable" && invocation.ArgumentList.Arguments.Count > 0;
+                    if (!isEntity && !isContext && !isTable) continue;
 
-                    // Only the few files with a call named Entity<T> need a semantic model: usually the startup file
-                    // and the DbContext's OnModelCreating
+                    // Only the few files with such a call need a semantic model: usually the startup file and the
+                    // DbContext's OnModelCreating or entity configurations
 #pragma warning disable RS1030 // The mapping is in other files than the write, and the analyzer reads it once per compilation
                     model ??= compilation.GetSemanticModel(tree);
 #pragma warning restore RS1030
-                    if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method
-                        || !SymbolEqualityComparer.Default.Equals(method.ContainingType, options)) continue;
+                    if (model.GetSymbolInfo(invocation, cancellationToken).Symbol is not IMethodSymbol method) continue;
+
+                    if (isContext)
+                    {
+                        if (method.TypeArguments[0] is INamedTypeSymbol context) contexts.Add(context);
+                        continue;
+                    }
+                    if (isTable)
+                    {
+                        // modelBuilder.Entity<T>().ToTable("name"), or builder.ToTable("name") in an entity configuration
+                        if (model.GetConstantValue(invocation.ArgumentList.Arguments[0].Expression, cancellationToken).Value is string table)
+                        {
+                            var receiver = method.ReducedFrom != null ? method.ReceiverType : method.ContainingType;
+                            var entities = method.TypeArguments.AddRange(receiver is INamedTypeSymbol { IsGenericType: true } generic
+                                ? generic.TypeArguments
+                                : ImmutableArray<ITypeSymbol>.Empty);
+                            tableNames.Add((entities, table));
+                        }
+                        continue;
+                    }
+                    if (!SymbolEqualityComparer.Default.Equals(method.ContainingType, options)) continue;
 
                     var entity = method.TypeArguments[0];
                     // A mapping through a type parameter could be any type
@@ -92,7 +128,82 @@ namespace MethodCache.Analyzers
                     types[entity] = types.TryGetValue(entity, out var known) ? known | writes : writes;
                 }
             }
-            return new EntityTagMapping(types);
+
+            var mapping = new EntityTagMapping(types);
+            if (!mapping.IsUnknown) mapping.AddTables(compilation, contexts, tableNames);
+            return mapping;
+        }
+
+        /// <summary>The names the tables of the mapped types may have, from the class names, DbSets, ToTable and [Table].</summary>
+        private void AddTables(Compilation compilation, HashSet<INamedTypeSymbol> contexts, List<(ImmutableArray<ITypeSymbol> Entities, string Name)> tableNames)
+        {
+            foreach (var mapped in _types.Keys)
+            {
+                // A derived type's rows may be in its base type's table
+                for (var type = mapped; type != null && type.SpecialType != SpecialType.System_Object; type = type.BaseType) AddEntity(type);
+            }
+
+            foreach (var (entities, name) in tableNames)
+            {
+                if (entities.Any(entity => For(entity) != EntityWrites.None)) AddTable(name);
+            }
+
+            var dbContext = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.DbContext");
+            var dbSet = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.DbSet`1");
+            if (dbContext == null || dbSet == null) return;
+            foreach (var type in Types(compilation.Assembly.GlobalNamespace))
+            {
+                if (DerivesFrom(type, dbContext)) contexts.Add(type);
+            }
+            foreach (var context in contexts)
+            {
+                for (var type = context; type != null && !SymbolEqualityComparer.Default.Equals(type, dbContext); type = type.BaseType)
+                {
+                    foreach (var property in type.GetMembers().OfType<IPropertySymbol>())
+                    {
+                        if (property.Type is not INamedTypeSymbol set || !SymbolEqualityComparer.Default.Equals(set.OriginalDefinition, dbSet)
+                            || For(set.TypeArguments[0]) == EntityWrites.None) continue;
+                        AddTable(property.Name);
+                        AddEntity(set.TypeArguments[0]);
+                    }
+                }
+            }
+        }
+
+        private void AddEntity(ITypeSymbol type)
+        {
+            AddTable(type.Name);
+            foreach (var attribute in type.GetAttributes())
+            {
+                if (attribute.AttributeClass?.Name == "TableAttribute" && attribute.ConstructorArguments.Length > 0
+                    && attribute.ConstructorArguments[0].Value is string table)
+                {
+                    AddTable(table);
+                }
+            }
+        }
+
+        /// <summary>The name and its plural forms: product, products, categories for category, addresses for address.</summary>
+        private void AddTable(string name)
+        {
+            var table = SqlText.Normalize(name);
+            if (table.Length == 0) return;
+            _tables.Add(table);
+            _tables.Add(table + "s");
+            _tables.Add(table + "es");
+            if (table.EndsWith("y", StringComparison.Ordinal)) _tables.Add(table.Substring(0, table.Length - 1) + "ies");
+        }
+
+        private static IEnumerable<INamedTypeSymbol> Types(INamespaceOrTypeSymbol container)
+        {
+            foreach (var member in container.GetMembers())
+            {
+                if (member is INamespaceOrTypeSymbol inner)
+                {
+                    if (inner is INamedTypeSymbol type) yield return type;
+                    foreach (var nested in Types(inner)) yield return nested;
+                }
+            }
         }
 
         /// <summary>

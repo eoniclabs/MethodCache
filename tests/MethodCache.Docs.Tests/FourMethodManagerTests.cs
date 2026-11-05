@@ -136,7 +136,7 @@ public class FourMethodManagerTests
 
     public interface IReader
     {
-        [Cache(Duration = "00:05:00", Version = 2, Tags = ["id:{id}"])] Task<int> ReadAsync(int id);
+        [Cache(Duration = "5m", Version = 2, Tags = ["id:{id}"])] Task<int> ReadAsync(int id);
         [Cache] int Sync();
     }
     public sealed class Origin : IReader

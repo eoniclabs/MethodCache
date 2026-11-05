@@ -7,7 +7,7 @@ namespace Docs.InvalidationAfterCommit
     {
         const string ProductTag = "product:{id}";
 
-        [Cache(Duration = "00:10:00", Tags = [ProductTag])]
+        [Cache(Duration = "10m", Tags = [ProductTag])]
         Task<string?> GetNameAsync(int id);
     }
 

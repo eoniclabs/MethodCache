@@ -21,10 +21,10 @@ namespace DynamicTags
 {
     public interface IUserService
     {
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""user:{userId}"" })]
+        [Cache(Duration = ""10m"", Tags = new[] { ""user:{userId}"" })]
         Task<string> GetUserAsync(int userId);
 
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""team:{Team}"" })]
+        [Cache(Duration = ""10m"", Tags = new[] { ""team:{Team}"" })]
         Task<string> GetTeamAsync(string? team);
 
         [CacheInvalidate(Tags = new[] { ""user:{userId}"" })]
@@ -34,7 +34,7 @@ namespace DynamicTags
         Task UpdateTeamAsync(string? team);
 
         // ""{other}"" is not a parameter (MC0010), so both sides keep the tag as literal text
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""item:{other}"" })]
+        [Cache(Duration = ""10m"", Tags = new[] { ""item:{other}"" })]
         Task<string> GetItemAsync(int id);
 
         [CacheInvalidate(Tags = new[] { ""item:{other}"" })]

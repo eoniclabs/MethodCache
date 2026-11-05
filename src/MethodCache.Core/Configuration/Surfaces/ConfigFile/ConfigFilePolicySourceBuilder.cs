@@ -366,8 +366,12 @@ internal static class ConfigFilePolicySourceBuilder
         // The same grammar is used by attributes and configuration.
         if (!MethodCache.Internal.DurationParser.TryParse(text, allowOff, out var value))
         {
-            throw InvalidValue(section, name, text,
-                allowOff ? "a positive time span such as \"00:05:00\", or \"off\"" : "a positive time span such as \"00:05:00\"");
+            var expected = "a duration: " + MethodCache.Internal.DurationParser.Expected + (allowOff ? ", or \"off\"" : "");
+            // A TimeSpan such as "00:10:00" gets the same value with a unit. Only the full message holds it: the
+            // short reason is logged, and never shows the value.
+            var suggestion = MethodCache.Internal.DurationParser.Suggest(text) is { } units ? $" Write \"{units}\"." : "";
+            throw ConfigurationValueError.Create($"{section.Path}:{name}", $"is not {expected}",
+                $"MethodCache configuration '{section.Path}:{name}' has value '{text}', which is not {expected}.{suggestion}");
         }
 
         return value;
@@ -427,7 +431,7 @@ internal static class ConfigFilePolicySourceBuilder
     }
 
     /// <summary>Throws when a section that holds settings is written as one value, which would otherwise be ignored.</summary>
-    private static void RejectSingleValue(IConfigurationSection section, string example = "{ \"Duration\": \"00:05:00\" }")
+    private static void RejectSingleValue(IConfigurationSection section, string example = "{ \"Duration\": \"5m\" }")
     {
         if (!string.IsNullOrWhiteSpace(section.Value))
         {

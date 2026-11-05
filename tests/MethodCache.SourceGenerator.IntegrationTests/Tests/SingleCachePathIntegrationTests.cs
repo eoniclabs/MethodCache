@@ -30,13 +30,13 @@ namespace SinglePath
 
     public interface IShapes
     {
-        [Cache(Duration = ""00:10:00"")] Task<int> CountAsync(int id);
-        [Cache(Duration = ""00:10:00"")] Task<bool> ExistsAsync(string name);
-        [Cache(Duration = ""00:10:00"")] Task<string?> FindAsync(int id);
-        [Cache(Duration = ""00:10:00"")] ValueTask<int> CountValueAsync(int id);
-        [Cache(Duration = ""00:10:00"")] int Count(int id);
-        [Cache(Duration = ""00:10:00"")] Task<string> ByRegionAsync(Region region);
-        [Cache(Duration = ""00:10:00"")] Task<int> SearchAsync(Filter filter);
+        [Cache(Duration = ""10m"")] Task<int> CountAsync(int id);
+        [Cache(Duration = ""10m"")] Task<bool> ExistsAsync(string name);
+        [Cache(Duration = ""10m"")] Task<string?> FindAsync(int id);
+        [Cache(Duration = ""10m"")] ValueTask<int> CountValueAsync(int id);
+        [Cache(Duration = ""10m"")] int Count(int id);
+        [Cache(Duration = ""10m"")] Task<string> ByRegionAsync(Region region);
+        [Cache(Duration = ""10m"")] Task<int> SearchAsync(Filter filter);
     }
 
     public class Shapes : IShapes

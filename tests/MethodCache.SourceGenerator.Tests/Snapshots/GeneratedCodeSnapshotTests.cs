@@ -25,7 +25,7 @@ public class GeneratedCodeSnapshotTests
 
         public interface IUserService
         {
-            [Cache(Duration = "00:10:00", Tags = new[] { "users", "user:{userId}" })]
+            [Cache(Duration = "10m", Tags = new[] { "users", "user:{userId}" })]
             Task<User> GetUserAsync(int userId, CancellationToken cancellationToken = default);
 
             [CacheInvalidate(Tags = new[] { "users", "user:{userId}" })]

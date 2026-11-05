@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Vendor.Rates;
 
 // A third-party interface, cached without a wrapper
-[assembly: CacheInterface(typeof(IRatesClient), nameof(IRatesClient.GetRateAsync), Duration = "00:01:00")]
+[assembly: CacheInterface(typeof(IRatesClient), nameof(IRatesClient.GetRateAsync), Duration = "1m")]
 
 // Runs the README Quick Start as a Native AOT executable. Exits with 1 when a call that should hit the cache
 // reaches the implementation.
@@ -130,7 +130,7 @@ return failures.Count == 0 ? 0 : 1;
 
 public interface IUserService
 {
-    [Cache(Duration = "00:10:00", Tags = new[] { "users", "user:{userId}" })]
+    [Cache(Duration = "10m", Tags = new[] { "users", "user:{userId}" })]
     Task<string> GetUserAsync(int userId);
 }
 
@@ -149,10 +149,10 @@ public sealed class UserService : IUserService
 
 public interface IPriceService
 {
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<decimal> GetPriceAsync(string symbol);
 
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<int> GenericAsync<T>(int id);
 }
 
@@ -186,16 +186,16 @@ public sealed class IdList(params int[] ids) : ICacheKeyProvider
 
 public interface ICatalogService
 {
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<int> SearchAsync(CatalogQuery query);
 
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<int> ByIdsAsync(IdList ids);
 
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<int> ManyAsync(int[] ids, List<CatalogQuery> queries);
 
-    [Cache(Duration = "00:01:00")]
+    [Cache(Duration = "1m")]
     Task<int> FilteredAsync(Dictionary<string, int> filters);
 }
 

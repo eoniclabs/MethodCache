@@ -28,7 +28,7 @@ namespace MethodCache.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. ExecuteUpdate and ExecuteDelete are reported for the entity types the project maps with ef.Entity<T>(...), their base and derived types (ExecuteDelete also for types mapped only with WhenDeleted), or for every type when the project maps none. Raw SQL is reported unless it is a single statement that starts with select. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] or [InvalidatesCache] method.",
+            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. ExecuteUpdate and ExecuteDelete are reported for the entity types the project maps with ef.Entity<T>(...), their base and derived types (ExecuteDelete also for types mapped only with WhenDeleted), or for every type when the project maps none. Raw SQL is reported when it names the table of such a type, runs a procedure or block (call, exec, do), or can't be read (SQL in a variable, or values interpolated into ExecuteSqlRaw); statements that only select or set a session setting never are, and when the project maps no type, any other raw SQL is. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] or [InvalidatesCache] method.",
             helpLinkUri: HelpLink("MC0027"));
 
         private static readonly ImmutableHashSet<string> QueryableWrites = ImmutableHashSet.Create(
@@ -96,26 +96,37 @@ namespace MethodCache.Analyzers
             return SqlWrites.Contains(method.Name) && type.Name == "RelationalDatabaseFacadeExtensions";
         }
 
-        /// <summary>
-        /// A write to a mapped entity type, or raw SQL that may write. A single statement that starts with select only
-        /// reads, as an advisory lock does.
-        /// </summary>
+        /// <summary>A write to a mapped entity type, or raw SQL that may write to one.</summary>
         private static bool WritesCachedRows(IInvocationOperation write, Lazy<EntityTagMapping> mapping)
         {
             var method = write.TargetMethod;
-            if (SqlWrites.Contains(method.Name)) return !IsSelect(write);
+            if (SqlWrites.Contains(method.Name)) return SqlMayWriteCachedRows(write, mapping);
             if (method.TypeArguments.Length != 1) return true;
             var needed = method.Name.StartsWith("ExecuteDelete", StringComparison.Ordinal) ? EntityWrites.Delete : EntityWrites.Any;
             return (mapping.Value.For(method.TypeArguments[0]) & needed) == needed;
         }
 
-        private static bool IsSelect(IInvocationOperation write)
+        /// <summary>
+        /// SQL that can't be read could be anything. Statements that only select, such as an advisory lock, or set a
+        /// session setting, such as <c>SET LOCAL lock_timeout</c>, write no rows. Other SQL counts when it names the table of
+        /// a mapped type or runs code the analyzer can't see into, or always when no mapping is visible.
+        /// </summary>
+        private static bool SqlMayWriteCachedRows(IInvocationOperation write, Lazy<EntityTagMapping> mapping)
+        {
+            if (ReadableSql(write) is not { } sql) return true;
+            var words = SqlText.Words(sql);
+            if (SqlText.OnlySelectsOrSets(words)) return false;
+            return mapping.Value.IsUnknown || SqlText.RunsCode(words) || mapping.Value.NamesTable(words);
+        }
+
+        /// <summary>The SQL text, with each parameter of <c>ExecuteSql</c> as a number; null when it can't be read.</summary>
+        private static string? ReadableSql(IInvocationOperation write)
         {
             var argument = write.Arguments.FirstOrDefault(a => a.Parameter?.Name == "sql");
             var sql = argument?.Value;
             while (sql is IConversionOperation conversion) sql = conversion.Operand;
-            if (sql?.ConstantValue is { HasValue: true, Value: string constant }) return SqlStartsWithSelect(constant);
-            if (sql is not IInterpolatedStringOperation interpolated) return false;
+            if (sql?.ConstantValue is { HasValue: true, Value: string constant }) return constant;
+            if (sql is not IInterpolatedStringOperation interpolated) return null;
 
             // ExecuteSql makes each value a parameter, never SQL. ExecuteSqlRaw takes a string, so a value is SQL text
             // that could hold anything.
@@ -124,40 +135,10 @@ namespace MethodCache.Analyzers
             foreach (var part in interpolated.Parts)
             {
                 if (part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } }) text.Append(value);
-                else if (raw) return false;
-                else text.Append('0');
+                else if (raw) return null;
+                else text.Append(" 0 ");
             }
-            return SqlStartsWithSelect(text.ToString());
-        }
-
-        internal static bool SqlStartsWithSelect(string sql)
-        {
-            var i = SkipSpaceAndComments(sql, 0);
-            if (string.Compare(sql, i, "select", 0, 6, StringComparison.OrdinalIgnoreCase) != 0) return false;
-            if (i + 6 < sql.Length && (char.IsLetterOrDigit(sql[i + 6]) || sql[i + 6] == '_')) return false;
-            // One statement: nothing but space and comments after a semicolon
-            var semicolon = sql.IndexOf(';', i);
-            return semicolon < 0 || SkipSpaceAndComments(sql, semicolon + 1) == sql.Length;
-        }
-
-        private static int SkipSpaceAndComments(string sql, int i)
-        {
-            while (i < sql.Length)
-            {
-                if (char.IsWhiteSpace(sql[i])) i++;
-                else if (string.CompareOrdinal(sql, i, "--", 0, 2) == 0)
-                {
-                    var end = sql.IndexOf('\n', i);
-                    i = end < 0 ? sql.Length : end + 1;
-                }
-                else if (string.CompareOrdinal(sql, i, "/*", 0, 2) == 0)
-                {
-                    var end = sql.IndexOf("*/", i + 2, StringComparison.Ordinal);
-                    i = end < 0 ? sql.Length : end + 2;
-                }
-                else break;
-            }
-            return i;
+            return text.ToString();
         }
 
         private static bool IsInvalidation(IMethodSymbol method)
@@ -201,7 +182,7 @@ namespace MethodCache.Analyzers
         /// The method, the one it overrides or an interface method it implements is marked [InvalidatesCache]: calls
         /// through the interface and through the class both count.
         /// </summary>
-        private static bool HasInvalidatesCache(IMethodSymbol method)
+        internal static bool HasInvalidatesCache(IMethodSymbol method)
         {
             method = method.ReducedFrom ?? method;
             for (var current = method.OriginalDefinition; current != null; current = current.OverriddenMethod?.OriginalDefinition)
@@ -223,7 +204,7 @@ namespace MethodCache.Analyzers
             return false;
         }
 
-        private static bool HasMethodCacheAttribute(IMethodSymbol method, string name)
+        internal static bool HasMethodCacheAttribute(IMethodSymbol method, string name)
             => method.GetAttributes().Any(a => a.AttributeClass is { ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } } attribute
                 && attribute.Name == name);
 

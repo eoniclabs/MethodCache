@@ -23,7 +23,7 @@ namespace Monitoring
 {
     public interface IUserService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetUserAsync(int userId);
     }
 

@@ -145,8 +145,13 @@ own activity context and baggage flow as usual.
 
 OpenTelemetry is optional. The meter and activity source are named `MethodCache` (`MethodCacheTelemetry.Name`), so
 `dotnet-counters monitor --counters MethodCache` and any `MeterListener` see them. For Prometheus, use OpenTelemetry's
-Prometheus exporter with `AddMethodCacheInstrumentation()`. A `MeterListener` subscribes like this; keep it alive for
-as long as you want measurements:
+Prometheus exporter with `AddMethodCacheInstrumentation()`.
+
+prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter puts the meter name in front, as in
+`methodcache_methodcache_requests{methodcache_result="hit"}`. It starts listening at the first scrape, exports counters
+as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
+
+A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
 <!-- snippet: monitoring-console-metrics -->
 ```cs

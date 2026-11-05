@@ -21,7 +21,8 @@ Install it at the same version as `MethodCache`.
   nothing.
 - **A warning where it can't help.** `ExecuteUpdate` and `ExecuteDelete` on a mapped type and raw SQL go past the
   change tracker; analyzer MC0027 reports them when the method doesn't invalidate. Mark your own invalidation helpers
-  `[InvalidatesCache]` and a call to them counts.
+  `[InvalidatesCache]` and a call to them counts. MC0028 reports a tag on a cached method that nothing in the project
+  invalidates.
 
 ## Usage
 
@@ -68,3 +69,5 @@ public static async Task RecalculateAsync(ShopDb db, IMethodCacheKeys keys, int 
 Works with SQL Server, PostgreSQL, SQLite and the other relational providers, and on `SaveChanges` also with Cosmos DB and
 MongoDB. The full guide, with when exactly each tag is invalidated, is
 [Entity Framework Core](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md).
+With row-level security, cached reads need a context of their own: see
+[Row-level security](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#row-level-security).

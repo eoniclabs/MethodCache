@@ -8,10 +8,10 @@ namespace Docs.Conditional
 
     public interface IProductService
     {
-        [Cache(Duration = "00:10:00")]
+        [Cache(Duration = "10m")]
         Task<List<Product>> SearchAsync(string text);
 
-        [Cache(Duration = "00:10:00")]
+        [Cache(Duration = "10m")]
         Task<Product?> FindAsync(int id);
     }
 

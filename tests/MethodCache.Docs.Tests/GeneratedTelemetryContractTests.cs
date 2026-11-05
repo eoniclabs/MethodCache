@@ -73,8 +73,8 @@ public class GeneratedTelemetryContractTests
 
 public interface IGeneratedTelemetryService
 {
-    [Cache(Duration = "00:10:00", Tags = ["generated-telemetry"])] int Sync(int id);
-    [Cache(Duration = "00:10:00", Tags = ["generated-telemetry"])] Task<int> Async(int id);
+    [Cache(Duration = "10m", Tags = ["generated-telemetry"])] int Sync(int id);
+    [Cache(Duration = "10m", Tags = ["generated-telemetry"])] Task<int> Async(int id);
     [CacheInvalidate(Tags = ["generated-telemetry"])] void Update();
 }
 

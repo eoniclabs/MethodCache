@@ -28,16 +28,16 @@ namespace FailSafe
 {
     public interface IPrices
     {
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         Task<int> GetCentralAsync(int id);
 
-        [Cache(Duration = ""00:01:00"", FailSafe = ""off"")]
+        [Cache(Duration = ""1m"", FailSafe = ""off"")]
         Task<int> GetBalanceAsync(int id);
     }
 
     public interface IRates
     {
-        [Cache(Duration = ""00:01:00"", FailSafe = ""01:00:00"")]
+        [Cache(Duration = ""1m"", FailSafe = ""1h"")]
         Task<int> GetRateAsync(int id);
     }
 
@@ -130,7 +130,7 @@ namespace FailSafe
                 break;
             case "settings":
                 var configuration = new ConfigurationBuilder()
-                    .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:FailSafe:Duration"] = "01:00:00" })
+                    .AddInMemoryCollection(new Dictionary<string, string?> { ["MethodCache:FailSafe:Duration"] = "1h" })
                     .Build();
                 startup.GetMethod("ConfigureForSettings")!.Invoke(null, new object[] { services });
                 services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));

@@ -33,8 +33,15 @@ namespace Microsoft.EntityFrameworkCore
     {
         public static IQueryable<T> FromSqlRaw<T>(this IQueryable<T> source, string sql) => source;
     }
+    public class DbSet<T> where T : class { }
+    public class ModelBuilder { public Metadata.Builders.EntityTypeBuilder<T> Entity<T>() where T : class => null!; }
+    public static class RelationalEntityTypeBuilderExtensions
+    {
+        public static Metadata.Builders.EntityTypeBuilder<T> ToTable<T>(this Metadata.Builders.EntityTypeBuilder<T> builder, string name) where T : class => builder;
+    }
 }
 namespace Microsoft.EntityFrameworkCore.Infrastructure { public class DatabaseFacade { } }
+namespace Microsoft.EntityFrameworkCore.Metadata.Builders { public class EntityTypeBuilder<T> where T : class { } }
 ";
 
         private const string MethodCacheEntityFrameworkCore = @"
@@ -53,6 +60,10 @@ namespace MethodCache.EntityFrameworkCore
     {
         public EntityTagsBuilder<TEntity> Tags(params string[] tagTemplates) => this;
         public EntityTagsBuilder<TEntity> WhenDeleted(params string[] tagTemplates) => this;
+    }
+    public static class EntityFrameworkCoreMethodCacheBuilderExtensions
+    {
+        public static object UseEntityFrameworkCore<TContext>(this object builder, System.Action<EntityFrameworkCoreOptions> configure) => builder;
     }
 }
 ";
@@ -79,6 +90,9 @@ public record Product(int Id, string Name);
 public record DiscountedProduct(int Id, string Name, int Percent) : Product(Id, Name);
 public record RefreshToken(int Id, string Value);
 public record User(int Id, string Name);
+public record Category(int Id);
+[System.ComponentModel.DataAnnotations.Schema.Table(""stock_levels"")]
+public record Stock(int Id);
 ";
 
         [Theory]
@@ -175,8 +189,7 @@ public sealed class Endpoint(IProducts productCache)
         [InlineData(".Entity<User>(u => u.WhenDeleted(\"publications\"))", "users.Where(u => u.Id == id).ExecuteDelete();")]
         [InlineData(".Entity<User>(u => u.Tags(\"user:{Id}\").WhenDeleted(\"publications\"))", "await users.Where(u => u.Id == id).ExecuteUpdateAsync(s => { });")]
         [InlineData(".Entity<User>(u => Configure(u))", "await users.Where(u => u.Id == id).ExecuteUpdateAsync(s => { });")]
-        [InlineData(".Entity<Product>(\"products\")", "await db.Database.ExecuteSqlRawAsync(\"delete from refresh_tokens\");")]
-        public async Task A_write_to_a_mapped_type_or_raw_SQL_is_reported(string mapping, string write)
+        public async Task A_write_to_a_mapped_type_is_reported(string mapping, string write)
         {
             var source = Method(write) + @"
 public static class Builders
@@ -201,11 +214,100 @@ public static class Generic
         }
 
         [Theory]
+        [InlineData("update products set name = 'x'")]
+        [InlineData("UPDATE \\\"Product\\\" SET \\\"Name\\\" = 'x'")]
+        [InlineData("delete from public.product where id = 1")]
+        [InlineData("delete from [dbo].[Products]")]
+        [InlineData("insert into products (name) values ('x') on conflict (name) do nothing")]
+        [InlineData("set local lock_timeout = '5s'; update products set name = 'x'")]
+        [InlineData("call recalculate_prices()")]
+        [InlineData("exec dbo.RecalculatePrices")]
+        [InlineData("do $$ begin perform 1; end $$")]
+        [InlineData("update categories set id = 2")]
+        [InlineData("truncate stock_levels")]
+        public async Task Raw_SQL_that_names_a_mapped_table_or_runs_code_is_reported(string sql)
+        {
+            var write = $"await db.Database.ExecuteSqlRawAsync(\"{sql}\");";
+
+            Assert.Equal("MC0027", Assert.Single(await AnalyzeAsync(Method(write),
+                mapping: ".Entity<Product>(\"products\").Entity<Category>(\"categories\").Entity<Stock>(\"stock\")")).Id);
+        }
+
+        [Theory]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"delete from refresh_tokens\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"SET LOCAL lock_timeout = '5s'\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"set local lock_timeout = '5s'; select pg_advisory_xact_lock(1)\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"insert into shared_cache (key, value) values ('products', 'x') on conflict (key) do update set value = excluded.value\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"-- clears old products\\n delete from login_attempts where at < now()\");")]
+        [InlineData("await db.Database.ExecuteSqlInterpolatedAsync($\"delete from login_attempts where user_name = {sql}\");")]
+        public async Task Raw_SQL_that_names_no_mapped_table_is_not_reported(string write)
+        {
+            Assert.Empty(await AnalyzeAsync(Method(write), mapping: ".Entity<Product>(\"products\")"));
+        }
+
+        [Theory]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(sql);")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync($\"delete from {sql}\");")]
+        public async Task Raw_SQL_that_cannot_be_read_is_reported_also_with_a_mapping(string write)
+        {
+            Assert.Single(await AnalyzeAsync(Method(write), mapping: ".Entity<Product>(\"products\")"));
+        }
+
+        [Theory]
+        [InlineData("delete from catalog_items", true)]
+        [InlineData("delete from inventory", true)]
+        [InlineData("delete from access_tokens", false)]
+        public async Task Raw_SQL_is_checked_against_the_names_the_context_gives_the_tables(string sql, bool reported)
+        {
+            var source = Method($"await db.Database.ExecuteSqlRawAsync(\"{sql}\");") + @"
+public sealed class ShopDb : DbContext
+{
+    public DbSet<Product> Inventory { get; } = null!;
+    public DbSet<RefreshToken> Tokens { get; } = null!;
+
+    public void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Product>().ToTable(""catalog_items"");
+        modelBuilder.Entity<RefreshToken>().ToTable(""access_tokens"");
+    }
+}";
+
+            Assert.Equal(reported ? 1 : 0, (await AnalyzeAsync(source, mapping: ".Entity<Product>(\"products\")")).Length);
+        }
+
+        [Fact]
+        public async Task Raw_SQL_is_checked_against_the_DbSets_of_a_context_from_another_project()
+        {
+            // The context and its entity are in a data project; the startup project connects it and writes raw SQL
+            var entityFrameworkCore = CSharpCompilation.Create("EntityFrameworkCore",
+                [CSharpSyntaxTree.ParseText(EntityFrameworkCore), CSharpSyntaxTree.ParseText(MethodCacheEntityFrameworkCore)], References(),
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)).ToMetadataReference();
+            var data = CSharpCompilation.Create("Data", [CSharpSyntaxTree.ParseText(@"
+namespace Data
+{
+    public record Item(int Id);
+    public class ShopDb : Microsoft.EntityFrameworkCore.DbContext { public Microsoft.EntityFrameworkCore.DbSet<Item> Stock { get; } = null!; }
+}")], References().Append(entityFrameworkCore), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)).ToMetadataReference();
+            var app = CSharpCompilation.Create("App", [CSharpSyntaxTree.ParseText(Method("await db.Database.ExecuteSqlRawAsync(\"delete from stock\");") + @"
+public static class Startup
+{
+    public static void Configure(object mc) => MethodCache.EntityFrameworkCore.EntityFrameworkCoreMethodCacheBuilderExtensions
+        .UseEntityFrameworkCore<Data.ShopDb>(mc, ef => ef.Entity<Data.Item>(""items""));
+}")], References().Append(entityFrameworkCore).Append(data), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            Assert.Empty(app.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            var diagnostics = await app.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new ChangeTrackerBypassAnalyzer())).GetAnalyzerDiagnosticsAsync();
+
+            Assert.Equal("MC0027", Assert.Single(diagnostics).Id);
+        }
+
+        [Theory]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"select pg_advisory_xact_lock(42)\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"  -- one writer at a time\\n SELECT pg_advisory_xact_lock(42);\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"/* lock */ select 1\");")]
         [InlineData("await db.Database.ExecuteSqlInterpolatedAsync($\"select pg_advisory_xact_lock({id})\");")]
-        public async Task Raw_SQL_that_only_selects_is_not_reported(string read)
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"SET LOCAL lock_timeout = '5s'\");")]
+        public async Task Raw_SQL_that_only_selects_or_sets_is_not_reported(string read)
         {
             Assert.Empty(await AnalyzeAsync(Method(read)));
         }
@@ -373,13 +475,18 @@ public sealed class Endpoint
     private static Task Run(Func<Task> action) => action();
 }";
 
-        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source, bool withPackage = true, string? mapping = null)
+        private static IEnumerable<MetadataReference> References()
         {
             var trusted = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);
-            var references = trusted
+            return trusted
                 .Where(p => Path.GetFileName(p).StartsWith("System.", StringComparison.Ordinal) || Path.GetFileName(p) is "mscorlib.dll" or "netstandard.dll")
                 .Select(p => MetadataReference.CreateFromFile(p))
                 .Append(MetadataReference.CreateFromFile(typeof(CacheAttribute).Assembly.Location));
+        }
+
+        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source, bool withPackage = true, string? mapping = null)
+        {
+            var references = References();
             var trees = new List<SyntaxTree> { CSharpSyntaxTree.ParseText(source), CSharpSyntaxTree.ParseText(EntityFrameworkCore) };
             if (withPackage) trees.Add(CSharpSyntaxTree.ParseText(MethodCacheEntityFrameworkCore));
             if (mapping != null) trees.Add(CSharpSyntaxTree.ParseText(Mapping(mapping)));

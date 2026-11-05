@@ -32,7 +32,7 @@ namespace TestNamespace
 {
     public interface IRawKeyService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetValueAsync(string cacheKey);
     }
 
@@ -100,19 +100,19 @@ namespace TestNamespace
 {
     public interface IRawNumberKeyService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetByDoubleAsync(double value);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetByNullableAsync(decimal? value);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetByLevelAsync(Level value);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetByNullableLevelAsync(Level? value);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetByCodeAsync(Code value);
     }
 

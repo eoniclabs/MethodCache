@@ -26,9 +26,9 @@ namespace MethodCache
     /// Advanced usage with full configuration:
     /// <code>
     /// [Cache(Group = "users",
-    ///     Duration = "00:30:00",
+    ///     Duration = "30m",
     ///     Tags = ["users", "user:{userId}"],
-    ///     SlidingExpiration = "00:05:00",
+    ///     SlidingExpiration = "5m",
     ///     Version = 2)]
     /// Task&lt;UserProfile&gt; GetProfileAsync(int userId);
     /// </code>
@@ -43,59 +43,59 @@ namespace MethodCache
         public string? Group { get; set; }
 
         /// <summary>
-        /// Gets or sets a positive duration, for example "5m" or "00:05:00".
+        /// Gets or sets a positive duration, for example "5m" or "1h".
         /// Determines how long values remain in cache before expiration.
         /// </summary>
         /// <remarks>
-        /// Format: a positive invariant decimal with s/m/h/d suffix, or [d.]hh:mm:ss with optional fractional seconds.
-        /// Examples: "00:05:00" (5 minutes), "01:00:00" (1 hour), "1.00:00:00" (1 day)
+        /// Format: a positive number with a unit, s, m, h or d, and a "." for decimals: "30s", "5m", "1.5h", "7d".
+        /// A TimeSpan such as "00:05:00" is an error (MC0004).
         /// If not specified, uses the default duration from global configuration.
         /// </remarks>
         public string? Duration { get; set; }
 
         /// <summary>
-        /// Gets or sets a sliding expiration as a TimeSpan string. Each read extends the entry by this much, but
+        /// Gets or sets a sliding expiration, a duration such as "5m". Each read extends the entry by this much, but
         /// never beyond <see cref="Duration"/>. <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
-        /// [Cache(Duration = "01:00:00", SlidingExpiration = "00:05:00")]  // Dropped after 5 idle minutes, at most 1 hour old
+        /// [Cache(Duration = "1h", SlidingExpiration = "5m")]  // Dropped after 5 idle minutes, at most 1 hour old
         /// </code>
         /// </example>
         public string? SlidingExpiration { get; set; }
 
         /// <summary>
-        /// Gets or sets a refresh-ahead window as a TimeSpan string. A read within this window before the entry
+        /// Gets or sets a refresh-ahead window, a duration such as "1m". A read within this window before the entry
         /// expires returns the cached value and refreshes it in the background, so callers do not wait for the method.
         /// <c>"off"</c> turns it off for this method when it is on for all of them.
         /// </summary>
         /// <example>
         /// <code>
-        /// [Cache(Duration = "00:10:00", RefreshAhead = "00:01:00")]  // Reloaded in the background during the last minute
+        /// [Cache(Duration = "10m", RefreshAhead = "1m")]  // Reloaded in the background during the last minute
         /// </code>
         /// </example>
         public string? RefreshAhead { get; set; }
 
         /// <summary>
         /// Gets or sets how long an expired value is kept and returned when calling the method again throws, as a
-        /// TimeSpan string, or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
+        /// duration such as "1h", or <c>"off"</c> for a method that must never return old data when fail-safe is on for all
         /// methods. Unset uses the group or the central setting (<c>mc.Defaults(o =&gt; o.WithFailSafe(...))</c>).
         /// </summary>
         /// <example>
         /// <code>
-        /// [Cache(Duration = "00:05:00", FailSafe = "01:00:00")]  // Up to an hour-old value if the database is down
+        /// [Cache(Duration = "5m", FailSafe = "1h")]  // Up to an hour-old value if the database is down
         /// [Cache(FailSafe = "off")]                              // An account balance: an error beats an old value
         /// </code>
         /// </example>
         public string? FailSafe { get; set; }
 
         /// <summary>
-        /// Gets or sets, as a TimeSpan string, how long the caller waits for the method when a fail-safe value exists.
+        /// Gets or sets, as a duration such as "0.2s", how long the caller waits for the method when a fail-safe value exists.
         /// A slower call returns the fail-safe value and finishes in the background, updating the cache.
         /// </summary>
         /// <example>
         /// <code>
-        /// [Cache(Duration = "00:05:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.200")]
+        /// [Cache(Duration = "5m", FailSafe = "1h", FailSafeTimeout = "0.2s")]
         /// </code>
         /// </example>
         public string? FailSafeTimeout { get; set; }

@@ -35,6 +35,19 @@ public class DurationGrammarTests
     }
 
     [Theory]
+    [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.TimeSpans), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
+    public void Configuration_TimeSpan_IsRejected_WithTheValueInUnits(string text, string suggestion)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        { ["MethodCache:Defaults:Duration"] = text }).Build();
+        var services = new ServiceCollection();
+        services.AddMethodCache(builder => builder.FromConfiguration(configuration, "MethodCache"));
+        using var provider = services.BuildServiceProvider();
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<MethodCache.Policies.IPolicyRegistry>().GetPolicy("Sample.Type.Method"));
+        Assert.EndsWith($"Write \"{suggestion}\".", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("Duration", "")]
     [InlineData("Duration", " ")]
     [InlineData("Version", "")]

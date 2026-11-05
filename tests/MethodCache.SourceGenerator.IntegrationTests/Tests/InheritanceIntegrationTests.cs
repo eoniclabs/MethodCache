@@ -43,10 +43,10 @@ namespace TestNamespace
     // Simple interface with caching methods
     public interface IUserService
     {
-        [Cache(Duration = ""00:02:00"", Tags = new[] { ""users"" })]
+        [Cache(Duration = ""2m"", Tags = new[] { ""users"" })]
         Task<User> GetByIdAsync(int id);
         
-        [Cache(Duration = ""00:01:00"", Tags = new[] { ""users"" })]
+        [Cache(Duration = ""1m"", Tags = new[] { ""users"" })]
         Task<User> GetByEmailAsync(string email);
         
         [CacheInvalidate(Tags = new[] { ""users"" })]
@@ -171,10 +171,10 @@ namespace TestNamespace
 
     public interface IDocumentReader
     {
-        [Cache(Duration = ""00:02:00"", Tags = new[] { ""documents"", ""read"" })]
+        [Cache(Duration = ""2m"", Tags = new[] { ""documents"", ""read"" })]
         Task<Document> ReadDocumentAsync(int id);
         
-        [Cache(Duration = ""00:01:00"", Tags = new[] { ""documents"", ""search"" })]
+        [Cache(Duration = ""1m"", Tags = new[] { ""documents"", ""search"" })]
         Task<Document[]> SearchDocumentsAsync(string query);
     }
 
@@ -189,7 +189,7 @@ namespace TestNamespace
 
     public interface IDocumentProcessor
     {
-        [Cache(Duration = ""00:03:00"", Tags = new[] { ""documents"", ""processing"" })]
+        [Cache(Duration = ""3m"", Tags = new[] { ""documents"", ""processing"" })]
         Task<string> ProcessDocumentAsync(int documentId, string operation);
     }
 

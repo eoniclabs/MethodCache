@@ -246,7 +246,7 @@ namespace TestApp
 
     public interface ITestService
     {
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""users"" }, Version = 7, SlidingExpiration = ""00:02:00"", RefreshAhead = ""00:00:30"")]
+        [Cache(Duration = ""10m"", Tags = new[] { ""users"" }, Version = 7, SlidingExpiration = ""2m"", RefreshAhead = ""30s"")]
         string GetValue(int id);
     }
 }";
@@ -475,7 +475,7 @@ namespace TestApp
 {
     public interface IUserService
     {
-        [Cache(Duration = ""00:20:00"", Tags = new[] { ""users"", ""profile"" })]
+        [Cache(Duration = ""20m"", Tags = new[] { ""users"", ""profile"" })]
         string GetProfile(int id);
     }
 }";

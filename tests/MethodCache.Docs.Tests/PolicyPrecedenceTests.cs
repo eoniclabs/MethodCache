@@ -97,7 +97,7 @@ public class PolicyPrecedenceTests
 
 public interface IPrecedenceOrders
 {
-    [Cache(Duration = "01:00:00", Tags = new[] { "order:{id}" })]
+    [Cache(Duration = "1h", Tags = new[] { "order:{id}" })]
     Task<int> GetAsync(int id);
 
     [CacheInvalidate(Tags = new[] { "order:{id}" })]

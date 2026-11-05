@@ -44,28 +44,28 @@ namespace TestNamespace
 
     public interface IPrimitiveParameterService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessIntAsync(int value);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessStringAsync(string text);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessBoolAsync(bool flag);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessDecimalAsync(decimal amount);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessDateTimeAsync(DateTime timestamp);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessEnumAsync(Priority priority);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessGuidAsync(Guid id);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessMultiplePrimitivesAsync(int id, string name, bool active, decimal value);
     }
 
@@ -284,16 +284,16 @@ namespace TestNamespace
 
     public interface IComplexParameterService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessPersonAsync(Person person);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessAddressAsync(Address address);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessArrayAsync(int[] numbers);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessMultipleObjectsAsync(Person person, Address workAddress);
     }
 
@@ -436,13 +436,13 @@ namespace TestNamespace
 {
     public interface IOptionalParameterService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessWithOptionalAsync(int required, string optional = ""default"");
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessWithMultipleOptionalAsync(string name, int age = 25, bool active = true, decimal salary = 50000m);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> ProcessWithNullableAsync(int id, string? optionalText = null, DateTime? optionalDate = null);
     }
 

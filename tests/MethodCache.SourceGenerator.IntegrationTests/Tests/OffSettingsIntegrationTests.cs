@@ -24,10 +24,10 @@ namespace Off
 {
     public interface IPrices
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> GetCentralAsync(int id);
 
-        [Cache(Duration = ""00:10:00"", SlidingExpiration = ""off"", RefreshAhead = ""off"")]
+        [Cache(Duration = ""10m"", SlidingExpiration = ""off"", RefreshAhead = ""off"")]
         Task<int> GetPinnedAsync(int id);
     }
 

@@ -12,7 +12,7 @@ namespace MethodCache.SourceGenerator
             private static string HelpLink(string id) => "https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#" + id.ToLowerInvariant();
 
             internal static readonly DiagnosticDescriptor InvalidDuration = new(
-                "MC0004", "Invalid time span", "{0} = \"{1}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"",
+                "MC0004", "Invalid duration", "{0} = \"{1}\" is not a duration; write {2}",
                 "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0004"));
 
             internal static readonly DiagnosticDescriptor InvalidVersion = new(

@@ -17,7 +17,7 @@ namespace App
 {
     public interface IUserService
     {
-        [Cache(Duration = ""00:05:00"")]
+        [Cache(Duration = ""5m"")]
         Task<string> GetUserAsync(int id);
     }
 }";
@@ -30,7 +30,7 @@ namespace App
 {
     public interface IOrderService
     {
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         Task<string> GetOrderAsync(int id);
     }
 }";

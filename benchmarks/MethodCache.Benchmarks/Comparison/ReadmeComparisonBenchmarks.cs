@@ -15,14 +15,14 @@ public sealed record BenchUser<TId>(TId Id, string Name);
 
 public interface IReadmeUserService
 {
-    [Cache(Duration = "00:10:00")]
+    [Cache(Duration = "10m")]
     Task<BenchUser<int>> GetUserAsync(int id);
 }
 
 // The same method keyed by GUID. The interface name has the same length, so both keys have the same prefix length.
 public interface IReadmeGuidService
 {
-    [Cache(Duration = "00:10:00")]
+    [Cache(Duration = "10m")]
     Task<BenchUser<Guid>> GetUserAsync(Guid id);
 }
 

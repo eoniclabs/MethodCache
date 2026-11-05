@@ -17,13 +17,13 @@ The cached reads are ordinary `[Cache]` methods with tags:
 ```cs
 public interface IProductReads
 {
-    [Cache(Duration = "00:10:00", Tags = ["product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["product:{id}"])]
     Task<ProductDto?> GetAsync(int id);
 
-    [Cache(Duration = "00:10:00", Tags = ["category:{categoryId}"])]
+    [Cache(Duration = "10m", Tags = ["category:{categoryId}"])]
     Task<IReadOnlyList<ProductDto>> ListAsync(int categoryId);
 
-    [Cache(Duration = "01:00:00", Tags = ["top-sellers"])]
+    [Cache(Duration = "1h", Tags = ["top-sellers"])]
     Task<IReadOnlyList<ProductDto>> TopSellersAsync();
 }
 ```
@@ -71,7 +71,8 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
 - **A row you change without loading it is read once before it is saved**, for its stored values. That covers
   `Update(product)` with values from a request, `Attach` with a few properties set, and `Remove(new Product { Id = id })`:
   the category it had in the database is invalidated, not the empty value of a new object. A row the context loaded
-  is never read again.
+  is never read again. With row-level security, see
+  [Saves of rows the context didn't load](#saves-of-rows-the-context-didnt-load).
 - **A new row is tagged with its saved values**, so a key the database generates is the real one, not a temporary value.
   A cached "not found" for that id is invalidated too.
 - **A derived type** invalidates the tags of every mapped type it derives from.
@@ -162,8 +163,12 @@ doesn't invalidate anything:
   or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
   tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
   data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
-- `Database.ExecuteSql…`, unless the SQL is one statement that starts with `select`, such as an advisory lock.
-  MethodCache can't tell which tables other SQL writes.
+- `Database.ExecuteSql…` when the SQL names the table of a mapped type, runs code (`call`, `exec`, `do`), or can't be
+  read, such as SQL in a variable. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
+  any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
+  `set` a session setting never count. In a project that maps no type, all other raw SQL is reported.
+- A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
+  ([MC0027](../user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
 
 A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
 your own marked `[InvalidatesCache]` counts as the invalidation:
@@ -221,6 +226,85 @@ doesn't drop them, since they don't belong to it.
 Writes outside EF Core, such as Dapper or another service, are covered in
 [When the write happens somewhere else](invalidation.md#when-the-write-happens-somewhere-else).
 
+## Row-level security
+
+When the database filters rows by a setting on the connection, such as the signed-in user's id, cached reads and
+saves of rows the context didn't load work as follows.
+
+### Cached reads
+
+A cached result is shared by every caller with the same arguments, and a refresh-ahead or fail-safe load runs after
+the request, without its user. So a cached read can't use a context that is set up for the signed-in user. Give the
+cached reads a context of their own, and pass what the policies filter on as an argument:
+
+<!-- snippet: efcore-shared-read-context -->
+```cs
+// For cached reads: a context of its own, which nothing sets up from the request
+public sealed class ReadDb(DbContextOptions<ReadDb> options) : DbContext(options)
+{
+    public DbSet<Recipe> Recipes => Set<Recipe>();
+}
+
+public interface IRecipeReads
+{
+    [Cache(Duration = "10m", Tags = ["recipes:{householdId}"])]
+    Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId);
+}
+
+public sealed class RecipeReads(IDbContextFactory<ReadDb> factory) : IRecipeReads
+{
+    public async Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId)
+    {
+        // Its own context and connection for each call, also for a refresh that runs after the request
+        await using var db = await factory.CreateDbContextAsync();
+        // The policies read the household from the argument, which is part of the key, not from the request
+        await db.Database.OpenConnectionAsync();
+        await db.Database.ExecuteSqlAsync($"select set_config('app.household', {householdId.ToString()}, false)");
+        return await db.Recipes.Where(r => r.HouseholdId == householdId)
+            .Select(r => new RecipeDto(r.Id, r.Title)).ToListAsync();
+    }
+}
+```
+<!-- endSnippet -->
+
+Register it next to the app's context:
+
+<!-- snippet: efcore-shared-read-register -->
+```cs
+// Requests read and write through the app's context, set up for the signed-in user
+builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(connectionString).AddInterceptors(signedIn));
+// Cached reads use their own
+builder.Services.AddDbContextFactory<ReadDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddScoped<IRecipeReads, RecipeReads>();
+
+// The writes' context is the one connected to MethodCache
+builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef => ef
+    .Entity<Recipe>("recipes:{HouseholdId}")));
+```
+<!-- endSnippet -->
+
+- The household is part of the key: each household has its own entry, and a refresh reads the same rows.
+- The endpoint checks that the signed-in user belongs to the household before it calls `ListAsync`, as it checks any
+  id it takes from a request. For the cached call, the policy no longer does.
+- For data every user may read, such as a shared catalog, the read context can connect as a database user that the
+  policies let read all of it, and the method needs no argument for it.
+- Warning [MC0026](../user-guide/DIAGNOSTICS.md#mc0026) reports a cached implementation that takes the request's
+  state, or takes a class whose constructor does, such as a context that takes `IHttpContextAccessor`. It doesn't see
+  a setting that an interceptor makes on the connection.
+
+### Saves of rows the context didn't load
+
+A row changed or deleted without loading it is read for its stored values before the save
+([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on the save's connection:
+
+- **EF Core query filters don't apply to it**, so a row that a tenant filter hides from queries is still read.
+- **Row-level security does.** When a policy hides the row from the user, the read finds nothing, and the values your
+  code set are used for the old tags. PostgreSQL and SQL Server hide that row from EF Core's `UPDATE` and `DELETE`
+  too, also when a PostgreSQL policy lets the user change rows: the save changes nothing and throws
+  `DbUpdateConcurrencyException`. So a save never changes a row whose old tags weren't read.
+- On a database that lets a user change a row they can't read, load the row before you change it, or queue the old
+  tags yourself with `InvalidateAfterCommit`.
+
 ## Document databases
 
 Azure Cosmos DB and MongoDB have EF Core providers. Entity tags and `InvalidateAfterCommit` work with them, since
@@ -234,4 +318,5 @@ then is read once when it is saved, as a row changed without loading is, if its 
 ## Testing
 
 Use SQLite in memory, or your real database, with the same registration. A test that writes to the database without
-EF Core needs its own invalidation ([Testing](testing.md#when-a-test-writes-to-the-database-directly)).
+EF Core needs its own invalidation ([Testing](testing.md#when-a-test-writes-to-the-database-directly)), and a test that
+proves a read is cached needs a write that doesn't invalidate ([Proving that a result is cached](testing.md#proving-that-a-result-is-cached)).

@@ -34,7 +34,7 @@ namespace TestNamespace
 {
     public interface ISimpleService
     {
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         Task<string> GetDataAsync(string key);
     }
 

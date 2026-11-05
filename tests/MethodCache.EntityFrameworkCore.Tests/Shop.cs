@@ -58,9 +58,13 @@ public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Label> Labels => Set<Label>();
 
+    /// <summary>Hides every product from queries, as a tenant filter hides another tenant's rows.</summary>
+    public bool HideProducts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<DiscountedProduct>();
+        modelBuilder.Entity<Product>().HasQueryFilter(p => !HideProducts);
         modelBuilder.Entity<Product>().HasIndex(p => p.Sku).IsUnique();
         modelBuilder.Entity<Product>().OwnsOne(p => p.Size);
         modelBuilder.Entity<Product>().HasMany(p => p.Labels).WithMany(l => l.Products);
@@ -76,19 +80,19 @@ public record ProductDto(int Id, string Name);
 
 public interface IProductReads
 {
-    [Cache(Duration = "00:10:00", Tags = ["product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["product:{id}"])]
     Task<ProductDto?> GetAsync(int id);
 
-    [Cache(Duration = "00:10:00", Tags = ["products"])]
+    [Cache(Duration = "10m", Tags = ["products"])]
     Task<int> CountAsync();
 
-    [Cache(Duration = "00:10:00", Tags = ["category:{categoryId}"])]
+    [Cache(Duration = "10m", Tags = ["category:{categoryId}"])]
     Task<int> CountInCategoryAsync(int categoryId);
 
-    [Cache(Duration = "00:10:00", Tags = ["sku:{sku}"])]
+    [Cache(Duration = "10m", Tags = ["sku:{sku}"])]
     Task<string?> NameBySkuAsync(string sku);
 
-    [Cache(Duration = "00:10:00", Tags = ["reviews:{productId}"])]
+    [Cache(Duration = "10m", Tags = ["reviews:{productId}"])]
     Task<int> ReviewCountAsync(int productId);
 }
 

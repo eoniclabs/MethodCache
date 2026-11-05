@@ -44,7 +44,7 @@ builder.Services.AddMethodCache(config =>
 ```
 <!-- endSnippet -->
 
-- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "00:10:00")]`
+- `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "10m")]`
   keeps its ten minutes while the defaults fill in what it leaves out.
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
@@ -76,16 +76,16 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 ```json
 {
   "MethodCache": {
-    "Defaults": { "Duration": "00:15:00" },
-    "FailSafe": { "Duration": "01:00:00" },
+    "Defaults": { "Duration": "15m" },
+    "FailSafe": { "Duration": "1h" },
     "Groups": {
-      "user-data": { "SlidingExpiration": "00:10:00" }
+      "user-data": { "SlidingExpiration": "10m" }
     },
     "Methods": {
       "[MyApp]MyApp.IUserService.GetProfileAsync": {
-        "Duration": "01:00:00",
-        "SlidingExpiration": "00:10:00",
-        "RefreshAhead": "00:05:00",
+        "Duration": "1h",
+        "SlidingExpiration": "10m",
+        "RefreshAhead": "5m",
         "Tags": ["users"],
         "Version": 1,
         "Notes": "Profiles change rarely"
@@ -115,9 +115,10 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](../user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
   fails at startup.
-- Durations are written as in attributes: `"30s"`, `"5m"`, `"1.5h"`, `"7d"` or `"hh:mm:ss"` (including
-  `"d.hh:mm:ss"`); see [Writing a duration](expiration.md#writing-a-duration). A bare number such as `"300"` is rejected
-  rather than interpreted as days. `Tags` is a list (`["users"]`), and a method's `FailSafe` is one time span: the
+- Durations are written as in attributes, with a unit: `"30s"`, `"5m"`, `"1.5h"`, `"7d"`; see
+  [Writing a duration](expiration.md#writing-a-duration). A bare number such as `"300"` is rejected rather than
+  interpreted as days, and a `TimeSpan` such as `"00:05:00"` is rejected with the value to write instead (`"5m"`).
+- `Tags` is a list (`["users"]`), and a method's `FailSafe` is one duration: the
   `{ "Duration", "Timeout", "RetryAfter" }` block exists only at the top of the section. Setting the same value in
   that block and in `Defaults` (for example `FailSafe.Timeout` and `Defaults.FailSafeTimeout`) is an error.
 - A method can also be listed under an index with a `MethodId` property. Environment variable names can't hold `.`,
@@ -125,7 +126,7 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 
   ```bash
   MethodCache__Methods__0__MethodId="[MyApp]MyApp.IUserService.FindAsync(int)"
-  MethodCache__Methods__0__Duration="00:02:00"
+  MethodCache__Methods__0__Duration="2m"
   ```
 
   A method can be listed once. Listing it both by name and under an index, for example by name in

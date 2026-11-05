@@ -35,7 +35,7 @@ namespace Docs.ThirdPartyPage
     // begin-snippet: third-party-wrapper
     public interface IRates
     {
-        [Cache(Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+        [Cache(Duration = "1m", Tags = ["fx", "fx:{from}"])]
         Task<decimal> GetAsync(string from, string to);
     }
 

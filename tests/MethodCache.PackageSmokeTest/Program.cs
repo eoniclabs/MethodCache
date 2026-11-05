@@ -37,7 +37,7 @@ return failures.Count == 0 ? 0 : 1;
 
 public interface IUserService
 {
-    [Cache(Duration = "00:10:00")]
+    [Cache(Duration = "10m")]
     Task<string> GetUserAsync(int userId);
 }
 

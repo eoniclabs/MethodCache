@@ -23,6 +23,16 @@ public class DurationGrammarTests
         Assert.Contains(result.Results.SelectMany(r => r.GeneratedSources), source => source.SourceText.ToString().Contains("FromTicks(" + ticks + "L)", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.TimeSpans), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
+    public void TimeSpan_IsAnError_ThatGivesTheValueInUnits(string value, string suggestion)
+    {
+        var diagnostic = Assert.Single(Generate("using MethodCache; public interface IExample { [Cache(Duration = \"" + value + "\")] int Read(); }").Diagnostics,
+            d => d.Id == "MC0004");
+
+        Assert.Equal($"Duration = \"{value}\" is not a duration; write \"{suggestion}\"", diagnostic.GetMessage());
+    }
+
     [Fact]
     public void DurationDiagnostic_PreservesExistingMC0004Meaning()
         => Assert.Contains(Generate("using MethodCache; public interface IReader { [Cache(Duration = \"0s\")] int Read(); }").Diagnostics,
@@ -34,7 +44,7 @@ public class DurationGrammarTests
     [InlineData("FailSafeRetryAfter = \"0s\"", "MC0004")]
     [InlineData("Duration = null", "MC0004")]
     [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
-    [InlineData("RefreshAhead = \"00:02:00\", Duration = \"1m\"", "MC0023")]
+    [InlineData("RefreshAhead = \"2m\", Duration = \"1m\"", "MC0023")]
     [InlineData("SlidingExpiration = \"1m\", RefreshAhead = \"2m\"", "MC0023")]
     [InlineData("Duration = \"1h\", SlidingExpiration = \"1m\", RefreshAhead = \"1m\"", "MC0023")]
     public void InvalidSettings_AreGeneratorErrors(string setting, string id)

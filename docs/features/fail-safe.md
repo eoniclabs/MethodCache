@@ -27,7 +27,7 @@ or in `appsettings.json`:
 ```json
 {
   "MethodCache": {
-    "FailSafe": { "Duration": "01:00:00", "Timeout": "00:00:00.200", "RetryAfter": "00:00:30" }
+    "FailSafe": { "Duration": "1h", "Timeout": "0.2s", "RetryAfter": "30s" }
   }
 }
 ```
@@ -60,7 +60,7 @@ settings as `FailSafe`, `FailSafeTimeout` and `FailSafeRetryAfter`:
 ```cs
 public interface IAccountService
 {
-    [Cache(Duration = "00:05:00", FailSafe = "01:00:00", FailSafeTimeout = "00:00:00.200")]
+    [Cache(Duration = "5m", FailSafe = "1h", FailSafeTimeout = "0.2s")]
     Task<Rates> GetRatesAsync();
 
     [Cache(FailSafe = "off")]   // a balance must never be old, so an error is better

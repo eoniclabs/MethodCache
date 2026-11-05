@@ -24,7 +24,7 @@ namespace QuickStart
 {
     public interface IUserService
     {
-        [Cache(Duration = ""00:10:00"", Tags = new[] { ""users"", ""user:{userId}"" })]
+        [Cache(Duration = ""10m"", Tags = new[] { ""users"", ""user:{userId}"" })]
         Task<string> GetUserAsync(int userId);
 
         [CacheInvalidate(Tags = new[] { ""users"", ""user:{userId}"" })]
@@ -247,7 +247,7 @@ namespace QuickStart
 {
     public interface IExternalService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetAsync(int id);
     }
 
@@ -279,13 +279,13 @@ namespace QuickStart
 {
     public interface IFirstService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetAsync(int id);
     }
 
     public interface ISecondService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetAsync(int id);
     }
 
@@ -392,7 +392,7 @@ namespace QuickStart
 {
     public interface IRepository
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetAsync(int id);
     }
 
