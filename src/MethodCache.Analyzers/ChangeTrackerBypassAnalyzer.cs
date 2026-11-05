@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -8,6 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
+using MethodCache.Internal;
 
 namespace MethodCache.Analyzers
 {
@@ -28,7 +30,7 @@ namespace MethodCache.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. ExecuteUpdate and ExecuteDelete are reported for the entity types the project maps with ef.Entity<T>(...), their base and derived types (ExecuteDelete also for types mapped only with WhenDeleted), or for every type when the project maps none. Raw SQL is reported when it names the table of such a type, runs a procedure or block (call, exec, do), or can't be read (SQL in a variable, or values interpolated into ExecuteSqlRaw); statements that only select or set a session setting never are, and when the project maps no type, any other raw SQL is. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] or [InvalidatesCache] method.",
+            description: "MethodCache.EntityFrameworkCore invalidates the tags of entities that SaveChanges adds, changes or deletes. ExecuteUpdate, ExecuteDelete and raw SQL change rows without loading them, so cached results that read those rows stay until they expire unless the code invalidates them. ExecuteUpdate and ExecuteDelete are reported for the entity types the project, or a project it references, maps with ef.Entity<T>(...), their base and derived types (ExecuteDelete also for types mapped only with WhenDeleted), or for every type when none is mapped. Raw SQL is reported when it names the table of such a type, runs a procedure or block (call, exec, do), or can't be read (SQL in a variable, or values other than constants and numbers interpolated into ExecuteSqlRaw); statements that only select or set a session setting never are, and when no type is mapped, any other raw SQL is. The warning is not reported when the same method, or a method around it, also invalidates, including through a call to a [CacheInvalidate] or [InvalidatesCache] method.",
             helpLinkUri: HelpLink("MC0027"));
 
         private static readonly ImmutableHashSet<string> QueryableWrites = ImmutableHashSet.Create(
@@ -128,17 +130,53 @@ namespace MethodCache.Analyzers
             if (sql?.ConstantValue is { HasValue: true, Value: string constant }) return constant;
             if (sql is not IInterpolatedStringOperation interpolated) return null;
 
-            // ExecuteSql makes each value a parameter, never SQL. ExecuteSqlRaw takes a string, so a value is SQL text
-            // that could hold anything.
+            // ExecuteSql makes each value a parameter, never SQL. ExecuteSqlRaw takes a string, so a value is SQL text:
+            // a constant is text the analyzer can read and a number can't hold SQL, but any other value could hold anything
             var raw = argument!.Parameter!.Type.SpecialType == SpecialType.System_String;
             var text = new StringBuilder();
             foreach (var part in interpolated.Parts)
             {
-                if (part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } }) text.Append(value);
-                else if (raw) return null;
-                else text.Append(" 0 ");
+                switch (part)
+                {
+                    case IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string value } }:
+                        text.Append(value);
+                        break;
+                    case IInterpolationOperation when !raw:
+                        text.Append(" 0 ");
+                        break;
+                    case IInterpolationOperation { Expression.ConstantValue: { HasValue: true } known }:
+                        text.Append(Convert.ToString(known.Value, CultureInfo.InvariantCulture));
+                        break;
+                    case IInterpolationOperation hole when IsNumber(hole.Expression.Type):
+                        text.Append('0');
+                        break;
+                    default:
+                        return null;
+                }
             }
             return text.ToString();
+        }
+
+        private static bool IsNumber(ITypeSymbol? type)
+        {
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable) type = nullable.TypeArguments[0];
+            switch (type?.SpecialType)
+            {
+                case SpecialType.System_SByte:
+                case SpecialType.System_Byte:
+                case SpecialType.System_Int16:
+                case SpecialType.System_UInt16:
+                case SpecialType.System_Int32:
+                case SpecialType.System_UInt32:
+                case SpecialType.System_Int64:
+                case SpecialType.System_UInt64:
+                case SpecialType.System_Decimal:
+                case SpecialType.System_Single:
+                case SpecialType.System_Double:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private static bool IsInvalidation(IMethodSymbol method)

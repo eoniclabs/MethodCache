@@ -62,8 +62,14 @@ read before and after it. ([Entity Framework Core](features/entity-framework-cor
 **My endpoint writes with `ExecuteUpdateAsync`. Why the warning MC0027?**
 It changes rows of a type you map with `ef.Entity<T>(...)` without EF Core's change tracker, so no entity tags are
 known for them. Inside a transaction, add `db.InvalidateAfterCommit(tag)`; without one, call
-`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless the project
-maps no type at all. ([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless neither the
+project nor a project it references maps a type. ([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**My test project reports MC0027 when it sets up test data. Why?**
+A test project checks its writes against the mapping of the project it tests, so only a write to a table that project
+maps is reported: cached results that read those rows would be stale for the rest of the test. Invalidate the tags,
+or turn the warning off for that line with `#pragma warning disable MC0027` when nothing cached reads the rows.
+([MC0027](user-guide/DIAGNOSTICS.md#mc0027))
 
 **I invalidate through a helper of my own. How do I tell MC0027?**
 Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't

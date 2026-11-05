@@ -4,6 +4,17 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.9 (2026-11-05)
+
+### Changed
+
+- MC0027 in a project that references the one with the `ef.Entity<T>(...)` mapping, such as its tests or a worker,
+  checks writes against that mapping, so a write to a table that nothing caches is no longer reported there. For this,
+  MethodCache writes a project's mapping into its assembly as `AssemblyMetadata` attributes.
+- MC0027 reads constants and numbers interpolated into `ExecuteSqlRaw`, so
+  `$"SELECT pg_advisory_xact_lock({LockId})"` and `$"SET LOCAL lock_timeout = '{waitMs}ms'"` are no longer reported.
+  An interpolated string still is, since it could hold any SQL.
+
 ## 1.0.0-rc.8 (2026-11-05)
 
 ### Added

@@ -130,7 +130,8 @@ builder.Services.AddMethodCache();                               // after your r
   don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
   deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
   on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
-  (MC0027, on mapped types only, and on raw SQL that names a mapped table, runs a procedure or can't be read), call
+  (MC0027, on mapped types only, also in a project that references the mapping project such as its tests, and on raw
+  SQL that names a mapped table, runs a procedure or can't be read), call
   `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
   invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.

@@ -135,7 +135,8 @@ builder.Services.AddMethodCache();                               // after your r
   don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
   deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
   on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
-  (MC0027, on mapped types only, and on raw SQL that names a mapped table, runs a procedure or can't be read), call
+  (MC0027, on mapped types only, also in a project that references the mapping project such as its tests, and on raw
+  SQL that names a mapped table, runs a procedure or can't be read), call
   `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
   invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.
@@ -408,8 +409,14 @@ read before and after it. ([Entity Framework Core](https://github.com/eoniclabs/
 **My endpoint writes with `ExecuteUpdateAsync`. Why the warning MC0027?**
 It changes rows of a type you map with `ef.Entity<T>(...)` without EF Core's change tracker, so no entity tags are
 known for them. Inside a transaction, add `db.InvalidateAfterCommit(tag)`; without one, call
-`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless the project
-maps no type at all. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+`ICacheManager.InvalidateTagAsync` after the write. Writes to types you don't map aren't reported, unless neither the
+project nor a project it references maps a type. ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
+
+**My test project reports MC0027 when it sets up test data. Why?**
+A test project checks its writes against the mapping of the project it tests, so only a write to a table that project
+maps is reported: cached results that read those rows would be stale for the rest of the test. Invalidate the tags,
+or turn the warning off for that line with `#pragma warning disable MC0027` when nothing cached reads the rows.
+([MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027))
 
 **I invalidate through a helper of my own. How do I tell MC0027?**
 Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't
@@ -1370,12 +1377,13 @@ doesn't invalidate anything:
 
 - `ExecuteUpdate` and `ExecuteDelete` on a type the project maps with `Entity<T>(...)`, or on a type it derives from
   or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
-  tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
-  data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
+  tables that nothing caches, such as refresh tokens, aren't reported. A project that references the one with the
+  mapping, such as its tests, uses that mapping too. In a project that sees no mapping, such as a data layer that the
+  startup project references, every `ExecuteUpdate` and `ExecuteDelete` is reported.
 - `Database.ExecuteSql…` when the SQL names the table of a mapped type, runs code (`call`, `exec`, `do`), or can't be
-  read, such as SQL in a variable. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
+  read, such as SQL in a variable or a string interpolated into `ExecuteSqlRaw`. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
   any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
-  `set` a session setting never count. In a project that maps no type, all other raw SQL is reported.
+  `set` a session setting never count. In a project that sees no mapping, all other raw SQL is reported.
 - A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
   ([MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
 
@@ -3711,15 +3719,19 @@ results that read those rows stay until they expire.
 
 - `ExecuteUpdate` and `ExecuteDelete` are reported on the entity types that the project maps with
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
-  for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
-  type is reported.
+  for `ExecuteDelete` alone. A project that references the one with the mapping, such as its tests or a worker,
+  checks its writes against that mapping too: MethodCache writes the mapping into the assembly as `AssemblyMetadata`
+  attributes. When neither the project nor a project it references maps a type, as in a data layer that the startup
+  project references, every type is reported.
 - Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
-  can't be read: SQL in a variable, or with values interpolated into `ExecuteSqlRaw`. A table is known by its class
-  name, the name of its `DbSet` and a name given with `ToTable` or `[Table]`, compared without case and underscores and
-  with or without a plural ending, so `ai_model_prices` matches `AiModelPrice`. A table renamed in another project
-  isn't recognized. When the project maps no type, all raw SQL is reported.
+  can't be read: SQL in a variable, or `ExecuteSqlRaw` with an interpolated value that is neither a constant nor a
+  number, such as a string, which could hold any SQL. A table is known by its class name, the name of its `DbSet` and
+  a name given with `ToTable` or `[Table]`, compared without case and underscores and with or without a plural ending,
+  so `ai_model_prices` matches `AiModelPrice`. A name given with `ToTable` in a project that maps no type isn't
+  recognized. When no mapping is visible, all raw SQL is reported.
 - Statements that only `select`, such as `select pg_advisory_xact_lock(...)`, or `set` a session setting, such as
-  `SET LOCAL lock_timeout = '5s'`, are never reported.
+  `SET LOCAL lock_timeout = '5s'`, are never reported. That holds for `ExecuteSqlRaw` with interpolated constants and
+  numbers too, such as `$"SET LOCAL lock_timeout = '{waitMs}ms'"` with an `int`.
 
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
@@ -4867,6 +4879,17 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.9 (2026-11-05)
+
+### Changed
+
+- MC0027 in a project that references the one with the `ef.Entity<T>(...)` mapping, such as its tests or a worker,
+  checks writes against that mapping, so a write to a table that nothing caches is no longer reported there. For this,
+  MethodCache writes a project's mapping into its assembly as `AssemblyMetadata` attributes.
+- MC0027 reads constants and numbers interpolated into `ExecuteSqlRaw`, so
+  `$"SELECT pg_advisory_xact_lock({LockId})"` and `$"SET LOCAL lock_timeout = '{waitMs}ms'"` are no longer reported.
+  An interpolated string still is, since it could hold any SQL.
 
 ## 1.0.0-rc.8 (2026-11-05)
 

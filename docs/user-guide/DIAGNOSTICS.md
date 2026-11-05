@@ -306,15 +306,19 @@ results that read those rows stay until they expire.
 
 - `ExecuteUpdate` and `ExecuteDelete` are reported on the entity types that the project maps with
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
-  for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
-  type is reported.
+  for `ExecuteDelete` alone. A project that references the one with the mapping, such as its tests or a worker,
+  checks its writes against that mapping too: MethodCache writes the mapping into the assembly as `AssemblyMetadata`
+  attributes. When neither the project nor a project it references maps a type, as in a data layer that the startup
+  project references, every type is reported.
 - Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
-  can't be read: SQL in a variable, or with values interpolated into `ExecuteSqlRaw`. A table is known by its class
-  name, the name of its `DbSet` and a name given with `ToTable` or `[Table]`, compared without case and underscores and
-  with or without a plural ending, so `ai_model_prices` matches `AiModelPrice`. A table renamed in another project
-  isn't recognized. When the project maps no type, all raw SQL is reported.
+  can't be read: SQL in a variable, or `ExecuteSqlRaw` with an interpolated value that is neither a constant nor a
+  number, such as a string, which could hold any SQL. A table is known by its class name, the name of its `DbSet` and
+  a name given with `ToTable` or `[Table]`, compared without case and underscores and with or without a plural ending,
+  so `ai_model_prices` matches `AiModelPrice`. A name given with `ToTable` in a project that maps no type isn't
+  recognized. When no mapping is visible, all raw SQL is reported.
 - Statements that only `select`, such as `select pg_advisory_xact_lock(...)`, or `set` a session setting, such as
-  `SET LOCAL lock_timeout = '5s'`, are never reported.
+  `SET LOCAL lock_timeout = '5s'`, are never reported. That holds for `ExecuteSqlRaw` with interpolated constants and
+  numbers too, such as `$"SET LOCAL lock_timeout = '{waitMs}ms'"` with an `int`.
 
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
