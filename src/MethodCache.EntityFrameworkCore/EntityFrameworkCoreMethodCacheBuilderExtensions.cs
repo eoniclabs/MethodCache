@@ -49,6 +49,8 @@ public static class EntityFrameworkCoreMethodCacheBuilderExtensions
                 ((IDbContextOptionsBuilderInfrastructure)db).AddOrUpdateExtension(MethodCacheOptionsExtension.Instance);
             });
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, EntityTagValidator<TContext>>());
+            services.TryAddSingleton(static sp => new EntityTagMapping<TContext>(
+                sp.GetRequiredService<EntityFrameworkCoreRegistration<TContext>>().Options));
         }
         configure?.Invoke(options.Options);
         return builder;

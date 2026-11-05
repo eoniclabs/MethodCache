@@ -366,7 +366,8 @@ These invalidations count, wherever they are in the project:
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
-projects aren't seen.
+projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
+([Testing](../features/testing.md#every-tag-has-an-invalidation)).
 
 Invalidate the tag where the data changes ([Invalidation](../features/invalidation.md)). When another project
 invalidates it, such as a worker that writes the data, turn the warning off for that tag:

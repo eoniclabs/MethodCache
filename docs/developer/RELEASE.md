@@ -19,7 +19,7 @@ How to check, tag and publish a release. Releases go to nuget.org, and each one 
 
 ### The packages
 
-- [ ] `build/ci/linux.sh build packages` (it packs them first): all nine packages install and work in a fresh app,
+- [ ] `build/ci/linux.sh build packages` (it packs them first): all ten packages install and work in a fresh app,
   with the supported .NET 10 SDK and runtime.
 - [ ] The version is right for the change (`release.sh` sets it in `version.json`): a breaking change after 1.0
   needs a new major version.
@@ -84,11 +84,11 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
    build/ci/publish.sh v1.0.0
    ```
 
-   It refuses a tag whose `MethodCache CI` status is not green. It packs the 9 packages from a fresh clone of the tag
+   It refuses a tag whose `MethodCache CI` status is not green. It packs the 10 packages from a fresh clone of the tag
    and pushes them and their symbol packages to nuget.org using BWS (see the configuration below).
    Running it again is safe: versions already published are skipped
    (`./release.sh --retry <version>` prints the command again).
-3. **Check all nine packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
+3. **Check all ten packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
    symbols. Do this for `rc.1` before advancing the release. Verify symbol-server retrieval of the portable
    PDBs; an accepted upload alone does not prove symbol indexing succeeded.
 4. **Write the GitHub release** for the tag, with the version's section from [CHANGELOG.md](../../CHANGELOG.md).
@@ -107,7 +107,7 @@ published nothing; it refuses once a package is on nuget.org, where versions can
 ### NuGet credentials and symbols
 
 `build/ci/publish.sh v1.0.0` publishes to nuget.org (`--nuget` is still accepted). It checks the
-`MethodCache CI` status, nine package versions and their nine `.snupkg` companions, then retrieves `METHODCACHE_NUGET_ORG_API_KEY` from
+`MethodCache CI` status, ten package versions and their ten `.snupkg` companions, then retrieves `METHODCACHE_NUGET_ORG_API_KEY` from
 Bitwarden Secrets Manager (BWS) and pushes to `https://api.nuget.org/v3/index.json` with `--skip-duplicate`.
 
 Configure `METHODCACHE_NUGET_SECRET_ID` with the BWS secret UUID, or put that UUID alone in
@@ -137,7 +137,7 @@ directly to BWS through the web app or SDK, update the secret reference, and ver
 the previous key. Never paste a token into logs, shell arguments, or Git. A future migration to Trusted
 Publishing can remove recurring key rotation when the publishing platform supports it.
 
-After uploading, check all nine packages, their versions and their `eoniclabs` ownership on nuget.org once
+After uploading, check all ten packages, their versions and their `eoniclabs` ownership on nuget.org once
 indexing completes; `./release.sh --status <version>` lists which ones nuget.org has.
 
 For this destination, missing `bws` or `jq` produces a named prerequisite error. An old SDK or

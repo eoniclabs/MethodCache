@@ -40,6 +40,16 @@ internal static class TelemetryAttributes
     internal const string ErrorType = "error.type";
 }
 
+/// <summary>
+/// Told what the cache did, for MethodCache.Testing's recorder: a load is a run of the cached method, an invalidation the
+/// keys or tags removed on this instance. Called on the thread that did it, so it must be quick and thread-safe.
+/// </summary>
+internal interface ICacheEventSink
+{
+    void Loaded(string key);
+    void Invalidated(bool tags, IReadOnlyList<string> targets);
+}
+
 // One instance per container. The container's IMeterFactory owns the meter; this service owns its source and callbacks.
 internal sealed class CoreTelemetry : IDisposable
 {
@@ -51,6 +61,7 @@ internal sealed class CoreTelemetry : IDisposable
     private readonly bool _recordKeys;
     private readonly bool _hashKeys;
     private readonly bool _recordTags;
+    private readonly ICacheEventSink? _events;
     private Func<CacheObservation>? _observeMethods;
     private Func<CacheObservation>? _observeHttp;
     private Func<InvalidationQueues>? _observeQueues;
@@ -72,9 +83,11 @@ internal sealed class CoreTelemetry : IDisposable
     }
     internal ActivitySource Source { get; }
 
-    internal CoreTelemetry(IMeterFactory factory, IOptions<MethodCacheTelemetryOptions> options, TimeProvider? time = null)
+    internal CoreTelemetry(IMeterFactory factory, IOptions<MethodCacheTelemetryOptions> options, TimeProvider? time = null,
+        ICacheEventSink? events = null)
     {
         _time = time ?? TimeProvider.System;
+        _events = events;
         var configured = options.Value;
         _recordKeys = configured.RecordCacheKeys;
         _hashKeys = configured.HashCacheKeys;
@@ -126,7 +139,7 @@ internal sealed class CoreTelemetry : IDisposable
     }
 
     internal bool RequestsEnabled => _requests.Enabled;
-    internal bool Enabled => _requests.Enabled || _loads.Enabled || Source.HasListeners();
+    internal bool Enabled => _events != null || _requests.Enabled || _loads.Enabled || Source.HasListeners();
 
     internal async Task<T> OriginAsync<T>(string name, string key, IReadOnlyCollection<string>? tags, Func<Task<T>> factory)
     {
@@ -210,6 +223,12 @@ internal sealed class CoreTelemetry : IDisposable
         else _requests.Add(1, kindTag, subject, resultTag);
     }
 
+    /// <summary>Keys or tags removed on this instance, for the event sink; <paramref name="targets"/> are distinct.</summary>
+    internal void Invalidated(bool tags, IReadOnlyList<string> targets)
+    {
+        if (targets.Count != 0) _events?.Invalidated(tags, targets);
+    }
+
     internal void Invalidations(string type, string stage, long targets)
     {
         if (targets != 0 && _invalidations.Enabled)
@@ -218,6 +237,7 @@ internal sealed class CoreTelemetry : IDisposable
 
     internal TelemetryOperation? BeginLoad(string kind, string name, string? key = null, IReadOnlyCollection<string>? tags = null)
     {
+        if (_events != null && key != null && kind == "method") _events.Loaded(key);
         if (!_loads.Enabled && !Source.HasListeners()) return null;
         var (kindTag, subject) = Describe(kind, name);
         var activity = Source.StartActivity("MethodCache.load", ActivityKind.Internal);

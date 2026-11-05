@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using MethodCache.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -33,7 +34,7 @@ namespace MethodCache.Analyzers
             customTags: WellKnownDiagnosticTags.CompilationEnd);
 
         /// <summary>Stands for a placeholder or an interpolated value: any text.</summary>
-        private const char Any = '\0';
+        private const char Any = TagPattern.Any;
 
         /// <inheritdoc />
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -92,7 +93,7 @@ namespace MethodCache.Analyzers
                 }
                 else if (type.Name == "CacheInvalidateAttribute")
                 {
-                    found.Invalidation(values.Where(v => v != null).Select(v => Template(v!)));
+                    found.Invalidation(values.Where(v => v != null).Select(v => TagPattern.Of(v!)));
                 }
             }
         }
@@ -119,7 +120,7 @@ namespace MethodCache.Analyzers
                 var tags = invalidate?.NamedArguments.FirstOrDefault(a => a.Key == "Tags").Value;
                 if (tags is { Kind: TypedConstantKind.Array, IsNull: false } array)
                 {
-                    found.Invalidation(array.Values.Select(v => v.Value as string).Where(v => v != null).Select(v => Template(v!)));
+                    found.Invalidation(array.Values.Select(v => v.Value as string).Where(v => v != null).Select(v => TagPattern.Of(v!)));
                     return;
                 }
             }
@@ -148,8 +149,8 @@ namespace MethodCache.Analyzers
             var patterns = found.Patterns.Distinct().ToArray();
             foreach (var (template, location, method) in found.Tags)
             {
-                var tag = Template(template);
-                if (patterns.Any(pattern => Overlaps(tag, pattern))) continue;
+                var tag = TagPattern.Of(template);
+                if (patterns.Any(pattern => TagPattern.Overlaps(tag, pattern))) continue;
                 context.ReportDiagnostic(Diagnostic.Create(Rule, location, template, method));
             }
         }
@@ -170,7 +171,7 @@ namespace MethodCache.Analyzers
                 case null:
                     return;
                 case { ConstantValue: { HasValue: true, Value: string text } }:
-                    tags.Add(template ? Template(text) : text.Replace(Any, ' '));
+                    tags.Add(template ? TagPattern.Of(text) : text.Replace(Any, ' '));
                     return;
                 case IInterpolatedStringOperation interpolated:
                     var pattern = new StringBuilder();
@@ -183,7 +184,7 @@ namespace MethodCache.Analyzers
                     return;
                 case IInvocationOperation { TargetMethod.Name: "Tag" } call when IsKeys(call.TargetMethod.ContainingType):
                     var templateArgument = call.Arguments.FirstOrDefault(a => a.Parameter?.Name == "template")?.Value;
-                    if (templateArgument?.ConstantValue is { HasValue: true, Value: string tagTemplate }) tags.Add(Template(tagTemplate));
+                    if (templateArgument?.ConstantValue is { HasValue: true, Value: string tagTemplate }) tags.Add(TagPattern.Of(tagTemplate));
                     return;
                 case IArrayCreationOperation array when array.Initializer != null:
                     foreach (var element in array.Initializer.ElementValues) Collect(element, template, tags);
@@ -204,43 +205,6 @@ namespace MethodCache.Analyzers
 
         private static bool IsMethodCacheType(INamedTypeSymbol type, string name)
             => type.Name == name && type.ContainingNamespace is { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true };
-
-        /// <summary>A tag template with each <c>{placeholder}</c> standing for any text.</summary>
-        internal static string Template(string template)
-        {
-            var pattern = new StringBuilder(template.Length);
-            for (var i = 0; i < template.Length; i++)
-            {
-                var end = template[i] == '{' ? template.IndexOf('}', i + 1) : -1;
-                if (end < 0)
-                {
-                    pattern.Append(template[i] == Any ? ' ' : template[i]);
-                    continue;
-                }
-                pattern.Append(Any);
-                i = end;
-            }
-            return pattern.ToString();
-        }
-
-        /// <summary>Whether some tag matches both patterns, where <see cref="Any"/> matches any text, also none.</summary>
-        internal static bool Overlaps(string a, string b)
-        {
-            var known = new bool?[a.Length + 1, b.Length + 1];
-            return Match(0, 0);
-
-            bool Match(int i, int j)
-            {
-                if (known[i, j] is { } answer) return answer;
-                bool result;
-                if (i == a.Length && j == b.Length) result = true;
-                else if (i < a.Length && a[i] == Any) result = Match(i + 1, j) || (j < b.Length && Match(i, j + 1));
-                else if (j < b.Length && b[j] == Any) result = Match(i, j + 1) || (i < a.Length && Match(i + 1, j));
-                else result = i < a.Length && j < b.Length && a[i] == b[j] && Match(i + 1, j + 1);
-                known[i, j] = result;
-                return result;
-            }
-        }
 
         /// <summary>The tag expressions in <c>Tags = [...]</c>, in the order of the attribute's values.</summary>
         private static IReadOnlyList<SyntaxNode> TagElements(AttributeData attribute, CancellationToken cancellationToken)

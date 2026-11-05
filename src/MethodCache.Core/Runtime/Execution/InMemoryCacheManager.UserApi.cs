@@ -116,6 +116,7 @@ internal partial class InMemoryCacheManager
             if (tags) RemoveLocalTag(target);
             else RemoveLocal(target);
         }
+        _telemetry?.Invalidated(tags, validated);
         _telemetry?.Invalidations(tags ? "tag" : "key", "local", validated.Length);
         // Once local mutation occurs, storage recovery is owned by the cache, not the caller's token.
         if (_distributed == null) return new(new InvalidationResult { Requested = validated.Length, Local = validated.Length });

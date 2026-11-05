@@ -35,7 +35,7 @@ rules, for when a guide isn't enough.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
-- [Testing](features/testing.md): test with caching on, or turn it off.
+- [Testing](features/testing.md): test with caching on or off, count loads and invalidations, and check that every tag has an invalidation.
 - [Security](security.md): what each package protects against, and what it leaves to you.
 
 ## Reference
@@ -62,7 +62,7 @@ rules, for when a guide isn't enough.
 [Redis](../src/MethodCache.Redis/README.md), [SQL Server](../src/MethodCache.SqlServer/README.md),
 [PostgreSQL](../src/MethodCache.PostgreSql/README.md), [ASP.NET Core](../src/MethodCache.AspNetCore/README.md), [OpenTelemetry](../src/MethodCache.OpenTelemetry/README.md),
 [HTTP caching](../src/MethodCache.HttpCaching/README.md), [MessagePack](../src/MethodCache.Serialization.MessagePack/README.md),
-[Entity Framework Core](../src/MethodCache.EntityFrameworkCore/README.md).
+[Entity Framework Core](../src/MethodCache.EntityFrameworkCore/README.md), [Testing](../src/MethodCache.Testing/README.md).
 [Benchmarks](benchmarks.md) has the measured performance, and the [changelog](../CHANGELOG.md) lists what changes
 between releases.
 

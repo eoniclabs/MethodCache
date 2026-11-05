@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 ADDONS = ("MethodCache.Redis", "MethodCache.SqlServer", "MethodCache.PostgreSql", "MethodCache.Serialization.MessagePack",
-          "MethodCache.AspNetCore", "MethodCache.OpenTelemetry", "MethodCache.HttpCaching", "MethodCache.EntityFrameworkCore")
+          "MethodCache.AspNetCore", "MethodCache.OpenTelemetry", "MethodCache.HttpCaching", "MethodCache.EntityFrameworkCore", "MethodCache.Testing")
 
 
 def verify(folder: Path) -> None:

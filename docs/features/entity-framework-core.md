@@ -318,5 +318,20 @@ then is read once when it is saved, as a row changed without loading is, if its 
 ## Testing
 
 Use SQLite in memory, or your real database, with the same registration. A test that writes to the database without
-EF Core needs its own invalidation ([Testing](testing.md#when-a-test-writes-to-the-database-directly)), and a test that
-proves a read is cached needs a write that doesn't invalidate ([Proving that a result is cached](testing.md#proving-that-a-result-is-cached)).
+EF Core needs its own invalidation ([Testing](testing.md#when-a-test-writes-to-the-database-directly)). With
+`MethodCache.Testing`, `recorder.Loads` proves a read is cached and `recorder.InvalidatedTags` lists the tags a save
+invalidated ([Counting loads and invalidations](testing.md#counting-loads-and-invalidations)).
+
+`EntityTagMapping<TContext>` lists what the mapping holds. A test can check that every tag of a cached method is mapped
+or has another invalidation:
+
+<!-- snippet: efcore-tag-coverage -->
+```cs
+var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
+var entities = mapping.Entities;
+
+// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+```
+<!-- endSnippet -->

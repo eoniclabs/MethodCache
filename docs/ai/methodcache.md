@@ -106,6 +106,11 @@ builder.Services.AddMethodCache();                               // after your r
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache`) after `AddMethodCache()` to turn method caching
   off. When a test writes to the database directly, call `ICacheAdministrator.ClearAsync()` after the write.
+- To test the caching itself, use the `MethodCache.Testing` package: `services.AddMethodCacheTesting()` registers a
+  `FakeTimeProvider` and a `CacheRecorder`. `recorder.Loads<IService>(s => s.GetAsync(42))` counts the runs of that
+  call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
+  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` checks that every tag
+  has an invalidation. With EF Core, pass `EntityTagMapping<TContext>.AllTags` in `alsoInvalidatedBy`.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -159,7 +164,7 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
 - `http-caching.md`: caching `HttpClient` responses.
 - `monitoring.md`: metrics, activities, the admin endpoints.
-- `testing.md`: tests with and without caching, time.
+- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
 - `source-generator.md`: what the generated decorator does.
 

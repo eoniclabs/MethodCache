@@ -111,6 +111,11 @@ builder.Services.AddMethodCache();                               // after your r
 - Fix MethodCache's `MC` build diagnostics; each links to its explanation, and many have a code fix.
 - In tests, register `NoOpCacheManager` (namespace `MethodCache`) after `AddMethodCache()` to turn method caching
   off. When a test writes to the database directly, call `ICacheAdministrator.ClearAsync()` after the write.
+- To test the caching itself, use the `MethodCache.Testing` package: `services.AddMethodCacheTesting()` registers a
+  `FakeTimeProvider` and a `CacheRecorder`. `recorder.Loads<IService>(s => s.GetAsync(42))` counts the runs of that
+  call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
+  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` checks that every tag
+  has an invalidation. With EF Core, pass `EntityTagMapping<TContext>.AllTags` in `alsoInvalidatedBy`.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -164,7 +169,7 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
 - `http-caching.md`: caching `HttpClient` responses.
 - `monitoring.md`: metrics, activities, the admin endpoints.
-- `testing.md`: tests with and without caching, time.
+- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
 - `source-generator.md`: what the generated decorator does.
 
@@ -578,12 +583,21 @@ Register `NoOpCacheManager` after `AddMethodCache()`. ([Testing](https://github.
 Call `ICacheAdministrator.ClearAsync()` after the write, or invalidate the affected tag with `IMethodCacheKeys.Tag`.
 ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly))
 
+**How do I count how often my implementation ran, or see what was invalidated?**
+Add `MethodCache.Testing` and call `services.AddMethodCacheTesting()`. `CacheRecorder.Loads<T>(call)` counts the runs of
+one call and `InvalidatedTags` lists the invalidated tags. ([Counting loads and invalidations](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#counting-loads-and-invalidations))
+
 **My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
-The save invalidates, so the read is fresh either way. Count the calls that reach your implementation, or change the
-row with SQL or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
+The save invalidates, so the read is fresh either way. Count the runs with `recorder.Loads`, or change the row with SQL
+or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
+
+**How do I check that every cache tag is invalidated somewhere?**
+`Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` from `MethodCache.Testing`, with the tags
+your code invalidates by hand and, with EF Core, `EntityTagMapping<TContext>.AllTags`. Analyzer MC0028 checks one project
+while you build. ([Every tag has an invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**
-Register a fake `TimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
+Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
 
 ## Coding agents
 
@@ -1479,8 +1493,21 @@ then is read once when it is saved, as a row changed without loading is, if its 
 ## Testing
 
 Use SQLite in memory, or your real database, with the same registration. A test that writes to the database without
-EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)), and a test that
-proves a read is cached needs a write that doesn't invalidate ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached)).
+EF Core needs its own invalidation ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#when-a-test-writes-to-the-database-directly)). With
+`MethodCache.Testing`, `recorder.Loads` proves a read is cached and `recorder.InvalidatedTags` lists the tags a save
+invalidated ([Counting loads and invalidations](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#counting-loads-and-invalidations)).
+
+`EntityTagMapping<TContext>` lists what the mapping holds. A test can check that every tag of a cached method is mapped
+or has another invalidation:
+
+```cs
+var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
+var entities = mapping.Entities;
+
+// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+```
 
 
 ---
@@ -2783,6 +2810,43 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
+## Counting loads and invalidations
+
+The `MethodCache.Testing` package records what the cache does. Add it to the test project at the same version as
+`MethodCache`, and call `AddMethodCacheTesting()`: it registers a `CacheRecorder` and a `FakeTimeProvider` as the
+container's clock.
+
+```cs
+var services = new ServiceCollection();
+services.AddSingleton<Database>();
+services.AddScoped<IProductService, ProductService>();
+services.AddMethodCache();
+services.AddMethodCacheTesting();   // a fake clock and a recorder
+await using var provider = services.BuildServiceProvider();
+var recorder = provider.GetRequiredService<CacheRecorder>();
+var time = provider.GetRequiredService<FakeTimeProvider>();
+var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProductService>();
+
+await products.GetAsync(42);
+await products.GetAsync(42);
+Assert.Equal(1, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));   // the second call was a hit
+
+await products.UpdateAsync(42, new Product(42, "Green tea", 5m));
+Assert.Contains("product:42", recorder.InvalidatedTags);
+await products.GetAsync(42);
+Assert.Equal(2, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));
+
+time.Advance(TimeSpan.FromMinutes(11));   // past the Duration of 10 minutes
+await products.GetAsync(42);
+Assert.Equal(3, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));
+```
+
+`Loads` counts how many times one call, with these arguments, ran your implementation: its misses, refreshes and
+reloads after an invalidation. `InvalidatedTags` and `InvalidatedKeys` list what was invalidated, in order, by
+`[CacheInvalidate]` methods, `ICacheManager` calls and `MethodCache.EntityFrameworkCore`. `Clear()` forgets what the
+test's setup recorded. The recorder sees the built-in cache manager only: with `NoOpCacheManager` or your own
+`ICacheManager`, it records nothing.
+
 ## When a test writes to the database directly
 
 A test that changes data without going through a `[CacheInvalidate]` method, such as seeding rows or calling a
@@ -2807,9 +2871,37 @@ own (a new service provider, or its own `KeyPrefix`) when tests run in parallel 
 
 A test that changes a row and reads it again proves caching only when the change doesn't invalidate. With
 `MethodCache.EntityFrameworkCore`, a save through the connected context invalidates, so the second read is fresh
-whether or not it is cached. Count the calls that reach your implementation instead, or change the row past
-MethodCache: with SQL, or through a context type that isn't connected to MethodCache, over the same database. With
-EF Core's in-memory provider, give both contexts the same `InMemoryDatabaseRoot`.
+whether or not it is cached. Count the runs of your implementation with `recorder.Loads` instead, as above. To test
+the stale value itself, change the row past MethodCache: with SQL, or through a context type that isn't connected to
+MethodCache, over the same database. With EF Core's in-memory provider, give both contexts the same
+`InMemoryDatabaseRoot`.
+
+## Every tag has an invalidation
+
+A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the
+cached methods, from attributes, startup code and configuration, that no `[CacheInvalidate]` method of a registered
+service invalidates. Name the tags your code invalidates in other ways, such as with `InvalidateTagAsync` or in
+another application:
+
+```cs
+// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+```
+
+A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
+`MethodCache.EntityFrameworkCore`, pass the tags of the mapping:
+
+```cs
+var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
+var entities = mapping.Entities;
+
+// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+```
+
+Analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
+check sees the whole application, including the tags in configuration.
 
 ## Turning method caching off
 
@@ -2838,7 +2930,8 @@ with `AddHttpCaching` are still cached.
 
 > [!TIP]
 > The cache reads the time from the `TimeProvider` registered in the container, if there is one. Register a fake
-> `TimeProvider`, for example from `Microsoft.Extensions.TimeProvider.Testing`, to test expiration without waiting.
+> `TimeProvider`, such as the `FakeTimeProvider` that `AddMethodCacheTesting()` registers, to test expiration without
+> waiting.
 > This includes the background cleanup of the memory cache and, with `MethodCache.HttpCaching`, response freshness,
 > eviction and the background revalidation timeout.
 
@@ -3659,7 +3752,8 @@ These invalidations count, wherever they are in the project:
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
-projects aren't seen.
+projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation)).
 
 Invalidate the tag where the data changes ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)). When another project
 invalidates it, such as a worker that writes the data, turn the warning off for that tag:
@@ -4660,6 +4754,86 @@ With row-level security, cached reads need a context of their own: see
 
 ---
 
+<!-- source: src/MethodCache.Testing/README.md -->
+
+# MethodCache.Testing
+
+Helpers for tests of the caching itself: a fake clock, a recorder that counts how often your implementation ran and
+what was invalidated, and a check that every cache tag has something that invalidates it.
+
+Install it in the test project, at the same version as `MethodCache`.
+
+```bash
+dotnet add package MethodCache.Testing
+```
+
+## Recorder and fake clock
+
+`AddMethodCacheTesting()` registers a `FakeTimeProvider` as the container's `TimeProvider` and a `CacheRecorder`.
+Build the provider as the application does and resolve both:
+
+```cs
+var services = new ServiceCollection();
+services.AddSingleton<Database>();
+services.AddScoped<IProductService, ProductService>();
+services.AddMethodCache();
+services.AddMethodCacheTesting();   // a fake clock and a recorder
+await using var provider = services.BuildServiceProvider();
+var recorder = provider.GetRequiredService<CacheRecorder>();
+var time = provider.GetRequiredService<FakeTimeProvider>();
+var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProductService>();
+
+await products.GetAsync(42);
+await products.GetAsync(42);
+Assert.Equal(1, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));   // the second call was a hit
+
+await products.UpdateAsync(42, new Product(42, "Green tea", 5m));
+Assert.Contains("product:42", recorder.InvalidatedTags);
+await products.GetAsync(42);
+Assert.Equal(2, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));
+
+time.Advance(TimeSpan.FromMinutes(11));   // past the Duration of 10 minutes
+await products.GetAsync(42);
+Assert.Equal(3, recorder.Loads<IProductService>(p => p.GetAsync(42, default)));
+```
+
+`Loads` counts the runs of one call, with its arguments; a hit doesn't count. `InvalidatedTags` and
+`InvalidatedKeys` list what `[CacheInvalidate]` methods, `ICacheManager` calls and MethodCache.EntityFrameworkCore
+invalidated, in order. `Clear()` forgets what a test's setup recorded. The clock starts at 2000-01-01 and only moves
+when the test advances it, so nothing expires on its own.
+
+The recorder sees the built-in cache manager: with `NoOpCacheManager` or your own `ICacheManager` it records nothing.
+
+## Every tag has an invalidation
+
+`TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
+that no `[CacheInvalidate]` method of a registered service invalidates. Name the tags your code invalidates in other
+ways, such as with `InvalidateTagAsync`:
+
+```cs
+// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+```
+
+A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
+MethodCache.EntityFrameworkCore, pass the mapping's tags:
+
+```cs
+var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
+// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
+var entities = mapping.Entities;
+
+// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
+Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
+```
+
+Analyzer MC0028 checks the same within one project while you build; this check sees the whole application.
+
+See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md) for more.
+
+
+---
+
 <!-- source: CHANGELOG.md -->
 
 # Changelog
@@ -4692,6 +4866,13 @@ release.
   entity mapping, `InvalidateTagAsync`, `InvalidateAfterCommit` or `[InvalidatesCache]` call names it. A placeholder
   matches any value. A project that invalidates nothing, such as a library of cached interfaces, isn't reported; a tag
   another project invalidates is suppressed with a `#pragma`.
+- The `MethodCache.Testing` package, for tests of the caching itself. `services.AddMethodCacheTesting()` registers a
+  `FakeTimeProvider` as the container's clock and a `CacheRecorder`: `Loads<T>(call)` counts how many times a call ran
+  your implementation, and `InvalidatedTags` and `InvalidatedKeys` list what was invalidated.
+  `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy)` lists the tags of cached methods, also from configuration,
+  that no `[CacheInvalidate]` method or listed tag covers, across the whole application.
+- `EntityTagMapping<TContext>` in `MethodCache.EntityFrameworkCore` lists the mapped entity types with their tags, and
+  `AllTags` every tag of the mapping, such as for `TagCoverage`.
 
 ### Documentation
 
