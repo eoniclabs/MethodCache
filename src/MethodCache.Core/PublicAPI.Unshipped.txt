@@ -16,6 +16,8 @@ MethodCache.CacheAttribute.FailSafeTimeout.get -> string?
 MethodCache.CacheAttribute.FailSafeTimeout.set -> void
 MethodCache.CacheAttribute.Group.get -> string?
 MethodCache.CacheAttribute.Group.set -> void
+MethodCache.CacheAttribute.InvalidatedElsewhere.get -> string![]?
+MethodCache.CacheAttribute.InvalidatedElsewhere.set -> void
 MethodCache.CacheAttribute.RefreshAhead.get -> string?
 MethodCache.CacheAttribute.RefreshAhead.set -> void
 MethodCache.CacheAttribute.SlidingExpiration.get -> string?

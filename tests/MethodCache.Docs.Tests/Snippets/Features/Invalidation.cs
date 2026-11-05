@@ -23,6 +23,18 @@ namespace Docs.Invalidation
     }
     // end-snippet
 
+    // begin-snippet: invalidation-other-application
+    public interface IRecipeCatalog
+    {
+        // The import worker invalidates "recipes" after each import; this application invalidates "recipe:{id}"
+        [Cache(Duration = "1h", Tags = ["recipes", "recipe:{id}"], InvalidatedElsewhere = ["recipes"])]
+        Task<string> GetAsync(int id);
+
+        [CacheInvalidate(Tags = ["recipe:{id}"])]
+        Task RenameAsync(int id, string name);
+    }
+    // end-snippet
+
     // begin-snippet: invalidation-elsewhere-interface
     public interface IPriceSource
     {

@@ -29,6 +29,20 @@ public class TagCoverageTests
     }
 
     [Fact]
+    public void Uninvalidated_InvalidatedElsewhere_CoversTheTagOnEveryMethod()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddSingleton<IProductWriter, ProductWriter>();
+        services.AddSingleton<IImportedPrices, ImportedPrices>();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        // IImportedPrices marks "prices", which IProducts.PriceAsync has too
+        Assert.Empty(TagCoverage.Uninvalidated(provider));
+    }
+
+    [Fact]
     public void Uninvalidated_ConfiguredTag_IsChecked()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

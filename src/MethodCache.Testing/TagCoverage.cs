@@ -1,4 +1,5 @@
 using System.Reflection;
+using MethodCache.Core.Management;
 using MethodCache.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,28 +11,29 @@ namespace MethodCache.Testing;
 /// </summary>
 /// <example>
 /// <code>
-/// var mapping = provider.GetRequiredService&lt;EntityTagMapping&lt;ShopDb&gt;&gt;();
-/// Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [.. mapping.AllTags, "food-catalog"]));
+/// Assert.Empty(TagCoverage.Uninvalidated(provider));
 /// </code>
 /// </example>
 public static class TagCoverage
 {
     /// <summary>
     /// The tags of the cached methods in <paramref name="provider"/>, from attributes, startup code and configuration,
-    /// that neither a <c>[CacheInvalidate]</c> method of a registered service nor <paramref name="alsoInvalidatedBy"/>
-    /// invalidates. An empty list means every tag is covered.
+    /// that nothing invalidates. A tag is covered by a <c>[CacheInvalidate]</c> method of a registered service, by
+    /// <c>InvalidatedElsewhere</c> on the <c>[Cache]</c> of a registered service, by the entity mapping of
+    /// <c>mc.UseEntityFrameworkCore</c>, or by <paramref name="alsoInvalidatedBy"/>. An empty list means every tag is covered.
     /// </summary>
     /// <param name="provider">The application's service provider, built as in the application.</param>
     /// <param name="alsoInvalidatedBy">
-    /// The tags your code invalidates in ways a container can't see, such as <c>InvalidateTagAsync</c> calls, another
-    /// application's invalidations, and the tags of an Entity Framework Core mapping (<c>EntityTagMapping&lt;TContext&gt;.AllTags</c>).
+    /// The tags your code invalidates in ways a container can't see, such as <c>InvalidateTagAsync</c> calls.
     /// A placeholder matches any value, so <c>"product:{id}"</c> covers <c>"product:{Id}"</c> and <c>"product:42"</c>.
     /// </param>
     /// <returns>Each tag that nothing invalidates, with the method it is on.</returns>
     public static IReadOnlyList<UninvalidatedTag> Uninvalidated(IServiceProvider provider, IEnumerable<string>? alsoInvalidatedBy = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        var covered = InvalidatedByServices(provider).Concat(alsoInvalidatedBy ?? [])
+        var covered = InvalidatedByServices(provider)
+            .Concat(provider.GetServices<IInvalidatedTagSource>().SelectMany(static source => source.InvalidatedTags))
+            .Concat(alsoInvalidatedBy ?? [])
             .Select(TagPattern.Of).Distinct(StringComparer.Ordinal).ToArray();
         var uninvalidated = new List<UninvalidatedTag>();
         foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods().OrderBy(static m => m.MethodId, StringComparer.Ordinal))
@@ -45,13 +47,17 @@ public static class TagCoverage
         return uninvalidated;
     }
 
-    /// <summary>The tags of the <c>[CacheInvalidate]</c> methods on the services registered for caching.</summary>
+    /// <summary>
+    /// The tags of the <c>[CacheInvalidate]</c> methods and the <c>InvalidatedElsewhere</c> tags of the <c>[Cache]</c>
+    /// methods on the services registered for caching.
+    /// </summary>
     private static IEnumerable<string> InvalidatedByServices(IServiceProvider provider)
     {
         var registered = provider.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidation>()?.Accepted ?? [];
         return registered.Select(static descriptor => descriptor.ServiceType).Distinct()
             .SelectMany(static service => service.GetMethods().Concat(service.GetInterfaces().SelectMany(static inherited => inherited.GetMethods())))
-            .SelectMany(static method => method.GetCustomAttribute<CacheInvalidateAttribute>()?.Tags ?? []);
+            .SelectMany(static method => (method.GetCustomAttribute<CacheInvalidateAttribute>()?.Tags ?? [])
+                .Concat(method.GetCustomAttribute<CacheAttribute>()?.InvalidatedElsewhere ?? []));
     }
 }
 

@@ -134,6 +134,23 @@ namespace MethodCache
         public string[]? Tags { get; set; }
 
         /// <summary>
+        /// The tags in <see cref="Tags"/> that another application or process invalidates, such as a worker that imports
+        /// the data. Analyzer MC0028 and <c>TagCoverage</c> in MethodCache.Testing count them as invalidated, on every
+        /// method that has the tag. Caching itself doesn't read this setting.
+        /// </summary>
+        /// <remarks>
+        /// Write each tag as it is written in <see cref="Tags"/>. One that matches none of them is warning MC0029.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // The import worker invalidates "recipes"; this application invalidates "recipe:{id}"
+        /// [Cache(Tags = ["recipes", "recipe:{id}"], InvalidatedElsewhere = ["recipes"])]
+        /// Task&lt;Recipe&gt; GetAsync(int id);
+        /// </code>
+        /// </example>
+        public string[]? InvalidatedElsewhere { get; set; }
+
+        /// <summary>
         /// A version that is part of every key the method produces. Raise it when the cached result's shape changes,
         /// so values cached by the previous version are ignored. An omitted named argument leaves the version unset.
         /// </summary>

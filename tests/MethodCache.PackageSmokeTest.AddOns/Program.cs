@@ -544,8 +544,9 @@ public static class TestingCheck
         provider.GetRequiredService<FakeTimeProvider>().Advance(TimeSpan.FromMinutes(11));
         await ReadAsync();
         if (recorder.Loads<IProductNames>(p => p.GetAsync(1)) != 2) return "advancing the fake clock did not expire the entry";
-        var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
-        var uninvalidated = TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags);
+        if (provider.GetRequiredService<EntityTagMapping<ShopDb>>().AllTags.Count == 0) return "the EF Core mapping lists no tags";
+        // TagCoverage finds the EF Core mapping by itself, across the two packages
+        var uninvalidated = TagCoverage.Uninvalidated(provider);
         return uninvalidated.Count == 0 ? null : "tags reported as uninvalidated: " + string.Join(", ", uninvalidated);
     }
 }

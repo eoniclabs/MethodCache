@@ -36,6 +36,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
+| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
 
 ## MC0001
 
@@ -363,21 +364,35 @@ These invalidations count, wherever they are in the project:
   `WhenDeleted("...")` in `Entity<T>(e => ...)`.
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
   `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
+- A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
 projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
 ([Testing](../features/testing.md#every-tag-has-an-invalidation)).
 
-Invalidate the tag where the data changes ([Invalidation](../features/invalidation.md)). When another project
-invalidates it, such as a worker that writes the data, turn the warning off for that tag:
+Invalidate the tag where the data changes ([Invalidation](../features/invalidation.md)). When another application or
+process invalidates it, such as a worker that writes the data, list it in `InvalidatedElsewhere`
+([In another application](../features/invalidation.md#in-another-application)):
 
 ```cs
-// The import worker invalidates it
-#pragma warning disable MC0028
-[Cache(Duration = "1h", Tags = ["catalog"])]
-#pragma warning restore MC0028
+// The import worker invalidates "catalog"
+[Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalog"])]
 Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
+
+## MC0029
+
+A tag in `InvalidatedElsewhere` on `[Cache]` that matches none of the method's `Tags`, such as a misspelled one. It
+marks nothing on the method, so the real tag still counts as never invalidated.
+
+```cs
+[Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalogue"])]   // MC0029
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+Write the tag as it is written in `Tags`. A placeholder matches any value, so `"recipe:{Id}"` matches
+`"recipe:{id}"`. Not reported when the attribute has no `Tags`, because the method's tags then come from
+configuration.

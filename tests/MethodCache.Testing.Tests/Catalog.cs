@@ -34,3 +34,15 @@ public sealed class ProductWriter : IProductWriter
 {
     public Task RenameAsync(int productId, string name) => Task.CompletedTask;
 }
+
+// The price import invalidates these tags
+public interface IImportedPrices
+{
+    [Cache(Duration = "10m", Tags = ["prices", "price:{id}"], InvalidatedElsewhere = ["prices", "price:{id}"])]
+    Task<decimal> ImportedPriceAsync(int id);
+}
+
+public sealed class ImportedPrices : IImportedPrices
+{
+    public Task<decimal> ImportedPriceAsync(int id) => Task.FromResult(9.5m);
+}

@@ -98,30 +98,21 @@ MethodCache, over the same database. With EF Core's in-memory provider, give bot
 ## Every tag has an invalidation
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the
-cached methods, from attributes, startup code and configuration, that no `[CacheInvalidate]` method of a registered
-service invalidates. Name the tags your code invalidates in other ways, such as with `InvalidateTagAsync` or in
-another application:
+cached methods, from attributes, startup code and configuration, that nothing invalidates. It counts the
+`[CacheInvalidate]` methods of the registered services, the tags marked `InvalidatedElsewhere` on `[Cache]`
+([In another application](invalidation.md#in-another-application)) and the entity mapping of
+[`MethodCache.EntityFrameworkCore`](entity-framework-core.md):
 
 <!-- snippet: testing-tag-coverage -->
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, or is in the list
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 <!-- endSnippet -->
 
-A placeholder matches any value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`. With
-`MethodCache.EntityFrameworkCore`, pass the tags of the mapping:
-
-<!-- snippet: efcore-tag-coverage -->
-```cs
-var mapping = provider.GetRequiredService<EntityTagMapping<ShopDb>>();
-// [(Product, ["product:{Id}", "category:{CategoryId}"], []), (OrderLine, ["top-sellers"], [])]
-var entities = mapping.Entities;
-
-// Every tag of a cached method is mapped, or has a [CacheInvalidate] method
-Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: mapping.AllTags));
-```
-<!-- endSnippet -->
+Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+`TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
+value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.

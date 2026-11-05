@@ -85,7 +85,8 @@ builder.Services.AddMethodCache();                               // after your r
   the method's arguments, and check in the endpoint that the user may read it.
 - Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
-  invalidates. When another project invalidates it, such as a worker, suppress MC0028 for that tag with a `#pragma`.
+  invalidates. When another application invalidates it, such as a worker, list it in
+  `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -109,8 +110,9 @@ builder.Services.AddMethodCache();                               // after your r
 - To test the caching itself, use the `MethodCache.Testing` package: `services.AddMethodCacheTesting()` registers a
   `FakeTimeProvider` and a `CacheRecorder`. `recorder.Loads<IService>(s => s.GetAsync(42))` counts the runs of that
   call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
-  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: [...]))` checks that every tag
-  has an invalidation. With EF Core, pass `EntityTagMapping<TContext>.AllTags` in `alsoInvalidatedBy`.
+  invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
+  counts `[CacheInvalidate]`, `InvalidatedElsewhere` and the EF Core mapping; pass tags invalidated with
+  `InvalidateTagAsync` in `alsoInvalidatedBy`.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:

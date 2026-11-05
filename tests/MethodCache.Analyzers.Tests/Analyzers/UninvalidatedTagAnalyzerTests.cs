@@ -184,6 +184,75 @@ public interface IProducts
             Assert.Empty(await AnalyzeAsync(source));
         }
 
+        [Fact]
+        public async Task A_tag_invalidated_elsewhere_is_covered_on_every_method_that_has_it()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    // The import worker invalidates catalog
+    [Cache(Duration = ""10m"", Tags = [""catalog"", ""product:{id}""], InvalidatedElsewhere = [""catalog""])]
+    Task<Product> GetAsync(int id);
+
+    [Cache(Duration = ""10m"", Tags = [""catalog""])]
+    Task<Product[]> ListAsync();
+
+    [CacheInvalidate(Tags = [""product:{id}""])]
+    Task RenameAsync(int id, string name);
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_tag_invalidated_elsewhere_alone_does_not_make_the_project_one_that_invalidates()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    [Cache(Duration = ""10m"", Tags = [""catalog"", ""product:{id}""], InvalidatedElsewhere = [""catalog""])]
+    Task<Product> GetAsync(int id);
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task An_invalidated_elsewhere_tag_that_the_method_does_not_have_is_reported()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    [Cache(Duration = ""10m"", Tags = [""catalog"", ""product:{id}""], InvalidatedElsewhere = [""catalogue"", ""product:{Id}""])]
+    Task<Product> GetAsync(int id);
+
+    [CacheInvalidate(Tags = [""product:{id}""])]
+    Task RenameAsync(int id, string name);
+}";
+
+            var diagnostics = await AnalyzeAsync(source);
+
+            // The misspelled tag covers nothing on the method, so catalog is still uninvalidated; the placeholder matches
+            var unknown = Assert.Single(diagnostics, d => d.Id == "MC0029");
+            Assert.Contains("\"catalogue\"", unknown.GetMessage());
+            Assert.Equal("\"catalogue\"", unknown.Location.SourceTree!.GetText().ToString(unknown.Location.SourceSpan));
+            Assert.Contains("\"catalog\"", Assert.Single(diagnostics, d => d.Id == "MC0028").GetMessage());
+        }
+
+        [Fact]
+        public async Task Invalidated_elsewhere_without_tags_on_the_attribute_is_not_checked()
+        {
+            // The tags then come from configuration, which the analyzer can't read
+            var source = Usings + @"
+public interface IProducts
+{
+    [Cache(Group = ""catalog"", InvalidatedElsewhere = [""catalog""])]
+    Task<Product> GetAsync(int id);
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
         private static IEnumerable<MetadataReference> References()
         {
             var trusted = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);

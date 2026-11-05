@@ -73,8 +73,8 @@ namespace Docs.Testing
         public static void CheckTags(IServiceProvider provider)
         {
             // begin-snippet: testing-tag-coverage
-            // Every tag of a cached method has a [CacheInvalidate] method, or is in the list
-            Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["food-catalog"]));
+            // Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+            Assert.Empty(TagCoverage.Uninvalidated(provider));
             // end-snippet
         }
 

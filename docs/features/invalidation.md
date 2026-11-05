@@ -141,6 +141,31 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 
+### In another application
+
+When another application or process invalidates a tag, such as a worker that imports the data, list the tag in
+`InvalidatedElsewhere`. Caching works the same; analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) and
+`TagCoverage` ([Testing](testing.md#every-tag-has-an-invalidation)) count the tag as invalidated, on every method that
+has it:
+
+<!-- snippet: invalidation-other-application -->
+```cs
+public interface IRecipeCatalog
+{
+    // The import worker invalidates "recipes" after each import; this application invalidates "recipe:{id}"
+    [Cache(Duration = "1h", Tags = ["recipes", "recipe:{id}"], InvalidatedElsewhere = ["recipes"])]
+    Task<string> GetAsync(int id);
+
+    [CacheInvalidate(Tags = ["recipe:{id}"])]
+    Task RenameAsync(int id, string name);
+}
+```
+<!-- endSnippet -->
+
+Write each tag as it is written in `Tags`; one that matches none of them is warning
+[MC0029](../user-guide/DIAGNOSTICS.md#mc0029). The other application's invalidation reaches this one's memory cache
+only through a shared distributed cache ([With several instances](#with-several-instances)).
+
 ### After a database transaction
 
 With Entity Framework Core, [`MethodCache.EntityFrameworkCore`](entity-framework-core.md) does this for you. With

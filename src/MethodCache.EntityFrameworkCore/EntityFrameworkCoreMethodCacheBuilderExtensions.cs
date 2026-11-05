@@ -51,6 +51,7 @@ public static class EntityFrameworkCoreMethodCacheBuilderExtensions
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, EntityTagValidator<TContext>>());
             services.TryAddSingleton(static sp => new EntityTagMapping<TContext>(
                 sp.GetRequiredService<EntityFrameworkCoreRegistration<TContext>>().Options));
+            services.AddSingleton<MethodCache.Core.Management.IInvalidatedTagSource>(static sp => sp.GetRequiredService<EntityTagMapping<TContext>>());
         }
         configure?.Invoke(options.Options);
         return builder;
