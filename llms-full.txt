@@ -4701,6 +4701,8 @@ release.
 - The PostgreSQL, Redis and SQL Server package READMEs show how to share only invalidations, such as for a worker that
   changes data an API caches. The agent guide lists every feature guide and says when to read it.
 - Testing: how to prove a read is cached when every save invalidates.
+- Monitoring: prometheus-net 8 exports MethodCache's instruments with no setup, and how its names and types differ
+  from OpenTelemetry's Prometheus exporter.
 - Examples use durations with a unit throughout.
 
 ## 1.0.0-rc.6 (2026-11-04)
