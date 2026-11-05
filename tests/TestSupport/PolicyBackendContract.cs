@@ -111,7 +111,7 @@ public static partial class PolicyBackendContract
 
     public interface IOrigin
     {
-        [Cache(Duration = "01:00:00")] Task<int> ReadAsync(int id);
+        [Cache(Duration = "1h")] Task<int> ReadAsync(int id);
         [Cache] int Read(int id);
         [Cache(Group = "native-enabled", Enabled = true)] Task<int> EnabledAsync(int id);
         [Cache(Group = "native-disabled", Enabled = false)] Task<int> DisabledAsync(int id);

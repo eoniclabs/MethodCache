@@ -27,10 +27,10 @@ namespace BackgroundScope
 {
     public interface IPrices
     {
-        [Cache(Duration = ""00:01:00"", RefreshAhead = ""00:00:30"")]
+        [Cache(Duration = ""1m"", RefreshAhead = ""30s"")]
         Task<int> GetRefreshedAsync(int id);
 
-        [Cache(Duration = ""00:01:00"", FailSafe = ""01:00:00"", FailSafeTimeout = ""00:00:00.1"")]
+        [Cache(Duration = ""1m"", FailSafe = ""1h"", FailSafeTimeout = ""0.1s"")]
         Task<int> GetFailSafeAsync(int id);
     }
 

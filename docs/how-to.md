@@ -69,6 +69,12 @@ maps no type at all. ([Writes the change tracker doesn't see](features/entity-fr
 Mark the helper `[InvalidatesCache]`. A call to it then counts as the invalidation, and the writes inside it aren't
 reported. ([Writes the change tracker doesn't see](features/entity-framework-core.md#writes-the-change-tracker-doesnt-see))
 
+**Why the warning MC0028 on a tag?**
+Nothing in the project invalidates it, so its entries stay until they expire. Invalidate it where the data changes,
+with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another project
+invalidates it, such as a worker, turn the warning off for that tag with `#pragma warning disable MC0028`.
+([MC0028](user-guide/DIAGNOSTICS.md#mc0028))
+
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
 when one is changed. ([Rows the database deletes with a row](features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
@@ -80,6 +86,11 @@ invalidated at the context's next save or when it is disposed. ([Document databa
 **I update a row from a request without loading it. Is the old category still invalidated?**
 Yes. A row saved with `Update`, `Attach` or `Remove(new Product { Id = id })` is read once before the save, so the
 tags of its stored values are invalidated too. ([Mapping entities to tags](features/entity-framework-core.md#mapping-entities-to-tags))
+
+**With row-level security, what if the user can't read the row that is saved without loading it?**
+Then the values your code set are used for the old tags. PostgreSQL and SQL Server don't let the save change that row
+either: it changes nothing and throws `DbUpdateConcurrencyException`. EF Core query filters don't hide the row from
+that read. ([Saves of rows the context didn't load](features/entity-framework-core.md#saves-of-rows-the-context-didnt-load))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
 Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
@@ -111,7 +122,7 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 ## Expiration and what gets cached
 
 **How do I set how long a result is cached?**
-`[Cache(Duration = "00:10:00")]`, or `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
+`[Cache(Duration = "10m")]`, with a number and a unit: `"30s"`, `"5m"`, `"1.5h"`, `"7d"`. Change it without a rebuild in
 `appsettings.json`. ([Writing a duration](features/expiration.md#writing-a-duration),
 [Configuration](features/configuration.md#appsettingsjson))
 
@@ -157,6 +168,11 @@ Not as it is: the key holds only the method's arguments, so one user's result re
 tenant id as an argument. Warning MC0026 reports such services. The same goes for row-level security on the
 connection. ([Per-user data](getting-started.md#per-user-data))
 
+**My database uses row-level security on the connection. How do I cache reads?**
+Give the cached reads a context of their own from `IDbContextFactory<T>`, not the one set up for the signed-in user,
+and pass what the policies filter on, such as the tenant id, as an argument. Check in the endpoint that the user may
+read it. ([Row-level security](features/entity-framework-core.md#row-level-security))
+
 ## Keys
 
 **How are keys built?**
@@ -187,8 +203,10 @@ Return records with public properties, or register a serializer with `UseJson(op
 ([Serialization](features/distributed-cache.md#serialization))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))`. Values stay in each
-process's memory, and invalidations reach every process. ([Invalidations only](features/distributed-cache.md#invalidations-only))
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
+stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
+one app. ([Invalidations only](features/distributed-cache.md#invalidations-only))
 
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
@@ -205,7 +223,8 @@ them. Send `-H "Content-Type: application/json" -d "{}"`.
 
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
-`MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too.
+`MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
+prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`.
 ([Monitoring](features/monitoring.md#standard-net-listeners))
 
 **How do I publish with Native AOT?**
@@ -219,6 +238,10 @@ Register `NoOpCacheManager` after `AddMethodCache()`. ([Testing](features/testin
 **A test writes to the database directly. How do I keep the cache from serving old data?**
 Call `ICacheAdministrator.ClearAsync()` after the write, or invalidate the affected tag with `IMethodCacheKeys.Tag`.
 ([Testing](features/testing.md#when-a-test-writes-to-the-database-directly))
+
+**My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
+The save invalidates, so the read is fresh either way. Count the calls that reach your implementation, or change the
+row with SQL or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`. ([Testing](features/testing.md#time))

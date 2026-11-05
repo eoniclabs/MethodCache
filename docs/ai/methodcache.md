@@ -26,10 +26,10 @@ using MethodCache;
 
 public interface IProductService
 {
-    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
     Task<Product> GetAsync(int id, CancellationToken ct = default);
 
-    [Cache(Duration = "00:01:00", Tags = ["products"])]
+    [Cache(Duration = "1m", Tags = ["products"])]
     Task<List<Product>> SearchAsync(string text, int page);
 
     [CacheInvalidate(Tags = ["products", "product:{id}"])]
@@ -71,16 +71,21 @@ builder.Services.AddMethodCache();                               // after your r
 - `[CacheInvalidate]` runs after the method, or its task, succeeds; never when it throws.
 - Synchronous `[Cache]` methods use the memory cache only, also with Redis, SQL Server or PostgreSQL. Make a method
   async to share its results between instances.
-- Durations accept invariant `[d.]hh:mm:ss` or unit strings such as `30s` and `1.5h`. Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
+- Durations are a number and a unit: `"30s"`, `"10m"`, `"1.5h"`, `"7d"`. A `TimeSpan` such as `"00:10:00"` is an
+  error (MC0004). Other settings: `SlidingExpiration` (or `"off"`), `RefreshAhead`
   (shorter than `Duration` and `SlidingExpiration`, or `"off"`; MC0023 otherwise), `FailSafe` (or `"off"`), `FailSafeTimeout`, `FailSafeRetryAfter`,
   `Version`, `Tags`, `Enabled`, `Distributed` and the named `Group` setting. In code each has one builder method with
   the same name: `WithFailSafe(d)`, `WithFailSafeTimeout(t)`, `WithFailSafeRetryAfter(t)` and so on.
 - Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
   `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
 - The key holds only the method's arguments. A cached implementation must not read the current user or request
-  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026): pass the user or tenant id
-  as an argument instead.
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026), directly or through a
+  `DbContext` set up for the signed-in user: pass the user or tenant id as an argument instead. With row-level
+  security, give cached reads a context of their own from `IDbContextFactory<T>` that sets what the policies read from
+  the method's arguments, and check in the endpoint that the user may read it.
 - Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
+- Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
+  invalidates. When another project invalidates it, such as a worker, suppress MC0028 for that tag with a `#pragma`.
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -88,7 +93,7 @@ builder.Services.AddMethodCache();                               // after your r
   calling/entry assemblies have no special priority.
 - In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
   `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
-  `"00:05:00"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
+  a number and a unit, `"5m"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return.
@@ -118,13 +123,15 @@ builder.Services.AddMethodCache();                               // after your r
   don't add invalidation code to those writes. For rows the database deletes by cascade or trigger when a row is
   deleted, map the parent with `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only
   on delete, so a parent saved often doesn't clear them. For `ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql…`
-  (MC0027, on mapped types only, and on raw SQL that isn't a single `select`), call `db.InvalidateAfterCommit(tag)`
-  inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
+  (MC0027, on mapped types only, and on raw SQL that names a mapped table, runs a procedure or can't be read), call
+  `db.InvalidateAfterCommit(tag)` inside the transaction, or `cache.InvalidateTagAsync(tag)` after a write without one. Mark the app's own
   invalidation helpers `[InvalidatesCache]` so MC0027 counts a call to them.
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
-  `IDistributedCache`. Values are JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own
-  settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
+  `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
+  data an API caches, or several API instances), add `.Defaults(o => o.WithDistributed(false))` in every process:
+  invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
   warning: return records with public properties.
 - `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
   send cookies as a `Cookie` header, or set `KeepCookies = true`, which turns response caching off.
@@ -133,6 +140,28 @@ builder.Services.AddMethodCache();                               // after your r
 - Telemetry: `MethodCacheTelemetryOptions` (`mc.Telemetry(...)`) records keys and tags on spans only when you turn it
   on, hashed by default. `AddMethodCacheInstrumentation()` (package `MethodCache.OpenTelemetry`) subscribes
   OpenTelemetry to the `MethodCache` meter and activity source.
+
+## Guides
+
+Each guide is in the package's `docs/features/` folder and at
+https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one for the task before writing code:
+
+- `expiration.md`: durations, sliding expiration, refresh-ahead.
+- `invalidation.md`: tags, `[CacheInvalidate]`, invalidating from code, after a transaction, with several instances.
+- `entity-framework-core.md`: entity tags after `SaveChanges`, writes past the change tracker, row-level security.
+- `keys.md`: how arguments become keys, `ICacheKeyProvider`.
+- `configuration.md`: `appsettings.json`, groups, startup code, runtime changes.
+- `distributed-cache.md`: Redis, SQL Server and PostgreSQL, sharing only invalidations, serialization.
+- `memory-cache.md`: size limits, eviction, shared cached objects.
+- `fail-safe.md`: serving the last good value when the method fails.
+- `conditional-caching.md`: results that are returned but not cached.
+- `manual-caching.md`: `ICacheManager.GetOrCreateAsync` with your own keys.
+- `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
+- `http-caching.md`: caching `HttpClient` responses.
+- `monitoring.md`: metrics, activities, the admin endpoints.
+- `testing.md`: tests with and without caching, time.
+- `native-aot.md`: trimming and Native AOT.
+- `source-generator.md`: what the generated decorator does.
 
 ## Namespaces
 

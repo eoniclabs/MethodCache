@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 // Chapter 5: caches the vendor's own interface, no wrapper. Only the listed method is cached.
-[assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync), Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+[assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync), Duration = "1m", Tags = ["fx", "fx:{from}"])]
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -69,7 +69,7 @@ static async Task OneAttributeAsync(IServiceProvider provider)
     Ui.Code("""
         public interface IWeatherService
         {
-            [Cache(Duration = "00:05:00", Tags = ["weather"])]
+            [Cache(Duration = "5m", Tags = ["weather"])]
             Task<Forecast> GetForecastAsync(string city);
         }
 
@@ -130,7 +130,7 @@ static async Task TagsAsync(IServiceProvider provider)
 {
     Ui.Chapter(3, "Tags that understand your arguments", "\"user:{userId}\" becomes user:1, user:2 ... Renaming user 1 invalidates user 1 and nothing else.");
     Ui.Code("""
-        [Cache(Duration = "00:10:00", Tags = ["users", "user:{userId}"])]
+        [Cache(Duration = "10m", Tags = ["user:{userId}"])]
         Task<UserProfile> GetProfileAsync(int userId);
 
         [CacheInvalidate(Tags = ["user:{userId}"])]
@@ -171,7 +171,7 @@ static async Task ConfigurationAsync(IServiceProvider provider, string settingsF
 
     // Someone edits appsettings.json on the server. No restart.
     var json = await File.ReadAllTextAsync(settingsFile);
-    await File.WriteAllTextAsync(settingsFile, json.Replace("00:15:00", "00:20:00", StringComparison.Ordinal));
+    await File.WriteAllTextAsync(settingsFile, json.Replace("15m", "20m", StringComparison.Ordinal));
     var reloaded = await WaitForAsync(() => DurationOf(admin, productMethod) == TimeSpan.FromMinutes(20));
     PrintPolicies(admin, "After editing appsettings.json (15 → 20 min):");
     Ui.Check(reloaded, "appsettings.json was reloaded while the app was running");
@@ -196,7 +196,7 @@ static async Task ManualCachingAsync(IServiceProvider provider)
     Ui.Chapter(5, "Cache code you don't own", "IFxRatesClient comes from a vendor's package. One line caches its rate lookups; orders still reach the API.");
     Ui.Code("""
         [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
-            Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+            Duration = "1m", Tags = ["fx", "fx:{from}"])]
 
         services.AddSingleton<IFxRatesClient, FxRatesClient>();   // the vendor's client, as usual
         """);

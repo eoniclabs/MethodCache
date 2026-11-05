@@ -36,7 +36,7 @@ public class MethodCacheAdminEndpointsTests : IAsyncLifetime
 
     public interface IAdminGreeter
     {
-        [Cache(Duration = "00:05:00", FailSafe = "00:30:00")]
+        [Cache(Duration = "5m", FailSafe = "30m")]
         ValueTask<string> GreetAsync(string name);
     }
 

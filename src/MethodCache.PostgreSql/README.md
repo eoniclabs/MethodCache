@@ -49,6 +49,22 @@ builder.Services.AddMethodCache(mc => mc.UsePostgreSql(options =>
 
 MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's data sources, `DbContext` and `IDistributedCache` are left alone.
 
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+
+<!-- snippet: distributed-invalidations-only -->
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+<!-- endSnippet -->
+
+The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
+
 ### Passwordless login
 
 A database that logs in with a token instead of a password, such as Azure Database for PostgreSQL with Microsoft Entra ID or Amazon RDS with IAM, gets the token through `ConfigureDataSource`. MethodCache calls it for its connection pool and for the connection that listens for invalidations:

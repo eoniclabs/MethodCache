@@ -40,6 +40,22 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
 - MethodCache doesn't dispose a shared connection. Disposing the service provider removes MethodCache's own
   subscriptions.
 
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
+
+<!-- snippet: redis-invalidations-only -->
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+<!-- endSnippet -->
+
+See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
+
 ## How it works
 
 - MethodCache reads Redis on an in-memory miss and writes new results to both.

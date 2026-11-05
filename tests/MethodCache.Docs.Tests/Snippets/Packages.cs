@@ -92,6 +92,15 @@ namespace Docs.Packages
             // end-snippet
         }
 
+        public static void InvalidationsOnly(WebApplicationBuilder builder)
+        {
+            // begin-snippet: redis-invalidations-only
+            builder.Services.AddMethodCache(mc => mc
+                .UseRedis("localhost:6379")
+                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+            // end-snippet
+        }
+
         public static void Outage(WebApplicationBuilder builder)
         {
             // begin-snippet: distributed-outage-options
@@ -122,6 +131,15 @@ namespace Docs.Packages
                 options.SchemaName = "cache";
                 options.BackplanePollingInterval = TimeSpan.FromMilliseconds(500);
             }));
+            // end-snippet
+        }
+
+        public static void InvalidationsOnly(WebApplicationBuilder builder)
+        {
+            // begin-snippet: sqlserver-invalidations-only
+            builder.Services.AddMethodCache(mc => mc
+                .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
+                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
             // end-snippet
         }
     }

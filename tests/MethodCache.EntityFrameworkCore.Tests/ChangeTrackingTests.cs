@@ -88,6 +88,24 @@ public sealed class ChangeTrackingTests
     }
 
     [Fact]
+    public async Task A_row_a_query_filter_hides_is_read_for_its_stored_values_too()
+    {
+        await using var shop = await Shop.CreateAsync();
+        (await shop.Reads.CountInCategoryAsync(1)).Should().Be(1);
+
+        await using (var db = await shop.CreateDbAsync())
+        {
+            // A filter, such as one for the current tenant, hides rows from queries but not from the stored values
+            db.HideProducts = true;
+            (await db.Products.AnyAsync()).Should().BeFalse();
+            db.Products.Update(new Product { Id = 42, Name = "Moved", Sku = "ham:mer", CategoryId = 2, Size = new Dimensions { Weight = 600 } });
+            await db.SaveChangesAsync();
+        }
+
+        (await shop.Reads.CountInCategoryAsync(1)).Should().Be(0);
+    }
+
+    [Fact]
     public async Task A_row_deleted_by_its_key_alone_invalidates_the_tags_of_its_stored_values()
     {
         await using var shop = await Shop.CreateAsync();

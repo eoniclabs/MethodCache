@@ -44,13 +44,13 @@ namespace TestNamespace
 
     public interface IValueTaskService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         ValueTask<Product> GetProductAsync(int id);
         
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         ValueTask<string> GetProductNameAsync(int id);
         
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         ValueTask<int> GetStockCountAsync(int productId);
     }
 
@@ -162,16 +162,16 @@ namespace TestNamespace
 
     public interface ICollectionService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<List<Item>> GetItemsListAsync(string category);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<Item[]> GetItemsArrayAsync(string category);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<IEnumerable<Item>> GetItemsEnumerableAsync(string category);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<Dictionary<int, Item>> GetItemsDictionaryAsync(string category);
     }
 
@@ -299,13 +299,13 @@ namespace TestNamespace
 
     public interface INullableService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<User?> FindUserAsync(int id);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string?> GetUserNicknameAsync(int id);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<int?> GetUserAgeAsync(int id);
     }
 

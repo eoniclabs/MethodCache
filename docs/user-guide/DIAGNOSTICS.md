@@ -10,7 +10,7 @@ generator and the analyzer run, each problem is reported once.
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
 | [MC0001](#mc0001) | Warning | `[Cache]` or `[CacheInvalidate]` on a class member | Move to the interface |
-| [MC0004](#mc0004) | Error | A time span that is not a positive `TimeSpan` | |
+| [MC0004](#mc0004) | Error | A duration that is not a positive number and a unit, such as `"10m"` | Write a `TimeSpan` with a unit |
 | [MC0003](#mc0003) | Error | `[Cache]` on a `void` method | Remove `[Cache]` |
 | [MC0022](#mc0022) | Error | `[Cache]` on `Task`/`ValueTask` without a result | Remove `[Cache]` |
 | [MC0005](#mc0005) | Error | `[Cache]` with reference parameters or returns | Remove `[Cache]` |
@@ -33,8 +33,9 @@ generator and the analyzer run, each problem is reported once.
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
 | [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
-| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal` | |
+| [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
+| [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
 
 ## MC0001
 
@@ -44,7 +45,7 @@ interface, so it only reads attributes on interface methods, and this one is ign
 ```csharp
 public interface IUserService
 {
-    [Cache(Duration = "00:05:00")]      // here
+    [Cache(Duration = "5m")]      // here
     Task<User> GetAsync(int id);
 }
 
@@ -61,8 +62,13 @@ removes it when the member implements no interface. To cache an interface you do
 ## MC0004
 
 `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe`, `FailSafeTimeout` or `FailSafeRetryAfter` on `[Cache]` or
-`[assembly: CacheInterface]` is not a positive time span. Use the `TimeSpan` format: `"00:05:00"` (five minutes),
-`"01:00:00"` (an hour) or `"1.00:00:00"` (a day). `SlidingExpiration`, `RefreshAhead` and `FailSafe` also accept `"off"`.
+`[assembly: CacheInterface]` is not a duration. Write a positive number and a unit: `"30s"`, `"5m"`, `"1.5h"` or `"7d"`
+([Writing a duration](../features/expiration.md#writing-a-duration)). `SlidingExpiration`, `RefreshAhead` and
+`FailSafe` also accept `"off"`.
+
+A `TimeSpan` such as `"00:10:00"` is reported with the same value in units, `"10m"`.
+
+**Code fix:** writes a `TimeSpan` with a unit.
 
 ## MC0003
 
@@ -212,7 +218,7 @@ An explicitly supplied `Version` is negative. Omit it to inherit the configured 
 
 `RefreshAhead` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` or `SlidingExpiration` next to
 it, or longer. The refresh window starts that long before an entry expires, so every hit would reload the value. Use a
-window shorter than both, such as `Duration = "00:10:00", RefreshAhead = "00:01:00"`, or `"off"` to turn refresh-ahead
+window shorter than both, such as `Duration = "10m", RefreshAhead = "1m"`, or `"off"` to turn refresh-ahead
 off.
 
 ## MC0024
@@ -249,7 +255,7 @@ content lazily the first time it is read, and isn't thread-safe while it does, s
 `JsonObject` at once can get an empty or broken result. A stream's position moves as one caller reads it.
 
 ```cs
-[Cache(Duration = "00:05:00")]
+[Cache(Duration = "5m")]
 Task<JsonObject> GetLayoutAsync(string locale);   // MC0025: every caller shares one JsonObject
 ```
 
@@ -261,7 +267,10 @@ a cached one ([cached objects are shared](../features/memory-cache.md#cached-obj
 ## MC0026
 
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
-`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`.
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
+when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
+directly or through a factory such as `IDbContextFactory<T>`. The analyzer looks one level down, and doesn't see a
+setting that an interceptor makes on the connection.
 
 The cache key is built from the method's arguments only. A result that depends on the current request or user, such
 as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
@@ -275,8 +284,16 @@ public sealed class Orders(IHttpContextAccessor http, AppDb db) : IOrders   // M
 }
 ```
 
+```cs
+public sealed class TenantDb(DbContextOptions<TenantDb> options, IHttpContextAccessor http) : DbContext(options) { ... }
+
+public sealed class Catalog(TenantDb db) : ICatalog   // MC0026: TenantDb's constructor takes IHttpContextAccessor
+```
+
 Make what the result depends on a parameter of the cached method, so it becomes part of the key:
 `Task<List<Order>> ForUserAsync(int userId)`, called with the current user's id. Or don't cache the method.
+For a context set up for the signed-in user, give the cached reads a context of their own
+([Row-level security](../features/entity-framework-core.md#row-level-security)).
 See [Getting started](../getting-started.md#per-user-data).
 
 ## MC0027
@@ -290,9 +307,13 @@ results that read those rows stay until they expire.
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
   for `ExecuteDelete` alone. When the project maps no type, as a data layer apart from the startup project, every
   type is reported.
-- Raw SQL is reported unless it is a single statement that starts with `select`, such as
-  `select pg_advisory_xact_lock(...)`. SQL in a variable, or with values interpolated into `ExecuteSqlRaw`, is
-  reported.
+- Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
+  can't be read: SQL in a variable, or with values interpolated into `ExecuteSqlRaw`. A table is known by its class
+  name, the name of its `DbSet` and a name given with `ToTable` or `[Table]`, compared without case and underscores and
+  with or without a plural ending, so `ai_model_prices` matches `AiModelPrice`. A table renamed in another project
+  isn't recognized. When the project maps no type, all raw SQL is reported.
+- Statements that only `select`, such as `select pg_advisory_xact_lock(...)`, or `set` a session setting, such as
+  `SET LOCAL lock_timeout = '5s'`, are never reported.
 
 ```cs
 await db.Products.Where(p => p.CategoryId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 0m));   // MC0027
@@ -306,3 +327,56 @@ A call to a `[CacheInvalidate]` method of a cached interface counts as an invali
 of your own marked `[InvalidatesCache]`, such as a helper that invalidates through the app's own plumbing. The warning
 is not reported inside either kind of method, since they invalidate themselves.
 When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.
+
+A generic helper, such as a retention job's `PurgeAsync<TEntity>()`, is reported, since any type could reach it.
+When the types it gets are never cached, turn the warning off in the helper and say why. When some are, have it take
+the tags and invalidate them, and mark it `[InvalidatesCache]` so the calls that pass them count too:
+
+```cs
+public static class Retention
+{
+    // Called for audit and log types only, which nothing caches
+#pragma warning disable MC0027
+    public static Task<int> PurgeAsync<TEntity>(DbSet<TEntity> rows, DateTime before) where TEntity : class, IStamped
+        => rows.Where(r => r.CreatedAt < before).ExecuteDeleteAsync();
+#pragma warning restore MC0027
+}
+```
+
+## MC0028
+
+A tag on a `[Cache]` method that nothing in the project invalidates, in a project that invalidates something. Its
+entries stay until they expire, so a change to the data they hold isn't seen until then.
+
+```cs
+public interface ICatalog
+{
+    [Cache(Duration = "1h", Tags = ["catalog"])]   // MC0028 when nothing invalidates "catalog"
+    Task<IReadOnlyList<Recipe>> ListAsync();
+}
+```
+
+These invalidations count, wherever they are in the project:
+
+- A `[CacheInvalidate]` tag in the project, or on a method of another project's interface that the project calls.
+- An entity mapping of `MethodCache.EntityFrameworkCore`: `Entity<T>("...")`, and `Tags("...")` or
+  `WhenDeleted("...")` in `Entity<T>(e => ...)`.
+- A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
+  `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
+
+A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
+`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
+projects aren't seen.
+
+Invalidate the tag where the data changes ([Invalidation](../features/invalidation.md)). When another project
+invalidates it, such as a worker that writes the data, turn the warning off for that tag:
+
+```cs
+// The import worker invalidates it
+#pragma warning disable MC0028
+[Cache(Duration = "1h", Tags = ["catalog"])]
+#pragma warning restore MC0028
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.

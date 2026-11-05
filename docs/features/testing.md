@@ -47,6 +47,14 @@ await cache.InvalidateTagAsync(keys.Tag<IProductService>(p => p.GetAsync(changed
 `ClearAsync` also removes the entries from a distributed cache and the other instances, so use a cache of the test's
 own (a new service provider, or its own `KeyPrefix`) when tests run in parallel against a shared Redis or database.
 
+## Proving that a result is cached
+
+A test that changes a row and reads it again proves caching only when the change doesn't invalidate. With
+`MethodCache.EntityFrameworkCore`, a save through the connected context invalidates, so the second read is fresh
+whether or not it is cached. Count the calls that reach your implementation instead, or change the row past
+MethodCache: with SQL, or through a context type that isn't connected to MethodCache, over the same database. With
+EF Core's in-memory provider, give both contexts the same `InMemoryDatabaseRoot`.
+
 ## Turning method caching off
 
 Register `NoOpCacheManager` after `AddMethodCache()` and every call reaches your implementation:

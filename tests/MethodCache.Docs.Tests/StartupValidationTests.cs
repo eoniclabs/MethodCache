@@ -37,7 +37,7 @@ public class StartupValidationTests
         var builder = NewHostBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "01:00:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1h"
         });
         builder.Services.AddMethodCache();
         builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(builder.Configuration));
@@ -45,7 +45,7 @@ public class StartupValidationTests
         // A source added later, as Program.cs or WebApplicationFactory does
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:00:01"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1s"
         });
         using var host = builder.Build();
         await host.StartAsync();
@@ -67,7 +67,7 @@ public class StartupValidationTests
         services.AddMethodCache(methodCache => methodCache.FromConfiguration(configuration));
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:10:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "10m"
         });
         using var provider = services.BuildServiceProvider();
 

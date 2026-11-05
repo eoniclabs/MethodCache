@@ -55,10 +55,10 @@ namespace TestNamespace
 
     public interface IUserService
     {
-        [Cache(Duration = ""00:01:00"", Tags = new[] { ""users"" })]
+        [Cache(Duration = ""1m"", Tags = new[] { ""users"" })]
         Task<User> GetUserAsync(int id);
         
-        [Cache(Duration = ""00:02:00"", Tags = new[] { ""users"", ""usercount"" })]
+        [Cache(Duration = ""2m"", Tags = new[] { ""users"", ""usercount"" })]
         Task<int> GetUserCountAsync();
         
         [CacheInvalidate(Tags = new[] { ""users"", ""usercount"" })]
@@ -228,10 +228,10 @@ namespace TestNamespace
 
     public interface IProductService
     {
-        [Cache(Duration = ""00:05:00"", Tags = new[] { ""products"", ""product-details"" })]
+        [Cache(Duration = ""5m"", Tags = new[] { ""products"", ""product-details"" })]
         Task<Product> GetProductAsync(int id);
         
-        [Cache(Duration = ""00:03:00"", Tags = new[] { ""products"", ""product-count"" })]
+        [Cache(Duration = ""3m"", Tags = new[] { ""products"", ""product-count"" })]
         Task<int> GetProductCountByCategoryAsync(string category);
         
         [CacheInvalidate(Tags = new[] { ""products"" })]

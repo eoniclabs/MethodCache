@@ -36,10 +36,10 @@ namespace TestNamespace
 {
     public interface IErrorService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> GetDataAsync(int id);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string> GetDataWithRetryAsync(int id, bool shouldFail);
     }
 
@@ -172,10 +172,10 @@ namespace TestNamespace
 {
     public interface INullableService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<string?> GetNullableStringAsync(int id);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<object?> GetNullableObjectAsync(string key);
     }
 
@@ -336,10 +336,10 @@ namespace TestNamespace
 
     public interface ILargeObjectService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<Order> GetLargeOrderAsync(int orderId);
         
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<List<Product>> GetManyProductsAsync(int count);
     }
 

@@ -9,14 +9,14 @@ public sealed record Product(string Sku, string Name, decimal Price);
 /// <summary>A slow weather API. One attribute caches it for five minutes.</summary>
 public interface IWeatherService
 {
-    [Cache(Duration = "00:05:00", Tags = ["weather"])]
+    [Cache(Duration = "5m", Tags = ["weather"])]
     Task<Forecast> GetForecastAsync(string city);
 }
 
 /// <summary>Profiles are tagged per user, so updating one user only invalidates that user.</summary>
 public interface IUserProfiles
 {
-    [Cache(Duration = "00:10:00", Tags = ["users", "user:{userId}"])]
+    [Cache(Duration = "10m", Tags = ["user:{userId}"])]
     Task<UserProfile> GetProfileAsync(int userId);
 
     [CacheInvalidate(Tags = ["user:{userId}"])]
@@ -29,7 +29,7 @@ public interface IProductCatalog
     [Cache]
     Task<Product> GetProductAsync(string sku);
 
-    [Cache(Duration = "00:00:30")]
+    [Cache(Duration = "30s")]
     Task<decimal> GetPriceAsync(string sku);
 }
 

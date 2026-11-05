@@ -24,10 +24,10 @@ namespace ExpirationPolicy
 {
     public interface IPrices
     {
-        [Cache(Duration = ""00:10:00"", SlidingExpiration = ""00:01:00"")]
+        [Cache(Duration = ""10m"", SlidingExpiration = ""1m"")]
         Task<int> GetSlidingAsync(int id);
 
-        [Cache(Duration = ""00:01:00"", RefreshAhead = ""00:00:30"")]
+        [Cache(Duration = ""1m"", RefreshAhead = ""30s"")]
         Task<int> GetRefreshedAsync(int id);
     }
 

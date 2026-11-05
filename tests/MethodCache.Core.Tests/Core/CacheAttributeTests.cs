@@ -25,10 +25,10 @@ namespace MethodCache.Core.Tests.Core
         [Fact]
         public void CacheAttribute_WithExpirationSettings_KeepsThem()
         {
-            var attribute = new CacheAttribute { Duration = "01:00:00", SlidingExpiration = "00:05:00", RefreshAhead = "00:01:00" };
-            Assert.Equal("01:00:00", attribute.Duration);
-            Assert.Equal("00:05:00", attribute.SlidingExpiration);
-            Assert.Equal("00:01:00", attribute.RefreshAhead);
+            var attribute = new CacheAttribute { Duration = "1h", SlidingExpiration = "5m", RefreshAhead = "1m" };
+            Assert.Equal("1h", attribute.Duration);
+            Assert.Equal("5m", attribute.SlidingExpiration);
+            Assert.Equal("1m", attribute.RefreshAhead);
         }
     }
 }

@@ -15,7 +15,7 @@ public class RejectedReloadLogTests
     private const string Secret = "token=secret-canary";
 
     [Theory]
-    [InlineData("MethodCache:Defaults:Duration", "'MethodCache:Defaults:Duration' is not a positive time span such as \"00:05:00\"")]
+    [InlineData("MethodCache:Defaults:Duration", "'MethodCache:Defaults:Duration' is not a duration: a positive number and a unit, such as \"30s\", \"10m\", \"1.5h\" or \"7d\"")]
     [InlineData("MethodCache:Defaults:Enabled", "'MethodCache:Defaults:Enabled' is not true or false")]
     [InlineData("MethodCache:Defaults:Version", "'MethodCache:Defaults:Version' is not a non-negative integer")]
     [InlineData("MethodCache:Defaults:Durration", "'MethodCache:Defaults:Durration' is not a setting MethodCache knows")]
@@ -23,7 +23,7 @@ public class RejectedReloadLogTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Defaults:Duration"] = "00:01:00"
+            ["MethodCache:Defaults:Duration"] = "1m"
         }).Build();
         var logs = new Logs();
         var services = new ServiceCollection();

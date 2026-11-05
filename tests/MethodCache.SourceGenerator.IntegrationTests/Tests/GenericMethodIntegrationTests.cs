@@ -57,13 +57,13 @@ namespace TestNamespace
 
     public interface IGenericRepository<T>
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<T> GetByIdAsync(int id);
         
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         Task<List<T>> GetAllAsync();
         
-        [Cache(Duration = ""00:03:00"")]
+        [Cache(Duration = ""3m"")]
         Task<T[]> GetByIdsAsync(int[] ids);
         
         [CacheInvalidate(Tags = new[] { ""entities"" })]
@@ -311,13 +311,13 @@ namespace TestNamespace
 
     public interface IGenericService
     {
-        [Cache(Duration = ""00:02:00"")]
+        [Cache(Duration = ""2m"")]
         Task<T> ProcessEntityAsync<T>(T entity) where T : IIdentifiable;
         
-        [Cache(Duration = ""00:01:00"")]
+        [Cache(Duration = ""1m"")]
         Task<List<T>> SortEntitiesAsync<T>(List<T> entities) where T : IComparable<T>;
         
-        [Cache(Duration = ""00:03:00"")]
+        [Cache(Duration = ""3m"")]
         Task<TResult> TransformAsync<TInput, TResult>(TInput input) 
             where TInput : IIdentifiable 
             where TResult : class, new();

@@ -51,7 +51,7 @@ public record User(int Id, string Name);
 
 public interface IUserService
 {
-    [Cache(Duration = "00:10:00", Tags = new[] { "user:{id}" })]
+    [Cache(Duration = "10m", Tags = new[] { "user:{id}" })]
     Task<User> GetAsync(int id);
 
     [CacheInvalidate(Tags = new[] { "user:{id}" })]
@@ -453,7 +453,7 @@ public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options
 
 public interface IProductNames
 {
-    [Cache(Duration = "00:10:00", Tags = new[] { "product:{id}" })]
+    [Cache(Duration = "10m", Tags = new[] { "product:{id}" })]
     Task<string?> GetAsync(int id);
 }
 

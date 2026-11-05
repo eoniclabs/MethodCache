@@ -11,8 +11,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <!-- Examples show the shortest code, not library code -->
-    <NoWarn>$(NoWarn);CA2007;CA1822;CS1591</NoWarn>
+    <!-- Examples show the shortest code, not library code. MC0028: the examples of many unrelated apps share this
+         project, so a tag one example declares is invalidated in another example, or not at all -->
+    <NoWarn>$(NoWarn);CA2007;CA1822;CS1591;MC0028</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Testcontainers.Redis" Version="4.16.0" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />

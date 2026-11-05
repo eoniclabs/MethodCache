@@ -4,10 +4,10 @@ public sealed record Product(int Id, string Name, string Category, decimal Price
 
 public interface IProductCatalog
 {
-    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
     Task<Product?> GetProductAsync(int id);
 
-    [Cache(Duration = "00:02:00", Tags = ["products", "product-lists"])]
+    [Cache(Duration = "2m", Tags = ["products", "product-lists"])]
     Task<IReadOnlyList<Product>> GetByCategoryAsync(string category);
 
     [CacheInvalidate(Tags = ["product:{id}", "product-lists"])]

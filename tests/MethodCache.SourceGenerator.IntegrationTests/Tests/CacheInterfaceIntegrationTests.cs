@@ -26,7 +26,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 [assembly: CacheInterface(typeof(IFxVendorClient),
     nameof(IFxVendorClient.GetRateAsync), nameof(IFxVendorClient.GetCurrenciesAsync), nameof(IFxVendorClient.Square),
-    Duration = ""00:01:00"", Tags = new[] { ""fx"", ""fx:{from}"" })]
+    Duration = ""1m"", Tags = new[] { ""fx"", ""fx:{from}"" })]
 
 namespace VendorApp
 {
@@ -49,8 +49,8 @@ namespace VendorApp
     [Fact]
     public async Task SelectedModule_OtherModuleAlsoBindsItsOwnService_DoesNotImportItsUnselectedPolicy()
     {
-        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SelectedFx", "00:00:30"), "SelectedPolicyModule");
-        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("OtherFx", "01:00:00") + """
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SelectedFx", "30s"), "SelectedPolicyModule");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("OtherFx", "1h") + """
             namespace OtherFx {
                 public interface IAuxiliary { [MethodCache.Cache] int Read(int id); }
                 public sealed class Auxiliary : IAuxiliary { public int Read(int id) => id; }
@@ -73,7 +73,7 @@ namespace VendorApp
     [Fact]
     public async Task SelectedModule_ServicesOfAnUnselectedModule_StayCached()
     {
-        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryOnlyFx", "00:00:30"), "SelectedLibraryModule");
+        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryOnlyFx", "30s"), "SelectedLibraryModule");
         var app = await _engine.CompileWithSourceGeneratorAsync("""
             namespace OwnApp {
                 public interface IPrices { [MethodCache.Cache] int Get(int id); }
@@ -174,8 +174,8 @@ namespace VendorApp
     [Fact]
     public async Task TwoAssembliesListingTheSameInterface_TheCallingAssemblysDecoratorWins()
     {
-        var app = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("AppFx", "00:00:30"), "SharedVendor_App");
-        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryFx", "01:00:00"), "SharedVendor_Library");
+        var app = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("AppFx", "30s"), "SharedVendor_App");
+        var library = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("LibraryFx", "1h"), "SharedVendor_Library");
         RuntimeHelpers.RunModuleConstructor(app.Assembly.ManifestModule.ModuleHandle);
         RuntimeHelpers.RunModuleConstructor(library.Assembly.ManifestModule.ModuleHandle);
 
@@ -192,8 +192,8 @@ namespace VendorApp
     [Fact]
     public async Task TwoAssembliesListingTheSameInterface_AnotherCaller_GetsAClearError()
     {
-        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("FirstFx", "00:00:30"), "SharedVendor_First");
-        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SecondFx", "01:00:00"), "SharedVendor_Second");
+        var first = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("FirstFx", "30s"), "SharedVendor_First");
+        var second = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("SecondFx", "1h"), "SharedVendor_Second");
         RuntimeHelpers.RunModuleConstructor(first.Assembly.ManifestModule.ModuleHandle);
         RuntimeHelpers.RunModuleConstructor(second.Assembly.ManifestModule.ModuleHandle);
 
@@ -218,8 +218,8 @@ namespace VendorApp
     [Fact]
     public async Task NamedAssemblyNotYetInitialized_ItsDecoratorWins()
     {
-        var registered = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("RegisteredFx", "00:00:30"), "SharedVendor_Registered");
-        var named = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("NamedFx", "01:00:00"), "SharedVendor_Named");
+        var registered = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("RegisteredFx", "30s"), "SharedVendor_Registered");
+        var named = await _engine.CompileWithSourceGeneratorAsync(SharedVendorSource("NamedFx", "1h"), "SharedVendor_Named");
         RuntimeHelpers.RunModuleConstructor(registered.Assembly.ManifestModule.ModuleHandle);
 
         var services = new ServiceCollection();

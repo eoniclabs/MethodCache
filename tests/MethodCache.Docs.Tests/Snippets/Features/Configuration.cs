@@ -11,13 +11,13 @@ namespace Docs.Configuration
 
     public interface IUserService
     {
-        [Cache(Group = "user-data", Duration = "01:00:00", Tags = ["users"])]
+        [Cache(Group = "user-data", Duration = "1h", Tags = ["users"])]
         Task<UserProfile> GetProfileAsync(int userId);
     }
 
     public interface IOrdersService
     {
-        [Cache(Duration = "00:10:00")]
+        [Cache(Duration = "10m")]
         Task<Order> GetAsync(int id);
     }
 

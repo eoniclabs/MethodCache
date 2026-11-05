@@ -25,7 +25,7 @@ namespace LivePolicy
 {
     public interface IPrices
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> GetAsync(int id);
     }
 

@@ -10,26 +10,27 @@ namespace MethodCache.Docs.Tests;
 public class AppsettingsValidationTests
 {
     [Theory]
-    [InlineData("MethodCache:Methods:Sample.Type.Method:Durration", "00:05:00", "not a setting")]
+    [InlineData("MethodCache:Methods:Sample.Type.Method:Durration", "5m", "not a setting")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:duration_seconds", "300", "not a setting")]
-    [InlineData("MethodCache:Defaults:Ttl", "00:05:00", "not a setting")]
-    [InlineData("MethodCache:FailSafe:Durration", "01:00:00", "not a setting")]
-    [InlineData("MethodCache:Defualts:Duration", "00:05:00", "not a setting")]
-    [InlineData("MethodCache:Servcies:Sample.Type.Method:Duration", "00:05:00", "not a setting")]
-    [InlineData("MethodCache:Defaults", "00:05:00", "single value")]
+    [InlineData("MethodCache:Defaults:Ttl", "5m", "not a setting")]
+    [InlineData("MethodCache:FailSafe:Durration", "1h", "not a setting")]
+    [InlineData("MethodCache:Defualts:Duration", "5m", "not a setting")]
+    [InlineData("MethodCache:Servcies:Sample.Type.Method:Duration", "5m", "not a setting")]
+    [InlineData("MethodCache:Defaults", "5m", "single value")]
     [InlineData("MethodCache:Methods", "typo", "single value")]
-    [InlineData("MethodCache:Methods:Sample.Type.Method", "00:05:00", "single value")]
-    [InlineData("MethodCache:Defaults:Duration:Value", "00:05:00", "nested")]
+    [InlineData("MethodCache:Methods:Sample.Type.Method", "5m", "single value")]
+    [InlineData("MethodCache:Defaults:Duration:Value", "5m", "nested")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:Version:Major", "2", "nested")]
-    [InlineData("MethodCache:FailSafe:Timeout:Value", "00:00:01", "nested")]
+    [InlineData("MethodCache:FailSafe:Timeout:Value", "1s", "nested")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:Tags:0:Name", "users", "nested")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:Metadata", "owner", "single value")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:Metadata:Owner:Name", "team", "nested")]
     [InlineData("MethodCache:Methods:Sample.Type.Method:Tags", "users", "list")]
-    [InlineData("MethodCache:Methods:Sample.Type.Method:FailSafe:Duration", "01:00:00", "top of the section")]
-    [InlineData("MethodCache:Defaults:FailSafe:Duration", "01:00:00", "top of the section")]
-    [InlineData("MethodCache:Methods:Sample.Type.Method:Duration", "300", "00:05:00")]
-    [InlineData("MethodCache:Defaults:SlidingExpiration", "5", "00:05:00")]
+    [InlineData("MethodCache:Methods:Sample.Type.Method:FailSafe:Duration", "1h", "top of the section")]
+    [InlineData("MethodCache:Defaults:FailSafe:Duration", "1h", "top of the section")]
+    [InlineData("MethodCache:Methods:Sample.Type.Method:Duration", "300", "a positive number and a unit")]
+    [InlineData("MethodCache:Defaults:SlidingExpiration", "5", "a positive number and a unit")]
+    [InlineData("MethodCache:Defaults:Duration", "00:05:00", "Write \"5m\".")]
     public void SuspiciousValue_IsRejected(string key, string value, string message)
     {
         using var provider = Build(new() { [key] = value });
@@ -43,7 +44,7 @@ public class AppsettingsValidationTests
     {
         using var provider = Build(new()
         {
-            ["MethodCache:Methods:Sample.Type.Method:duration"] = "00:05:00",
+            ["MethodCache:Methods:Sample.Type.Method:duration"] = "5m",
             ["MethodCache:Methods:Sample.Type.Method:tags:0"] = "users",
             ["MethodCache:Methods:Sample.Type.Method:failsafe"] = "off",
         });
@@ -59,7 +60,7 @@ public class AppsettingsValidationTests
     {
         const string prefix = "MCDOCS_METHODID_";
         Environment.SetEnvironmentVariable(prefix + "MethodCache__Methods__0__MethodId", "[MethodCache.Docs.Tests]MyApp.IUserService.FindAsync(int)");
-        Environment.SetEnvironmentVariable(prefix + "MethodCache__Methods__0__Duration", "00:02:00");
+        Environment.SetEnvironmentVariable(prefix + "MethodCache__Methods__0__Duration", "2m");
         try
         {
             var configuration = new ConfigurationBuilder().AddEnvironmentVariables(prefix).Build();

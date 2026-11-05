@@ -59,7 +59,7 @@ namespace MethodCache.L2Bench
 
     public interface ICatalog
     {
-        [Cache(Duration = "00:30:00", Tags = ["p:{id}"])]
+        [Cache(Duration = "30m", Tags = ["p:{id}"])]
         Task<Product> GetAsync(int id);
     }
 

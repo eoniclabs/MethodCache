@@ -13,19 +13,19 @@ refresh-ahead with an explicitly advanced clock and checked source-call counts.
 public interface IReportService
 {
     // Gone ten minutes after it was stored
-    [Cache(Duration = "00:10:00")]
+    [Cache(Duration = "10m")]
     Task<Report> GetAsync(int year);
 
     // Kept while it is read at least every five minutes, but never longer than an hour
-    [Cache(Duration = "01:00:00", SlidingExpiration = "00:05:00")]
+    [Cache(Duration = "1h", SlidingExpiration = "5m")]
     Task<Session> GetSessionAsync(string id);
 
     // Reloaded in the background when it is read in its last minute, so callers never wait
-    [Cache(Duration = "00:10:00", RefreshAhead = "00:01:00")]
+    [Cache(Duration = "10m", RefreshAhead = "1m")]
     Task<PriceList> GetPricesAsync(string region);
 
     // Changing the version changes every key, so values cached by the previous version are ignored
-    [Cache(Duration = "1.00:00:00", Version = 2)]
+    [Cache(Duration = "1d", Version = 2)]
     Task<Report> GetYearlyAsync(int year);
 }
 ```
@@ -33,7 +33,8 @@ public interface IReportService
 
 ## Writing a duration
 
-Attributes, `appsettings.json` and runtime configuration read durations the same way:
+Attributes, `appsettings.json` and runtime configuration read durations the same way: a number and a unit, such as
+`"10m"` or `"24h"`.
 
 | Write | Means | Example |
 |---|---|---|
@@ -41,13 +42,13 @@ Attributes, `appsettings.json` and runtime configuration read durations the same
 | a number and `m` | minutes | `"5m"`, `"1.5m"` |
 | a number and `h` | hours | `"24h"`, `"1.5h"` |
 | a number and `d` | days | `"1d"`, `"7d"` |
-| `hh:mm:ss` or `d.hh:mm:ss` | a `TimeSpan` | `"00:05:00"`, `"1.00:00:00"` |
 | `"off"` | turned off (`SlidingExpiration`, `RefreshAhead` and `FailSafe` only) | `"off"` |
 
 - Units are case-insensitive and the number uses a `.` for decimals, whatever the culture.
-- Milliseconds are written as seconds (`"0.25s"`) or as a `TimeSpan` (`"00:00:00.250"`). There is no `ms` unit.
-- A bare number (`"300"`), zero, a negative value and combined units (`"1h30m"`) are errors: at build time in an
-  attribute ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)), and at startup in `appsettings.json`.
+- Milliseconds are written as seconds (`"0.25s"`). There is no `ms` unit.
+- A bare number (`"300"`), zero, a negative value, combined units (`"1h30m"`) and a `TimeSpan` (`"00:05:00"`) are
+  errors: at build time in an attribute ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004), whose code fix rewrites a
+  `TimeSpan` as `"5m"`), and at startup in `appsettings.json`, with the value to write instead.
 - In code, pass a `TimeSpan`; `TimeSpan.Zero` turns `SlidingExpiration`, `RefreshAhead` or `FailSafe` off.
 
 ## Duration

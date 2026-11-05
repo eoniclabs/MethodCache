@@ -28,7 +28,7 @@ namespace DefaultPolicy
         [Cache]
         Task<int> GetDefaultAsync(int id);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> GetOwnDurationAsync(int id);
 
         [Cache(Group = ""short"")]

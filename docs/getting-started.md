@@ -40,10 +40,10 @@ using MethodCache;
 
 public interface IProductService
 {
-    [Cache(Duration = "00:10:00", Tags = ["products", "product:{id}"])]
+    [Cache(Duration = "10m", Tags = ["products", "product:{id}"])]
     Task<Product> GetAsync(int id, CancellationToken ct = default);
 
-    [Cache(Duration = "00:01:00", Tags = ["products"])]
+    [Cache(Duration = "1m", Tags = ["products"])]
     Task<List<Product>> SearchAsync(string text, int page);
 
     [CacheInvalidate(Tags = ["products", "product:{id}"])]
@@ -144,7 +144,8 @@ anything else the result depends on must be an argument too:
   (MC0026).
 - **Row-level security.** When the database filters rows by a setting on the connection, such as the current user,
   the same call returns different rows for different users. Make that setting an argument of the cached method, or
-  don't cache the method.
+  don't cache the method. With Entity Framework Core, give the cached reads a context of their own
+  ([Row-level security](features/entity-framework-core.md#row-level-security)).
 - **Scoped services.** A scoped `DbContext` works as usual for a normal call. A refresh-ahead or fail-safe load can
   outlive the request, so it runs on a new instance from a new DI scope, with no `HttpContext`
   ([Refresh-ahead](features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do

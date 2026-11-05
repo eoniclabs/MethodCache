@@ -738,7 +738,7 @@ De får inte skjutas upp till PR 4; där ändras physical-format/options och rul
 
 | ID | Arrangera/agera | Krävt utfall |
 |---|---|---|
-| K01 | Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, 1.00:00:00, fraktion, whitespace/case. | Samma ticks över net10.0, sv-SE/tr-TR; alla giltiga former accepterade. |
+| K01 | Samma parsercorpus i attribut/generator/analyzer/config: 30s, 1.5h, 1d, fraktion, whitespace/case; TimeSpan-form ("1.00:00:00") avvisas med förslag i enheter. | Samma ticks över net10.0, sv-SE/tr-TR; alla giltiga former accepterade, TimeSpan-form ger MC0004 eller startfel med förslag. |
 | K02 | 30, 0s, -1h, 1m30s, 1,5h, exponent, overflow och positivt sub-tick-värde; analyzers av. | Generator/config ger named fel, aldrig tyst default; felaktig generatorinput producerar inget cachebeteende. |
 | K03 | Global FailSafe på; metodtext off och builder-zero; unset och retry/timeout=zero. | Off/zero stänger av för metoden; unset ärver; retry/timeout-zero nekas. |
 | K04 | Version utelämnad, explicit 0 och -1; Enabled/Distributed unset kontra false. | Frånvaro faller igenom; explicita giltiga värden respekteras; negativ Version nekas. |

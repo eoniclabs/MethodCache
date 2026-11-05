@@ -5,7 +5,7 @@ using FxVendor;
 
 // begin-snippet: readme-cache-interface
 [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
-    Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    Duration = "1m", Tags = ["fx", "fx:{from}"])]
 // end-snippet
 
 namespace Docs.ThirdParty

@@ -18,12 +18,12 @@ public sealed class JsonPolicySourceTests
     {
         var data = new Dictionary<string, string?>
         {
-            ["MethodCache:Defaults:Duration"] = "00:00:30",
+            ["MethodCache:Defaults:Duration"] = "30s",
             ["MethodCache:Defaults:Tags:0"] = "default",
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:05:00",
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "5m",
             ["MethodCache:Methods:Sample.Type.Method:Tags:0"] = "json",
-            ["MethodCache:Methods:Sample.Type.Method:SlidingExpiration"] = "00:01:00",
-            ["MethodCache:Methods:Sample.Type.Method:RefreshAhead"] = "00:00:10"
+            ["MethodCache:Methods:Sample.Type.Method:SlidingExpiration"] = "1m",
+            ["MethodCache:Methods:Sample.Type.Method:RefreshAhead"] = "10s"
         };
 
         var configuration = new ConfigurationBuilder()
@@ -48,9 +48,9 @@ public sealed class JsonPolicySourceTests
     {
         var data = new Dictionary<string, string?>
         {
-            ["MethodCache:Defaults:SlidingExpiration"] = "00:02:00",
-            ["MethodCache:Defaults:RefreshAhead"] = "00:00:30",
-            ["MethodCache:Methods:Sample.Type.Pinned:Duration"] = "00:10:00",
+            ["MethodCache:Defaults:SlidingExpiration"] = "2m",
+            ["MethodCache:Defaults:RefreshAhead"] = "30s",
+            ["MethodCache:Methods:Sample.Type.Pinned:Duration"] = "10m",
             ["MethodCache:Methods:Sample.Type.Pinned:SlidingExpiration"] = "off",
             ["MethodCache:Methods:Sample.Type.Pinned:RefreshAhead"] = "OFF"
         };
@@ -71,7 +71,7 @@ public sealed class JsonPolicySourceTests
     {
         var data = new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:10:00",
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "10m",
             [$"MethodCache:Methods:Sample.Type.Method:{setting}"] = value
         };
 
@@ -88,12 +88,12 @@ public sealed class JsonPolicySourceTests
     {
         var data = new Dictionary<string, string?>
         {
-            ["MethodCache:FailSafe:Duration"] = "01:00:00",
-            ["MethodCache:FailSafe:Timeout"] = "00:00:00.200",
-            ["MethodCache:FailSafe:RetryAfter"] = "00:00:10",
+            ["MethodCache:FailSafe:Duration"] = "1h",
+            ["MethodCache:FailSafe:Timeout"] = "0.2s",
+            ["MethodCache:FailSafe:RetryAfter"] = "10s",
             ["MethodCache:Methods:Sample.Type.Balance:FailSafe"] = "off",
-            ["MethodCache:Methods:Sample.Type.Rates:FailSafe"] = "00:10:00",
-            ["MethodCache:Methods:Sample.Type.Rates:FailSafeTimeout"] = "00:00:01"
+            ["MethodCache:Methods:Sample.Type.Rates:FailSafe"] = "10m",
+            ["MethodCache:Methods:Sample.Type.Rates:FailSafeTimeout"] = "1s"
         };
 
         var services = new ServiceCollection();
@@ -113,7 +113,7 @@ public sealed class JsonPolicySourceTests
     [Fact]
     public void FailSafeSection_WithoutDuration_Throws()
     {
-        var data = new Dictionary<string, string?> { ["MethodCache:FailSafe:Timeout"] = "00:00:01" };
+        var data = new Dictionary<string, string?> { ["MethodCache:FailSafe:Timeout"] = "1s" };
         var services = new ServiceCollection();
 
         var error = Assert.Throws<InvalidOperationException>(() =>
@@ -131,7 +131,7 @@ public sealed class JsonPolicySourceTests
         {
             ["MethodCache:Methods:Sample.Type.Method:Group"] = "config",
             ["MethodCache:Methods:Sample.Type.Method:Metadata:owner"] = "team-a",
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:01:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m"
         };
 
         var configuration = new ConfigurationBuilder()
@@ -154,16 +154,16 @@ public sealed class JsonPolicySourceTests
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:01:00",
-            ["MethodCache:Methods:Sample.Type.Other:Duration"] = "00:02:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m",
+            ["MethodCache:Methods:Sample.Type.Other:Duration"] = "2m"
         });
         await using var provider = BuildProvider(configuration);
         var registry = provider.GetRequiredService<IPolicyRegistry>();
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Type.Method").Policy.Duration);
 
-        configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:10:00";
-        configuration["MethodCache:Methods:Sample.Type.Method:SlidingExpiration"] = "00:00:30";
-        configuration["MethodCache:Methods:Sample.Type.Added:Duration"] = "00:03:00";
+        configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "10m";
+        configuration["MethodCache:Methods:Sample.Type.Method:SlidingExpiration"] = "30s";
+        configuration["MethodCache:Methods:Sample.Type.Added:Duration"] = "3m";
         RemoveSection(configuration, "MethodCache:Methods:Sample.Type.Other");
         configuration.Reload();
 
@@ -178,7 +178,7 @@ public sealed class JsonPolicySourceTests
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:01:00",
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m",
             ["MethodCache:Methods:Sample.Type.Method:Notes"] = "first"
         });
         await using var provider = BuildProvider(configuration);
@@ -198,7 +198,7 @@ public sealed class JsonPolicySourceTests
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:01:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m"
         });
         await using var provider = BuildProvider(configuration);
         var registry = provider.GetRequiredService<IPolicyRegistry>();
@@ -206,7 +206,7 @@ public sealed class JsonPolicySourceTests
 
         configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "five minutes";
         configuration.Reload();
-        configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:01:00";
+        configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m";
         configuration["MethodCache:Methods:Sample.Type.Method:Version"] = "2";
         configuration.Reload();
 
@@ -235,14 +235,14 @@ public sealed class JsonPolicySourceTests
     }
 
     [Theory]
-    [InlineData("Duration", "00:01:00")]
-    [InlineData("SlidingExpiration", "00:00:30")]
+    [InlineData("Duration", "1m")]
+    [InlineData("SlidingExpiration", "30s")]
     public void RefreshWindowAsLongAsTheEntryLives_ThrowsWhenThePoliciesLoad(string lifetime, string value)
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             [$"MethodCache:Methods:Sample.Type.Method:{lifetime}"] = value,
-            ["MethodCache:Methods:Sample.Type.Method:RefreshAhead"] = "00:01:00"
+            ["MethodCache:Methods:Sample.Type.Method:RefreshAhead"] = "1m"
         });
         using var provider = BuildProvider(configuration);
 
@@ -257,14 +257,14 @@ public sealed class JsonPolicySourceTests
         var configuration = new ConfigurationManager();
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "01:00:00"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1h"
         });
         var source = new ConfigFilePolicySource(configuration, "MethodCache");
 
         // For example a source Program.cs adds later, or WebApplicationFactory's test configuration
         configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "00:00:01"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1s"
         });
 
         var snapshot = Assert.Single(await source.GetSnapshotAsync());

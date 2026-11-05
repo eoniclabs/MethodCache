@@ -284,8 +284,8 @@ public class SignatureCorpusTests
             using MethodCache.Policies;
             using Microsoft.Extensions.DependencyInjection;
             public interface ISvc {
-                [Cache(Duration = "00:01:00")] int Get(int id);
-                [Cache(Duration = "00:02:00")] int Get<T>(int id);
+                [Cache(Duration = "1m")] int Get(int id);
+                [Cache(Duration = "2m")] int Get<T>(int id);
             }
             public class Svc : ISvc { public int Get(int id) => id; public int Get<T>(int id) => id; }
             public static class Scenario {
@@ -1407,7 +1407,7 @@ public class SignatureCorpusTests
         ["Duration and sliding settings"] = new("""
                 public interface ISvc
                 {
-                    [Cache(Duration = "00:05:00", SlidingExpiration = "00:01:00", Tags = new[] { "t" })] Task<string> Get(int id);
+                    [Cache(Duration = "5m", SlidingExpiration = "1m", Tags = new[] { "t" })] Task<string> Get(int id);
                 }
 
                 public class Svc : ISvc

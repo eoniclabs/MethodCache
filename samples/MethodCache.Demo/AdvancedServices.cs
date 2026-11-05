@@ -4,13 +4,13 @@ namespace MethodCache.Demo;
 
 public interface ITimedReports
 {
-    [Cache(Duration = "00:00:10")]
+    [Cache(Duration = "10s")]
     Task<int> GetReportAsync();
 
-    [Cache(Duration = "00:00:30", SlidingExpiration = "00:00:10")]
+    [Cache(Duration = "30s", SlidingExpiration = "10s")]
     Task<int> GetSessionAsync(string id);
 
-    [Cache(Duration = "00:00:10", RefreshAhead = "00:00:03")]
+    [Cache(Duration = "10s", RefreshAhead = "3s")]
     Task<int> GetPricesAsync();
 }
 
@@ -42,7 +42,7 @@ public sealed class TimedReports : ITimedReports
 
 public interface IResilientRates
 {
-    [Cache(Duration = "00:00:10", FailSafe = "00:01:00", FailSafeTimeout = "00:00:02")]
+    [Cache(Duration = "10s", FailSafe = "1m", FailSafeTimeout = "2s")]
     Task<decimal> GetAsync(string pair);
 }
 
@@ -70,7 +70,7 @@ public sealed class ResilientRates : IResilientRates
 
 public interface IAvailableProducts
 {
-    [Cache(Duration = "00:05:00")]
+    [Cache(Duration = "5m")]
     Task<string?> FindAsync(int id);
 }
 
@@ -95,7 +95,7 @@ public sealed record TenantProduct(Guid TenantId, int Id, decimal Price);
 
 public interface ITenantCatalog
 {
-    [Cache(Duration = "00:05:00", Tags = ["tenant:{tenantId}:product:{id}"])]
+    [Cache(Duration = "5m", Tags = ["tenant:{tenantId}:product:{id}"])]
     Task<TenantProduct> GetAsync(Guid tenantId, int id);
 
     [CacheInvalidate(Tags = ["tenant:{tenantId}:product:{id}"])]

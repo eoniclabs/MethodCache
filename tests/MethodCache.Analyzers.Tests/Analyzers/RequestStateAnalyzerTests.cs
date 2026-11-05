@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Http { public interface IHttpContextAccessor { } 
 
 public interface IPrices
 {
-    [Cache(Duration = ""00:05:00"")]
+    [Cache(Duration = ""5m"")]
     Task<decimal> GetAsync(int id);
 }
 
@@ -38,6 +38,37 @@ public interface IPlain
             Assert.Contains(typeName, diagnostic.GetMessage());
             Assert.Contains("'IPrices'", diagnostic.GetMessage());
         }
+
+        [Theory]
+        [InlineData("public sealed class Prices(UserDb db) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'db' (UserDb, whose constructor takes IHttpContextAccessor)")]
+        [InlineData("public sealed class Prices(IDbFactory<UserDb> factory) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'factory' (IDbFactory<UserDb>, and UserDb's constructor takes IHttpContextAccessor)")]
+        [InlineData("public sealed class Prices(PrincipalDb db) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'db' (PrincipalDb, whose constructor takes ClaimsPrincipal)")]
+        public async Task CachedImplementation_TakingAClassThatTakesRequestState_IsReported(string declaration, string taken)
+        {
+            var diagnostic = Assert.Single(await AnalyzeAsync(Header + Dependencies + declaration));
+
+            Assert.Equal("MC0026", diagnostic.Id);
+            Assert.Contains(taken, diagnostic.GetMessage());
+        }
+
+        [Theory]
+        [InlineData("public sealed class Prices(SharedDb db) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }")]
+        [InlineData("public sealed class Prices(IDbFactory<SharedDb> factory) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }")]
+        [InlineData("public sealed class Prices(HiddenDb db) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }")]
+        [InlineData("public sealed class Prices(UserDb db) : IPlain { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }")]
+        public async Task CachedImplementation_TakingAClassWithoutRequestState_IsNotReported(string declaration)
+        {
+            Assert.Empty(await AnalyzeAsync(Header + Dependencies + declaration));
+        }
+
+        // A context that filters rows by the current user, one that doesn't, and one whose only such constructor is private
+        private const string Dependencies = @"
+public class UserDb { public UserDb(Microsoft.AspNetCore.Http.IHttpContextAccessor http) { } }
+public class PrincipalDb { public PrincipalDb(int pool, ClaimsPrincipal user) { } }
+public class SharedDb { public SharedDb(System.TimeProvider time) { } }
+public class HiddenDb { public HiddenDb() { } private HiddenDb(ClaimsPrincipal user) { } }
+public interface IDbFactory<T> { T Create(); }
+";
 
         [Theory]
         [InlineData("public sealed class Prices(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : IPlain { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }")]

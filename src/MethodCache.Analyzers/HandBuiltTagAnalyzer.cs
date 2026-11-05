@@ -69,7 +69,7 @@ namespace MethodCache.Analyzers
             }
         }
 
-        private static bool IsMethodCacheInvalidation(IMethodSymbol method)
+        internal static bool IsMethodCacheInvalidation(IMethodSymbol method)
         {
             var type = method.ReducedFrom?.ContainingType ?? method.ContainingType;
             if (type is null) return false;

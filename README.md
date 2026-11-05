@@ -21,7 +21,7 @@ using MethodCache;
 
 public interface IUserService
 {
-    [Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+    [Cache(Duration = "10m", Tags = ["user:{id}"])]
     Task<User> GetUserAsync(int id);
 
     [CacheInvalidate(Tags = ["user:{id}"])]
@@ -117,7 +117,7 @@ public async Task RenameAsync(int id, string name)
 
 <!-- snippet: readme-after -->
 ```cs
-[Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+[Cache(Duration = "10m", Tags = ["user:{id}"])]
 Task<User> GetUserAsync(int id);
 
 [CacheInvalidate(Tags = ["user:{id}"])]
@@ -198,7 +198,7 @@ builder.Services.AddMethodCache(config => config
 {
   "MethodCache": {
     "Methods": {
-      "[MyApp]MyApp.IUserService.GetUserAsync": { "Duration": "00:30:00" }
+      "[MyApp]MyApp.IUserService.GetUserAsync": { "Duration": "30m" }
     }
   }
 }
@@ -231,7 +231,7 @@ To cache a client from a NuGet package, name its interface and the methods to ca
 <!-- snippet: readme-cache-interface -->
 ```cs
 [assembly: CacheInterface(typeof(IFxRatesClient), nameof(IFxRatesClient.GetRateAsync),
-    Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    Duration = "1m", Tags = ["fx", "fx:{from}"])]
 ```
 <!-- endSnippet -->
 

@@ -15,7 +15,7 @@ namespace MethodCache
     /// </remarks>
     /// <example>
     /// <code>
-    /// [assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync), Duration = "00:01:00", Tags = ["fx", "fx:{from}"])]
+    /// [assembly: CacheInterface(typeof(IFxClient), nameof(IFxClient.GetRateAsync), Duration = "1m", Tags = ["fx", "fx:{from}"])]
     ///
     /// builder.Services.AddSingleton&lt;IFxClient, FxClient&gt;();
     /// builder.Services.AddMethodCache();

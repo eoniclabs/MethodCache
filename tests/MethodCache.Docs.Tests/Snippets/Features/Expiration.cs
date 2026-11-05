@@ -14,19 +14,19 @@ namespace Docs.Expiration
     public interface IReportService
     {
         // Gone ten minutes after it was stored
-        [Cache(Duration = "00:10:00")]
+        [Cache(Duration = "10m")]
         Task<Report> GetAsync(int year);
 
         // Kept while it is read at least every five minutes, but never longer than an hour
-        [Cache(Duration = "01:00:00", SlidingExpiration = "00:05:00")]
+        [Cache(Duration = "1h", SlidingExpiration = "5m")]
         Task<Session> GetSessionAsync(string id);
 
         // Reloaded in the background when it is read in its last minute, so callers never wait
-        [Cache(Duration = "00:10:00", RefreshAhead = "00:01:00")]
+        [Cache(Duration = "10m", RefreshAhead = "1m")]
         Task<PriceList> GetPricesAsync(string region);
 
         // Changing the version changes every key, so values cached by the previous version are ignored
-        [Cache(Duration = "1.00:00:00", Version = 2)]
+        [Cache(Duration = "1d", Version = 2)]
         Task<Report> GetYearlyAsync(int year);
     }
     // end-snippet

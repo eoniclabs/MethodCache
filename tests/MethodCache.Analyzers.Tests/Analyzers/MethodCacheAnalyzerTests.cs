@@ -39,7 +39,7 @@ namespace MethodCache.Analyzers.Tests.Analyzers
 
         [Theory]
         [InlineData("Duration = \"1m\", RefreshAhead = \"1m\"", "RefreshAhead = \"1m\" is not shorter than Duration = \"1m\"")]
-        [InlineData("RefreshAhead = \"00:05:00\", Duration = \"2m\"", "RefreshAhead = \"00:05:00\" is not shorter than Duration = \"2m\"")]
+        [InlineData("RefreshAhead = \"5m\", Duration = \"2m\"", "RefreshAhead = \"5m\" is not shorter than Duration = \"2m\"")]
         [InlineData("SlidingExpiration = \"1m\", RefreshAhead = \"2m\"", "RefreshAhead = \"2m\" is not shorter than SlidingExpiration = \"1m\"")]
         [InlineData("Duration = \"1h\", SlidingExpiration = \"1m\", RefreshAhead = \"1m\"", "RefreshAhead = \"1m\" is not shorter than SlidingExpiration = \"1m\"")]
         public async Task RefreshAheadNotShorterThanDuration_IsAnError(string settings, string message)
@@ -120,7 +120,7 @@ public interface IUserService
 
 public class UserService : IUserService
 {
-    [Cache(Duration = ""00:05:00"")]
+    [Cache(Duration = ""5m"")]
     public Task<string> GetAsync(int id) => Task.FromResult("""");
 }";
 
@@ -158,7 +158,7 @@ using MethodCache;
 
 public interface IUserService
 {
-    [Cache(Duration = ""1.00:00:00"", SlidingExpiration = ""00:05:00"", RefreshAhead = ""00:00:30"")]
+    [Cache(Duration = ""1d"", SlidingExpiration = ""5m"", RefreshAhead = ""30s"")]
     Task<string> GetAsync(int id);
 
     [Cache]
@@ -228,13 +228,22 @@ public interface IService
             var diagnostic = Assert.Single(await AnalyzeAsync(source));
             Assert.Equal(MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId, diagnostic.Id);
             Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Equal($"{property} = \"{value}\" is not a positive duration; use a value such as \"5m\" or \"00:05:00\"", diagnostic.GetMessage());
+            Assert.Equal($"{property} = \"{value}\" is not a duration; write a positive number and a unit, such as \"30s\", \"10m\", \"1.5h\" or \"7d\"", diagnostic.GetMessage());
+        }
+
+        [Theory]
+        [MemberData(nameof(MethodCache.TestSupport.DurationCorpus.TimeSpans), MemberType = typeof(MethodCache.TestSupport.DurationCorpus))]
+        public async Task CacheWithATimeSpan_ReportsMC0004WithTheValueInUnits(string value, string suggestion)
+        {
+            var diagnostic = Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(Duration = \"" + value + "\")] int Read(); }"));
+
+            Assert.Equal($"Duration = \"{value}\" is not a duration; write \"{suggestion}\"", diagnostic.GetMessage());
         }
 
         [Theory]
         [InlineData("off")]
         [InlineData("OFF")]
-        [InlineData("01:00:00")]
+        [InlineData("1h")]
         public async Task CacheWithValidFailSafe_ReportsNothing(string value)
         {
             var source = $@"
@@ -242,7 +251,7 @@ using MethodCache;
 
 public interface IService
 {{
-    [Cache(FailSafe = ""{value}"", FailSafeTimeout = ""00:00:00.200"")]
+    [Cache(FailSafe = ""{value}"", FailSafeTimeout = ""0.2s"")]
     string Get(int id);
 }}";
 
@@ -259,7 +268,7 @@ using MethodCache;
 
 public interface IService
 {{
-    [Cache(Duration = ""00:10:00"", {property} = ""{value}"")]
+    [Cache(Duration = ""10m"", {property} = ""{value}"")]
     string Get(int id);
 }}";
 
@@ -276,7 +285,7 @@ using MethodCache;
 
 [assembly: System.CLSCompliant(false)]
 [assembly: CacheInterface(typeof(System.IFormatProvider), ""GetFormat"", {property} = ""{value}"")]
-[assembly: CacheInterface(typeof(System.ICloneable), ""Clone"", Duration = ""00:05:00"")]";
+[assembly: CacheInterface(typeof(System.ICloneable), ""Clone"", Duration = ""5m"")]";
 
             var diagnostic = Assert.Single(await AnalyzeAsync(source));
             Assert.Equal(MethodCacheAnalyzer.InvalidTimeSpanDiagnosticId, diagnostic.Id);

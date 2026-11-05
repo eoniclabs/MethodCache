@@ -28,10 +28,10 @@ public class AdvancedCachingIntegrationTests
         var sourceCode = SourceGeneratorTestEngine.CreateTestSourceCode(@"
     public interface IOrderService
     {
-        [Cache(Duration = ""00:02:00"", Tags = new[] { ""orders"", ""order-details"" })]
+        [Cache(Duration = ""2m"", Tags = new[] { ""orders"", ""order-details"" })]
         Task<Order> GetOrderAsync(int orderId);
         
-        [Cache(Duration = ""00:01:00"", Tags = new[] { ""orders"", ""user-orders"" })]
+        [Cache(Duration = ""1m"", Tags = new[] { ""orders"", ""user-orders"" })]
         Task<List<Order>> GetUserOrdersAsync(int userId);
         
         [CacheInvalidate(Tags = new[] { ""orders"", ""user-orders"", ""order-details"" })]
@@ -43,10 +43,10 @@ public class AdvancedCachingIntegrationTests
 
     public interface IInventoryService  
     {
-        [Cache(Duration = ""00:03:00"", Tags = new[] { ""inventory"", ""product-stock"" })]
+        [Cache(Duration = ""3m"", Tags = new[] { ""inventory"", ""product-stock"" })]
         Task<int> GetStockLevelAsync(int productId);
         
-        [Cache(Duration = ""00:05:00"", Tags = new[] { ""inventory"", ""stock-summary"" })]
+        [Cache(Duration = ""5m"", Tags = new[] { ""inventory"", ""stock-summary"" })]
         Task<Dictionary<int, int>> GetAllStockLevelsAsync();
         
         [CacheInvalidate(Tags = new[] { ""inventory"", ""product-stock"", ""stock-summary"" })]
@@ -225,10 +225,10 @@ public class AdvancedCachingIntegrationTests
         var sourceCode = SourceGeneratorTestEngine.CreateTestSourceCode(@"
     public interface ITimeBasedService
     {
-        [Cache(Duration = ""00:00:01"")]  // 1 second
+        [Cache(Duration = ""1s"")]  // 1 second
         Task<string> GetShortCachedDataAsync(string key);
         
-        [Cache(Duration = ""00:01:00"")]  // 1 minute  
+        [Cache(Duration = ""1m"")]  // 1 minute  
         Task<string> GetLongCachedDataAsync(string key);
     }
 

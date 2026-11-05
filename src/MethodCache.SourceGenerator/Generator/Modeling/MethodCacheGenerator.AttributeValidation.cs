@@ -24,7 +24,12 @@ namespace MethodCache.SourceGenerator
                     case "FailSafeTimeout":
                     case "FailSafeRetryAfter":
                         if (argument.Value.Value is not string text || !MethodCache.Internal.DurationParser.TryParse(text, AllowsOff(argument.Key), out _))
-                            diagnostics.Add(DiagnosticInfo.Create(Diagnostics.InvalidDuration, location, argument.Key, argument.Value.Value?.ToString() ?? "null"));
+                        {
+                            // A TimeSpan such as "00:10:00" gets the same value with a unit
+                            var suggestion = MethodCache.Internal.DurationParser.Suggest(argument.Value.Value as string);
+                            diagnostics.Add(DiagnosticInfo.Create(Diagnostics.InvalidDuration, location, argument.Key, argument.Value.Value?.ToString() ?? "null",
+                                suggestion != null ? "\"" + suggestion + "\"" : MethodCache.Internal.DurationParser.Expected));
+                        }
                         break;
                     case "Version":
                         if (argument.Value.Value is int version && version < 0)

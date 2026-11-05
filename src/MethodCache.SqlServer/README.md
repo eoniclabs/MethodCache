@@ -48,6 +48,22 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
 ```
 <!-- endSnippet -->
 
+### Invalidations only
+
+When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
+API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
+none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+
+<!-- snippet: sqlserver-invalidations-only -->
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
+    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+```
+<!-- endSnippet -->
+
+The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
+
 ## Tables
 
 By default the schema and three tables are created when the application starts, if they do not exist. Startup waits at most three seconds for that; if SQL Server is down, creation is retried in the background and methods run uncached until it succeeds.

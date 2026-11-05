@@ -9,7 +9,7 @@ using MethodCache;
 
 public interface IUserService
 {
-    [Cache(Duration = "00:10:00", Tags = ["user:{id}"])]
+    [Cache(Duration = "10m", Tags = ["user:{id}"])]
     Task<User> GetUserAsync(int id);
 
     [CacheInvalidate(Tags = ["user:{id}"])]

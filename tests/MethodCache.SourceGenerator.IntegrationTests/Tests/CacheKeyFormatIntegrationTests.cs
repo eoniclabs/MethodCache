@@ -58,64 +58,64 @@ namespace KeyFormat
 
     public interface IUserService
     {
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> GetAsync(int id);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> FindAsync(string? first, string? second);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> AllAsync();
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> CountAsync(Query query);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> SumAsync(Batch batch);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> RangeAsync(Range? range);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> PointAsync(Point point, Tenant tenant);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> RegionAsync(Region region);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<string> PolicyAsync(int policy);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> IdsAsync(int[]? ids);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> NamesAsync(System.Collections.Generic.IReadOnlyList<string?> names, int page);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> PointsAsync(System.Collections.Generic.List<Point> points, System.Collections.Generic.IEnumerable<Tenant?> tenants);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> QueriesAsync(Query[] queries);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> FiltersAsync(System.Collections.Generic.Dictionary<string, int> filters);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> RangesAsync(Range[] ranges);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> SequenceAsync(System.Collections.Generic.IEnumerable<int> values);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> ListAsync(System.Collections.Generic.List<int> values);
 
-        [Cache(Duration = ""00:10:00"")]
+        [Cache(Duration = ""10m"")]
         Task<int> ScopesAsync(IScope[] scopes, ICacheKeyProvider? single);
     }
 
     public interface IOrderService
     {
-        [Cache(Duration = ""00:10:00"", Version = 2)]
+        [Cache(Duration = ""10m"", Version = 2)]
         Task<string> GetAsync(int id);
     }
 

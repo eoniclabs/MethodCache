@@ -111,14 +111,14 @@ public sealed record ContractQuery(string Text, int Page);
 
 public interface IContractService
 {
-    [Cache(Duration = "00:10:00")] Task<int> Generic<T>(Guid id);
-    [Cache(Duration = "00:10:00")] int Sync(Guid id);
-    [Cache(Duration = "00:10:00")] Task<int> ByEmail(string email);
-    [Cache(Duration = "00:10:00")] Task<int> Task(Guid id);
-    [Cache(Duration = "00:10:00")] ValueTask<int> ValueTask(Guid id);
-    [Cache(Duration = "00:10:00")] Task<int> Record(ContractQuery query);
-    [Cache(Duration = "00:10:00")] Task<int> Collection(Guid[] ids);
-    [Cache(Duration = "00:10:00")] Task<int> Fallback(object value);
+    [Cache(Duration = "10m")] Task<int> Generic<T>(Guid id);
+    [Cache(Duration = "10m")] int Sync(Guid id);
+    [Cache(Duration = "10m")] Task<int> ByEmail(string email);
+    [Cache(Duration = "10m")] Task<int> Task(Guid id);
+    [Cache(Duration = "10m")] ValueTask<int> ValueTask(Guid id);
+    [Cache(Duration = "10m")] Task<int> Record(ContractQuery query);
+    [Cache(Duration = "10m")] Task<int> Collection(Guid[] ids);
+    [Cache(Duration = "10m")] Task<int> Fallback(object value);
 }
 
 public sealed class ContractService : IContractService

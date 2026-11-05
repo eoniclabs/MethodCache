@@ -138,7 +138,7 @@ public class TelemetryPrivacyTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Read:Duration"] = "00:01:00"
+            ["MethodCache:Methods:Sample.Read:Duration"] = "1m"
         }).Build();
         var logs = new RecordingLogs();
         var services = new ServiceCollection();
@@ -152,7 +152,7 @@ public class TelemetryPrivacyTests
         configuration.Reload();
         var message = Assert.Single(logs.Messages);
         Assert.DoesNotContain(Canary, message);
-        Assert.Contains("Sample.Read:Duration' is not a positive time span", message);
+        Assert.Contains("Sample.Read:Duration' is not a duration", message);
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
     }
 

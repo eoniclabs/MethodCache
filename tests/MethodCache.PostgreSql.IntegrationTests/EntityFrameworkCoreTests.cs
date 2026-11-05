@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Transactions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
@@ -31,7 +33,7 @@ public class EntityFrameworkCoreTests(PostgreSqlFixture postgres)
 
     public interface IItemNames
     {
-        [Cache(Duration = "01:00:00", Tags = ["item:{id}"])]
+        [Cache(Duration = "1h", Tags = ["item:{id}"])]
         Task<string?> GetAsync(int id);
     }
 
@@ -100,6 +102,94 @@ public class EntityFrameworkCoreTests(PostgreSqlFixture postgres)
             Assert.Equal("After", await EventuallyAsync(() => names.GetAsync(id), "After"));
         }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    public sealed class Note
+    {
+        public int Id { get; set; }
+        public int Owner { get; set; }
+        public string Text { get; set; } = "";
+    }
+
+    public sealed class NotesDb(DbContextOptions<NotesDb> options) : DbContext(options)
+    {
+        public DbSet<Note> Notes => Set<Note>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<Note>().ToTable("notes");
+    }
+
+    /// <summary>Sets up each connection for one user, as an app with row-level security does.</summary>
+    private sealed class SignedIn(string role, string schema, int user) : DbConnectionInterceptor
+    {
+        public override async Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"set role {role}; set search_path to {schema}; select set_config('app.user', '{user}', false);";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    [SkippableFact]
+    public async Task A_row_that_row_level_security_hides_is_not_changed_by_a_save_that_did_not_load_it()
+    {
+        var options = postgres.Options("efrls");
+        var role = options.SchemaName + "_user";
+        try
+        {
+            // Users read only their own notes, and may update and delete any: the save that didn't load the row reads
+            // it for its stored values with the user's permissions, and finds nothing
+            await PostgreSqlFixture.ExecuteAsync(options.ConnectionString, $"""
+                create schema {options.SchemaName};
+                create table {options.SchemaName}.notes ("Id" int primary key, "Owner" int not null, "Text" text not null);
+                insert into {options.SchemaName}.notes values (1, 1, 'Alice''s'), (2, 2, 'Bob''s');
+                alter table {options.SchemaName}.notes enable row level security;
+                create policy read_own on {options.SchemaName}.notes for select using ("Owner" = current_setting('app.user')::int);
+                create policy update_any on {options.SchemaName}.notes for update using (true) with check (true);
+                create policy delete_any on {options.SchemaName}.notes for delete using (true);
+                create role {role};
+                grant usage on schema {options.SchemaName} to {role};
+                grant select, update, delete on {options.SchemaName}.notes to {role};
+                """);
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddDbContext<NotesDb>(o => o.UseNpgsql(options.ConnectionString).AddInterceptors(new SignedIn(role, options.SchemaName, user: 1)));
+            services.AddMethodCache(mc => mc.UseEntityFrameworkCore<NotesDb>(ef => ef.Entity<Note>("note:{Id}", "notes:{Owner}")));
+            await using var provider = services.BuildServiceProvider();
+
+            await using (var scope = provider.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<NotesDb>();
+                db.Notes.Update(new Note { Id = 1, Owner = 1, Text = "Changed" });
+                await db.SaveChangesAsync();
+            }
+
+            await using (var scope = provider.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<NotesDb>();
+                db.Notes.Update(new Note { Id = 2, Owner = 1, Text = "Mine now" });
+                await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => db.SaveChangesAsync());
+            }
+
+            await using (var scope = provider.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<NotesDb>();
+                db.Notes.Remove(new Note { Id = 2 });
+                await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => db.SaveChangesAsync());
+            }
+
+            Assert.Equal("Changed", await PostgreSqlFixture.ScalarAsync<string>(options.ConnectionString, $"select \"Text\" from {options.SchemaName}.notes where \"Id\" = 1"));
+            Assert.Equal("Bob's", await PostgreSqlFixture.ScalarAsync<string>(options.ConnectionString, $"select \"Text\" from {options.SchemaName}.notes where \"Id\" = 2"));
+        }
+        finally
+        {
+            await PostgreSqlFixture.DropSchemaAsync(options);
+            if (!string.IsNullOrEmpty(options.ConnectionString))
+            {
+                await PostgreSqlFixture.ExecuteAsync(options.ConnectionString,
+                    $"do $$ begin if exists (select from pg_roles where rolname = '{role}') then drop owned by {role}; drop role {role}; end if; end $$;");
+            }
+        }
     }
 
     private static async Task<string?> EventuallyAsync(Func<Task<string?>> read, string expected)

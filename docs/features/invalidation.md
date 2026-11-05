@@ -12,10 +12,10 @@ Give cached methods tags, and list the same tags on the methods that change the 
 ```cs
 public interface IOrderService
 {
-    [Cache(Duration = "00:10:00", Tags = ["orders", "order:{orderId}"])]
+    [Cache(Duration = "10m", Tags = ["orders", "order:{orderId}"])]
     Task<Order> GetAsync(int orderId);
 
-    [Cache(Duration = "00:05:00", Tags = ["orders", "customer:{customerId}:orders", "customer:{customerId}"])]
+    [Cache(Duration = "5m", Tags = ["orders", "customer:{customerId}:orders", "customer:{customerId}"])]
     Task<List<Order>> ListForCustomerAsync(int customerId);
 
     // Removes this order and the customer's list, nothing else
@@ -108,7 +108,7 @@ public interface IPriceSource
 {
     const string RateTag = "price:{provider}:{model}";
 
-    [Cache(Duration = "00:05:00", Tags = [RateTag])]
+    [Cache(Duration = "5m", Tags = [RateTag])]
     Task<decimal?> GetRateAsync(string provider, string model);
 }
 ```

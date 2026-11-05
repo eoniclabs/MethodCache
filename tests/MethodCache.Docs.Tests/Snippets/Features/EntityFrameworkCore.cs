@@ -1,6 +1,7 @@
 using MethodCache;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Docs.EntityFrameworkCore
@@ -45,13 +46,13 @@ namespace Docs.EntityFrameworkCore
     // begin-snippet: efcore-reads
     public interface IProductReads
     {
-        [Cache(Duration = "00:10:00", Tags = ["product:{id}"])]
+        [Cache(Duration = "10m", Tags = ["product:{id}"])]
         Task<ProductDto?> GetAsync(int id);
 
-        [Cache(Duration = "00:10:00", Tags = ["category:{categoryId}"])]
+        [Cache(Duration = "10m", Tags = ["category:{categoryId}"])]
         Task<IReadOnlyList<ProductDto>> ListAsync(int categoryId);
 
-        [Cache(Duration = "01:00:00", Tags = ["top-sellers"])]
+        [Cache(Duration = "1h", Tags = ["top-sellers"])]
         Task<IReadOnlyList<ProductDto>> TopSellersAsync();
     }
     // end-snippet
@@ -144,5 +145,72 @@ namespace Docs.EntityFrameworkCore
                 keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}"), CancellationToken.None);
         }
         // end-snippet
+    }
+}
+
+namespace Docs.EntityFrameworkCore.SharedRead
+{
+    public sealed class Recipe
+    {
+        public int Id { get; set; }
+        public Guid HouseholdId { get; set; }
+        public string Title { get; set; } = "";
+    }
+
+    public record RecipeDto(int Id, string Title);
+
+    /// <summary>The app's context for requests.</summary>
+    public sealed class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
+    {
+        public DbSet<Recipe> Recipes => Set<Recipe>();
+    }
+
+    /// <summary>Sets the signed-in user's household on each connection, for the row-level security policies.</summary>
+    public sealed class SignedInHousehold : DbConnectionInterceptor;
+
+    // begin-snippet: efcore-shared-read-context
+    // For cached reads: a context of its own, which nothing sets up from the request
+    public sealed class ReadDb(DbContextOptions<ReadDb> options) : DbContext(options)
+    {
+        public DbSet<Recipe> Recipes => Set<Recipe>();
+    }
+
+    public interface IRecipeReads
+    {
+        [Cache(Duration = "10m", Tags = ["recipes:{householdId}"])]
+        Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId);
+    }
+
+    public sealed class RecipeReads(IDbContextFactory<ReadDb> factory) : IRecipeReads
+    {
+        public async Task<IReadOnlyList<RecipeDto>> ListAsync(Guid householdId)
+        {
+            // Its own context and connection for each call, also for a refresh that runs after the request
+            await using var db = await factory.CreateDbContextAsync();
+            // The policies read the household from the argument, which is part of the key, not from the request
+            await db.Database.OpenConnectionAsync();
+            await db.Database.ExecuteSqlAsync($"select set_config('app.household', {householdId.ToString()}, false)");
+            return await db.Recipes.Where(r => r.HouseholdId == householdId)
+                .Select(r => new RecipeDto(r.Id, r.Title)).ToListAsync();
+        }
+    }
+    // end-snippet
+
+    public static class Setup
+    {
+        public static void Register(WebApplicationBuilder builder, string connectionString, SignedInHousehold signedIn)
+        {
+            // begin-snippet: efcore-shared-read-register
+            // Requests read and write through the app's context, set up for the signed-in user
+            builder.Services.AddDbContext<AppDb>(o => o.UseNpgsql(connectionString).AddInterceptors(signedIn));
+            // Cached reads use their own
+            builder.Services.AddDbContextFactory<ReadDb>(o => o.UseNpgsql(connectionString));
+            builder.Services.AddScoped<IRecipeReads, RecipeReads>();
+
+            // The writes' context is the one connected to MethodCache
+            builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef => ef
+                .Entity<Recipe>("recipes:{HouseholdId}")));
+            // end-snippet
+        }
     }
 }
