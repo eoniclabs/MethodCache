@@ -46,7 +46,7 @@ namespace App
     }
 }";
 
-        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries" };
+        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries", "EntityMapping" };
 
         [Fact]
         public void EditingAMethodBody_RegeneratesNothing()
@@ -124,6 +124,47 @@ namespace App
                 .Count(o => o.Value?.ToString()?.Contains("ISvc", StringComparison.Ordinal) == true);
         }
 
+        // MethodCache.EntityFrameworkCore's mapping API, so the test needs no EF Core package
+        private const string EntityFrameworkCoreOptions = @"
+namespace MethodCache.EntityFrameworkCore
+{
+    public sealed class EntityFrameworkCoreOptions
+    {
+        public EntityFrameworkCoreOptions Entity<TEntity>(params string[] tagTemplates) where TEntity : class => this;
+    }
+}";
+
+        private const string Mapping = @"
+namespace App
+{
+    public record Product(int Id);
+    public record Order(int Id);
+    public static class Startup
+    {
+        public static void Map(MethodCache.EntityFrameworkCore.EntityFrameworkCoreOptions ef) => ef.Entity<Product>(""products"");
+    }
+}";
+
+        [Fact]
+        public void The_entity_mapping_is_written_again_only_when_a_mapping_call_changes()
+        {
+            var (driver, compilation) = RunInitial(EntityFrameworkCoreOptions, Mapping);
+            Assert.Contains("entity:any:App.Product", MappingSource(driver));
+
+            var bodyEdited = Replace(compilation, Implementation, Implementation.Replace("\"user\" + id", "\"member\" + id"));
+            driver = driver.RunGenerators(bodyEdited);
+            AssertAllReused(driver.GetRunResult().Results.Single(), "EntityMapping");
+
+            var mappingEdited = Replace(bodyEdited, Mapping, Mapping.Replace("ef.Entity<Product>(\"products\")", "ef.Entity<Product>(\"products\").Entity<Order>(\"orders\")"));
+            driver = driver.RunGenerators(mappingEdited);
+            var mapping = driver.GetRunResult().Results.Single().TrackedSteps["EntityMapping"].SelectMany(s => s.Outputs);
+            Assert.Contains(mapping, o => o.Reason == IncrementalStepRunReason.Modified);
+            Assert.Contains("entity:any:App.Order", MappingSource(driver));
+
+            static string MappingSource(GeneratorDriver driver)
+                => driver.GetRunResult().GeneratedTrees.Single(t => t.FilePath.EndsWith("MethodCacheEntityMapping.g.cs", StringComparison.Ordinal)).ToString();
+        }
+
         private static void AssertAllReused(GeneratorRunResult result, string stepName)
         {
             Assert.True(result.TrackedSteps.TryGetValue(stepName, out var runs), $"Step {stepName} was not tracked");
@@ -131,11 +172,11 @@ namespace App
                 output => Assert.True(output.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged, $"Step {stepName} ran again: {output.Reason}"));
         }
 
-        private static (GeneratorDriver Driver, CSharpCompilation Compilation) RunInitial()
+        private static (GeneratorDriver Driver, CSharpCompilation Compilation) RunInitial(params string[] moreSources)
         {
             var compilation = CSharpCompilation.Create(
                 "compilation",
-                new[] { UserService, OrderService, Implementation }.Select(s => CSharpSyntaxTree.ParseText(s)),
+                new[] { UserService, OrderService, Implementation }.Concat(moreSources).Select(s => CSharpSyntaxTree.ParseText(s)),
                 References(),
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

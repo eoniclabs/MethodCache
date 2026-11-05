@@ -161,12 +161,13 @@ doesn't invalidate anything:
 
 - `ExecuteUpdate` and `ExecuteDelete` on a type the project maps with `Entity<T>(...)`, or on a type it derives from
   or that derives from it. A type mapped only with `WhenDeleted` is reported for `ExecuteDelete` alone. Writes to
-  tables that nothing caches, such as refresh tokens, aren't reported. In a project that maps no type, such as a
-  data layer apart from the startup project, every `ExecuteUpdate` and `ExecuteDelete` is reported.
+  tables that nothing caches, such as refresh tokens, aren't reported. A project that references the one with the
+  mapping, such as its tests, uses that mapping too. In a project that sees no mapping, such as a data layer that the
+  startup project references, every `ExecuteUpdate` and `ExecuteDelete` is reported.
 - `Database.ExecuteSql…` when the SQL names the table of a mapped type, runs code (`call`, `exec`, `do`), or can't be
-  read, such as SQL in a variable. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
+  read, such as SQL in a variable or a string interpolated into `ExecuteSqlRaw`. A table is known by its class name, `DbSet` name, `ToTable` or `[Table]` name, in
   any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
-  `set` a session setting never count. In a project that maps no type, all other raw SQL is reported.
+  `set` a session setting never count. In a project that sees no mapping, all other raw SQL is reported.
 - A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
   ([MC0027](../user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
 

@@ -254,6 +254,14 @@ public static class Generic
         }
 
         [Theory]
+        [InlineData("const string Table = \"products\"; await db.Database.ExecuteSqlRawAsync($\"delete from {Table} where id = {id}\");", true)]
+        [InlineData("const string Table = \"refresh_tokens\"; await db.Database.ExecuteSqlRawAsync($\"delete from {Table} where id = {id}\");", false)]
+        public async Task ExecuteSqlRaw_reads_constants_and_numbers_in_the_SQL(string write, bool reported)
+        {
+            Assert.Equal(reported ? 1 : 0, (await AnalyzeAsync(Method(write), mapping: ".Entity<Product>(\"products\")")).Length);
+        }
+
+        [Theory]
         [InlineData("delete from catalog_items", true)]
         [InlineData("delete from inventory", true)]
         [InlineData("delete from access_tokens", false)]
@@ -302,11 +310,137 @@ public static class Startup
         }
 
         [Theory]
+        [InlineData("tokens.Where(t => t.Id == 1).ExecuteDelete();", false)]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"delete from refresh_tokens\");", false)]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"update audit_log set seen = true\");", false)]
+        [InlineData("products.Where(p => p.Id == 1).ExecuteDelete();", true)]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"delete from products\");", true)]
+        [InlineData("await db.Database.ExecuteSqlRawAsync(\"delete from catalog_items\");", true)]
+        public async Task A_test_project_reads_the_mapping_the_generator_wrote_into_the_project_it_tests(string write, bool reported)
+        {
+            var tests = ProjectThatReferencesApi(write, generateApi: true, out var generated);
+
+            Assert.Contains("entity:any:Api.Product", generated);
+            var diagnostics = await tests.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new ChangeTrackerBypassAnalyzer())).GetAnalyzerDiagnosticsAsync();
+            Assert.Equal(reported ? 1 : 0, diagnostics.Length);
+        }
+
+        [Theory]
+        [InlineData("ef => ef.Entity<RefreshToken>(t => t.WhenDeleted(\"sessions\"))", "tokens.Where(t => t.Id == 1).ExecuteDelete();", true)]
+        [InlineData("ef => ef.Entity<RefreshToken>(t => t.WhenDeleted(\"sessions\"))", "await tokens.ExecuteUpdateAsync(s => { });", false)]
+        [InlineData("ef => { void Map<T>() where T : class => ef.Entity<T>(\"all\"); Map<RefreshToken>(); }", "await tokens.ExecuteUpdateAsync(s => { });", true)]
+        [InlineData("ef => { ef.Entity<Product>(\"products\"); ef.Entity<System.Collections.Generic.List<int>>(\"lists\"); }", "await tokens.ExecuteUpdateAsync(s => { });", true)]
+        public async Task A_test_project_reads_what_the_mapping_in_the_project_it_tests_covers(string mapping, string write, bool reported)
+        {
+            var tests = ProjectThatReferencesApi(write, generateApi: true, out _, mapping);
+
+            var diagnostics = await tests.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new ChangeTrackerBypassAnalyzer())).GetAnalyzerDiagnosticsAsync();
+            Assert.Equal(reported ? 1 : 0, diagnostics.Length);
+        }
+
+        [Fact]
+        public async Task Without_the_mapping_in_the_referenced_project_every_write_counts()
+        {
+            var tests = ProjectThatReferencesApi("tokens.Where(t => t.Id == 1).ExecuteDelete();", generateApi: false, out _);
+
+            var diagnostics = await tests.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new ChangeTrackerBypassAnalyzer())).GetAnalyzerDiagnosticsAsync();
+            Assert.Equal("MC0027", Assert.Single(diagnostics).Id);
+        }
+
+        [Fact]
+        public void The_generator_writes_no_mapping_into_a_project_that_maps_nothing()
+        {
+            var compilation = CSharpCompilation.Create("App",
+                [CSharpSyntaxTree.ParseText(EntityFrameworkCore), CSharpSyntaxTree.ParseText(MethodCacheEntityFrameworkCore), CSharpSyntaxTree.ParseText(@"
+public class ShopDb : Microsoft.EntityFrameworkCore.DbContext { }
+public static class Startup
+{
+    public static void Configure(object mc) => MethodCache.EntityFrameworkCore.EntityFrameworkCoreMethodCacheBuilderExtensions
+        .UseEntityFrameworkCore<ShopDb>(mc, ef => { });
+}")], References(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+            var result = CSharpGeneratorDriver.Create(new SourceGenerator.MethodCacheGenerator()).RunGenerators(compilation).GetRunResult();
+
+            Assert.DoesNotContain(result.GeneratedTrees, tree => tree.FilePath.EndsWith("MethodCacheEntityMapping.g.cs", StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// An API project that maps <c>Product</c> and connects its context, and a test project that references it and
+        /// writes. The API is built as a reference assembly, so the test project sees only its public metadata.
+        /// </summary>
+        private static CSharpCompilation ProjectThatReferencesApi(string write, bool generateApi, out string generated,
+            string mapping = "ef => ef.Entity<Product>(\"products\")")
+        {
+            var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+            var entityFrameworkCore = Image(CSharpCompilation.Create("Microsoft.EntityFrameworkCore",
+                [CSharpSyntaxTree.ParseText(EntityFrameworkCore)], References(), options));
+            var package = Image(CSharpCompilation.Create("MethodCache.EntityFrameworkCore",
+                [CSharpSyntaxTree.ParseText(MethodCacheEntityFrameworkCore)], References().Append(entityFrameworkCore), options));
+            Compilation api = CSharpCompilation.Create("Api", [CSharpSyntaxTree.ParseText(@"
+namespace Api
+{
+    using Microsoft.EntityFrameworkCore;
+
+    public record Product(int Id);
+    public record RefreshToken(int Id);
+    public record AuditEntry(int Id);
+    public class ShopDb : DbContext
+    {
+        public DbSet<Product> Products { get; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; } = null!;
+        public DbSet<AuditEntry> AuditLog { get; } = null!;
+
+        public void OnModelCreating(ModelBuilder modelBuilder) => modelBuilder.Entity<Product>().ToTable(""catalog_items"");
+    }
+    public static class Startup
+    {
+        public static void Configure(object mc) => MethodCache.EntityFrameworkCore.EntityFrameworkCoreMethodCacheBuilderExtensions
+            .UseEntityFrameworkCore<ShopDb>(mc, " + mapping + @");
+    }
+}")], References().Append(entityFrameworkCore).Append(package), options);
+            generated = "";
+            if (generateApi)
+            {
+                CSharpGeneratorDriver.Create(new SourceGenerator.MethodCacheGenerator()).RunGeneratorsAndUpdateCompilation(api, out api, out _);
+                generated = string.Join("\n", api.SyntaxTrees.Skip(1).Select(tree => tree.ToString()));
+            }
+
+            var tests = CSharpCompilation.Create("Api.Tests", [CSharpSyntaxTree.ParseText(@"
+using System.Linq;
+using System.Threading.Tasks;
+using Api;
+using Microsoft.EntityFrameworkCore;
+
+public sealed class Fixture
+{
+    public async Task ArrangeAsync(ShopDb db, IQueryable<Product> products, IQueryable<RefreshToken> tokens)
+    {
+        " + write + @"
+    }
+}")], References().Append(entityFrameworkCore).Append(package).Append(Image(api)), options);
+            Assert.Empty(tests.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+            return tests;
+        }
+
+        // A reference assembly, as a build passes a referenced project to the compiler: no method bodies, so it
+        // references only the assemblies its public signatures use
+        private static MetadataReference Image(Compilation compilation)
+        {
+            using var stream = new MemoryStream();
+            var result = compilation.Emit(stream, options: new Microsoft.CodeAnalysis.Emit.EmitOptions(metadataOnly: true, includePrivateMembers: false));
+            Assert.True(result.Success, string.Join("\n", result.Diagnostics));
+            return MetadataReference.CreateFromImage(stream.ToArray());
+        }
+
+        [Theory]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"select pg_advisory_xact_lock(42)\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"  -- one writer at a time\\n SELECT pg_advisory_xact_lock(42);\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"/* lock */ select 1\");")]
         [InlineData("await db.Database.ExecuteSqlInterpolatedAsync($\"select pg_advisory_xact_lock({id})\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"SET LOCAL lock_timeout = '5s'\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync($\"SET LOCAL lock_timeout = '{id}ms'\");")]
+        [InlineData("const long LockId = 42; await db.Database.ExecuteSqlRawAsync($\"SELECT pg_advisory_xact_lock({LockId})\");")]
+        [InlineData("long? key = id; await db.Database.ExecuteSqlRawAsync($\"select pg_advisory_xact_lock({key:D})\");")]
         public async Task Raw_SQL_that_only_selects_or_sets_is_not_reported(string read)
         {
             Assert.Empty(await AnalyzeAsync(Method(read)));
@@ -318,6 +452,8 @@ public static class Startup
         [InlineData("await db.Database.ExecuteSqlRawAsync(\"selected_products_cleanup()\");")]
         [InlineData("await db.Database.ExecuteSqlRawAsync(sql);")]
         [InlineData("await db.Database.ExecuteSqlRawAsync($\"select 1 {sql}\");")]
+        [InlineData("await db.Database.ExecuteSqlRawAsync($\"SET LOCAL lock_timeout = '{sql}'\");")]
+        [InlineData("const string Statement = \"delete from products\"; await db.Database.ExecuteSqlRawAsync($\"select pg_advisory_xact_lock({id}); {Statement}\");")]
         public async Task Raw_SQL_that_may_write_is_reported(string write)
         {
             Assert.Single(await AnalyzeAsync(Method(write)));
