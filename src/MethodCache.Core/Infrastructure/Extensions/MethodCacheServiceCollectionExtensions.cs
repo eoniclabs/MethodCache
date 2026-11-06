@@ -44,6 +44,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var catalog = new ModuleCatalog(modules, builder.Assemblies.ToArray());
             var parameters = services.FirstOrDefault(d => d.ServiceType == typeof(GeneratedParameters))?.ImplementationInstance as GeneratedParameters;
             if (parameters == null) services.AddSingleton(parameters = new GeneratedParameters());
+            foreach (var module in modules) parameters.DescribedMethods.UnionWith(module.ParameterNames.Keys);
             EnsureCoreServices(services);
             if (builder.AutoLifetime is { } lifetime) RegisterUnregisteredServices(services, catalog, lifetime);
             DecorateExistingRegistrations(services, catalog);
@@ -639,6 +640,10 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             private readonly Dictionary<(Type Service, object? Key), List<DecoratedRegistration>> _groups = [];
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+
+            // Every [Cache] method the loaded generated modules describe, registered or not, so a policy for a method
+            // whose service a host leaves out is told apart from a misspelled id
+            internal HashSet<string> DescribedMethods { get; } = new(StringComparer.Ordinal);
 
             // Each cached method's result type, which a CacheWhen<T> set for the method is checked against
             internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);

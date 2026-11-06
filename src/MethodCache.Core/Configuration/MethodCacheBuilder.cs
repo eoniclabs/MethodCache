@@ -65,6 +65,13 @@ public sealed class MethodCacheBuilder
         Assemblies.Add(assembly);
         return this;
     }
+    // Loads the module generated for the service, also under Native AOT, so a policy for a [Cache] method whose service
+    // this container doesn't register is known and skipped rather than taken for a misspelled method
+    private FluentMethodCacheConfiguration ServiceModule<TService>()
+    {
+        System.Runtime.CompilerServices.RuntimeHelpers.RunModuleConstructor(typeof(TService).Assembly.ManifestModule.ModuleHandle);
+        return Configuration;
+    }
     /// <summary>Opts into registration of missing services with the stated lifetime and exactly one candidate.</summary>
     public MethodCacheBuilder AutoRegister(ServiceLifetime lifetime)
     {
@@ -118,11 +125,11 @@ public sealed class MethodCacheBuilder
     }
     /// <summary>Selects a method returning a synchronous result.</summary>
     public IFluentMethodConfiguration<TResult> Method<TService, TResult>(Expression<Func<TService, TResult>> method)
-        => Configuration.ForService<TService>().Method(method);
+        => ServiceModule<TService>().ForService<TService>().Method(method);
     /// <summary>Selects a method returning an asynchronous task result.</summary>
     public IFluentMethodConfiguration<TResult> Method<TService, TResult>(Expression<Func<TService, Task<TResult>>> method)
-        => Configuration.ForService<TService>().Method(method);
+        => ServiceModule<TService>().ForService<TService>().Method(method);
     /// <summary>Selects a method returning a value-task result.</summary>
     public IFluentMethodConfiguration<TResult> Method<TService, TResult>(Expression<Func<TService, ValueTask<TResult>>> method)
-        => Configuration.ForService<TService>().Method(method);
+        => ServiceModule<TService>().ForService<TService>().Method(method);
 }

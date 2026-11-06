@@ -19,7 +19,7 @@ internal static class PolicyRegistrationExtensions
             var limits = new PolicyLimits(
                 () => provider.GetService<ICacheManager>() is MethodCache.Extensibility.InMemoryCacheManager memory ? memory.MaxExpiration : null,
                 parameters?.ResultTypes);
-            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>(), parameters?.Names, limits);
+            return new PolicyResolver(registrations, provider.GetService<ILogger<PolicyResolver>>(), parameters?.Names, limits, parameters?.DescribedMethods);
         });
 
         services.TryAddSingleton<IPolicyResolver>(provider => provider.GetRequiredService<PolicyResolver>());
