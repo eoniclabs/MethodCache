@@ -146,7 +146,7 @@ namespace CacheWhen
 
         // Before any call: the cached service can't be created with a policy that would cache nothing
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService(compiled.Assembly.GetType("CacheWhen.ICatalog")!));
-        Assert.Contains("CacheWhen<String> can't check the Int32 result of [CacheWhenApp]CacheWhen.ICatalog.MismatchAsync", error.Message, StringComparison.Ordinal);
+        Assert.Contains("CacheWhen<string> can't check the int result of [CacheWhenApp]CacheWhen.ICatalog.MismatchAsync", error.Message, StringComparison.Ordinal);
         Assert.Contains("It is set in mc.Method(...)", error.Message, StringComparison.Ordinal);
     }
 

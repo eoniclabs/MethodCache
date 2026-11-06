@@ -28,6 +28,12 @@ up in a key by accident, and two calls share an entry only when their keys are e
 such as `order:42`, so keys from different places can't collide. An empty or whitespace key throws
 `ArgumentException`.
 
+The key is used as it is: MethodCache adds neither the result type nor the application to it. Applications that share
+a distributed cache under one `KeyPrefix`, as they do to invalidate each other's entries, therefore share these keys,
+and `order:42` in two of them is one entry. Cache the same type under a key everywhere, or start it with the
+application's name, such as `billing:order:42`. Keys of `[Cache]` methods include the method's assembly and interface,
+so they don't collide this way ([Several applications on one store](distributed-cache.md#several-applications-on-one-store)).
+
 ## Options
 
 `GetOrCreateAsync` takes every option, including a predicate that only makes sense per call:
@@ -50,7 +56,8 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](invalidation.md).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
-  from the distributed cache.
+  from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
+  ([A duration from the result](expiration.md#a-duration-from-the-result)).
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
@@ -94,30 +101,52 @@ and calls the factory once with the keys neither holds. Each key gets the value 
 the distributed cache, then the factory. A bulk read therefore agrees with individual reads of the same keys, even
 across nodes: a value another node stored in the distributed cache is returned as is, and its key is not passed to
 the factory. A concurrent writer may still win over a value the factory produced; the returned dictionary then holds
-the writer's value, as an individual read would:
+the writer's value, as an individual read would.
+
+Pass the ids and how each id makes its key. The factory gets the ids that are not cached and returns a dictionary by
+id, and so does the call:
 
 <!-- snippet: manual-many -->
+```cs
+var users = await cache.GetOrCreateManyAsync<int, User>(
+    userIds,
+    id => $"user:{id}",
+    async (missingIds, ct) =>
+    {
+        var loaded = await repository.GetUsersAsync(missingIds, ct);   // one query for all misses
+        return loaded.ToDictionary(u => u.Id);   // an id without a user is left out
+    },
+    o => o.WithDuration(TimeSpan.FromHours(1)));
+```
+<!-- endSnippet -->
+
+- An id the factory leaves out, such as one that doesn't exist, is not cached and is left out of the returned
+  dictionary. When the key has an expired fail-safe value, it gets that value instead, as when the factory throws. To
+  cache that an id has no value, return it with `null`.
+- Two different ids that make the same key throw an `ArgumentException`, since one would get the other's value.
+- The factory returns a dictionary, an empty one when no id has a value; `null` fails like a factory that throws.
+- On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.
+- Each key behaves as `GetOrCreateAsync` would for it. When the factory throws, each key it was asked for gets its
+  fail-safe value; when a key has none, the factory's exception is thrown.
+- `cancellationToken` stops this caller's wait. A factory that ignores it finishes in the background, and its values
+  are cached unless they were invalidated while it ran.
+
+With string keys, pass the keys; the factory gets the keys that are not cached and returns a dictionary by key, with
+the same rules:
+
+<!-- snippet: manual-many-keys -->
 ```cs
 var users = await cache.GetOrCreateManyAsync<User>(
     userIds.Select(id => $"user:{id}"),
     async (missingKeys, ct) =>
     {
         var ids = missingKeys.Select(k => int.Parse(k["user:".Length..])).ToList();
-        var loaded = await repository.GetUsersAsync(ids, ct);   // one query for all misses
-        return loaded.ToDictionary(u => $"user:{u.Id}", u => u);
+        var loaded = await repository.GetUsersAsync(ids, ct);
+        return loaded.ToDictionary(u => $"user:{u.Id}");
     },
     o => o.WithDuration(TimeSpan.FromHours(1)));
 ```
 <!-- endSnippet -->
-
-- The factory returns an `IReadOnlyDictionary` with a value for each key it gets, and the call returns one for every
-  key. An answer that leaves out a key, or is `null`, fails like a factory that throws, and none of its values is
-  cached.
-- On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.
-- Each key behaves as `GetOrCreateAsync` would for it. When the factory throws, each key it was asked for gets its
-  fail-safe value; when a key has none, the factory's exception is thrown.
-- `cancellationToken` stops this caller's wait. A factory that ignores it finishes in the background, and its values
-  are cached unless they were invalidated while it ran.
 
 ## Things to know
 

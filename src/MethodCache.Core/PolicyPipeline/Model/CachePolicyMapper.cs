@@ -75,6 +75,11 @@ internal static class CachePolicyMapper
             fields |= CachePolicyFields.CacheWhen;
         }
 
+        if (policy.DurationFor != null)
+        {
+            fields |= CachePolicyFields.DurationFor;
+        }
+
         if (policy.FailSafe.HasValue)
         {
             fields |= CachePolicyFields.FailSafe;

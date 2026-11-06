@@ -1,3 +1,4 @@
+using MethodCache.Infrastructure;
 using MethodCache.Extensibility;
 
 namespace MethodCache;
@@ -11,6 +12,10 @@ public sealed partial class NoOpCacheManager
         ArgumentNullException.ThrowIfNull(factory);
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("A cache key must be provided.", nameof(key));
+        // The same configuration check the cache makes, so a test with this manager finds a CacheWhen<T> or DurationFor<T>
+        // for another result type too
+        CachePredicateCheck.EnsureMatches(options?.CacheWhen, typeof(T), key);
+        CachePredicateCheck.EnsureMatches(options?.DurationFor, typeof(T), key);
         return new(RunAsync(options?.Runtime?.MethodId ?? CacheKeyLookup.MethodName,
             () => factory(state, cancellationToken).AsTask()));
     }

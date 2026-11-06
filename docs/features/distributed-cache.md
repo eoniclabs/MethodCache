@@ -65,9 +65,10 @@ sequenceDiagram
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone
   and is never used as a fallback.
 
-> [!IMPORTANT]
-> Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
-> are ignored with one warning.
+> [!NOTE]
+> Instances on different 1.x versions can share a cache and backplane, so you can upgrade them one at a time: every
+> 1.x version reads the others' invalidations, and an entry in a format an instance doesn't read is a miss for it. A
+> backplane message an instance can't read clears its memory cache, with one warning.
 
 ## When the distributed cache is down
 
@@ -113,9 +114,24 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
-| `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Give each application that shares a store its own. It can't change while the app runs |
+| `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
+
+## Several applications on one store
+
+Applications that use one Redis or database share everything under the same `KeyPrefix`: entries, tags and
+invalidations. That is how a worker invalidates what an API cached. A different prefix keeps two applications apart in
+both ways, so neither sees the other's entries nor its invalidations:
+
+```cs
+builder.Services.AddMethodCache(mc => mc.UseRedis("localhost:6379").Distributed(o => o.KeyPrefix = "billing:"));
+```
+
+Under one prefix, `[Cache]` methods never share an entry by mistake, since each key holds the method's assembly,
+interface and name. A key you pass to `ICacheManager` is used as it is, without a type or application, so
+`GetOrCreateAsync("order:42", ...)` in two applications is one entry. Cache the same type under such a key everywhere,
+or start it with the application's name, such as `billing:order:42` ([Manual caching](manual-caching.md#keys)).
 
 ## Invalidations only
 
@@ -195,7 +211,7 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 - Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
   so values the previous version wrote are not read.
-- Run the same MethodCache version on every instance that shares a store.
+- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works.
 - SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
   before 1.0, or a login that may not create tables, see the
   [SQL Server](../../src/MethodCache.SqlServer/README.md) and [PostgreSQL](../../src/MethodCache.PostgreSql/README.md) guides.

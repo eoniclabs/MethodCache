@@ -93,26 +93,27 @@ public sealed class BulkSingleEquivalenceTests
         Assert.False((await harness.Cache.TryGetAsync<string>("c")).Found);
     }
 
-    // Only the bulk path can get an answer without a requested key; it then fails as a single load whose factory throws
+    // Only the bulk path can get an answer without a requested key; that key is not cached and not returned
     [Theory]
     [InlineData(ManagerKind.Memory)]
     [InlineData(ManagerKind.Custom)]
-    public async Task BulkLoad_FactoryLeavesOutAKey_ThrowsAndCachesNoneOfTheBatch(ManagerKind kind)
+    public async Task BulkLoad_FactoryLeavesOutAKey_ReturnsAndCachesTheOthers(ManagerKind kind)
     {
         using var harness = new Harness(kind);
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
-            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("a", "a1"))), Cached));
+        var values = await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
+            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("a", "a1"))), Cached);
 
-        Assert.Contains("did not return a value for key 'b'", error.Message, StringComparison.Ordinal);
-        Assert.False((await harness.Cache.TryGetAsync<string>("a")).Found);
+        Assert.Equal(Values(("a", "a1")), values);
+        Assert.Equal("a1", (await harness.Cache.TryGetAsync<string>("a")).Value);
         Assert.False((await harness.Cache.TryGetAsync<string>("b")).Found);
     }
 
+    // A key the batch leaves out gets its fail-safe value, as when the factory fails
     [Theory]
     [InlineData(ManagerKind.Memory)]
     [InlineData(ManagerKind.Custom)]
-    public async Task BulkLoad_FactoryLeavesOutAKeyWithAStaleValue_ServesTheStaleValues(ManagerKind kind)
+    public async Task BulkLoad_FactoryLeavesOutAKeyWithAStaleValue_ServesItsStaleValue(ManagerKind kind)
     {
         using var harness = new Harness(kind);
         await LoadAsync(harness.Cache, CallPath.Bulk, ["a", "b"], new Source(key => key + "1"), FailSafe);
@@ -121,7 +122,70 @@ public sealed class BulkSingleEquivalenceTests
         var served = await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
             (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("a", "a2"))), FailSafe);
 
-        Assert.Equal(Values(("a", "a1"), ("b", "b1")), served);
+        Assert.Equal(Values(("a", "a2"), ("b", "b1")), served);
+    }
+
+    [Theory]
+    [InlineData(ManagerKind.Memory)]
+    [InlineData(ManagerKind.Custom)]
+    public async Task BulkLoad_WithoutCaching_FactoryLeavesOutAKey_ReturnsTheOthers(ManagerKind kind)
+    {
+        using var harness = new Harness(kind);
+        var disabled = new CacheEntryOptions.Builder().WithEnabled(false).Build();
+
+        var values = await harness.Cache.GetOrCreateManyAsync<string>(["a", "b"],
+            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(Values(("b", "b1"))), disabled);
+
+        Assert.Equal(Values(("b", "b1")), values);
+    }
+
+    [Theory]
+    [InlineData(ManagerKind.Memory)]
+    [InlineData(ManagerKind.Custom)]
+    public async Task BulkLoad_FactoryReturnsNull_ThrowsAndCachesNothing(ManagerKind kind)
+    {
+        using var harness = new Harness(kind);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await harness.Cache.GetOrCreateManyAsync<string>(["a"],
+            (_, _) => ValueTask.FromResult<IReadOnlyDictionary<string, string>>(null!), Cached));
+
+        Assert.Contains("returned null", error.Message, StringComparison.Ordinal);
+        Assert.False((await harness.Cache.TryGetAsync<string>("a")).Found);
+    }
+
+    [Theory]
+    [InlineData(ManagerKind.Memory)]
+    [InlineData(ManagerKind.Custom)]
+    public async Task BulkLoad_WithIds_PassesTheMissingIdsAndReturnsValuesById(ManagerKind kind)
+    {
+        using var harness = new Harness(kind);
+        var asked = new List<IReadOnlyList<int>>();
+        ValueTask<IReadOnlyDictionary<int, string>> Load(IReadOnlyList<int> ids, CancellationToken _)
+        {
+            asked.Add(ids);
+            // 3 doesn't exist, so it has no value
+            return ValueTask.FromResult<IReadOnlyDictionary<int, string>>(ids.Where(id => id != 3).ToDictionary(id => id, id => "user " + id));
+        }
+
+        var first = await harness.Cache.GetOrCreateManyAsync<int, string>([1, 2, 3, 2], id => $"user:{id}", Load, Cached);
+        var second = await harness.Cache.GetOrCreateManyAsync<int, string>([1, 3], id => $"user:{id}", Load, Cached);
+
+        Assert.Equal(new Dictionary<int, string> { [1] = "user 1", [2] = "user 2" }, first);
+        Assert.Equal(new Dictionary<int, string> { [1] = "user 1" }, second);
+        Assert.Equal([[1, 2, 3], [3]], asked);
+        Assert.Equal("user 2", (await harness.Cache.TryGetAsync<string>("user:2")).Value);
+    }
+
+    [Fact]
+    public async Task BulkLoad_WithIds_TwoIdsWithTheSameKey_Throws()
+    {
+        using var harness = new Harness(ManagerKind.Memory);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(async () => await harness.Cache.GetOrCreateManyAsync<int, string>([1, 2], _ => "user",
+            (_, _) => throw new Xunit.Sdk.XunitException("The factory must not run."), Cached));
+
+        Assert.Equal("keyFor", error.ParamName);
+        Assert.Contains("The ids '1' and '2' both give the key 'user'", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]

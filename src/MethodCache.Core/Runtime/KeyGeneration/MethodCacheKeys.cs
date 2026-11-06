@@ -12,9 +12,9 @@ namespace MethodCache;
 /// <para>To get the key of a call to a cached method, use <see cref="IMethodCacheKeys.For{TService}"/>: it builds the
 /// key exactly as the decorator does, including the policy version, overloads, generic arguments and keyed
 /// registrations. Keys written by hand go wrong without notice when any of those change.</para>
-/// <para>Use <c>Part</c> for a tag written by hand, such as <c>"user:" + MethodCacheKeys.Part(id)</c> for a
-/// <c>"user:{id}"</c> tag template: parts are formatted with the invariant culture, string parts escape <c>\</c> and
-/// <c>:</c>, and <c>null</c> is written as <c>\0</c>.</para>
+/// <para>Use <see cref="Tag"/> for a tag written by hand, such as <c>MethodCacheKeys.Tag($"user:{id}")</c> for a
+/// <c>"user:{id}"</c> tag template, or <c>Part</c> for one value: parts are formatted with the invariant culture,
+/// string parts escape <c>\</c> and <c>:</c>, and <c>null</c> is written as <c>\0</c>.</para>
 /// <para>An application <see cref="ICacheManager"/> stores an entry under <see cref="StoredKey"/>, so keys from
 /// <see cref="IMethodCacheKeys"/> and <see cref="CacheEntryInfo.StoredKey"/> name the same entry.</para>
 /// </remarks>
@@ -88,6 +88,25 @@ public static class MethodCacheKeys
             string.Concat(serviceKey.GetType().Name, "(", ((IFormattable)serviceKey).ToString(null, CultureInfo.InvariantCulture), ")"),
         _ => null
     };
+
+    /// <summary>
+    /// Builds a tag from an interpolated string, writing each value the way the tag templates of <c>[Cache]</c> write
+    /// it, so <c>MethodCacheKeys.Tag($"price:{provider}:{model}")</c> names the entries a <c>"price:{provider}:{model}"</c>
+    /// template tagged: strings escape <c>:</c> and <c>\</c>, a <see cref="Guid"/> is 32 digits, an enum is its number, and
+    /// numbers and dates use the invariant culture.
+    /// </summary>
+    /// <remarks>
+    /// A value of a type MethodCache doesn't write in tags, or with a format or alignment such as <c>{price:F2}</c>,
+    /// doesn't compile. To build the tag from a call to the cached method instead, use <see cref="IMethodCacheKeys.Tag{TService}"/>.
+    /// </remarks>
+    /// <param name="tag">The interpolated string.</param>
+    /// <returns>The tag.</returns>
+    /// <example>
+    /// <code>
+    /// await cache.InvalidateTagAsync(MethodCacheKeys.Tag($"price:{provider}:{model}"));
+    /// </code>
+    /// </example>
+    public static string Tag(ref TagInterpolatedStringHandler tag) => tag.ToStringAndClear();
 
     /// <summary>Formats a string argument, escaping characters that would make keys ambiguous.</summary>
     public static string Part(string? value)

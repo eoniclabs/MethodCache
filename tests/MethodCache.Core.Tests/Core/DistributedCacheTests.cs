@@ -200,6 +200,22 @@ public class DistributedCacheTests
     }
 
     [Fact]
+    public async Task DurationFor_SetsHowLongTheDistributedEntryLives()
+    {
+        var first = CreateNode();
+        var second = CreateNode();
+        var policy = Policy() with { DurationFor = v => v is "brief" ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(5) };
+
+        await first.GetOrCreateFastAsync("brief", "M", () => Task.FromResult("brief"), policy);
+        await first.GetOrCreateFastAsync("long", "M", () => Task.FromResult("long"), policy);
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        (await second.GetOrCreateFastAsync("brief", "M", () => Task.FromResult("from second"), policy)).Should().Be("from second");
+        (await second.GetOrCreateFastAsync("long", "M", () => Task.FromResult("from second"), policy)).Should().Be("long",
+            "the result's own five minutes replace the one-minute Duration on both instances");
+    }
+
+    [Fact]
     public async Task SecondInstance_ReadsTheValueTheFirstStored()
     {
         var first = CreateNode();

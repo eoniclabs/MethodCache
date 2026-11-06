@@ -17,15 +17,18 @@
   register generated closed types ([Getting started](getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, creating it with `new`, or calling the method from inside the class (`this.GetAsync(...)`) skips it.
-  Warning [MC0031](user-guide/DIAGNOSTICS.md#mc0031) reports a call from inside the class.
+  Warning [MC0032](user-guide/DIAGNOSTICS.md#mc0032) reports a class created with `new`, and
+  [MC0031](user-guide/DIAGNOSTICS.md#mc0031) a call from inside the class.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](features/keys.md)).
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
   [MC0019](user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](features/keys.md#framework-types)).
-- **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
-  `CacheNullValues = false`, or the call threw. Exceptions are never cached.
+- **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
+  the result is `null` with `CacheNullValues = false`, or the call threw. Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
+- **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning
+  the first time that happens; raise `MaxItems` ([Memory cache](features/memory-cache.md#bounding-by-size)).
 
 ## Old data after an update
 
@@ -78,7 +81,8 @@ key.
 | `InvalidOperationException` at startup about `CacheWhen` | `CacheWhen` was set in `Defaults` or a group; set it for one method with `mc.Method(...).CacheWhen(...)`. Or a `CacheWhen<T>` is for a type the method can't return; a runtime override with one throws an `ArgumentException` ([Conditional caching](features/conditional-caching.md)) |
 | `InvalidOperationException` at startup: the `Duration` is longer than `MethodCacheMemoryOptions.MaxExpiration` | A `Duration` in `[Cache]`, code or `appsettings.json` is longer than the memory cache keeps an entry (7 days by default). Shorten it, or raise the limit with `mc.Memory(o => o.MaxExpiration = ...)`. A runtime override throws an `ArgumentException`, and a manual call an `ArgumentOutOfRangeException` before its factory runs ([Expiration](features/expiration.md)) |
 | `InvalidOperationException` from `IMethodCacheKeys.For` saying it can't tell which key to return | The interface has several registrations and the last is a scoped or transient factory, which may create another type in each scope. Register it with its implementation type, give it a service key of its own, or invalidate by tag ([Cache keys](features/keys.md#building-a-key-yourself)) |
-| `InvalidOperationException` from `GetOrCreateManyAsync`: the bulk factory did not return a value for a key | The factory must return a value for each key it is asked for. Nothing it returned is cached; keys with a fail-safe value get it ([Manual caching](features/manual-caching.md)) |
+| `InvalidOperationException` from `GetOrCreateManyAsync`: the bulk cache factory returned null | Return a dictionary with the keys that have a value, an empty one when none has. A key the factory leaves out is not cached and not returned ([Manual caching](features/manual-caching.md#many-keys-at-once)) |
+| `GetOrCreateManyAsync` returns fewer keys than it was given | The factory left those keys out, so they have no value and nothing was cached for them. Return a key with `null` to cache that it has no value ([Manual caching](features/manual-caching.md#many-keys-at-once)) |
 | `InvalidOperationException` from `AddMethodCache` naming an implementation type | An instance registration of a cached interface has the same type as another registration under the same service key. Give each its own service key ([Cache keys](features/keys.md#things-to-know)) |
 | `InvalidOperationException` from `AddMethodCache` naming two distributed caches | More than one of `UseRedis`, `UseSqlServer` and `UsePostgreSql` was called; use one |
 

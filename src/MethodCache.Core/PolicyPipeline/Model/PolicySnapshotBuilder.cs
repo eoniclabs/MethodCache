@@ -49,6 +49,7 @@ internal static class PolicySnapshotBuilder
                             CachePolicyFields.Metadata |
                             CachePolicyFields.RefreshAhead |
                             CachePolicyFields.CacheWhen |
+                            CachePolicyFields.DurationFor |
                             CachePolicyFields.FailSafe |
                             CachePolicyFields.FailSafeTimeout |
                             CachePolicyFields.FailSafeRetryAfter | CachePolicyFields.Enabled | CachePolicyFields.Distributed;

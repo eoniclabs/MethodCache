@@ -56,13 +56,52 @@ public static class Program
             Assert.Empty(await AnalyzeAsync(source, OutputKind.ConsoleApplication));
         }
 
+        // The shared setup method counts only when the program calls it: a program that references the project but never
+        // calls its setup method sets up nothing
         [Fact]
-        public async Task ProgramWhoseReferencedProjectCallsAddMethodCache_IsNotReported()
+        public async Task ProgramReferencingAProjectThatCallsAddMethodCache_ButNotCallingItsMethod_IsReported()
         {
-            var data = Library("Data", MarkerSource("MethodCache.CachedServices") + MarkerSource("MethodCache.CallsAddMethodCache"));
+            var common = Library("Common", MarkerSource("MethodCache.CachedServices") + SetupSource);
 
-            Assert.Empty(await AnalyzeAsync(Program, OutputKind.ConsoleApplication, data));
+            var diagnostic = Assert.Single(await AnalyzeAsync(Program, OutputKind.ConsoleApplication, common));
+
+            Assert.Contains("calls neither AddMethodCache nor a method of a referenced project that calls it", diagnostic.GetMessage());
         }
+
+        [Fact]
+        public async Task ProgramCallingAReferencedProjectsMethodThatCallsAddMethodCache_IsNotReported()
+        {
+            var common = Library("Common", MarkerSource("MethodCache.CachedServices") + SetupSource);
+
+            var source = Program.Replace("Register(services);", "Common.Setup.AddCommonCache(services);");
+
+            Assert.Empty(await AnalyzeAsync(source, OutputKind.ConsoleApplication, common));
+        }
+
+        [Fact]
+        public async Task ProgramCallingItAsAnExtensionMethodOrMethodGroup_IsNotReported()
+        {
+            var common = Library("Common", MarkerSource("MethodCache.CachedServices") + SetupSource);
+
+            var extension = "using Common;\n" + Program.Replace("Register(services);", "services.AddCommonCache();");
+            var methodGroup = Program.Replace("Register(services);",
+                "System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection> setup = Common.Setup.AddCommonCache; setup(services);");
+
+            Assert.Empty(await AnalyzeAsync(extension, OutputKind.ConsoleApplication, common));
+            Assert.Empty(await AnalyzeAsync(methodGroup, OutputKind.ConsoleApplication, common));
+        }
+
+        private const string SetupSource = @"
+[assembly: System.Reflection.AssemblyMetadata(""MethodCache.AddsMethodCache"", ""M:Common.Setup.AddCommonCache(Microsoft.Extensions.DependencyInjection.IServiceCollection)"")]
+namespace Common
+{
+    public static class Setup
+    {
+        public static void AddCommonCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+            => Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(services);
+    }
+}
+";
 
         [Fact]
         public async Task LibraryTestProjectAndProgramWithoutCachedServices_AreNotReported()

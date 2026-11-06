@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace MethodCache.Analyzers
             "Security",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "The cache key is built from the method's arguments only. State a service reads from the current request, such as HttpContext, the signed-in user or a per-request database connection with row-level security, is not part of the key, and refresh-ahead and fail-safe loads run in a new scope without a request. A class the implementation takes, or creates through a factory such as IDbContextFactory<T>, is checked one level down: a DbContext whose constructor takes IHttpContextAccessor is reported too.",
+            description: "The cache key is built from the method's arguments only. State a service reads from the current request, such as HttpContext, the signed-in user or a per-request database connection with row-level security, is not part of the key, and refresh-ahead and fail-safe loads run in a new scope without a request. A class the implementation takes, or creates through a factory such as IDbContextFactory<T>, is checked two constructors down, and an interface is followed to the classes of the project that implement it: a DbContext whose constructor takes IHttpContextAccessor is reported too. The application can name its own request-state types, such as ICurrentUser, in the .editorconfig option methodcache.request_state_types.",
             helpLinkUri: HelpLink("MC0026"));
 
         private static readonly string[] RequestStateTypes =
@@ -39,15 +40,26 @@ namespace MethodCache.Analyzers
         /// <inheritdoc />
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
+        /// <summary>The .editorconfig option that names the application's own request-state types, comma-separated.</summary>
+        internal const string RequestStateTypesOption = "methodcache.request_state_types";
+
+        /// <summary>How many constructors down a dependency is followed: the one the implementation takes, and one more.</summary>
+        private const int Depth = 2;
+
         /// <inheritdoc />
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
-            context.RegisterSymbolAction(AnalyzeType, SymbolKind.NamedType);
+            context.RegisterCompilationStartAction(start =>
+            {
+                // The classes of this project that implement each interface, found once when a dependency is an interface
+                var implementations = new Lazy<ILookup<ISymbol, INamedTypeSymbol>>(() => Implementations(start.Compilation));
+                start.RegisterSymbolAction(symbol => AnalyzeType(symbol, implementations), SymbolKind.NamedType);
+            });
         }
 
-        private static void AnalyzeType(SymbolAnalysisContext context)
+        private static void AnalyzeType(SymbolAnalysisContext context, Lazy<ILookup<ISymbol, INamedTypeSymbol>> implementations)
         {
             var type = (INamedTypeSymbol)context.Symbol;
             if (type.TypeKind != TypeKind.Class || type.IsAbstract) return;
@@ -55,15 +67,16 @@ namespace MethodCache.Analyzers
             var cached = type.AllInterfaces.FirstOrDefault(HasCachedMethod);
             if (cached is null) return;
 
+            var search = new Search(Configured(context.Options, type), implementations);
             foreach (var constructor in type.InstanceConstructors)
             {
                 if (constructor.IsImplicitlyDeclared || constructor.DeclaredAccessibility == Accessibility.Private) continue;
                 foreach (var parameter in constructor.Parameters)
                 {
                     var taken = Display(parameter.Type);
-                    if (!IsRequestState(parameter.Type))
+                    if (!search.IsRequestState(parameter.Type))
                     {
-                        if (RequestStateDependency(parameter.Type) is not var (dependency, state)) continue;
+                        if (search.Dependency(parameter.Type, Depth, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is not var (dependency, state)) continue;
                         taken = SymbolEqualityComparer.Default.Equals(dependency, parameter.Type)
                             ? $"{taken}, whose constructor takes {Display(state)}"
                             : $"{taken}, and {Display(dependency)}'s constructor takes {Display(state)}";
@@ -76,38 +89,81 @@ namespace MethodCache.Analyzers
 
         private static string Display(ITypeSymbol type) => type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat);
 
-        /// <summary>
-        /// A class the parameter's type is, or names as a type argument (the context of <c>IDbContextFactory&lt;T&gt;</c>),
-        /// whose constructor takes per-request state. One level down only: past that the analyzer can't tell what runs.
-        /// </summary>
-        private static (ITypeSymbol Dependency, ITypeSymbol State)? RequestStateDependency(ITypeSymbol type)
+        /// <summary>The request-state types the application names in .editorconfig, such as <c>MyApp.ICurrentUser</c>.</summary>
+        private static ImmutableHashSet<string> Configured(AnalyzerOptions options, INamedTypeSymbol type)
         {
-            var candidates = new List<ITypeSymbol> { type };
-            if (type is INamedTypeSymbol { IsGenericType: true } generic) candidates.AddRange(generic.TypeArguments);
-            foreach (var candidate in candidates)
+            var tree = type.Locations.FirstOrDefault(l => l.IsInSource)?.SourceTree;
+            if (tree == null || !options.AnalyzerConfigOptionsProvider.GetOptions(tree).TryGetValue(RequestStateTypesOption, out var value))
+                return ImmutableHashSet<string>.Empty;
+            return value.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(name => name.Trim())
+                .Where(name => name.Length > 0).ToImmutableHashSet(StringComparer.Ordinal);
+        }
+
+        private static ILookup<ISymbol, INamedTypeSymbol> Implementations(Compilation compilation)
+            => Types(compilation.Assembly.GlobalNamespace)
+                .Where(type => type.TypeKind == TypeKind.Class && !type.IsAbstract)
+                .SelectMany(type => type.AllInterfaces.Select(i => (Interface: (ISymbol)i.OriginalDefinition, Class: type)))
+                .ToLookup(pair => pair.Interface, pair => pair.Class, SymbolEqualityComparer.Default);
+
+        private static IEnumerable<INamedTypeSymbol> Types(INamespaceOrTypeSymbol container)
+        {
+            foreach (var type in container.GetTypeMembers())
             {
-                if (candidate is not INamedTypeSymbol { TypeKind: TypeKind.Class } dependency || IsRequestState(dependency)) continue;
-                foreach (var constructor in dependency.InstanceConstructors)
-                {
-                    if (constructor.IsImplicitlyDeclared || constructor.DeclaredAccessibility == Accessibility.Private) continue;
-                    var state = constructor.Parameters.FirstOrDefault(p => IsRequestState(p.Type));
-                    if (state != null) return (dependency, state.Type);
-                }
+                yield return type;
+                foreach (var nested in Types(type)) yield return nested;
             }
-            return null;
+            if (container is INamespaceSymbol ns)
+                foreach (var child in ns.GetNamespaceMembers())
+                    foreach (var type in Types(child))
+                        yield return type;
+        }
+
+        private sealed class Search(ImmutableHashSet<string> configured, Lazy<ILookup<ISymbol, INamedTypeSymbol>> implementations)
+        {
+            /// <summary>
+            /// A class the parameter's type is, implements (when it is an interface of this project), or names as a type
+            /// argument (the context of <c>IDbContextFactory&lt;T&gt;</c>), whose constructor takes per-request state, followed
+            /// <paramref name="depth"/> constructors down: past that the analyzer can't tell what runs.
+            /// </summary>
+            public (ITypeSymbol Dependency, ITypeSymbol State)? Dependency(ITypeSymbol type, int depth, HashSet<ITypeSymbol> seen)
+            {
+                var candidates = new List<ITypeSymbol> { type };
+                if (type is INamedTypeSymbol { IsGenericType: true } generic) candidates.AddRange(generic.TypeArguments);
+                foreach (var dependency in candidates.SelectMany(Classes))
+                {
+                    if (IsRequestState(dependency) || !seen.Add(dependency)) continue;
+                    var constructors = dependency.InstanceConstructors
+                        .Where(c => !c.IsImplicitlyDeclared && c.DeclaredAccessibility != Accessibility.Private).ToList();
+                    var state = constructors.SelectMany(c => c.Parameters).FirstOrDefault(p => IsRequestState(p.Type));
+                    if (state != null) return (dependency, state.Type);
+                    if (depth <= 1) continue;
+                    foreach (var parameter in constructors.SelectMany(c => c.Parameters))
+                        if (Dependency(parameter.Type, depth - 1, seen) is { } deeper) return deeper;
+                }
+                return null;
+            }
+
+            private IEnumerable<INamedTypeSymbol> Classes(ITypeSymbol type)
+                => type switch
+                {
+                    INamedTypeSymbol { TypeKind: TypeKind.Class } named => new[] { named },
+                    INamedTypeSymbol { TypeKind: TypeKind.Interface } named => implementations.Value[named.OriginalDefinition],
+                    _ => Enumerable.Empty<INamedTypeSymbol>(),
+                };
+
+            public bool IsRequestState(ITypeSymbol type)
+            {
+                bool Named(ITypeSymbol t) => RequestStateTypes.Contains(t.OriginalDefinition.ToDisplayString()) || configured.Contains(t.OriginalDefinition.ToDisplayString());
+                for (var current = type as INamedTypeSymbol; current != null; current = current.BaseType)
+                {
+                    if (Named(current)) return true;
+                }
+                return Named(type) || type.AllInterfaces.Any(Named);
+            }
         }
 
         private static bool HasCachedMethod(INamedTypeSymbol @interface)
             => @interface.GetMembers().OfType<IMethodSymbol>().Any(m => m.GetAttributes().Any(a =>
                 a.AttributeClass is { Name: "CacheAttribute", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } }));
-
-        private static bool IsRequestState(ITypeSymbol type)
-        {
-            for (var current = type as INamedTypeSymbol; current != null; current = current.BaseType)
-            {
-                if (RequestStateTypes.Contains(current.OriginalDefinition.ToDisplayString())) return true;
-            }
-            return type.AllInterfaces.Any(i => RequestStateTypes.Contains(i.OriginalDefinition.ToDisplayString()));
-        }
     }
 }

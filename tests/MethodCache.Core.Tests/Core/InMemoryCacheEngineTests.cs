@@ -221,6 +221,40 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task DurationFor_GivesEachResultItsOwnLifetime_WithoutJitter()
+    {
+        var manager = CreateManager(o => o.JitterMaxDuration = TimeSpan.FromMinutes(2));
+        var policy = Policy() with { DurationFor = v => v is "" ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(5) };
+
+        await manager.GetOrCreateFastAsync("empty", "M", () => Task.FromResult(""), policy);
+        await manager.GetOrCreateFastAsync("full", "M", () => Task.FromResult("rows"), policy);
+        _time.Advance(TimeSpan.FromSeconds(11));
+        (await manager.GetAsync<string>("empty")).Should().BeNull();
+        _time.Advance(TimeSpan.FromMinutes(4));
+        (await manager.GetAsync<string>("full")).Should().Be("rows", "the result's five minutes replace the one-minute Duration");
+        _time.Advance(TimeSpan.FromSeconds(50));
+        (await manager.GetAsync<string>("full")).Should().BeNull("no jitter is added to a duration the result gives");
+    }
+
+    [Fact]
+    public async Task DurationFor_RejectedRefresh_KeepsTheCurrentValue()
+    {
+        var manager = CreateManager();
+        var policy = Policy() with { RefreshAhead = TimeSpan.FromSeconds(10), DurationFor = v => (int)v! > 0 ? OneMinute : TimeSpan.Zero };
+        var next = 5;
+        var calls = 0;
+        Task<int> Factory() { Interlocked.Increment(ref calls); return Task.FromResult(next); }
+
+        await manager.GetOrCreateFastAsync("key", "M", Factory, policy);
+        next = 0;
+        _time.Advance(TimeSpan.FromSeconds(55));
+        (await manager.GetOrCreateFastAsync("key", "M", Factory, policy)).Should().Be(5); // starts the refresh
+
+        await WaitUntilAsync(() => Task.FromResult(Volatile.Read(ref calls) == 2 && !manager.IsLoading("key")));
+        (await manager.GetAsync<int>("key")).Should().Be(5);
+    }
+
+    [Fact]
     public async Task CacheWhen_RejectedLoad_KeepsTheFailSafeValue()
     {
         var manager = CreateManager();
@@ -581,6 +615,38 @@ public class InMemoryCacheEngineTests
         var stats = await manager.GetStatsAsync();
         stats.LocalMethodEntries.Should().BeLessThanOrEqualTo(100);
         stats.Evictions.Should().BeGreaterThanOrEqualTo(900);
+    }
+
+    [Fact]
+    public async Task Full_WarnsOnce_NamingTheLimitToRaise()
+    {
+        var logger = new WarningLogger();
+        var manager = new InMemoryCacheManager(MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false, MaxItems = 10 }),
+            _time, logger: logger);
+
+        for (var i = 0; i < 10; i++) await manager.SetAsync($"k{i}", i, OneMinute);
+        await manager.GetStatsAsync();
+        logger.Warnings.Should().BeEmpty("the cache holds no more than its limit");
+
+        for (var i = 10; i < 100; i++) await manager.SetAsync($"k{i}", i, OneMinute);
+        (await manager.GetStatsAsync()).Evictions.Should().BePositive();
+
+        logger.Warnings.Should().ContainSingle().Which.Should().Contain("full at MaxItems (10 entries)");
+    }
+
+    private sealed class WarningLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        public List<string> Warnings { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning) lock (Warnings) Warnings.Add(formatter(state, exception));
+        }
     }
 
     [Fact]

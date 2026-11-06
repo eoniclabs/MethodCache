@@ -19,7 +19,8 @@ the attribute to the interface. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
 
 **Where do I call `AddMethodCache()`?**
 After you register the services it caches. A cached service registered after it fails when the host starts. A
-program with cached services that never calls it gets warning MC0030.
+program with cached services gets warning MC0030 when it calls neither `AddMethodCache` nor a setup method of a
+referenced project that calls it.
 ([Registration reference](reference/registration.md#order))
 
 **Why does my method still run on every call?**
@@ -109,10 +110,11 @@ either: it changes nothing and throws `DbUpdateConcurrencyException`. EF Core qu
 that read. ([Saves of rows the context didn't load](features/entity-framework-core.md#saves-of-rows-the-context-didnt-load))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
-Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
-as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture, and escapes `:` and `\` in strings,
-so `gemma3:4b` becomes `gemma3\:4b`. A tag formatted differently matches nothing, silently. Analyzer MC0024 warns
-about hand-built tags and its code fix adds `MethodCacheKeys.Part`. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
+Yes, in `MethodCacheKeys.Tag`: `MethodCacheKeys.Tag($"price:{model}")`. It writes each value the way tags do: a `Guid`
+without hyphens (format `N`), an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant
+culture, and `:` and `\` escaped in strings, so `gemma3:4b` becomes `gemma3\:4b`. Plain interpolation formats them
+differently and matches nothing, silently. Analyzer MC0024 warns about such tags and its code fix wraps them in
+`MethodCacheKeys.Tag`. `MethodCacheKeys.Part` formats one value. ([Build diagnostics](user-guide/DIAGNOSTICS.md#mc0024))
 
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
@@ -154,6 +156,11 @@ in the background. ([Refresh-ahead](features/expiration.md#refresh-ahead))
 Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off for every method. For one method, use
 `CacheWhen`: `mc.Method((IProductService s) => s.FindAsync(Any<int>.Value)).CacheWhen(product => product is not null)`.
 ([Null values](features/memory-cache.md#null-values), [CacheWhen](features/conditional-caching.md#cachewhen))
+
+**How do I cache a token until it expires, or an empty result for a shorter time?**
+`DurationFor` gives each result its own duration: `mc.Method((ITokenClient c) => c.GetTokenAsync(Any<string>.Value))
+.DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
+the result. ([A duration from the result](features/expiration.md#a-duration-from-the-result))
 
 **How do I cache only some results?**
 `CacheWhen` decides per method from the result whether to store it. ([Conditional caching](features/conditional-caching.md))
@@ -202,6 +209,21 @@ Arguments whose only state is private are rejected; implement `ICacheKeyProvider
 **How do I cache something without an attribute?**
 `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with a prefixed key such as `$"order:{id}"`.
 ([Manual caching](features/manual-caching.md))
+
+**Two applications share Redis. Do they share cached values?**
+Under the same `KeyPrefix` they share entries and invalidations, which is how one invalidates the other's. `[Cache]`
+keys include the method's assembly and interface, but keys passed to `ICacheManager` don't, so the same manual key is
+one entry in both. ([Several applications on one store](features/distributed-cache.md#several-applications-on-one-store))
+
+**I need several instances of a cached class, one per provider. How?**
+Register each as a keyed service before `AddMethodCache`, such as `AddKeyedSingleton<IRates>("ecb", ...)`, and inject
+it with `[FromKeyedServices("ecb")]`. Each caches its own results. An instance created with `new` isn't cached
+(MC0032). ([Keyed registrations](reference/registration.md#keyed-registrations))
+
+**How do I load many ids with one query, caching each one?**
+`ICacheManager.GetOrCreateManyAsync<int, User>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)`. The
+factory gets only the ids that aren't cached and returns a dictionary by id; an id it leaves out is not cached and not
+returned. ([Many keys at once](features/manual-caching.md#many-keys-at-once))
 
 **How do I cache a client from a NuGet package?**
 `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` caches chosen methods of its

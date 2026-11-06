@@ -53,12 +53,12 @@ internal sealed class PolicyLimits
                    "mc.Memory(o => o.MaxExpiration = ...).";
         }
 
-        if (isMethod && fields.HasFlag(CachePolicyFields.CacheWhen) && policy.CacheWhen != null &&
-            _resultTypes != null && _resultTypes.TryGetValue(id, out var resultType))
+        if (isMethod && _resultTypes != null && _resultTypes.TryGetValue(id, out var resultType))
         {
             try
             {
-                CachePredicateCheck.EnsureMatches(policy.CacheWhen, resultType, id);
+                if (fields.HasFlag(CachePolicyFields.CacheWhen)) CachePredicateCheck.EnsureMatches(policy.CacheWhen, resultType, id);
+                if (fields.HasFlag(CachePolicyFields.DurationFor)) CachePredicateCheck.EnsureMatches(policy.DurationFor, resultType, id);
             }
             catch (InvalidOperationException mismatch)
             {

@@ -13,18 +13,47 @@ release.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.
-- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when neither it nor a
-  referenced project calls `AddMethodCache`. For this, MethodCache marks a project's assembly with `AssemblyMetadata`
-  attributes when it has cached services or calls `AddMethodCache`.
+- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when its code calls
+  neither `AddMethodCache` nor a method of a referenced project that calls it, such as a shared
+  `services.AddData()`. For this, MethodCache marks a project's assembly with `AssemblyMetadata` attributes when it
+  has cached services, and for each of its methods that calls `AddMethodCache`, also through other setup methods.
 - Analyzer MC0031 reports a call a class makes to its own cached method, which skips the cache.
+- `DurationFor` gives each result its own duration in place of `Duration`, such as the time left on a token or a
+  shorter time for an empty result: `mc.Method(...).DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow)`, and
+  `DurationFor<T>` on `CacheEntryOptions.Builder` for manual caching. Zero or less doesn't cache the result. Custom
+  managers read it with `CacheEntryOptions.DurationOf(value)`.
+- `MethodCacheKeys.Tag($"price:{provider}:{model}")` builds a tag from an interpolated string, writing each value the
+  way `[Cache]` tag templates do. A value of a type tags can't hold, or with a format, doesn't compile. MC0024's code
+  fix offers it, and MC0028 counts tags built with it.
+- MC0026 reads the application's own request-state types, such as an `ICurrentUser` service, from the `.editorconfig`
+  option `methodcache.request_state_types`.
+- `GetOrCreateManyAsync<TId, T>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)` takes ids and how each
+  makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
+- Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
+  registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
+- Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
+  `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
+- The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
+  (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 
 ### Changed
 
 - A setting for a `[Cache]` method whose service the application doesn't register, in `mc.Method(...)` or in
   `appsettings.json`, is skipped instead of failing startup, so startup code and configuration shared by several
   applications works in each of them. A method id that matches no `[Cache]` method still fails.
+- MC0028 counts a `[CacheInvalidate]` declared on an interface in a referenced project, such as a shared contracts
+  project, so a tag that the referenced interface invalidates is no longer reported.
+- MC0026 follows constructors two levels down instead of one, and follows an interface to the classes in the project
+  that implement it, so a cached service that takes `IUserRepository`, whose implementation takes a `DbContext` that
+  takes `IHttpContextAccessor`, is reported.
 - Sets and dictionaries in arguments are written sorted in keys, so two equal sets or dictionaries get one key whatever
   order they enumerate in, also on two servers. Existing entries with a set or dictionary argument are missed once.
+- The error for a `CacheWhen<T>` or `DurationFor<T>` of another result type names the types as C# writes them,
+  `CacheWhen<long?> can't check the int result`, instead of ``Nullable`1`` and `Int32`. `NoOpCacheManager` makes the same
+  check, so a test with it finds the mistake too.
+- `GetOrCreateManyAsync` accepts a factory answer that leaves out keys, such as ids that don't exist, instead of
+  failing the whole call. A key left out is not cached and not returned, unless it has a fail-safe value, which it
+  then gets as when the factory throws. A `null` answer still fails.
 
 ## 1.0.0-rc.9 (2026-11-05)
 

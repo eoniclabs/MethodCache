@@ -21,11 +21,13 @@ namespace MethodCache
             TimeSpan? failSafe,
             TimeSpan? failSafeTimeout,
             TimeSpan? failSafeRetryAfter,
-            bool clearsTags = false, bool? enabled = null, bool? distributed = null, Func<object?, bool>? cacheWhen = null)
+            bool clearsTags = false, bool? enabled = null, bool? distributed = null, Func<object?, bool>? cacheWhen = null,
+            Func<object?, TimeSpan>? durationFor = null)
         {
             Enabled = enabled;
             Distributed = distributed;
             CacheWhen = cacheWhen;
+            DurationFor = durationFor;
             ClearsTags = clearsTags;
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -67,15 +69,36 @@ namespace MethodCache
         /// <summary>Whether distributed caching is enabled; unset inherits the default.</summary>
         public bool? Distributed { get; }
         internal Func<object?, bool>? CacheWhen { get; }
-        /// <summary>Checks whether the typed result may be cached. A throwing predicate rejects the result.</summary>
+        internal Func<object?, TimeSpan>? DurationFor { get; }
+
+        /// <summary>
+        /// Checks whether the typed result may be cached: the <c>CacheWhen</c> predicate accepts it, and a
+        /// <c>DurationFor</c> function gives it a positive duration. A throwing predicate or function rejects the result.
+        /// </summary>
         /// <remarks>Custom managers apply this check both before publication and after distributed reads.</remarks>
-        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate or <c>DurationFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
         public bool CanCache<T>(T value)
         {
             if (Enabled == false) return false;
             CachePredicateCheck.EnsureMatches(CacheWhen, typeof(T), "this call");
-            try { return CacheWhen?.Invoke(value) != false; }
+            try { if (CacheWhen?.Invoke(value) == false) return false; }
             catch (Exception) { return false; }
+            return DurationFor == null || DurationOf(value) > TimeSpan.Zero;
+        }
+
+        /// <summary>
+        /// Gets how long <paramref name="value"/> is cached: what the <c>DurationFor</c> function gives it, else
+        /// <see cref="Duration"/>. Null when neither is set, so the manager's default applies; <see cref="TimeSpan.Zero"/>
+        /// when the function gives zero or less, or throws, and the value isn't cached.
+        /// </summary>
+        /// <remarks>Custom managers use this as the entry's lifetime in place of <see cref="Duration"/>.</remarks>
+        /// <exception cref="InvalidOperationException">The <c>DurationFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        public TimeSpan? DurationOf<T>(T value)
+        {
+            if (DurationFor == null) return Duration;
+            CachePredicateCheck.EnsureMatches(DurationFor, typeof(T), "this call");
+            try { return DurationFor(value) is var duration && duration > TimeSpan.Zero ? duration : TimeSpan.Zero; }
+            catch (Exception) { return TimeSpan.Zero; }
         }
         /// <summary>The policy of a generated call, whose key is already complete; null for options built by the application.</summary>
         internal CacheRuntimePolicy? Runtime { get; init; }
@@ -90,7 +113,7 @@ namespace MethodCache
             Array.AsReadOnly(policy.Tags.ToArray()), preparedKey ? null : policy.Version,
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
             clearsTags: policy.Fields.HasFlag(Policies.CachePolicyFields.ClearTags),
-            enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen)
+            enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen, durationFor: policy.DurationFor)
         { Runtime = preparedKey ? policy : null };
 
         /// <summary>
@@ -123,6 +146,7 @@ namespace MethodCache
             private bool? _enabled;
             private bool? _distributed;
             private Func<object?, bool>? _cacheWhen;
+            private Func<object?, TimeSpan>? _durationFor;
             /// <summary>Enables or disables all caching for the invocation or method.</summary>
             public Builder WithEnabled(bool enabled) { _enabled = enabled; return this; }
             /// <summary>Enables or disables distributed reads and writes.</summary>
@@ -132,6 +156,21 @@ namespace MethodCache
             {
                 ArgumentNullException.ThrowIfNull(predicate);
                 _cacheWhen = new TypedCachePredicate<T>(predicate).Accept;
+                return this;
+            }
+
+            /// <summary>
+            /// Gives each result its own duration, such as the time left on a token:
+            /// <c>DurationFor&lt;Token&gt;(t =&gt; t.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))</c>. It replaces
+            /// <see cref="WithDuration"/>; whichever is called last wins. A duration of zero or less, or a function that
+            /// throws, doesn't cache the result. No jitter is added, and <c>MaxExpiration</c> still caps it.
+            /// </summary>
+            /// <exception cref="ArgumentNullException"><paramref name="duration"/> is <c>null</c>.</exception>
+            public Builder DurationFor<T>(Func<T, TimeSpan> duration)
+            {
+                ArgumentNullException.ThrowIfNull(duration);
+                _durationFor = new TypedDuration<T>(duration).For;
+                _duration = null;
                 return this;
             }
             private TimeSpan? _duration;
@@ -145,7 +184,7 @@ namespace MethodCache
             private TimeSpan? _failSafeRetryAfter;
 
             /// <summary>
-            /// Sets the cache duration.
+            /// Sets the cache duration. It replaces <see cref="DurationFor{T}"/>; whichever is called last wins.
             /// </summary>
             public Builder WithDuration(TimeSpan duration)
             {
@@ -161,6 +200,7 @@ namespace MethodCache
                 }
 
                 _duration = duration;
+                _durationFor = null;
                 return this;
             }
 
@@ -327,7 +367,7 @@ namespace MethodCache
                     _failSafe,
                     _failSafeTimeout,
                     _failSafeRetryAfter,
-                    _clearTags, _enabled, _distributed, _cacheWhen);
+                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor);
             }
         }
     }

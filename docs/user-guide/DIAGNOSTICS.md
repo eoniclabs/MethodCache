@@ -31,7 +31,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
-| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
+| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Wrap the tag in `MethodCacheKeys.Tag`, or format the value with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
@@ -39,6 +39,8 @@ generator and the analyzer run, each problem is reported once.
 | [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
+| [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>` or `DurationFor<T>` for a type the call's result can never be | |
 
 ## MC0001
 
@@ -245,9 +247,13 @@ Build the tag from a call to the cached method instead, so the template and the 
 await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"));
 ```
 
-Or format each value with `MethodCacheKeys.Part`, which the code fix does:
-`$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
-A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
+Or wrap the interpolated string in `MethodCacheKeys.Tag`, which writes every value the way tags do:
+`MethodCacheKeys.Tag($"price:{provider}:{model}")`. A value of a type tags can't hold, or with a format, doesn't
+compile there.
+
+**Code fix:** wraps the tag in `MethodCacheKeys.Tag` when every value in it can go there, and otherwise formats the
+reported value with `MethodCacheKeys.Part`: `$"price:{MethodCacheKeys.Part(provider)}:{id}"`. A value with a format
+such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
 
 ## MC0025
 
@@ -272,8 +278,17 @@ a cached one ([cached objects are shared](../features/memory-cache.md#cached-obj
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
 `IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
 when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
-directly or through a factory such as `IDbContextFactory<T>`. The analyzer looks one level down, and doesn't see a
-setting that an interceptor makes on the connection.
+directly or through a factory such as `IDbContextFactory<T>`. The analyzer follows constructors two levels down (the
+class the implementation takes, and a class that class takes), and follows an interface to the classes in the same
+project that implement it. It doesn't see a setting that an interceptor makes on the connection.
+
+Name your own request-state types, such as an `ICurrentUser` service or a tenant context, in `.editorconfig`, comma
+separated, with namespace. A class that takes one, or takes a class that does, is reported too:
+
+```ini
+[*.cs]
+methodcache.request_state_types = MyApp.ICurrentUser, MyApp.TenantContext
+```
 
 The cache key is built from the method's arguments only. A result that depends on the current request or user, such
 as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
@@ -365,7 +380,8 @@ public interface ICatalog
 
 These invalidations count, wherever they are in the project:
 
-- A `[CacheInvalidate]` tag in the project, or on a method of another project's interface that the project calls.
+- A `[CacheInvalidate]` tag in the project, or on a method of an interface in a project it references, such as a
+  shared invalidation interface that another project calls.
 - An entity mapping of `MethodCache.EntityFrameworkCore`: `Entity<T>("...")`, and `Tags("...")` or
   `WhenDeleted("...")` in `Entity<T>(e => ...)`.
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
@@ -373,7 +389,7 @@ These invalidations count, wherever they are in the project:
 - A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
-`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
+`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and other invalidations in other
 projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
 ([Testing](../features/testing.md#every-tag-has-an-invalidation)).
 
@@ -405,9 +421,9 @@ configuration.
 
 ## MC0030
 
-A program has cached services, in its own code or in a project it references, but neither the program nor a project
-it references calls `AddMethodCache`. Nothing of MethodCache runs then, so every `[Cache]` method runs uncached, and
-nothing at run time can tell.
+A program has cached services, in its own code or in a project it references, but its code calls neither
+`AddMethodCache` nor a method of a referenced project that calls it. Nothing of MethodCache runs then, so every
+`[Cache]` method runs uncached, and nothing at run time can tell.
 
 ```cs
 var builder = WebApplication.CreateBuilder(args);
@@ -422,10 +438,15 @@ builder.Services.AddScoped<IProducts, Products>();
 builder.Services.AddMethodCache();
 ```
 
-A call in a referenced project counts, such as one inside a `services.AddData()` extension method of your own. Test
-projects aren't reported, since tests may use the implementations without the cache. A program that references a
-project with cached services but doesn't use them, such as a migration tool, can turn the warning off with
-`<NoWarn>$(NoWarn);MC0030</NoWarn>`.
+A setup method of your own in a referenced project counts when the program calls it, such as
+`builder.Services.AddData()` whose code calls `AddMethodCache`. MethodCache marks such methods when it builds that
+project, also when they reach `AddMethodCache` through other setup methods of the project named `Add...`, `Use...`,
+`Configure...` or `Register...`. A program that references the project but never calls the method is reported, since
+nothing sets the cache up for it.
+
+Test projects aren't reported, since tests may use the implementations without the cache. A program that references a
+project with cached services but doesn't use them, such as a migration tool, or that reaches its setup some other way,
+such as through reflection, can turn the warning off with `<NoWarn>$(NoWarn);MC0030</NoWarn>`.
 
 ## MC0031
 
@@ -462,5 +483,56 @@ public sealed class Totals(IPrices prices) : ITotals
 }
 ```
 
-A class created with `new` has no decorator either, so its calls aren't cached; get the service from dependency
-injection instead.
+A class created with `new` has no decorator either, so its calls aren't cached; [MC0032](#mc0032) reports it.
+
+## MC0032
+
+A class that implements a cached interface is created with `new`. The cache is a decorator that dependency injection
+puts in front of the service when `AddMethodCache` runs, so an instance made with `new` has none, and its `[Cache]`
+methods run every time.
+
+```cs
+var rates = new EcbRates(http);              // MC0032: not cached
+var rate = await rates.GetAsync("SEK");
+```
+
+Get the interface from dependency injection instead. When you need several instances of one class, such as one per
+provider or tenant, register each as a keyed service before `AddMethodCache`; each caches its own results:
+
+```cs
+builder.Services.AddKeyedSingleton<IRates>("ecb", (sp, _) => new EcbRates(sp.GetRequiredService<HttpClient>()));
+builder.Services.AddKeyedSingleton<IRates>("fed", (sp, _) => new FedRates(sp.GetRequiredService<HttpClient>()));
+builder.Services.AddMethodCache();
+
+public sealed class Converter([FromKeyedServices("ecb")] IRates rates) { /* rates is cached */ }
+```
+
+Creating the instance inside a registration, as above or as `services.AddSingleton<IRates>(new EcbRates(http))`, isn't
+reported, since `AddMethodCache` wraps what the registration gives. Passing it to another constructor first, as in
+`new Converter(new EcbRates(http))`, is. For code that can't get its services from dependency injection, cache the call
+with [`ICacheManager`](../features/manual-caching.md) instead. Test projects aren't reported, since tests create
+implementations to test them without the cache. Where you want the uncached class on purpose, suppress the warning
+there with `#pragma warning disable MC0032`.
+
+## MC0033
+
+`CacheWhen<T>` or `DurationFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can never be, such
+as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
+application starts or the call runs; this error finds it while building.
+
+```cs
+mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s => s.Length > 0));   // MC0033
+await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
+```
+
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)` and `Method(...).DurationFor(...)`,
+which take the result type from the method:
+
+```cs
+mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
+```
+
+A base type, an interface or the nullable form of the result type is fine: `CacheWhen<object>`,
+`CacheWhen<IReadOnlyList<Product>>` for a `List<Product>`, or `CacheWhen<int?>` for an `int`. A numeric type
+the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
+`GetOrCreateAsync` and `GetOrCreateManyAsync`; options built elsewhere and passed in are checked when the call runs.

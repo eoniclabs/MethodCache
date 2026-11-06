@@ -20,7 +20,7 @@ public enum Tier { Free, Pro }
 
 public class Endpoint
 {
-    public async Task Run(ICacheManager cache, ICacheAdministrator admin, string model, Guid tenant, Tier tier, int id, bool on, double price)
+    public async Task Run(ICacheManager cache, ICacheAdministrator admin, string model, Guid tenant, Tier tier, int id, bool on, double price, int? maybe)
     {
 ";
         private const string Footer = @"
@@ -52,6 +52,7 @@ public class Endpoint
         [InlineData("await cache.InvalidateTagAsync($\"plan:{MethodCacheKeys.Part(tenant)}:{MethodCacheKeys.Part(tier)}\");")]
         [InlineData("const string Kind = \"rates\"; await cache.InvalidateTagAsync($\"kind:{Kind}\");")]
         [InlineData("await cache.InvalidateTagAsync(\"prices\");")]
+        [InlineData("await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"price:{model}:{tenant}:{tier}:{on}:{price}\"));")]
         [InlineData("var text = $\"price:{model}\"; Console.WriteLine(text);")]
         public async Task Tag_FormattedAsMethodCacheFormatsIt_IsNotReported(string statement)
         {
@@ -66,7 +67,7 @@ public class Endpoint
         {
             var source = Header + statement + Footer;
 
-            var (title, fixedSource) = await FixAsync(source);
+            var (title, fixedSource) = await FixAsync(source, "Format with");
 
             Assert.Equal("Format with MethodCacheKeys.Part", title);
             Assert.Equal(Header + expected + Footer, fixedSource);
@@ -84,11 +85,34 @@ public class Endpoint
     public Task Run(MethodCache.ICacheManager cache, Guid tenant) => MethodCache.CacheManagerExtensions.InvalidateTagAsync(cache, $""plan:{tenant}"").AsTask();
 }";
 
-            var (_, fixedSource) = await FixAsync(source);
+            var (_, fixedSource) = await FixAsync(source, "Format with");
 
             // Inside an interpolation, "::" would start a format clause, so the call needs parentheses
             Assert.Contains("$\"plan:{(global::MethodCache.MethodCacheKeys.Part(tenant))}\"", fixedSource);
             Assert.Empty(await AnalyzeAsync(fixedSource));
+        }
+
+        [Theory]
+        [InlineData("await cache.InvalidateTagAsync($\"price:{model}:{id}\");", "await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"price:{model}:{id}\"));")]
+        [InlineData("await cache.InvalidateTagAsync($\"plan:{MethodCacheKeys.Part(tenant)}:{tier}\");", "await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"plan:{tenant}:{tier}\"));")]
+        [InlineData("await cache.InvalidateTagsAsync([\"all\", $\"p:{price}\"]);", "await cache.InvalidateTagsAsync([\"all\", MethodCacheKeys.Tag($\"p:{price}\")]);")]
+        public async Task CodeFix_WrapsTheTagInMethodCacheKeysTag(string statement, string expected)
+        {
+            var source = Header + statement + Footer;
+
+            var (title, fixedSource) = await FixAsync(source, "Wrap the tag");
+
+            Assert.Equal("Wrap the tag in MethodCacheKeys.Tag", title);
+            Assert.Equal(Header + expected + Footer, fixedSource);
+            Assert.Empty(await AnalyzeAsync(fixedSource));
+        }
+
+        [Fact]
+        public async Task CodeFix_ATagWithAValueTheHandlerCantTake_OffersOnlyPart()
+        {
+            var titles = await FixTitlesAsync(Header + "await cache.InvalidateTagAsync($\"x:{model}:{maybe}\");" + Footer);
+
+            Assert.Equal(["Format with MethodCacheKeys.Part"], titles);
         }
 
         [Fact]
@@ -137,7 +161,19 @@ public class Endpoint
                 .GetAnalyzerDiagnosticsAsync();
         }
 
-        private static async Task<(string Title, string Source)> FixAsync(string source)
+        private static async Task<(string Title, string Source)> FixAsync(string source, string titleStart)
+        {
+            var (document, actions) = await ActionsAsync(source);
+            var action = Assert.Single(actions, a => a.Title.StartsWith(titleStart, StringComparison.Ordinal));
+            var operations = await action.GetOperationsAsync(CancellationToken.None);
+            var changed = operations.OfType<ApplyChangesOperation>().Single().ChangedSolution;
+            return (action.Title, (await changed.GetDocument(document.Id)!.GetTextAsync()).ToString());
+        }
+
+        private static async Task<string[]> FixTitlesAsync(string source)
+            => (await ActionsAsync(source)).Actions.Select(a => a.Title).ToArray();
+
+        private static async Task<(Document Document, List<CodeAction> Actions)> ActionsAsync(string source)
         {
             using var workspace = new AdhocWorkspace();
             var document = workspace.CurrentSolution
@@ -148,15 +184,12 @@ public class Endpoint
             var compilation = (await document.Project.GetCompilationAsync())!;
             var diagnostic = (await compilation
                 .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new HandBuiltTagAnalyzer()))
-                .GetAnalyzerDiagnosticsAsync()).Single();
+                .GetAnalyzerDiagnosticsAsync()).OrderBy(d => d.Location.SourceSpan.Start).First();
 
             var actions = new List<CodeAction>();
             await new FormatTagPartCodeFixProvider().RegisterCodeFixesAsync(
                 new CodeFixContext(document, diagnostic, (action, _) => actions.Add(action), CancellationToken.None));
-            var action = Assert.Single(actions);
-            var operations = await action.GetOperationsAsync(CancellationToken.None);
-            var changed = operations.OfType<ApplyChangesOperation>().Single().ChangedSolution;
-            return (action.Title, (await changed.GetDocument(document.Id)!.GetTextAsync()).ToString());
+            return (document, actions);
         }
 
         private static IEnumerable<MetadataReference> References()

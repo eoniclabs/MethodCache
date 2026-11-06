@@ -96,7 +96,7 @@ public class BuilderOptionsTests
             var calls = 0;
             var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await cache.GetOrCreateAsync(
                 "mismatch", _ => { calls++; return ValueTask.FromResult(42); }, o => o.CacheWhen<string>(text => text.Length > 0)));
-            Assert.Contains("CacheWhen<String>", error.Message, StringComparison.Ordinal);
+            Assert.Contains("CacheWhen<string> can't check the int result", error.Message, StringComparison.Ordinal);
             Assert.Equal(0, calls);
         }
 

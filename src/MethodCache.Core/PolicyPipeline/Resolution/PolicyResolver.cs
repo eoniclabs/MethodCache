@@ -790,7 +790,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         // The settings SettingSources reports, by the CacheEntryOptions property they set; a layer that clears tags sets Tags
         private static readonly (CachePolicyFields Fields, string Setting)[] ReportedSettings =
         [
-            (CachePolicyFields.Duration, nameof(CacheEntryOptions.Duration)),
+            (CachePolicyFields.Duration | CachePolicyFields.DurationFor, nameof(CacheEntryOptions.Duration)),
             (CachePolicyFields.Tags | CachePolicyFields.ClearTags, nameof(CacheEntryOptions.Tags)),
             (CachePolicyFields.SlidingExpiration, nameof(CacheEntryOptions.SlidingExpiration)),
             (CachePolicyFields.RefreshAhead, nameof(CacheEntryOptions.RefreshAhead)),
@@ -817,6 +817,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             bool? enabled = null;
             bool? distributed = null;
             TimeSpan? duration = null;
+            Func<object?, TimeSpan>? durationFor = null;
             List<string>? tags = null;
             var tagsCleared = false;
             TimeSpan? slidingExpiration = null;
@@ -848,9 +849,11 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     }
                 }
 
-                if (duration == null && fields.HasFlag(CachePolicyFields.Duration))
+                // Duration and DurationFor are one setting: the highest layer that sets either decides the duration
+                if (duration == null && durationFor == null)
                 {
-                    duration = policy.Duration;
+                    if (fields.HasFlag(CachePolicyFields.DurationFor) && policy.DurationFor != null) durationFor = policy.DurationFor;
+                    else if (fields.HasFlag(CachePolicyFields.Duration)) duration = policy.Duration;
                 }
 
                 // Tags combine across layers, so an override never disconnects the attribute's [CacheInvalidate]
@@ -919,6 +922,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 SlidingExpiration = slidingExpiration,
                 RefreshAhead = refreshAhead,
                 CacheWhen = cacheWhen,
+                DurationFor = durationFor,
                 FailSafe = failSafe,
                 FailSafeTimeout = failSafeTimeout,
                 FailSafeRetryAfter = failSafeRetryAfter,

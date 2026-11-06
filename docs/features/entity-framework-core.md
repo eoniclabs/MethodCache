@@ -219,7 +219,7 @@ public static async Task DeleteCategoryAsync(ShopDb db, ICacheManager cache, IMe
 <!-- endSnippet -->
 
 `InvalidateAfterCommit` takes tags exactly as cached methods write them. Build them with `IMethodCacheKeys.Tag`, or
-with `MethodCacheKeys.Part` around each value; [MC0024](../user-guide/DIAGNOSTICS.md#mc0024) reports a hand-built tag
+with `MethodCacheKeys.Tag($"order:{id}")`; [MC0024](../user-guide/DIAGNOSTICS.md#mc0024) reports a hand-built tag
 that formats a value differently. Outside a transaction, queued tags wait for the next commit, a successful
 `SaveChanges` or a transaction's `Commit`, and are invalidated when the context is disposed if none comes. A rollback
 doesn't drop them, since they don't belong to it.

@@ -94,5 +94,9 @@ The exact behavior is in the
 | `ConnectionMultiplexerFactory` | none | Returns an existing connection to share instead of opening one |
 | `EnableBackplane` | `true` | Send invalidations to other instances over pub/sub |
 
-`DistributedCacheOptions.KeyPrefix` applies to values, invalidations and the channel. The first instance that uses a
-prefix fixes its minimum `TagRetention`; a shorter setting fails at startup, so use a new prefix to lower it.
+`DistributedCacheOptions.KeyPrefix` applies to values, invalidations and the channel, so applications under one
+prefix share their entries and invalidations, and a prefix of its own keeps an application apart in both. Keys you
+pass to `ICacheManager` carry no type, so under a shared prefix the same key is one entry in every application
+([Several applications on one store](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#several-applications-on-one-store)).
+The first instance that uses a prefix fixes its minimum `TagRetention`; a shorter setting fails at startup, so use a
+new prefix to lower it.

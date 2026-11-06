@@ -42,7 +42,9 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
   includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
 - **Sets and dictionaries** (`HashSet<T>`, `ISet<T>`, `IReadOnlySet<T>`, `Dictionary<TKey, TValue>` and the other
   dictionaries) have no order of their own, so their elements are written sorted, wherever they appear in an
-  argument: two equal sets get one key, also on two servers that enumerate them differently. A list or an array keeps
+  argument: two equal sets get one key, also on two servers that enumerate them differently. They are sorted by their
+  written form, a dictionary by its keys' and then its values', so elements and keys of any type sort, also types that
+  can't be compared. A list or an array keeps
   its order, because `[1, 2]` and `[2, 1]` are two different lists. When the order of your ids doesn't matter, pass
   them as a set, such as `IReadOnlySet<int>`, or sort them before the call.
 - **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the internal fallback generator.

@@ -65,16 +65,46 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
         }
 
         [Fact]
-        public async Task ProjectCallingAddMethodCache_MarksItsAssembly()
+        public async Task ProjectCallingAddMethodCache_MarksTheMethodsThatCallIt()
         {
             const string source = @"using Microsoft.Extensions.DependencyInjection;
-namespace App { public static class Setup { public static void Add(IServiceCollection services) => services.AddMethodCache(); } }";
+namespace App
+{
+    public static class Setup
+    {
+        public static void AddDirect(IServiceCollection services) => services.AddMethodCache();
+        public static IServiceCollection AddEverything(this IServiceCollection services) { AddCaching(services); return services; }
+        private static void AddCaching(IServiceCollection services) => System.Array.ForEach(new[] { services }, s => AddDirect(s));
+        public static void AddOther(IServiceCollection services) => services.AddSingleton<object>(new object());
+    }
+}";
 
             var result = await GetGeneratedSources(source);
 
             var markers = Assert.Single(result.GeneratedSources, s => s.Key.EndsWith("MethodCacheHostMarkers.g.cs", StringComparison.Ordinal)).Value;
-            Assert.Contains("AssemblyMetadata(\"MethodCache.CallsAddMethodCache\", \"true\")", markers);
+            Assert.Contains("AssemblyMetadata(\"MethodCache.AddsMethodCache\", \"M:App.Setup.AddDirect(Microsoft.Extensions.DependencyInjection.IServiceCollection)\")", markers);
+            Assert.Contains("\"M:App.Setup.AddCaching(Microsoft.Extensions.DependencyInjection.IServiceCollection)\"", markers);
+            Assert.Contains("\"M:App.Setup.AddEverything(Microsoft.Extensions.DependencyInjection.IServiceCollection)\"", markers);
+            Assert.DoesNotContain("AddOther", markers);
             Assert.DoesNotContain("MethodCache.CachedServices", markers);
+        }
+
+        [Fact]
+        public async Task ProjectCallingAReferencedProjectsMarkedMethod_MarksTheCaller()
+        {
+            var common = await CreateCompilation(@"
+[assembly: System.Reflection.AssemblyMetadata(""MethodCache.AddsMethodCache"", ""M:Common.Setup.AddCommonCache(Microsoft.Extensions.DependencyInjection.IServiceCollection)"")]
+namespace Common { public static class Setup { public static void AddCommonCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection services) { } } }");
+            using var image = new MemoryStream();
+            Assert.True(common.WithAssemblyName("Common").Emit(image).Success);
+            var compilation = (await CreateCompilation(@"using Common;
+namespace App { public static class Setup { public static void AddApp(Microsoft.Extensions.DependencyInjection.IServiceCollection services) => services.AddCommonCache(); } }"))
+                .AddReferences(MetadataReference.CreateFromImage(image.ToArray()));
+
+            CSharpGeneratorDriver.Create(new MethodCacheGenerator()).RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
+
+            var markers = output.SyntaxTrees.Single(t => t.FilePath.EndsWith("MethodCacheHostMarkers.g.cs", StringComparison.Ordinal)).ToString();
+            Assert.Contains("\"M:App.Setup.AddApp(Microsoft.Extensions.DependencyInjection.IServiceCollection)\"", markers);
         }
 
         [Fact]

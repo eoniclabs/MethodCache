@@ -59,16 +59,18 @@ builder.Services.AddMethodCache();                               // after your r
 
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
-- Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`,
-  or resolving the class itself, bypasses the cache. A program with cached services must call `AddMethodCache()`
-  (MC0030).
+- Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`
+  (MC0032), or resolving the class itself, bypasses the cache. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
+  itself or through a setup method of a referenced project (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written
   sorted; lists and arrays keep their order, so pass ids whose order doesn't matter as a set.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Tag values are formatted like `MethodCacheKeys.Part`: `:` and `\` in strings are escaped, a `Guid` is written
-  without hyphens, an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture. Prefer
+  without hyphens, an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture. Build
+  a tag by hand only with `MethodCacheKeys.Tag($"price:{provider}:{model}")` or `IMethodCacheKeys.Tag`, never plain
+  interpolation (MC0024). Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
 - `[CacheInvalidate]` runs after the method, or its task, succeeds; never when it throws.
 - Synchronous `[Cache]` methods use the memory cache only, also with Redis, SQL Server or PostgreSQL. Make a method
@@ -99,7 +101,8 @@ builder.Services.AddMethodCache();                               // after your r
   a number and a unit, `"5m"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
-  startup, and so does a `CacheWhen<T>` for a type the method can't return.
+  startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
+  gives each result its own duration (zero or less doesn't cache it).
 - A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
   fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
 - For a client from a NuGet package with an interface, use

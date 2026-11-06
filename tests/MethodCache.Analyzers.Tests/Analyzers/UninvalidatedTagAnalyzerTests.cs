@@ -72,6 +72,8 @@ public sealed class Writes
         [InlineData("await cache.InvalidateTagsAsync(new[] { \"orders\", \"product:1\" });")]
         [InlineData("await cache.InvalidateTagsAsync([\"product:1\"]);")]
         [InlineData("await cache.InvalidateTagAsync(keys.Tag<IProductReads>(r => r.GetAsync(id), \"product:{id}\"));")]
+        [InlineData("await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"product:{id}\"));")]
+        [InlineData("await cache.InvalidateTagsAsync([MethodCacheKeys.Tag($\"product:{id}\")]);")]
         [InlineData("db.InvalidateAfterCommit(\"orders\", \"product:7\");")]
         [InlineData("ef.Entity<Product>(\"product:{Id}\");")]
         [InlineData("ef.Entity<Product>(p => p.Tags(\"products\").WhenDeleted(\"product:{Id}\"));")]
@@ -136,6 +138,34 @@ public sealed class Endpoint
 }";
 
             Assert.Empty(await AnalyzeAsync(source, library.ToMetadataReference()));
+        }
+
+        [Fact]
+        public async Task A_CacheInvalidate_declared_in_a_referenced_project_counts_without_a_call_here()
+        {
+            // A shared invalidation interface in Common, called from another project than this one
+            var common = CSharpCompilation.Create("Common", [CSharpSyntaxTree.ParseText(@"
+using System.Threading.Tasks;
+using MethodCache;
+
+namespace Common.Caching
+{
+    public interface ICacheInvalidation
+    {
+        [CacheInvalidate(Tags = [""product:{id}""])]
+        Task ProductChangedAsync(int id);
+    }
+}")], References(), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var image = new MemoryStream();
+            Assert.True(common.Emit(image, options: new Microsoft.CodeAnalysis.Emit.EmitOptions(metadataOnly: true)).Success);
+            var source = Usings + Reads + @"
+public sealed class Endpoint
+{
+    public async Task OrderAsync(ICacheManager cache) => await cache.InvalidateTagAsync(""orders"");
+}";
+
+            Assert.Empty(await AnalyzeAsync(source, MetadataReference.CreateFromImage(image.ToArray())));
+            Assert.NotEmpty(await AnalyzeAsync(source));
         }
 
         [Fact]

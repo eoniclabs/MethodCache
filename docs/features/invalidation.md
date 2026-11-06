@@ -134,10 +134,12 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
   lets the attribute and the call share it.
 - For one entry, `cache.InvalidateKeyAsync(keys.For<IPriceSource>(s => s.GetRateAsync(provider, model)))` removes
   only that call's result.
-- Don't build the tag with string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped in
-  strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for a
-  model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
-  [MC0024](../user-guide/DIAGNOSTICS.md#mc0024).
+- Don't build the tag with plain string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped
+  in strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for
+  a model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
+  [MC0024](../user-guide/DIAGNOSTICS.md#mc0024). Wrap it in `MethodCacheKeys.Tag` instead, which writes every value
+  the canonical way: `MethodCacheKeys.Tag($"price:{provider}:{model}")`. A value of a type tags can't hold, or with a
+  format such as `{price:F2}`, doesn't compile.
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 
