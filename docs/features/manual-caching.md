@@ -176,8 +176,14 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 ## Things to know
 
-- Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
-  cancels a run others joined, they run the factory again rather than fail.
+- Concurrent calls for the same key share one factory run, which gets the token of the caller that started it. A
+  caller's `cancellationToken` stops its own wait; if it cancels a run others joined, they run the factory again rather
+  than fail.
+- Name the factory's token and pass it on, as in `async ct => await orders.GetAsync(id, ct)`. CA2016 asks for that when
+  the factory calls a method that takes a token, and named `ct` it hides the method's own `ct` inside the factory. Pass
+  the method's token as `cancellationToken`: a token from outside the factory that the call doesn't pass, such as
+  `HttpContext.RequestAborted`, fails the shared run for every caller when it is cancelled.
+  [MC0035](../user-guide/DIAGNOSTICS.md#mc0035) reports it, with a code fix.
 - A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
   itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.

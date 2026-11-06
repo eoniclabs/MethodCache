@@ -42,6 +42,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
 | [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
 | [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
+| [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 
 ## MC0001
 
@@ -555,3 +556,27 @@ public interface IUsers { [Cache] Task<User> GetAsync(UserId id); }   // MC0034
 Implement `ICacheKeyProvider` on the type, or give it public properties that identify the value
 ([Types whose state is private](../features/keys.md#types-whose-state-is-private)). A type with a `[JsonConverter]`
 and an abstract type aren't reported.
+
+## MC0035
+
+The factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token from outside it, such as the
+method's own `ct` or `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`. Callers of one
+key share one run of the factory, which gets the token of the caller that started it: when that caller cancels, the
+others run the factory again. A token the cache doesn't know fails the run for all of them instead, and they get the
+cancellation, or a fail-safe value when there is one.
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async _ => await orders.GetAsync(id, ct));   // MC0035
+```
+
+Use the factory's own token, and pass yours as `cancellationToken`. The code fix does both, and names a discarded
+parameter after your token, so inside the factory `ct` is the factory's:
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async ct => await orders.GetAsync(id, ct), cancellationToken: ct);
+```
+
+A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
+aren't reported.

@@ -22,6 +22,10 @@ release.
   between instances shows in the log.
 - Build error MC0034 reports a key argument of a `[Cache]` method, or a value inside one, whose type has only private
   state, which MethodCache refuses when the call runs since every value would get the same key.
+- Analyzer MC0035 warns when the factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token
+  from outside it, such as `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`: its
+  cancellation fails the load for every caller sharing it. The code fix makes the factory use its own token and passes
+  the outer one as `cancellationToken`.
 - `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
   the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but

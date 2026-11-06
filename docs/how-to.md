@@ -148,6 +148,11 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 `InvalidateKeyAsync(key, ct)`, `InvalidateKeyAsync(key, 2, ct)`, `TryGetAsync<Order>(key, ct)` and
 `TryGetAsync<Order>(key, 2, ct)`: the token always comes last. ([Manual caching](features/manual-caching.md))
 
+**Which token does a `GetOrCreateAsync` factory use?**
+Its own: `async ct => await orders.GetAsync(id, ct)`, with the caller's token passed as `cancellationToken: ct`. A
+token from outside the factory, such as `HttpContext.RequestAborted`, fails the load for every caller sharing it when
+it is cancelled; warning MC0035 reports it, with a code fix. ([Things to know](features/manual-caching.md#things-to-know))
+
 ## Expiration and what gets cached
 
 **How do I set how long a result is cached?**
