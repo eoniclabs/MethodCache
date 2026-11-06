@@ -505,3 +505,6 @@ static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum? value) -> string!
 MethodCache.TagInterpolatedStringHandler.AppendFormatted<TEnum>(TEnum? value) -> void
 static MethodCache.CacheManagerExtensions.SetAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, T value, MethodCache.CacheEntryOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 static MethodCache.CacheManagerExtensions.SetAsync<T>(this MethodCache.ICacheManager! cacheManager, string! key, T value, System.Action<MethodCache.CacheEntryOptions.Builder!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.CacheEntryOptions.Builder.TagsFor<T>(System.Func<T, System.Collections.Generic.IEnumerable<string!>!>! tags) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.TagsOf<T>(T value) -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.IFluentMethodConfiguration<TResult>.TagsFor(System.Func<TResult, System.Collections.Generic.IEnumerable<string!>!>! tags) -> MethodCache.IFluentMethodConfiguration<TResult>!

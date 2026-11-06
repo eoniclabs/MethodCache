@@ -65,5 +65,10 @@ internal enum CachePolicyFields
     /// The <see cref="CachePolicy.DurationFor"/> field. A layer that sets it or <see cref="Duration"/> decides the
     /// duration, so a higher layer's <see cref="Duration"/> replaces a lower layer's <see cref="CachePolicy.DurationFor"/>.
     /// </summary>
-    DurationFor = 1 << 13
+    DurationFor = 1 << 13,
+    /// <summary>
+    /// The <see cref="CachePolicy.TagsFor"/> field. The highest layer that sets it decides the function; a higher
+    /// layer that clears tags drops it.
+    /// </summary>
+    TagsFor = 1 << 14
 }

@@ -122,6 +122,11 @@ It replaces the value in memory and the distributed cache, other instances drop 
 for the key doesn't overwrite it. Use the options of the calls that read the key. For a `[Cache]` method, invalidate
 its key or tags. ([Storing a value you already have](features/manual-caching.md#storing-a-value-you-already-have))
 
+**A tag depends on the result, not the arguments, such as the customer of an order found by its id. How?**
+`mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value)).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`
+adds the result's tags to the method's own, so invalidating `customer:7` removes the order too. For manual caching, use
+`o => o.TagsFor<Order>(...)`. ([Tags from the result](features/invalidation.md#tags-from-the-result))
+
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
 ([Invalidation](features/invalidation.md#from-code))

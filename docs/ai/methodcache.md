@@ -102,7 +102,8 @@ builder.Services.AddMethodCache();                               // after your r
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
-  gives each result its own duration (zero or less doesn't cache it).
+  gives each result its own duration (zero or less doesn't cache it), and `TagsFor`, which adds tags read from the
+  result, such as `TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`.
 - A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
   fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
 - For a client from a NuGet package with an interface, use

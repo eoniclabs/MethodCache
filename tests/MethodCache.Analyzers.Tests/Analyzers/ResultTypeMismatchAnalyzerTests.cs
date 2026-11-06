@@ -31,6 +31,7 @@ public static class Setup
         [InlineData("await cache.GetOrCreateAsync<int>(\"key\", _ => new ValueTask<int>(1), o => o.CacheWhen<string>(s => s != null));", "CacheWhen<string> can't check the int result", "")]
         [InlineData("await cache.GetOrCreateManyAsync<int, string>(new[] { 1 }, id => $\"k:{id}\", (ids, _) => default, o => o.CacheWhen<int>(n => n > 0));", "CacheWhen<int> can't check the string result", "")]
         [InlineData("await cache.SetAsync(\"key\", 3, o => o.CacheWhen<string>(s => s.Length > 0));", "CacheWhen<string> can't check the int result", "")]
+        [InlineData("await cache.GetOrCreateAsync<int>(\"key\", _ => new ValueTask<int>(1), o => o.TagsFor<string>(s => new[] { s }));", "TagsFor<string> can't check the int result", "")]
         public async Task OptionsForAnotherResultType_AreReported(string call, string message, string fix)
         {
             var diagnostic = Assert.Single(await AnalyzeAsync(Header + call + Footer));

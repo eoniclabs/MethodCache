@@ -57,7 +57,8 @@ var list = await cache.GetOrCreateAsync(
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
-  ([A duration from the result](expiration.md#a-duration-from-the-result)).
+  ([A duration from the result](expiration.md#a-duration-from-the-result)). `TagsFor<T>` adds tags read from the
+  result ([Tags from the result](invalidation.md#tags-from-the-result)).
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a

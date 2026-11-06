@@ -1,4 +1,5 @@
 using MethodCache;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Docs.Invalidation
 {
@@ -22,6 +23,21 @@ namespace Docs.Invalidation
         Task ImportAsync(Stream file);
     }
     // end-snippet
+
+    public static class TagsFromTheResult
+    {
+        public static void Register(IServiceCollection services)
+        {
+            // begin-snippet: invalidation-tags-for
+            services.AddMethodCache(mc =>
+            {
+                // GetAsync(orderId) finds the order by its id; its entry also gets the tag of the order's customer
+                mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value))
+                    .TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")]);
+            });
+            // end-snippet
+        }
+    }
 
     // begin-snippet: invalidation-other-application
     public interface IRecipeCatalog

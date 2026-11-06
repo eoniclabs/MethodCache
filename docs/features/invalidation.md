@@ -61,6 +61,35 @@ entries the tags `orders`, `order:{orderId}` and `incident`.
 with `ref`, `out` or `in` parameters. The tags are filled in after the call returns, and the entries are removed only
 once the task has completed successfully.
 
+## Tags from the result
+
+A template reads the method's arguments. When a tag depends on the result instead, such as the customer of an order
+that `GetAsync(orderId)` finds by its id, add it with `TagsFor` in startup code:
+
+<!-- snippet: invalidation-tags-for -->
+```cs
+services.AddMethodCache(mc =>
+{
+    // GetAsync(orderId) finds the order by its id; its entry also gets the tag of the order's customer
+    mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value))
+        .TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")]);
+});
+```
+<!-- endSnippet -->
+
+- The tags are added to the method's own, so `CancelAsync(42, 7)` above, which invalidates `customer:7`, now also
+  removes `GetAsync(42)`, and so does `InvalidateTagAsync("customer:7")`.
+- Build each tag with `MethodCacheKeys.Tag($"...")`, which writes values the way tag templates do, so it matches the
+  tag that is invalidated.
+- It runs once per load, never on a hit. A function that throws, or gives a null, empty or whitespace tag, doesn't
+  cache the result; the caller still gets it.
+- The result's tags aren't known while it loads, so a tag invalidated in that time keeps it from being cached, whichever
+  tag it was. The next call loads it again.
+- For manual caching, pass `o => o.TagsFor<Order>(order => [...])` in the options
+  ([Manual caching](manual-caching.md#options)).
+- It is set for one method only: in `Defaults` or a group it fails at startup, and so does a `TagsFor<T>` for a type the
+  method can't return. `ClearTags()` in a higher layer removes it.
+
 ## From code
 
 `ICacheManager` invalidates by tag or by key:

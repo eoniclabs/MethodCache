@@ -82,6 +82,15 @@ namespace MethodCache
         /// <c>Duration</c> set for the method in <c>appsettings.json</c> or a runtime override replaces it.
         /// </summary>
         IFluentMethodConfiguration<TResult> DurationFor(Func<TResult, TimeSpan> duration);
+        /// <summary>
+        /// Adds tags read from each result to its entry, next to the method's own tags, such as the customer of an
+        /// order the method found by its id: <c>TagsFor(order =&gt; [$"customer:{order.CustomerId}"])</c>.
+        /// Invalidating one of them removes the entry. A function that throws, or gives a null, empty or whitespace
+        /// tag, doesn't cache the result, which is still returned to the caller. The function runs once per load; it
+        /// never runs on a hit. Build the tags with <c>MethodCacheKeys.Tag($"...")</c> so they match the tags you
+        /// invalidate.
+        /// </summary>
+        IFluentMethodConfiguration<TResult> TagsFor(Func<TResult, IEnumerable<string>> tags);
     }
 
     /// <summary>

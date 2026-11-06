@@ -154,6 +154,22 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     }
 
     [Fact]
+    public async Task TagsFor_ATagOfTheResult_IsInvalidatedOnEveryNodeAndInTheDistributedCache()
+    {
+        var (a, b, _, _) = CreateNodes();
+        Action<CacheEntryOptions.Builder> options = o => o.WithDuration(Duration).TagsFor<string>(value => [$"value:{value}"]);
+        (await a.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"), options)).Should().Be("v1");
+        (await b.GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"), options)).Should().Be("v1", "B reads A's value from the distributed cache");
+        _time.Advance(OneMillisecond);
+
+        await ((ICacheManager)a).InvalidateTagAsync("value:v1");
+        _time.Advance(OneMillisecond);
+
+        (await b.GetOrCreateAsync("key", _ => ValueTask.FromResult("v2"), options)).Should().Be("v2");
+        (await CreateNode(_hub.Join()).GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"), options)).Should().Be("v2");
+    }
+
+    [Fact]
     public async Task PublicSet_MemoryOnly_RemovesTheDistributedAndOtherCopies()
     {
         var (a, b, _, _) = CreateNodes();

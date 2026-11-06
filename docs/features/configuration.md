@@ -49,8 +49,9 @@ builder.Services.AddMethodCache(config =>
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
   `appsettings.json`, which wins where both set a value; a method's own settings win over both.
-- `CacheWhen` and `DurationFor` are set for one method only. In `Defaults` or a group they fail at startup
-  ([Conditional caching](conditional-caching.md), [A duration from the result](expiration.md#a-duration-from-the-result)).
+- `CacheWhen`, `DurationFor` and `TagsFor` are set for one method only. In `Defaults` or a group they fail at startup
+  ([Conditional caching](conditional-caching.md), [A duration from the result](expiration.md#a-duration-from-the-result),
+  [Tags from the result](invalidation.md#tags-from-the-result)).
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`, `Distributed`,
@@ -235,7 +236,7 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
 `With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
-`WithFailSafeRetryAfter`. `CacheWhen<T>` and `DurationFor<T>` are configured in code for one method; one for a type the
+`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
 method can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException`
 at startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.

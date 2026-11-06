@@ -13,6 +13,10 @@ release.
 - `ICacheManager.SetAsync(key, value, options)` stores a value you already have, such as one you just saved, in memory
   and the distributed cache. Other instances drop their copy, and a load already running for the key doesn't overwrite
   it. A value the options turn down removes the key's old value instead.
+- `TagsFor` adds tags read from each result to its entry, next to the method's own tags, such as the customer of an
+  order found by its id: `mc.Method(...).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`, and
+  `TagsFor<T>` on `CacheEntryOptions.Builder` for manual caching. Custom managers read them with
+  `CacheEntryOptions.TagsOf(value)`.
 - `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
   the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
@@ -36,7 +40,7 @@ release.
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
 - Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
   registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
-- Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
+- Analyzer MC0033 is a build error for `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` in `Method(...).Configure(...)`,
   `GetOrCreateAsync`, `GetOrCreateManyAsync` or `SetAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
   (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.

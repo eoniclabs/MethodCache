@@ -791,7 +791,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         private static readonly (CachePolicyFields Fields, string Setting)[] ReportedSettings =
         [
             (CachePolicyFields.Duration | CachePolicyFields.DurationFor, nameof(CacheEntryOptions.Duration)),
-            (CachePolicyFields.Tags | CachePolicyFields.ClearTags, nameof(CacheEntryOptions.Tags)),
+            (CachePolicyFields.Tags | CachePolicyFields.ClearTags | CachePolicyFields.TagsFor, nameof(CacheEntryOptions.Tags)),
             (CachePolicyFields.SlidingExpiration, nameof(CacheEntryOptions.SlidingExpiration)),
             (CachePolicyFields.RefreshAhead, nameof(CacheEntryOptions.RefreshAhead)),
             (CachePolicyFields.Version, nameof(CacheEntryOptions.Version)),
@@ -820,6 +820,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             Func<object?, TimeSpan>? durationFor = null;
             List<string>? tags = null;
             var tagsCleared = false;
+            Func<object?, string[]>? tagsFor = null;
+            var tagsForSet = false;
             TimeSpan? slidingExpiration = null;
             TimeSpan? refreshAhead = null;
             Func<object?, bool>? cacheWhen = null;
@@ -854,6 +856,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 {
                     if (fields.HasFlag(CachePolicyFields.DurationFor) && policy.DurationFor != null) durationFor = policy.DurationFor;
                     else if (fields.HasFlag(CachePolicyFields.Duration)) duration = policy.Duration;
+                }
+
+                // The highest layer's TagsFor wins, unless a layer above it cleared the tags
+                if (!tagsForSet && !tagsCleared && fields.HasFlag(CachePolicyFields.TagsFor))
+                {
+                    tagsFor = policy.TagsFor;
+                    tagsForSet = true;
                 }
 
                 // Tags combine across layers, so an override never disconnects the attribute's [CacheInvalidate]
@@ -923,6 +932,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 RefreshAhead = refreshAhead,
                 CacheWhen = cacheWhen,
                 DurationFor = durationFor,
+                TagsFor = tagsFor,
                 FailSafe = failSafe,
                 FailSafeTimeout = failSafeTimeout,
                 FailSafeRetryAfter = failSafeRetryAfter,
