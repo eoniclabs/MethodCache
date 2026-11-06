@@ -365,7 +365,8 @@ public interface ICatalog
 
 These invalidations count, wherever they are in the project:
 
-- A `[CacheInvalidate]` tag in the project, or on a method of another project's interface that the project calls.
+- A `[CacheInvalidate]` tag in the project, or on a method of an interface in a project it references, such as a
+  shared invalidation interface that another project calls.
 - An entity mapping of `MethodCache.EntityFrameworkCore`: `Entity<T>("...")`, and `Tags("...")` or
   `WhenDeleted("...")` in `Entity<T>(e => ...)`.
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
@@ -373,7 +374,7 @@ These invalidations count, wherever they are in the project:
 - A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
-`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and invalidations in other
+`"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and other invalidations in other
 projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
 ([Testing](../features/testing.md#every-tag-has-an-invalidation)).
 
