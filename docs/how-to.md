@@ -210,6 +210,11 @@ Arguments whose only state is private are rejected; implement `ICacheKeyProvider
 `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with a prefixed key such as `$"order:{id}"`.
 ([Manual caching](features/manual-caching.md))
 
+**Two applications share Redis. Do they share cached values?**
+Under the same `KeyPrefix` they share entries and invalidations, which is how one invalidates the other's. `[Cache]`
+keys include the method's assembly and interface, but keys passed to `ICacheManager` don't, so the same manual key is
+one entry in both. ([Several applications on one store](features/distributed-cache.md#several-applications-on-one-store))
+
 **How do I load many ids with one query, caching each one?**
 `ICacheManager.GetOrCreateManyAsync<int, User>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)`. The
 factory gets only the ids that aren't cached and returns a dictionary by id; an id it leaves out is not cached and not

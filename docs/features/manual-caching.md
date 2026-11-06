@@ -28,6 +28,12 @@ up in a key by accident, and two calls share an entry only when their keys are e
 such as `order:42`, so keys from different places can't collide. An empty or whitespace key throws
 `ArgumentException`.
 
+The key is used as it is: MethodCache adds neither the result type nor the application to it. Applications that share
+a distributed cache under one `KeyPrefix`, as they do to invalidate each other's entries, therefore share these keys,
+and `order:42` in two of them is one entry. Cache the same type under a key everywhere, or start it with the
+application's name, such as `billing:order:42`. Keys of `[Cache]` methods include the method's assembly and interface,
+so they don't collide this way ([Several applications on one store](distributed-cache.md#several-applications-on-one-store)).
+
 ## Options
 
 `GetOrCreateAsync` takes every option, including a predicate that only makes sense per call:
