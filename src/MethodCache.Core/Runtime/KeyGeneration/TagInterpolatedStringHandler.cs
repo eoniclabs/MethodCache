@@ -101,5 +101,74 @@ public ref struct TagInterpolatedStringHandler
     /// <param name="value">The value.</param>
     public void AppendFormatted<TEnum>(TEnum value) where TEnum : struct, Enum => _text.AppendLiteral(MethodCacheKeys.Part(value));
 
+    /// <summary>Writes a nullable <see cref="bool"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(bool? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="char"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(char? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="byte"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(byte? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="sbyte"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(sbyte? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="short"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(short? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="ushort"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(ushort? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="int"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(int? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="uint"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(uint? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="long"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(long? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="ulong"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(ulong? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="float"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(float? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="double"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(double? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="decimal"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(decimal? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="Guid"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(Guid? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="DateTime"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(DateTime? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable <see cref="DateTimeOffset"/> as its own overload does, or null as tag templates write it.</summary>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted(DateTimeOffset? value) => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
+    /// <summary>Writes a nullable enum as the member's number, or null as tag templates write it.</summary>
+    /// <typeparam name="TEnum">The enum type.</typeparam>
+    /// <param name="value">The value.</param>
+    public void AppendFormatted<TEnum>(TEnum? value) where TEnum : struct, Enum => _text.AppendLiteral(MethodCacheKeys.Part(value));
+
     internal string ToStringAndClear() => _text.ToStringAndClear();
 }

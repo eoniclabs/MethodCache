@@ -1,6 +1,6 @@
 namespace MethodCache.Infrastructure;
 
-/// <summary>A typed CacheWhen predicate or DurationFor function, wrapped to take the result as an object.</summary>
+/// <summary>A typed CacheWhen predicate, DurationFor or TagsFor function, wrapped to take the result as an object.</summary>
 internal interface ICachePredicate
 {
     Delegate Identity { get; }
@@ -25,10 +25,33 @@ internal sealed class TypedDuration<T>(Func<T, TimeSpan> duration) : ICachePredi
     internal TimeSpan For(object? value) => duration(value is null ? default! : (T)value);
 }
 
+internal sealed class TypedTags<T>(Func<T, IEnumerable<string>?> tags) : ICachePredicate
+{
+    public Delegate Identity => tags;
+    public Type ResultType => typeof(T);
+    public string Setting => "TagsFor";
+
+    /// <summary>
+    /// The result's tags, without duplicates. Throws for a null, empty or whitespace tag, which no invalidation could
+    /// reach, so the result isn't cached.
+    /// </summary>
+    internal string[] For(object? value)
+    {
+        if (tags(value is null ? default! : (T)value) is not { } given) return [];
+        var list = given.Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var tag in list)
+        {
+            if (string.IsNullOrWhiteSpace(tag)) throw new ArgumentException("A cache tag cannot be null or whitespace.");
+        }
+
+        return list;
+    }
+}
+
 internal static class CachePredicateCheck
 {
     /// <summary>
-    /// Throws when a <c>CacheWhen&lt;T&gt;</c> predicate or <c>DurationFor&lt;T&gt;</c> function can never see a result of
+    /// Throws when a <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function can never see a result of
     /// <paramref name="resultType"/>, for example a rule for <c>string</c> on a call that returns <c>int</c>, instead of
     /// silently caching nothing.
     /// </summary>

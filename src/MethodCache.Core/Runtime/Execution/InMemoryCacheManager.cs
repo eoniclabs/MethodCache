@@ -102,6 +102,7 @@ namespace MethodCache.Extensibility
             }
 
             _distributed = distributed;
+            if (logger != null) LogLayers(logger, _options, distributed);
             _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight));
             _onMethodInvalidated = onMethodInvalidated;
             _syncDiagnostics = new GeneratedDiagnostics(logger);
@@ -111,6 +112,40 @@ namespace MethodCache.Extensibility
                 onCleared: ClearLocal,
                 onError: static _ => { },
                 onMethodInvalidated: methodId => { _onMethodInvalidated?.Invoke(methodId); InvalidateMethodLocally(methodId); });
+        }
+
+        /// <summary>
+        /// Says which layers the cache uses when it starts, so configuration that drifted apart between instances or
+        /// environments, such as a missing distributed cache or another key prefix, shows in the log.
+        /// </summary>
+        private static void LogLayers(Microsoft.Extensions.Logging.ILogger logger, MethodCacheMemoryOptions options, DistributedCacheLayer? distributed)
+        {
+            if (!logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information)) return;
+            var memory = options.Weigher == null
+                ? $"{options.MaxItems} entries"
+                : $"{options.MaxItems} entries or a weight of {options.WeightLimit}";
+            if (distributed == null)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache caches in memory, up to {Memory} per instance, without a distributed cache, so each instance " +
+                    "caches on its own.", memory);
+                return;
+            }
+
+            var (store, keyPrefix, backplane) = distributed.Describe();
+            if (backplane == null)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache caches in memory, up to {Memory} per instance, and in the distributed cache {Store} under the " +
+                    "key prefix '{KeyPrefix}', without a backplane, so other instances keep their copy in memory until it " +
+                    "expires.", memory, store, keyPrefix);
+                return;
+            }
+
+            Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                "MethodCache caches in memory, up to {Memory} per instance, and in the distributed cache {Store} under the " +
+                "key prefix '{KeyPrefix}', with the {Backplane} backplane telling other instances to drop their copy.",
+                memory, store, keyPrefix, backplane);
         }
 
         /// <summary>
@@ -155,7 +190,7 @@ namespace MethodCache.Extensibility
                 token.ThrowIfCancellationRequested();
                 if (_distributed != null && source.Distributed != false)
                     _syncDiagnostics.ReportSyncBypass(name, "The provider offers no bounded native synchronous operation; only memory is used.");
-                var own = new SyncFlight(policy.Tags, source.Generation) { MethodId = source.MethodId };
+                var own = new SyncFlight(policy.Tags, source.Generation) { MethodId = source.MethodId, UnknownTags = policy.TagsFor != null };
                 SyncFlight flight;
                 while (true)
                 {
@@ -196,7 +231,7 @@ namespace MethodCache.Extensibility
                         catch (Exception error) { origin?.Fail(error); throw; }
                     }
                     outcome = RequestResult.Miss;
-                    if (ShouldStore(value, policy, name, out var lifetime)) StoreLoaded(key, value, policy, flight, lifetime: lifetime);
+                    if (ShouldStore(value, policy, name, out var lifetime, out var entry)) StoreLoaded(key, value, entry, flight, lifetime: lifetime);
                     flight.Value = value;
                     flight.Complete(value);
                     return value;
@@ -703,7 +738,7 @@ namespace MethodCache.Extensibility
                     // The fail-safe fallback is bound to the entry that preceded this load, never to one written during it.
                     previous = policy.FailSafe > 0 && _engine.TryPeek(key, out var peeked) ? peeked : null;
 
-                    flight = new Flight(policy.Tags, publication) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId };
+                    flight = new Flight(policy.Tags, publication) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId, UnknownTags = policy.TagsFor != null };
                     var existing = JoinOrStartFlight(key, flight);
                     if (ReferenceEquals(existing, flight))
                     {
@@ -842,9 +877,9 @@ namespace MethodCache.Extensibility
                 if (_distributed != null && policy.Source?.Distributed != false && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
                 {
                     var stored = await ReadDistributedAsync<T>(key, policy, cancellationToken).ConfigureAwait(false);
-                    if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime) && Remaining(stored, policy, storedLifetime) is > 0 and var remaining)
+                    if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime, out var storedEntry) && Remaining(stored, policy, storedLifetime) is > 0 and var remaining)
                     {
-                        StoreLoaded(key, stored.Value, policy, flight, duration: remaining);
+                        StoreLoaded(key, stored.Value, storedEntry, flight, duration: remaining);
                         flight.Outcome = RequestResult.Hit;
                         flight.Complete(stored.Value);
                         RecordHit(methodName);
@@ -863,10 +898,10 @@ namespace MethodCache.Extensibility
                     catch (Exception error) { origin?.Fail(error); throw; }
                 }
 
-                if (ShouldStore(result, policy, methodName, out var lifetime))
+                if (ShouldStore(result, policy, methodName, out var lifetime, out var entry))
                 {
-                    StoreLoaded(key, result, policy, flight, lifetime: lifetime);
-                    await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
+                    StoreLoaded(key, result, entry, flight, lifetime: lifetime);
+                    await WriteDistributedAsync(key, result, entry, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
                 }
 
                 flight.Complete(result);
@@ -1012,7 +1047,7 @@ namespace MethodCache.Extensibility
                 return;
             }
 
-            var flight = new Flight(policy.Tags) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId };
+            var flight = new Flight(policy.Tags) { Generation = policy.Source?.Generation, MethodId = policy.Source?.MethodId, UnknownTags = policy.TagsFor != null };
             if (!_flights.TryAdd(key, flight))
             {
                 // A load for this key is already running. Let a later hit try again if this node outlives it.
@@ -1039,10 +1074,10 @@ namespace MethodCache.Extensibility
                     // refresh registered its flight is never overwritten or resurrected.
                     // A result CacheWhen rejects leaves the current value in place until it expires.
                     if (result == null && !_options.CacheNullValues) StoreLoaded(key, result, policy, flight, replacing: node);
-                    if (ShouldStore(result, policy, methodName, out var lifetime))
+                    if (ShouldStore(result, policy, methodName, out var lifetime, out var entry))
                     {
-                        StoreLoaded(key, result, policy, flight, replacing: node, lifetime: lifetime);
-                        await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
+                        StoreLoaded(key, result, entry, flight, replacing: node, lifetime: lifetime);
+                        await WriteDistributedAsync(key, result, entry, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
                     }
 
                     flight.Complete(result);
@@ -1144,10 +1179,28 @@ namespace MethodCache.Extensibility
         }
 
         /// <summary>
-        /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored, and its
-        /// <c>DurationFor</c> how long (<paramref name="lifetime"/>, null without one). A predicate or duration that
-        /// throws, and a duration of zero or less, is treated as "don't store", so a successful call never fails because of it.
+        /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored, its
+        /// <c>DurationFor</c> how long (<paramref name="lifetime"/>, null without one), and its <c>TagsFor</c> which
+        /// tags it adds (<paramref name="entry"/>, the policy to store it with). A predicate or function that throws, and
+        /// a duration of zero or less, is treated as "don't store", so a successful call never fails because of it.
         /// </summary>
+        private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName, out long? lifetime, out EntryPolicy entry)
+        {
+            entry = policy;
+            if (!ShouldStore(result, policy, methodName, out lifetime)) return false;
+            if (policy.TagsFor is not { } tagsFor) return true;
+            CachePredicateCheck.EnsureMatches(tagsFor, typeof(T), methodName);
+            try
+            {
+                entry = policy.WithResultTags(tagsFor(result));
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName, out long? lifetime)
         {
             lifetime = null;
@@ -1555,6 +1608,8 @@ namespace MethodCache.Extensibility
 
             public Func<object?, TimeSpan>? DurationFor { get; init; }
 
+            public Func<object?, string[]>? TagsFor { get; init; }
+
             /// <summary>How long an expired value is kept as a fail-safe fallback; zero when fail-safe is off.</summary>
             public long FailSafe { get; init; }
 
@@ -1588,10 +1643,32 @@ namespace MethodCache.Extensibility
                     RefreshWindow = refreshWindow,
                     CacheWhen = policy.CacheWhen,
                     DurationFor = policy.DurationFor,
+                    TagsFor = policy.TagsFor,
                     FailSafe = Positive(policy.FailSafe),
                     FailSafeTimeout = Positive(policy.FailSafeTimeout),
                     FailSafeRetryAfter = Positive(policy.FailSafeRetryAfter) is > 0 and var retryAfter ? retryAfter : DefaultFailSafeRetryAfter,
                     Tags = policy.Tags.Count > 0 ? policy.Tags.Distinct(StringComparer.Ordinal).ToArray() : null
+                };
+            }
+
+            /// <summary>This policy for one result, with the tags its <see cref="TagsFor"/> gave it added.</summary>
+            public EntryPolicy WithResultTags(string[] resultTags)
+            {
+                if (resultTags.Length == 0) return this;
+                return new EntryPolicy
+                {
+                    Source = Source,
+                    Generation = Generation,
+                    Duration = Duration,
+                    Sliding = Sliding,
+                    RefreshWindow = RefreshWindow,
+                    CacheWhen = CacheWhen,
+                    DurationFor = DurationFor,
+                    TagsFor = TagsFor,
+                    FailSafe = FailSafe,
+                    FailSafeTimeout = FailSafeTimeout,
+                    FailSafeRetryAfter = FailSafeRetryAfter,
+                    Tags = Tags == null ? resultTags : Tags.Concat(resultTags).Distinct(StringComparer.Ordinal).ToArray()
                 };
             }
         }
@@ -1687,6 +1764,7 @@ namespace MethodCache.Extensibility
             internal bool IsBulkPublication => _publication != null;
 
             public string[]? Tags { get; }
+            /// <summary>Whether the result's tags are only known once it loads (TagsFor), so any tag invalidation reaches it.</summary>
             internal bool UnknownTags { get; init; }
 
             /// <summary>Set when the key or one of its tags is invalidated while loading; the result is then not stored.</summary>
@@ -1759,7 +1837,8 @@ namespace MethodCache.Extensibility
 
             internal void InvalidateTags(Func<string, bool> tagMatches, bool includeUntagged)
             {
-                if (includeUntagged || (_policy.Tags?.Any(tagMatches) ?? false))
+                // A TagsFor result's tags aren't known before it loads, so any tag may be one of them
+                if (includeUntagged || _policy.TagsFor != null || (_policy.Tags?.Any(tagMatches) ?? false))
                     foreach (var guard in _guards.Values) guard.Invalidated = true;
             }
 

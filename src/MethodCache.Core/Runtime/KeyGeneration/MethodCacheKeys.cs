@@ -183,4 +183,57 @@ public static class MethodCacheKeys
         TypeCode.Int64 => Unsafe.As<TEnum, long>(ref value).ToString(CultureInfo.InvariantCulture),
         _ => value.ToString("D"), // unsigned: no sign to format
     };
+
+    // A nullable value writes as the value, or as null does in [Cache] keys and tags
+
+    /// <summary>Formats a nullable <see cref="bool"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(bool? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="char"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(char? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="byte"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(byte? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="sbyte"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(sbyte? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="short"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(short? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="ushort"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(ushort? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="int"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(int? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="uint"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(uint? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="long"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(long? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="ulong"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(ulong? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="float"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(float? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="double"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(double? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="decimal"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(decimal? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="Guid"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(Guid? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="DateTime"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(DateTime? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable <see cref="DateTimeOffset"/> argument: the value as its own overload writes it, or the null part.</summary>
+    public static string Part(DateTimeOffset? value) => value is { } item ? Part(item) : Generated.KeyParts.Null;
+
+    /// <summary>Formats a nullable enum argument: the member's number, or the null part.</summary>
+    public static string Part<TEnum>(TEnum? value) where TEnum : struct, Enum => value is { } item ? Part(item) : Generated.KeyParts.Null;
 }

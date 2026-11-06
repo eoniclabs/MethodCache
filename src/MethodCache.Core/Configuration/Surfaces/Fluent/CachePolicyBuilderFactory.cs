@@ -15,7 +15,7 @@ internal static class CachePolicyBuilderFactory
     /// <summary>
     /// Builds defaults that apply to many cached methods, described by <paramref name="target"/> in errors.
     /// </summary>
-    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen or DurationFor.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen, DurationFor or TagsFor.</exception>
     public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
     {
         // A predicate checks one result type, so in defaults it would reject every other method's results
@@ -33,6 +33,13 @@ internal static class CachePolicyBuilderFactory
                 "set for one method: mc.Method(...).DurationFor(...) or mc.Method(...).Configure(o => o.DurationFor<T>(...)).");
         }
 
+        if (options?.TagsFor != null)
+        {
+            throw new InvalidOperationException(
+                $"TagsFor is set in {target}, but a TagsFor function reads the result type of one method, so it can only be " +
+                "set for one method: mc.Method(...).TagsFor(...) or mc.Method(...).Configure(o => o.TagsFor<T>(...)).");
+        }
+
         return FromOptions(options!);
     }
 
@@ -48,6 +55,7 @@ internal static class CachePolicyBuilderFactory
         if (options.Distributed is { } distributed) builder.WithDistributed(distributed);
         if (options.CacheWhen != null) builder.WithCacheWhen(options.CacheWhen);
         if (options.DurationFor != null) builder.WithDurationFor(options.DurationFor);
+        if (options.TagsFor != null) builder.WithTagsFor(options.TagsFor);
 
         if (options.Duration.HasValue)
         {

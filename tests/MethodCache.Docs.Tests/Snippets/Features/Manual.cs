@@ -15,6 +15,8 @@ namespace Docs.Manual
         Task<List<Order>> ListAsync(int customerId, string status, CancellationToken ct);
 
         Task<List<User>> GetUsersAsync(IReadOnlyList<int> ids, CancellationToken ct);
+
+        Task<Order> SaveAsync(Order order, CancellationToken ct);
     }
 
     // begin-snippet: manual-basic
@@ -54,6 +56,16 @@ namespace Docs.Manual
             {
                 Console.WriteLine(lookup.Value);
             }
+            // end-snippet
+        }
+
+        public static async Task Set(ICacheManager cache, IOrderRepository orders, Order order, CancellationToken ct)
+        {
+            // begin-snippet: manual-set
+            var saved = await orders.SaveAsync(order, ct);
+            await cache.SetAsync($"order:{saved.Id}", saved,
+                o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{saved.Id}"),
+                ct);
             // end-snippet
         }
 

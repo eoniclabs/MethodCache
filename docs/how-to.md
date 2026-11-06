@@ -116,6 +116,17 @@ culture, and `:` and `\` escaped in strings, so `gemma3:4b` becomes `gemma3\:4b`
 differently and matches nothing, silently. Analyzer MC0024 warns about such tags and its code fix wraps them in
 `MethodCacheKeys.Tag`. `MethodCacheKeys.Part` formats one value. ([Build diagnostics](user-guide/DIAGNOSTICS.md#mc0024))
 
+**I just saved the new value. Can I put it in the cache instead of invalidating?**
+For a key of your own, yes: `await cache.SetAsync($"order:{saved.Id}", saved, o => o.WithDuration(TimeSpan.FromMinutes(30)))`.
+It replaces the value in memory and the distributed cache, other instances drop their copy, and a load already running
+for the key doesn't overwrite it. Use the options of the calls that read the key. For a `[Cache]` method, invalidate
+its key or tags. ([Storing a value you already have](features/manual-caching.md#storing-a-value-you-already-have))
+
+**A tag depends on the result, not the arguments, such as the customer of an order found by its id. How?**
+`mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value)).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`
+adds the result's tags to the method's own, so invalidating `customer:7` removes the order too. For manual caching, use
+`o => o.TagsFor<Order>(...)`. ([Tags from the result](features/invalidation.md#tags-from-the-result))
+
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
 ([Invalidation](features/invalidation.md#from-code))
@@ -136,6 +147,11 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 **How do I pass a version and a cancellation token?**
 `InvalidateKeyAsync(key, ct)`, `InvalidateKeyAsync(key, 2, ct)`, `TryGetAsync<Order>(key, ct)` and
 `TryGetAsync<Order>(key, 2, ct)`: the token always comes last. ([Manual caching](features/manual-caching.md))
+
+**Which token does a `GetOrCreateAsync` factory use?**
+Its own: `async ct => await orders.GetAsync(id, ct)`, with the caller's token passed as `cancellationToken: ct`. A
+token from outside the factory, such as `HttpContext.RequestAborted`, fails the load for every caller sharing it when
+it is cancelled; warning MC0035 reports it, with a code fix. ([Things to know](features/manual-caching.md#things-to-know))
 
 ## Expiration and what gets cached
 
@@ -203,7 +219,8 @@ From the assembly, interface, method and the arguments' values. A `CancellationT
 ([Cache keys](features/keys.md))
 
 **My argument is a class with private fields. What happens?**
-Arguments whose only state is private are rejected; implement `ICacheKeyProvider` on the type.
+Arguments whose only state is private are rejected, at build time with error MC0034; implement `ICacheKeyProvider` on
+the type.
 ([Types whose state is private](features/keys.md#types-whose-state-is-private))
 
 **How do I cache something without an attribute?**
@@ -249,6 +266,10 @@ one app. ([Invalidations only](features/distributed-cache.md#invalidations-only)
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
 after a failure, and invalidations are retried. ([Distributed cache](features/distributed-cache.md))
+
+**How do I check that every instance uses the same distributed cache?**
+Each instance logs one `Information` line when its cache starts, naming `MaxItems`, the distributed cache, its
+`KeyPrefix` and the backplane, or that there is no distributed cache. ([Monitoring](features/monitoring.md#which-layers-an-instance-uses))
 
 **How do I see what's cached?**
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`

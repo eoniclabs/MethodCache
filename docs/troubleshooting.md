@@ -25,7 +25,8 @@
   [MC0019](user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
-  the result is `null` with `CacheNullValues = false`, or the call threw. Exceptions are never cached.
+  `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
+  Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
 - **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning
   the first time that happens; raise `MaxItems` ([Memory cache](features/memory-cache.md#bounding-by-size)).
@@ -51,6 +52,10 @@ A method whose result type is `object`, an interface or an abstract class (`Task
 warning [MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
 only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+
+Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
+when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
+([Which layers an instance uses](features/monitoring.md#which-layers-an-instance-uses)).
 
 ## Keys look different than expected
 

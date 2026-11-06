@@ -31,6 +31,9 @@ internal sealed class CachePolicyBuilder
     private Func<object?, TimeSpan>? _durationFor;
     private bool _durationForSet;
 
+    private Func<object?, string[]>? _tagsFor;
+    private bool _tagsForSet;
+
     private TimeSpan? _failSafe;
     private bool _failSafeSet;
 
@@ -51,6 +54,7 @@ internal sealed class CachePolicyBuilder
         _refreshAheadSet ||
         _cacheWhenSet ||
         _durationForSet ||
+        _tagsForSet ||
         _failSafeSet ||
         _failSafeTimeoutSet ||
         _failSafeRetryAfterSet ||
@@ -137,6 +141,13 @@ internal sealed class CachePolicyBuilder
     {
         _durationFor = durationFor;
         _durationForSet = true;
+        return this;
+    }
+
+    public CachePolicyBuilder WithTagsFor(Func<object?, string[]>? tagsFor)
+    {
+        _tagsFor = tagsFor;
+        _tagsForSet = true;
         return this;
     }
 
@@ -238,6 +249,12 @@ internal sealed class CachePolicyBuilder
             _durationForSet = true;
         }
 
+        if (source._tagsForSet && (overwriteExisting || !_tagsForSet))
+        {
+            _tagsFor = source._tagsFor;
+            _tagsForSet = true;
+        }
+
         if (source._failSafeSet && (overwriteExisting || !_failSafeSet))
         {
             _failSafe = source._failSafe;
@@ -290,6 +307,8 @@ internal sealed class CachePolicyBuilder
             _cacheWhenSet = _cacheWhenSet,
             _durationFor = _durationFor,
             _durationForSet = _durationForSet,
+            _tagsFor = _tagsFor,
+            _tagsForSet = _tagsForSet,
             _failSafe = _failSafe,
             _failSafeSet = _failSafeSet,
             _failSafeTimeout = _failSafeTimeout,
@@ -379,6 +398,12 @@ internal sealed class CachePolicyBuilder
         {
             policy = policy with { DurationFor = _durationFor };
             fields |= CachePolicyFields.DurationFor;
+        }
+
+        if (_tagsForSet)
+        {
+            policy = policy with { TagsFor = _tagsFor };
+            fields |= CachePolicyFields.TagsFor;
         }
 
         if (_failSafeSet)

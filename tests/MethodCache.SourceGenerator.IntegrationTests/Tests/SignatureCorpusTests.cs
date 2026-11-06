@@ -224,6 +224,45 @@ public class SignatureCorpusTests
     }
 
     [Fact]
+    public async Task HiddenStateKeyType_NamesTheValueAndItsType()
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync("""
+            using MethodCache;
+            public readonly struct UserId { private readonly int _value; public UserId(int value) => _value = value; }
+            public sealed record Query(string Text, UserId Owner);
+            public interface ISvc { [Cache] string Get(Query query); }
+            public class Svc : ISvc { public string Get(Query query) => "v"; }
+            """, "HiddenStateKeyTypeMessage", LanguageVersion.CSharp12);
+
+        var diagnostic = Assert.Single(compiled.Diagnostics, d => d.Id == "MC0034");
+        Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
+        var message = diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains("'query.Owner' is a 'UserId', whose state is not public", message, StringComparison.Ordinal);
+        Assert.Contains("ICacheKeyProvider", message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("public sealed class Filter { public Filter(int id) => Id = id; private int Id { get; } }", true)]
+    [InlineData("public sealed class Filter { private readonly string _text = \"\"; }", true)]
+    [InlineData("public class Base { private int _id; } public sealed class Filter : Base { }", true)]
+    [InlineData("public sealed class Filter { public int Id { get; init; } private int _cache; }", false)]
+    [InlineData("public sealed class Filter { [System.Text.Json.Serialization.JsonInclude] private int Id { get; set; } }", false)]
+    [InlineData("public sealed class Filter : ICacheKeyProvider { private int _id; public string CacheKeyPart => _id.ToString(); }", false)]
+    [InlineData("public sealed class Filter { }", false)]
+    [InlineData("public abstract class Filter { private int _id; }", false)]
+    public async Task HiddenStateKeyType_IsReportedOnlyForATypeWrittenWithoutMembersThatHoldsState(string declaration, bool reported)
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync($$"""
+            using MethodCache;
+            {{declaration}}
+            public interface ISvc { [Cache] string Get(Filter filter); }
+            public class Svc : ISvc { public string Get(Filter filter) => "v"; }
+            """, "HiddenStateKeyType" + Math.Abs(declaration.GetHashCode()), LanguageVersion.CSharp12);
+
+        Assert.Equal(reported, compiled.Diagnostics.Any(d => d.Id == "MC0034"));
+    }
+
+    [Fact]
     public async Task FrameworkTypeWithoutKeyForm_IsRejectedForEveryArgument()
     {
         var source = Member(

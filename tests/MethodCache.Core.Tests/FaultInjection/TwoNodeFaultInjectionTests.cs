@@ -137,6 +137,51 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
         (await Get(b, "key", "unused", "users")).Should().Be("v2");
     }
 
+    [Fact]
+    public async Task PublicSet_OnOneNode_TheOtherDropsItsCopyAndReadsTheNewValue()
+    {
+        var (a, b, _, _) = CreateNodes();
+        await Warm(a, b);
+
+        await ((ICacheManager)a).SetAsync("key", "v2", options => options.WithDuration(Duration).AddTags("users"));
+        _time.Advance(OneMillisecond);
+
+        (await b.TryGetAsync<string>("key")).Value.Should().Be("v2");
+        (await Get(CreateNode(_hub.Join()), "key", "unused", "users")).Should().Be("v2", "the distributed cache holds the new value");
+        await ((ICacheManager)a).InvalidateByTagsAsync("users");
+        _time.Advance(OneMillisecond);
+        (await Get(b, "key", "v3", "users")).Should().Be("v3", "the set value carries its tags");
+    }
+
+    [Fact]
+    public async Task TagsFor_ATagOfTheResult_IsInvalidatedOnEveryNodeAndInTheDistributedCache()
+    {
+        var (a, b, _, _) = CreateNodes();
+        Action<CacheEntryOptions.Builder> options = o => o.WithDuration(Duration).TagsFor<string>(value => [$"value:{value}"]);
+        (await a.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"), options)).Should().Be("v1");
+        (await b.GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"), options)).Should().Be("v1", "B reads A's value from the distributed cache");
+        _time.Advance(OneMillisecond);
+
+        await ((ICacheManager)a).InvalidateTagAsync("value:v1");
+        _time.Advance(OneMillisecond);
+
+        (await b.GetOrCreateAsync("key", _ => ValueTask.FromResult("v2"), options)).Should().Be("v2");
+        (await CreateNode(_hub.Join()).GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"), options)).Should().Be("v2");
+    }
+
+    [Fact]
+    public async Task PublicSet_MemoryOnly_RemovesTheDistributedAndOtherCopies()
+    {
+        var (a, b, _, _) = CreateNodes();
+        await Warm(a, b);
+
+        await ((ICacheManager)a).SetAsync("key", "v2", options => options.WithDuration(Duration).WithDistributed(false));
+        _time.Advance(OneMillisecond);
+
+        (await a.TryGetAsync<string>("key")).Value.Should().Be("v2");
+        (await Get(b, "key", "loaded by B", "users")).Should().Be("loaded by B");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

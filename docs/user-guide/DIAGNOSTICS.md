@@ -40,7 +40,9 @@ generator and the analyzer run, each problem is reported once.
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
-| [MC0033](#mc0033) | Error | `CacheWhen<T>` or `DurationFor<T>` for a type the call's result can never be | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
+| [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
+| [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 
 ## MC0001
 
@@ -516,8 +518,8 @@ there with `#pragma warning disable MC0032`.
 
 ## MC0033
 
-`CacheWhen<T>` or `DurationFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can never be, such
-as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
+`CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
+never be, such as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
 application starts or the call runs; this error finds it while building.
 
 ```cs
@@ -525,8 +527,8 @@ mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s =
 await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
 ```
 
-Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)` and `Method(...).DurationFor(...)`,
-which take the result type from the method:
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)` and
+`Method(...).TagsFor(...)`, which take the result type from the method:
 
 ```cs
 mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
@@ -535,4 +537,46 @@ mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
 A base type, an interface or the nullable form of the result type is fine: `CacheWhen<object>`,
 `CacheWhen<IReadOnlyList<Product>>` for a `List<Product>`, or `CacheWhen<int?>` for an `int`. A numeric type
 the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
-`GetOrCreateAsync` and `GetOrCreateManyAsync`; options built elsewhere and passed in are checked when the call runs.
+`GetOrCreateAsync`, `GetOrCreateManyAsync` and `SetAsync`; options built elsewhere and passed in are checked when the
+call runs.
+
+## MC0034
+
+A key argument of a `[Cache]` method, or a value inside it (a property of a record, an element, a tuple item), has a
+type of your own whose state is all private: private fields or properties, also inherited ones, and no public property
+or field. Every value of it would be written the same, so all calls would share one key and callers would get each
+other's results. MethodCache refuses it with an `InvalidOperationException` when the call runs; this error finds it
+while building. The message names the value, such as `'query.Owner' is a 'UserId'`.
+
+```cs
+public readonly struct UserId(int value) { private readonly int _value = value; }
+public interface IUsers { [Cache] Task<User> GetAsync(UserId id); }   // MC0034
+```
+
+Implement `ICacheKeyProvider` on the type, or give it public properties that identify the value
+([Types whose state is private](../features/keys.md#types-whose-state-is-private)). A type with a `[JsonConverter]`
+and an abstract type aren't reported.
+
+## MC0035
+
+The factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token from outside it, such as the
+method's own `ct` or `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`. Callers of one
+key share one run of the factory, which gets the token of the caller that started it: when that caller cancels, the
+others run the factory again. A token the cache doesn't know fails the run for all of them instead, and they get the
+cancellation, or a fail-safe value when there is one.
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async _ => await orders.GetAsync(id, ct));   // MC0035
+```
+
+Use the factory's own token, and pass yours as `cancellationToken`. The code fix does both, and names a discarded
+parameter after your token, so inside the factory `ct` is the factory's:
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async ct => await orders.GetAsync(id, ct), cancellationToken: ct);
+```
+
+A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
+aren't reported.

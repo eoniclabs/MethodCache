@@ -36,5 +36,25 @@ public class MethodCacheKeysTagTests
         }
     }
 
+    [Fact]
+    public void NullableValues_WriteTheValueOrNull_InTagsAndParts()
+    {
+        int? count = 42;
+        int? none = null;
+        Guid? tenant = Guid.Parse("0f8fad5b-d9cb-469f-a165-70867728950e");
+        Guid? noTenant = null;
+        Tier? tier = Tier.Pro;
+        Tier? noTier = null;
+        DateTime? at = new DateTime(2026, 11, 6, 15, 30, 0, DateTimeKind.Utc);
+
+        Assert.Equal(Expected(42, null, tenant, null, Tier.Pro, null, at),
+            MethodCacheKeys.Tag($"{count}|{none}|{tenant}|{noTenant}|{tier}|{noTier}|{at}"));
+        Assert.Equal(KeyParts.TagPart(42), MethodCacheKeys.Part(count));
+        Assert.Equal(KeyParts.Null, MethodCacheKeys.Part(none));
+        Assert.Equal(KeyParts.TagPart(tenant), MethodCacheKeys.Part(tenant));
+        Assert.Equal(KeyParts.Null, MethodCacheKeys.Part(noTier));
+        Assert.Equal(KeyParts.TagPart(Tier.Pro), MethodCacheKeys.Part(tier));
+    }
+
     private static string Expected(params object?[] values) => string.Join("|", values.Select(KeyParts.TagPart));
 }

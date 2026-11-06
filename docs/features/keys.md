@@ -72,7 +72,8 @@ On .NET 10 the decorator writes simple keys into a stack buffer and looks them u
 
 A type with only private state, including private fields inherited from a base class, would give every value the
 same key, so the key generators refuse it with an
-`InvalidOperationException` instead of returning wrong results. This holds wherever the type appears in an argument:
+`InvalidOperationException` instead of returning wrong results, and build error
+[MC0034](../user-guide/DIAGNOSTICS.md#mc0034) reports it in a `[Cache]` method. This holds wherever the type appears in an argument:
 as the argument itself, as a property of a record, or as an element of an array, list or dictionary. Implement
 `ICacheKeyProvider` on it, or give it public properties:
 

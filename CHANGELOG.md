@@ -10,6 +10,24 @@ release.
 
 - A way for coding agents to report problems: the agent instructions (`docs/ai/methodcache.md`, Feedback) say when
   and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an issue form with the same fields.
+- `ICacheManager.SetAsync(key, value, options)` stores a value you already have, such as one you just saved, in memory
+  and the distributed cache. Other instances drop their copy, and a load already running for the key doesn't overwrite
+  it. A value the options turn down removes the key's old value instead.
+- `TagsFor` adds tags read from each result to its entry, next to the method's own tags, such as the customer of an
+  order found by its id: `mc.Method(...).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`, and
+  `TagsFor<T>` on `CacheEntryOptions.Builder` for manual caching. Custom managers read them with
+  `CacheEntryOptions.TagsOf(value)`.
+- The cache logs one `Information` line when it starts, naming the memory cache's `MaxItems`, and the distributed
+  cache's store, `KeyPrefix` and backplane, or that there is no distributed cache, so configuration that differs
+  between instances shows in the log.
+- Build error MC0034 reports a key argument of a `[Cache]` method, or a value inside one, whose type has only private
+  state, which MethodCache refuses when the call runs since every value would get the same key.
+- Analyzer MC0035 warns when the factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token
+  from outside it, such as `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`: its
+  cancellation fails the load for every caller sharing it. The code fix makes the factory use its own token and passes
+  the outer one as `cancellationToken`.
+- `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
+  the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.
@@ -31,8 +49,8 @@ release.
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
 - Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
   registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
-- Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
-  `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
+- Analyzer MC0033 is a build error for `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` in `Method(...).Configure(...)`,
+  `GetOrCreateAsync`, `GetOrCreateManyAsync` or `SetAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
   (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 

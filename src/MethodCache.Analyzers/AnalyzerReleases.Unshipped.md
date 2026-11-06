@@ -13,4 +13,5 @@ MC0029 | Usage | Warning | Reports a tag in InvalidatedElsewhere on [Cache] that
 MC0030 | Usage | Warning | Reports a program (not a test project) with cached services, its own or a referenced project's, when its code calls neither AddMethodCache nor a method of a referenced project that calls it.
 MC0031 | Usage | Warning | Reports a call a class makes to its own cached method, which skips the cache.
 MC0032 | Usage | Warning | Reports a class that implements a cached interface created with new outside a service registration and outside test projects, since its calls skip the cache.
-MC0033 | Usage | Error | Reports CacheWhen<T> or DurationFor<T> set in Method(...).Configure(...), GetOrCreateAsync or GetOrCreateManyAsync for a T that the call's result type can never be.
+MC0033 | Usage | Error | Reports CacheWhen<T>, DurationFor<T> or TagsFor<T> set in Method(...).Configure(...), GetOrCreateAsync, GetOrCreateManyAsync or SetAsync for a T that the call's result type can never be.
+MC0035 | Reliability | Warning | Reports a cancellation token from outside the factory of GetOrCreateAsync or GetOrCreateManyAsync (a parameter, local, field or a property of one) that the factory uses and the call doesn't pass as its cancellationToken.

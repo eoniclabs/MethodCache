@@ -77,6 +77,7 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeProvider _time;
         private readonly ILogger _logger;
         private readonly string _entryPrefix;
+        private readonly string _keyPrefix;
         private readonly string _tagPrefix;
         private readonly string _removalPrefix;
         private readonly long _tagCheckMilliseconds;
@@ -185,6 +186,7 @@ namespace MethodCache.Core.Runtime.Distributed
             _verifyRoundTrip = options.VerifyRoundTrip;
             _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
+            _keyPrefix = options.KeyPrefix;
             _tagPrefix = options.KeyPrefix + "t:";
             _httpEntryPrefix = options.KeyPrefix + "http:e";
             _httpEpochPrefix = options.KeyPrefix + "http:epoch:v1:url:";
@@ -196,6 +198,14 @@ namespace MethodCache.Core.Runtime.Distributed
             _breakDuration = options.CircuitBreakerDuration;
             _telemetry?.ObserveRecovery(GetInvalidationQueues);
         }
+
+        /// <summary>The store, the key prefix and the backplane (null without one), as the startup log names them.</summary>
+        internal (string Store, string KeyPrefix, string? Backplane) Describe()
+            => (ShortName(_cache.GetType(), "DistributedCache"), _keyPrefix, _backplane == null ? null : ShortName(_backplane.GetType(), "Backplane"));
+
+        // RedisDistributedCache is "Redis" and PostgreSqlBackplane "PostgreSql"; a store of the application's keeps its name
+        private static string ShortName(Type type, string suffix)
+            => type.Name.Length > suffix.Length && type.Name.EndsWith(suffix, StringComparison.Ordinal) ? type.Name[..^suffix.Length] : type.Name;
 
         /// <summary>Wall-clock time in Unix milliseconds, comparable across nodes.</summary>
         public long Now => _time.GetUtcNow().ToUnixTimeMilliseconds();

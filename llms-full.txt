@@ -107,7 +107,8 @@ builder.Services.AddMethodCache();                               // after your r
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
-  gives each result its own duration (zero or less doesn't cache it).
+  gives each result its own duration (zero or less doesn't cache it), and `TagsFor`, which adds tags read from the
+  result, such as `TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`.
 - A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
   fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
 - For a client from a NuGet package with an interface, use
@@ -493,6 +494,17 @@ culture, and `:` and `\` escaped in strings, so `gemma3:4b` becomes `gemma3\:4b`
 differently and matches nothing, silently. Analyzer MC0024 warns about such tags and its code fix wraps them in
 `MethodCacheKeys.Tag`. `MethodCacheKeys.Part` formats one value. ([Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024))
 
+**I just saved the new value. Can I put it in the cache instead of invalidating?**
+For a key of your own, yes: `await cache.SetAsync($"order:{saved.Id}", saved, o => o.WithDuration(TimeSpan.FromMinutes(30)))`.
+It replaces the value in memory and the distributed cache, other instances drop their copy, and a load already running
+for the key doesn't overwrite it. Use the options of the calls that read the key. For a `[Cache]` method, invalidate
+its key or tags. ([Storing a value you already have](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#storing-a-value-you-already-have))
+
+**A tag depends on the result, not the arguments, such as the customer of an order found by its id. How?**
+`mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value)).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`
+adds the result's tags to the method's own, so invalidating `customer:7` removes the order too. For manual caching, use
+`o => o.TagsFor<Order>(...)`. ([Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result))
+
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
 ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#from-code))
@@ -513,6 +525,11 @@ with Redis and PostgreSQL, on the next poll (one second) with SQL Server.
 **How do I pass a version and a cancellation token?**
 `InvalidateKeyAsync(key, ct)`, `InvalidateKeyAsync(key, 2, ct)`, `TryGetAsync<Order>(key, ct)` and
 `TryGetAsync<Order>(key, 2, ct)`: the token always comes last. ([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md))
+
+**Which token does a `GetOrCreateAsync` factory use?**
+Its own: `async ct => await orders.GetAsync(id, ct)`, with the caller's token passed as `cancellationToken: ct`. A
+token from outside the factory, such as `HttpContext.RequestAborted`, fails the load for every caller sharing it when
+it is cancelled; warning MC0035 reports it, with a code fix. ([Things to know](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#things-to-know))
 
 ## Expiration and what gets cached
 
@@ -580,7 +597,8 @@ From the assembly, interface, method and the arguments' values. A `CancellationT
 ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md))
 
 **My argument is a class with private fields. What happens?**
-Arguments whose only state is private are rejected; implement `ICacheKeyProvider` on the type.
+Arguments whose only state is private are rejected, at build time with error MC0034; implement `ICacheKeyProvider` on
+the type.
 ([Types whose state is private](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private))
 
 **How do I cache something without an attribute?**
@@ -626,6 +644,10 @@ one app. ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/mai
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
 after a failure, and invalidations are retried. ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
+
+**How do I check that every instance uses the same distributed cache?**
+Each instance logs one `Information` line when its cache starts, naming `MaxItems`, the distributed cache, its
+`KeyPrefix` and the backplane, or that there is no distributed cache. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#which-layers-an-instance-uses))
 
 **How do I see what's cached?**
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
@@ -823,7 +845,8 @@ On .NET 10 the decorator writes simple keys into a stack buffer and looks them u
 
 A type with only private state, including private fields inherited from a base class, would give every value the
 same key, so the key generators refuse it with an
-`InvalidOperationException` instead of returning wrong results. This holds wherever the type appears in an argument:
+`InvalidOperationException` instead of returning wrong results, and build error
+[MC0034](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0034) reports it in a `[Cache]` method. This holds wherever the type appears in an argument:
 as the argument itself, as a property of a record, or as an element of an array, list or dictionary. Implement
 `ICacheKeyProvider` on it, or give it public properties:
 
@@ -1180,6 +1203,33 @@ entries the tags `orders`, `order:{orderId}` and `incident`.
 with `ref`, `out` or `in` parameters. The tags are filled in after the call returns, and the entries are removed only
 once the task has completed successfully.
 
+## Tags from the result
+
+A template reads the method's arguments. When a tag depends on the result instead, such as the customer of an order
+that `GetAsync(orderId)` finds by its id, add it with `TagsFor` in startup code:
+
+```cs
+services.AddMethodCache(mc =>
+{
+    // GetAsync(orderId) finds the order by its id; its entry also gets the tag of the order's customer
+    mc.Method((IOrderService s) => s.GetAsync(Any<int>.Value))
+        .TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")]);
+});
+```
+
+- The tags are added to the method's own, so `CancelAsync(42, 7)` above, which invalidates `customer:7`, now also
+  removes `GetAsync(42)`, and so does `InvalidateTagAsync("customer:7")`.
+- Build each tag with `MethodCacheKeys.Tag($"...")`, which writes values the way tag templates do, so it matches the
+  tag that is invalidated.
+- It runs once per load, never on a hit. A function that throws, or gives a null, empty or whitespace tag, doesn't
+  cache the result; the caller still gets it.
+- The result's tags aren't known while it loads, so a tag invalidated in that time keeps it from being cached, whichever
+  tag it was. The next call loads it again.
+- For manual caching, pass `o => o.TagsFor<Order>(order => [...])` in the options
+  ([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#options)).
+- It is set for one method only: in `Defaults` or a group it fails at startup, and so does a `TagsFor<T>` for a type the
+  method can't return. `ClearTags()` in a higher layer removes it.
+
 ## From code
 
 `ICacheManager` invalidates by tag or by key:
@@ -1247,8 +1297,9 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
   in strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for
   a model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
   [MC0024](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024). Wrap it in `MethodCacheKeys.Tag` instead, which writes every value
-  the canonical way: `MethodCacheKeys.Tag($"price:{provider}:{model}")`. A value of a type tags can't hold, or with a
-  format such as `{price:F2}`, doesn't compile.
+  the canonical way: `MethodCacheKeys.Tag($"price:{provider}:{model}")`. A nullable value such as an `int?` is written
+  as its value, or as null is in tag templates. A value of a type tags can't hold, or with a format such as
+  `{price:F2}`, doesn't compile. `MethodCacheKeys.Part(value)` writes one value the same way, nullable values included.
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 
@@ -1850,8 +1901,9 @@ builder.Services.AddMethodCache(config =>
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
   `appsettings.json`, which wins where both set a value; a method's own settings win over both.
-- `CacheWhen` and `DurationFor` are set for one method only. In `Defaults` or a group they fail at startup
-  ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md), [A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)).
+- `CacheWhen`, `DurationFor` and `TagsFor` are set for one method only. In `Defaults` or a group they fail at startup
+  ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md), [A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result),
+  [Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result)).
 - `Any<T>.Value` stands for any argument when you point at a method.
 
 Startup uses `MethodCacheBuilder`: `Defaults`, `Group`, typed `Method` expressions, `Memory`, `Distributed`,
@@ -2030,7 +2082,7 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
 `With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
-`WithFailSafeRetryAfter`. `CacheWhen<T>` and `DurationFor<T>` are configured in code for one method; one for a type the
+`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
 method can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException`
 at startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.
@@ -2102,7 +2154,8 @@ var list = await cache.GetOrCreateAsync(
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
-  ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)).
+  ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)). `TagsFor<T>` adds tags read from the
+  result ([Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result)).
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
@@ -2113,7 +2166,8 @@ var list = await cache.GetOrCreateAsync(
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
 `InvalidateTagsAsync`. The interface takes every argument; extension methods give the short forms, such as
 `TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key)` and `InvalidateKeyAsync(key, version)`, and take a
-builder action instead of built options. To write your own manager, see
+builder action instead of built options. `SetAsync` is an extension method too: on a manager of your own it invalidates
+the key and then stores the value through `GetOrCreateAsync`. To write your own manager, see
 [Registration](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md#your-own-cache-manager).
 
 ## Reading without loading
@@ -2127,6 +2181,28 @@ if (lookup.Found)
 ```
 
 `TryGetAsync` takes the `version` an entry was stored with: `TryGetAsync<Order>("order:42", 2)`.
+
+## Storing a value you already have
+
+When you already have the new value, such as right after you saved it, `SetAsync` stores it so the next read doesn't
+load it again:
+
+```cs
+var saved = await orders.SaveAsync(order, ct);
+await cache.SetAsync($"order:{saved.Id}", saved,
+    o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{saved.Id}"),
+    ct);
+```
+
+- It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
+  gets the new value from the distributed cache. With `WithDistributed(false)` it stays in this instance's memory, and
+  the copies in the distributed cache and on other instances are removed.
+- It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
+  since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
+- A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
+  one `DurationFor<T>` gives no time, or `null` without `CacheNullValues`. `WithEnabled(false)` does nothing.
+- A load of the key that is running when you call it doesn't overwrite the value with what it read before.
+- To remove a value instead, invalidate the key or its tags ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)).
 
 ## Versions and the stored key
 
@@ -2189,8 +2265,14 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 ## Things to know
 
-- Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
-  cancels a run others joined, they run the factory again rather than fail.
+- Concurrent calls for the same key share one factory run, which gets the token of the caller that started it. A
+  caller's `cancellationToken` stops its own wait; if it cancels a run others joined, they run the factory again rather
+  than fail.
+- Name the factory's token and pass it on, as in `async ct => await orders.GetAsync(id, ct)`. CA2016 asks for that when
+  the factory calls a method that takes a token, and named `ct` it hides the method's own `ct` inside the factory. Pass
+  the method's token as `cancellationToken`: a token from outside the factory that the call doesn't pass, such as
+  `HttpContext.RequestAborted`, fails the shared run for every caller when it is cancelled.
+  [MC0035](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0035) reports it, with a code fix.
 - A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
   itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.
@@ -2649,6 +2731,17 @@ Core emits standard .NET metrics and activities. `AddMethodCache()` uses the con
 one when needed, and owns an `ActivitySource` with the same `MethodCacheTelemetry.Name` (`MethodCache`). Both use the
 assembly version. Separate containers keep their observation callbacks separate.
 
+## Which layers an instance uses
+
+When the cache starts, MethodCache logs one `Information` line that names its layers: the memory cache with its
+`MaxItems`, and the distributed cache with its store, `KeyPrefix` and backplane, or that there is none. Compare it
+between instances and environments when they don't seem to share entries or invalidations:
+
+```text
+MethodCache caches in memory, up to 10000 entries per instance, and in the distributed cache Redis under the key
+prefix 'methodcache:', with the Redis backplane telling other instances to drop their copy.
+```
+
 ## Administration and statistics
 
 `ICacheAdministrator`, registered for the built-in manager, exposes local statistics, methods and entries:
@@ -2665,6 +2758,14 @@ foreach (var method in admin.GetMethods())
 
 var entries = admin.ListEntries(tag: "user:42");
 await admin.InvalidateTagsAsync(["user:42"]);
+```
+
+To read the statistics from outside, such as on a `/health` page, return them as JSON:
+
+```cs
+// Hits, misses, evictions and entries of this instance, as JSON; protect it like any admin endpoint
+app.MapGet("/health/cache", async (ICacheAdministrator admin, CancellationToken ct) =>
+    Results.Ok(await admin.GetStatsAsync(ct)));
 ```
 
 `Hits`, `Misses` and `Evictions` are local counters. Compute a hit ratio in the app or dashboard. Storage fields have
@@ -3504,7 +3605,8 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
   [MC0019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
-  the result is `null` with `CacheNullValues = false`, or the call threw. Exceptions are never cached.
+  `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
+  Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
 - **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning
   the first time that happens; raise `MaxItems` ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size)).
@@ -3530,6 +3632,10 @@ A method whose result type is `object`, an interface or an abstract class (`Task
 warning [MC0020](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
 only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+
+Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
+when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
+([Which layers an instance uses](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#which-layers-an-instance-uses)).
 
 ## Keys look different than expected
 
@@ -3622,7 +3728,9 @@ generator and the analyzer run, each problem is reported once.
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
-| [MC0033](#mc0033) | Error | `CacheWhen<T>` or `DurationFor<T>` for a type the call's result can never be | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
+| [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
+| [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 
 ## MC0001
 
@@ -4098,8 +4206,8 @@ there with `#pragma warning disable MC0032`.
 
 ## MC0033
 
-`CacheWhen<T>` or `DurationFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can never be, such
-as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
+`CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
+never be, such as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
 application starts or the call runs; this error finds it while building.
 
 ```cs
@@ -4107,8 +4215,8 @@ mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s =
 await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
 ```
 
-Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)` and `Method(...).DurationFor(...)`,
-which take the result type from the method:
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)` and
+`Method(...).TagsFor(...)`, which take the result type from the method:
 
 ```cs
 mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
@@ -4117,7 +4225,49 @@ mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
 A base type, an interface or the nullable form of the result type is fine: `CacheWhen<object>`,
 `CacheWhen<IReadOnlyList<Product>>` for a `List<Product>`, or `CacheWhen<int?>` for an `int`. A numeric type
 the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
-`GetOrCreateAsync` and `GetOrCreateManyAsync`; options built elsewhere and passed in are checked when the call runs.
+`GetOrCreateAsync`, `GetOrCreateManyAsync` and `SetAsync`; options built elsewhere and passed in are checked when the
+call runs.
+
+## MC0034
+
+A key argument of a `[Cache]` method, or a value inside it (a property of a record, an element, a tuple item), has a
+type of your own whose state is all private: private fields or properties, also inherited ones, and no public property
+or field. Every value of it would be written the same, so all calls would share one key and callers would get each
+other's results. MethodCache refuses it with an `InvalidOperationException` when the call runs; this error finds it
+while building. The message names the value, such as `'query.Owner' is a 'UserId'`.
+
+```cs
+public readonly struct UserId(int value) { private readonly int _value = value; }
+public interface IUsers { [Cache] Task<User> GetAsync(UserId id); }   // MC0034
+```
+
+Implement `ICacheKeyProvider` on the type, or give it public properties that identify the value
+([Types whose state is private](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private)). A type with a `[JsonConverter]`
+and an abstract type aren't reported.
+
+## MC0035
+
+The factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token from outside it, such as the
+method's own `ct` or `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`. Callers of one
+key share one run of the factory, which gets the token of the caller that started it: when that caller cancels, the
+others run the factory again. A token the cache doesn't know fails the run for all of them instead, and they get the
+cancellation, or a fail-safe value when there is one.
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async _ => await orders.GetAsync(id, ct));   // MC0035
+```
+
+Use the factory's own token, and pass yours as `cancellationToken`. The code fix does both, and names a discarded
+parameter after your token, so inside the factory `ct` is the factory's:
+
+```cs
+public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
+    cache.GetOrCreateAsync($"order:{id}", async ct => await orders.GetAsync(id, ct), cancellationToken: ct);
+```
+
+A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
+aren't reported.
 
 
 ---
@@ -5195,6 +5345,24 @@ release.
 
 - A way for coding agents to report problems: the agent instructions (`docs/ai/methodcache.md`, Feedback) say when
   and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an issue form with the same fields.
+- `ICacheManager.SetAsync(key, value, options)` stores a value you already have, such as one you just saved, in memory
+  and the distributed cache. Other instances drop their copy, and a load already running for the key doesn't overwrite
+  it. A value the options turn down removes the key's old value instead.
+- `TagsFor` adds tags read from each result to its entry, next to the method's own tags, such as the customer of an
+  order found by its id: `mc.Method(...).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`, and
+  `TagsFor<T>` on `CacheEntryOptions.Builder` for manual caching. Custom managers read them with
+  `CacheEntryOptions.TagsOf(value)`.
+- The cache logs one `Information` line when it starts, naming the memory cache's `MaxItems`, and the distributed
+  cache's store, `KeyPrefix` and backplane, or that there is no distributed cache, so configuration that differs
+  between instances shows in the log.
+- Build error MC0034 reports a key argument of a `[Cache]` method, or a value inside one, whose type has only private
+  state, which MethodCache refuses when the call runs since every value would get the same key.
+- Analyzer MC0035 warns when the factory of `GetOrCreateAsync` or `GetOrCreateManyAsync` uses a cancellation token
+  from outside it, such as `HttpContext.RequestAborted`, that the call doesn't pass as its `cancellationToken`: its
+  cancellation fails the load for every caller sharing it. The code fix makes the factory use its own token and passes
+  the outer one as `cancellationToken`.
+- `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
+  the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.
@@ -5216,8 +5384,8 @@ release.
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
 - Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
   registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
-- Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
-  `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
+- Analyzer MC0033 is a build error for `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` in `Method(...).Configure(...)`,
+  `GetOrCreateAsync`, `GetOrCreateManyAsync` or `SetAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
   (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 

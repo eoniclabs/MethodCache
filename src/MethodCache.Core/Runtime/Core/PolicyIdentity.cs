@@ -29,12 +29,14 @@ internal static class PolicyIdentity
         foreach (var tag in tags) Text(writer, tag);
         // Written only when set, so the identity of every policy without it stays what earlier versions computed
         if (policy.DurationFor != null) Text(writer, "duration-for");
+        if (policy.TagsFor != null) Text(writer, "tags-for");
         writer.Flush();
         return "s1:" + Convert.ToHexString(SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length))));
     }
 
     internal static bool SameBehavior(CacheRuntimePolicy left, CacheRuntimePolicy right)
-        => Shared(left) == Shared(right) && SamePredicate(left.CacheWhen, right.CacheWhen) && SamePredicate(left.DurationFor, right.DurationFor);
+        => Shared(left) == Shared(right) && SamePredicate(left.CacheWhen, right.CacheWhen) && SamePredicate(left.DurationFor, right.DurationFor)
+           && SamePredicate(left.TagsFor, right.TagsFor);
 
     private static bool SamePredicate(Delegate? left, Delegate? right)
         => ReferenceEquals(left, right) || left?.Target is ICachePredicate a && right?.Target is ICachePredicate b && ReferenceEquals(a.Identity, b.Identity);

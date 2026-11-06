@@ -22,12 +22,13 @@ namespace MethodCache
             TimeSpan? failSafeTimeout,
             TimeSpan? failSafeRetryAfter,
             bool clearsTags = false, bool? enabled = null, bool? distributed = null, Func<object?, bool>? cacheWhen = null,
-            Func<object?, TimeSpan>? durationFor = null)
+            Func<object?, TimeSpan>? durationFor = null, Func<object?, string[]>? tagsFor = null)
         {
             Enabled = enabled;
             Distributed = distributed;
             CacheWhen = cacheWhen;
             DurationFor = durationFor;
+            TagsFor = tagsFor;
             ClearsTags = clearsTags;
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -70,20 +71,43 @@ namespace MethodCache
         public bool? Distributed { get; }
         internal Func<object?, bool>? CacheWhen { get; }
         internal Func<object?, TimeSpan>? DurationFor { get; }
+        internal Func<object?, string[]>? TagsFor { get; }
 
         /// <summary>
-        /// Checks whether the typed result may be cached: the <c>CacheWhen</c> predicate accepts it, and a
-        /// <c>DurationFor</c> function gives it a positive duration. A throwing predicate or function rejects the result.
+        /// Checks whether the typed result may be cached: the <c>CacheWhen</c> predicate accepts it, a
+        /// <c>DurationFor</c> function gives it a positive duration, and a <c>TagsFor</c> function gives it valid tags.
+        /// A throwing predicate or function rejects the result.
         /// </summary>
         /// <remarks>Custom managers apply this check both before publication and after distributed reads.</remarks>
-        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate or <c>DurationFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
         public bool CanCache<T>(T value)
         {
             if (Enabled == false) return false;
             CachePredicateCheck.EnsureMatches(CacheWhen, typeof(T), "this call");
             try { if (CacheWhen?.Invoke(value) == false) return false; }
             catch (Exception) { return false; }
-            return DurationFor == null || DurationOf(value) > TimeSpan.Zero;
+            if (DurationFor != null && DurationOf(value) <= TimeSpan.Zero) return false;
+            if (TagsFor == null) return true;
+            CachePredicateCheck.EnsureMatches(TagsFor, typeof(T), "this call");
+            try { _ = TagsFor(value); return true; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>
+        /// Gets the tags <paramref name="value"/> is stored with: <see cref="Tags"/> and those the <c>TagsFor</c> function
+        /// gives it, without duplicates. Just <see cref="Tags"/> without a function, or when it throws, in which case
+        /// <see cref="CanCache{T}"/> rejects the value.
+        /// </summary>
+        /// <remarks>Custom managers store the entry with these tags in place of <see cref="Tags"/>.</remarks>
+        /// <exception cref="InvalidOperationException">The <c>TagsFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        public IReadOnlyList<string> TagsOf<T>(T value)
+        {
+            if (TagsFor == null) return Tags;
+            CachePredicateCheck.EnsureMatches(TagsFor, typeof(T), "this call");
+            string[] given;
+            try { given = TagsFor(value); }
+            catch (Exception) { return Tags; }
+            return given.Length == 0 ? Tags : Array.AsReadOnly(Tags.Concat(given).Distinct(StringComparer.Ordinal).ToArray());
         }
 
         /// <summary>
@@ -113,7 +137,8 @@ namespace MethodCache
             Array.AsReadOnly(policy.Tags.ToArray()), preparedKey ? null : policy.Version,
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
             clearsTags: policy.Fields.HasFlag(Policies.CachePolicyFields.ClearTags),
-            enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen, durationFor: policy.DurationFor)
+            enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen, durationFor: policy.DurationFor,
+            tagsFor: policy.TagsFor)
         { Runtime = preparedKey ? policy : null };
 
         /// <summary>
@@ -147,6 +172,7 @@ namespace MethodCache
             private bool? _distributed;
             private Func<object?, bool>? _cacheWhen;
             private Func<object?, TimeSpan>? _durationFor;
+            private Func<object?, string[]>? _tagsFor;
             /// <summary>Enables or disables all caching for the invocation or method.</summary>
             public Builder WithEnabled(bool enabled) { _enabled = enabled; return this; }
             /// <summary>Enables or disables distributed reads and writes.</summary>
@@ -173,6 +199,21 @@ namespace MethodCache
                 _duration = null;
                 return this;
             }
+
+            /// <summary>
+            /// Adds tags read from each result to its entry, next to the tags of <see cref="AddTags"/>, such as the
+            /// customer of an order: <c>TagsFor&lt;Order&gt;(o =&gt; [$"customer:{o.CustomerId}"])</c>. Invalidating one of
+            /// them removes the entry. A function that throws, or gives a null, empty or whitespace tag, doesn't cache
+            /// the result. Calling it again replaces the function; <see cref="ClearTags"/> removes it.
+            /// </summary>
+            /// <exception cref="ArgumentNullException"><paramref name="tags"/> is <c>null</c>.</exception>
+            public Builder TagsFor<T>(Func<T, IEnumerable<string>> tags)
+            {
+                ArgumentNullException.ThrowIfNull(tags);
+                _tagsFor = new TypedTags<T>(tags).For;
+                return this;
+            }
+
             private TimeSpan? _duration;
             private TimeSpan? _slidingExpiration;
             private TimeSpan? _refreshAhead;
@@ -230,13 +271,15 @@ namespace MethodCache
             }
 
             /// <summary>
-            /// Removes the tags added so far. For a cached method, it also drops the tags of its <c>[Cache]</c>
-            /// attribute, of appsettings and of the defaults, so only tags added after this call apply. An entry
+            /// Removes the tags added so far, and the <see cref="TagsFor{T}"/> function. For a cached method, it also drops
+            /// the tags of its <c>[Cache]</c> attribute, of appsettings, of the defaults and a <c>TagsFor</c> set in a lower
+            /// layer, so only tags added after this call apply. An entry
             /// without those tags is no longer removed by a <c>[CacheInvalidate]</c> that lists them.
             /// </summary>
             public Builder ClearTags()
             {
                 _tags.Clear();
+                _tagsFor = null;
                 _clearTags = true;
                 return this;
             }
@@ -367,7 +410,7 @@ namespace MethodCache
                     _failSafe,
                     _failSafeTimeout,
                     _failSafeRetryAfter,
-                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor);
+                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor, _tagsFor);
             }
         }
     }

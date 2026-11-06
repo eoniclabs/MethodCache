@@ -235,6 +235,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 _inner.Configure(builder => builder.DurationFor(duration));
                 return this;
             }
+
+            public IFluentMethodConfiguration<TResult> TagsFor(Func<TResult, IEnumerable<string>> tags)
+            {
+                ArgumentNullException.ThrowIfNull(tags);
+
+                // In the same ordered list as Configure, so a later ClearTags removes it
+                _inner.Configure(builder => builder.TagsFor(tags));
+                return this;
+            }
         }
 
         private sealed class FluentGroupConfiguration : IFluentGroupConfiguration

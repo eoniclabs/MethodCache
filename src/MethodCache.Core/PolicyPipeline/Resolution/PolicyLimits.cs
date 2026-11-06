@@ -59,6 +59,7 @@ internal sealed class PolicyLimits
             {
                 if (fields.HasFlag(CachePolicyFields.CacheWhen)) CachePredicateCheck.EnsureMatches(policy.CacheWhen, resultType, id);
                 if (fields.HasFlag(CachePolicyFields.DurationFor)) CachePredicateCheck.EnsureMatches(policy.DurationFor, resultType, id);
+                if (fields.HasFlag(CachePolicyFields.TagsFor)) CachePredicateCheck.EnsureMatches(policy.TagsFor, resultType, id);
             }
             catch (InvalidOperationException mismatch)
             {

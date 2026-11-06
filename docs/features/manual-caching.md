@@ -57,7 +57,8 @@ var list = await cache.GetOrCreateAsync(
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
-  ([A duration from the result](expiration.md#a-duration-from-the-result)).
+  ([A duration from the result](expiration.md#a-duration-from-the-result)). `TagsFor<T>` adds tags read from the
+  result ([Tags from the result](invalidation.md#tags-from-the-result)).
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
@@ -68,7 +69,8 @@ var list = await cache.GetOrCreateAsync(
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
 `InvalidateTagsAsync`. The interface takes every argument; extension methods give the short forms, such as
 `TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key)` and `InvalidateKeyAsync(key, version)`, and take a
-builder action instead of built options. To write your own manager, see
+builder action instead of built options. `SetAsync` is an extension method too: on a manager of your own it invalidates
+the key and then stores the value through `GetOrCreateAsync`. To write your own manager, see
 [Registration](../reference/registration.md#your-own-cache-manager).
 
 ## Reading without loading
@@ -84,6 +86,30 @@ if (lookup.Found)
 <!-- endSnippet -->
 
 `TryGetAsync` takes the `version` an entry was stored with: `TryGetAsync<Order>("order:42", 2)`.
+
+## Storing a value you already have
+
+When you already have the new value, such as right after you saved it, `SetAsync` stores it so the next read doesn't
+load it again:
+
+<!-- snippet: manual-set -->
+```cs
+var saved = await orders.SaveAsync(order, ct);
+await cache.SetAsync($"order:{saved.Id}", saved,
+    o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{saved.Id}"),
+    ct);
+```
+<!-- endSnippet -->
+
+- It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
+  gets the new value from the distributed cache. With `WithDistributed(false)` it stays in this instance's memory, and
+  the copies in the distributed cache and on other instances are removed.
+- It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
+  since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
+- A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
+  one `DurationFor<T>` gives no time, or `null` without `CacheNullValues`. `WithEnabled(false)` does nothing.
+- A load of the key that is running when you call it doesn't overwrite the value with what it read before.
+- To remove a value instead, invalidate the key or its tags ([Invalidation](invalidation.md)).
 
 ## Versions and the stored key
 
@@ -150,8 +176,14 @@ var users = await cache.GetOrCreateManyAsync<User>(
 
 ## Things to know
 
-- Concurrent calls for the same key share one factory run. A caller's `cancellationToken` stops its own wait; if it
-  cancels a run others joined, they run the factory again rather than fail.
+- Concurrent calls for the same key share one factory run, which gets the token of the caller that started it. A
+  caller's `cancellationToken` stops its own wait; if it cancels a run others joined, they run the factory again rather
+  than fail.
+- Name the factory's token and pass it on, as in `async ct => await orders.GetAsync(id, ct)`. CA2016 asks for that when
+  the factory calls a method that takes a token, and named `ct` it hides the method's own `ct` inside the factory. Pass
+  the method's token as `cancellationToken`: a token from outside the factory that the call doesn't pass, such as
+  `HttpContext.RequestAborted`, fails the shared run for every caller when it is cancelled.
+  [MC0035](../user-guide/DIAGNOSTICS.md#mc0035) reports it, with a code fix.
 - A factory that asks for the key it is loading (itself, or through the cached service it belongs to) would wait for
   itself, so that call throws an `InvalidOperationException` instead, and the key is free for the next caller.
 - To cache a sequence, materialize it in the factory (`await query.ToListAsync(ct)`) and cache the list.

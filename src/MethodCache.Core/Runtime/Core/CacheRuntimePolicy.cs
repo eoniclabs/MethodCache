@@ -72,6 +72,9 @@ namespace MethodCache.Infrastructure
         /// <summary>Gives each loaded result its own duration, in place of <see cref="Duration"/>. Null uses <see cref="Duration"/>.</summary>
         public Func<object?, TimeSpan>? DurationFor { get; init; }
 
+        /// <summary>Gives each loaded result tags of its own, stored next to <see cref="Tags"/>.</summary>
+        public Func<object?, string[]>? TagsFor { get; init; }
+
         /// <summary>How long an expired value is kept as a fail-safe fallback; zero or null turns fail-safe off.</summary>
         public TimeSpan? FailSafe { get; init; }
 
@@ -156,6 +159,7 @@ namespace MethodCache.Infrastructure
                 RefreshAhead = result.Policy.RefreshAhead,
                 CacheWhen = result.Policy.CacheWhen,
                 DurationFor = result.Policy.DurationFor,
+                TagsFor = result.Policy.TagsFor,
                 FailSafe = result.Policy.FailSafe,
                 FailSafeTimeout = result.Policy.FailSafeTimeout,
                 FailSafeRetryAfter = result.Policy.FailSafeRetryAfter,
@@ -204,6 +208,7 @@ namespace MethodCache.Infrastructure
                 RefreshAhead = policy.RefreshAhead,
                 CacheWhen = policy.CacheWhen,
                 DurationFor = policy.DurationFor,
+                TagsFor = policy.TagsFor,
                 FailSafe = policy.FailSafe,
                 FailSafeTimeout = policy.FailSafeTimeout,
                 FailSafeRetryAfter = policy.FailSafeRetryAfter,
