@@ -419,9 +419,9 @@ configuration.
 
 ## MC0030
 
-A program has cached services, in its own code or in a project it references, but neither the program nor a project
-it references calls `AddMethodCache`. Nothing of MethodCache runs then, so every `[Cache]` method runs uncached, and
-nothing at run time can tell.
+A program has cached services, in its own code or in a project it references, but its code calls neither
+`AddMethodCache` nor a method of a referenced project that calls it. Nothing of MethodCache runs then, so every
+`[Cache]` method runs uncached, and nothing at run time can tell.
 
 ```cs
 var builder = WebApplication.CreateBuilder(args);
@@ -436,10 +436,15 @@ builder.Services.AddScoped<IProducts, Products>();
 builder.Services.AddMethodCache();
 ```
 
-A call in a referenced project counts, such as one inside a `services.AddData()` extension method of your own. Test
-projects aren't reported, since tests may use the implementations without the cache. A program that references a
-project with cached services but doesn't use them, such as a migration tool, can turn the warning off with
-`<NoWarn>$(NoWarn);MC0030</NoWarn>`.
+A setup method of your own in a referenced project counts when the program calls it, such as
+`builder.Services.AddData()` whose code calls `AddMethodCache`. MethodCache marks such methods when it builds that
+project, also when they reach `AddMethodCache` through other setup methods of the project named `Add...`, `Use...`,
+`Configure...` or `Register...`. A program that references the project but never calls the method is reported, since
+nothing sets the cache up for it.
+
+Test projects aren't reported, since tests may use the implementations without the cache. A program that references a
+project with cached services but doesn't use them, such as a migration tool, or that reaches its setup some other way,
+such as through reflection, can turn the warning off with `<NoWarn>$(NoWarn);MC0030</NoWarn>`.
 
 ## MC0031
 

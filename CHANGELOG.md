@@ -11,9 +11,10 @@ release.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.
-- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when neither it nor a
-  referenced project calls `AddMethodCache`. For this, MethodCache marks a project's assembly with `AssemblyMetadata`
-  attributes when it has cached services or calls `AddMethodCache`.
+- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when its code calls
+  neither `AddMethodCache` nor a method of a referenced project that calls it, such as a shared
+  `services.AddData()`. For this, MethodCache marks a project's assembly with `AssemblyMetadata` attributes when it
+  has cached services, and for each of its methods that calls `AddMethodCache`, also through other setup methods.
 - Analyzer MC0031 reports a call a class makes to its own cached method, which skips the cache.
 - `DurationFor` gives each result its own duration in place of `Duration`, such as the time left on a token or a
   shorter time for an empty result: `mc.Method(...).DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow)`, and

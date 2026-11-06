@@ -19,7 +19,8 @@ the attribute to the interface. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
 
 **Where do I call `AddMethodCache()`?**
 After you register the services it caches. A cached service registered after it fails when the host starts. A
-program with cached services that never calls it gets warning MC0030.
+program with cached services gets warning MC0030 when it calls neither `AddMethodCache` nor a setup method of a
+referenced project that calls it.
 ([Registration reference](reference/registration.md#order))
 
 **Why does my method still run on every call?**
