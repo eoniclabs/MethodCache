@@ -10,6 +10,9 @@ release.
 
 - A way for coding agents to report problems: the agent instructions (`docs/ai/methodcache.md`, Feedback) say when
   and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an issue form with the same fields.
+- `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
+  the other value types they take), writing the value or null the way tag templates do.
+
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.

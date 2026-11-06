@@ -138,8 +138,9 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
   in strings, a `Guid` without hyphens, an enum as its number), so `$"price:{provider}:{model}"` can match nothing for
   a model such as `gemma3:4b`, and the old value stays until it expires. The analyzer reports such a tag as
   [MC0024](../user-guide/DIAGNOSTICS.md#mc0024). Wrap it in `MethodCacheKeys.Tag` instead, which writes every value
-  the canonical way: `MethodCacheKeys.Tag($"price:{provider}:{model}")`. A value of a type tags can't hold, or with a
-  format such as `{price:F2}`, doesn't compile.
+  the canonical way: `MethodCacheKeys.Tag($"price:{provider}:{model}")`. A nullable value such as an `int?` is written
+  as its value, or as null is in tag templates. A value of a type tags can't hold, or with a format such as
+  `{price:F2}`, doesn't compile. `MethodCacheKeys.Part(value)` writes one value the same way, nullable values included.
 - A `[CacheInvalidate]` method with an empty body, such as `Task PriceChangedAsync(string provider, string model)`,
   works too: call it after the write.
 

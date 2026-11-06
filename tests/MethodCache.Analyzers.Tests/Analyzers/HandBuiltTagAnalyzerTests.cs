@@ -96,6 +96,7 @@ public class Endpoint
         [InlineData("await cache.InvalidateTagAsync($\"price:{model}:{id}\");", "await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"price:{model}:{id}\"));")]
         [InlineData("await cache.InvalidateTagAsync($\"plan:{MethodCacheKeys.Part(tenant)}:{tier}\");", "await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"plan:{tenant}:{tier}\"));")]
         [InlineData("await cache.InvalidateTagsAsync([\"all\", $\"p:{price}\"]);", "await cache.InvalidateTagsAsync([\"all\", MethodCacheKeys.Tag($\"p:{price}\")]);")]
+        [InlineData("await cache.InvalidateTagAsync($\"x:{model}:{maybe}\");", "await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"x:{model}:{maybe}\"));")]
         public async Task CodeFix_WrapsTheTagInMethodCacheKeysTag(string statement, string expected)
         {
             var source = Header + statement + Footer;
@@ -110,7 +111,7 @@ public class Endpoint
         [Fact]
         public async Task CodeFix_ATagWithAValueTheHandlerCantTake_OffersOnlyPart()
         {
-            var titles = await FixTitlesAsync(Header + "await cache.InvalidateTagAsync($\"x:{model}:{maybe}\");" + Footer);
+            var titles = await FixTitlesAsync(Header + "await cache.InvalidateTagAsync($\"x:{model}:{TimeSpan.Zero}\");" + Footer);
 
             Assert.Equal(["Format with MethodCacheKeys.Part"], titles);
         }

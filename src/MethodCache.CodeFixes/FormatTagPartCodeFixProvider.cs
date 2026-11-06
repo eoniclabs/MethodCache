@@ -91,6 +91,8 @@ namespace MethodCache.CodeFixes
             if (PartArgument(model, hole.Expression) != null) return true;
             var type = model.GetTypeInfo(hole.Expression).Type;
             if (type is null) return false;
+            // A nullable value is written as the value or as null, as tag templates write it
+            if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable) type = nullable.TypeArguments[0];
             if (type.TypeKind == TypeKind.Enum) return true;
             switch (type.SpecialType)
             {

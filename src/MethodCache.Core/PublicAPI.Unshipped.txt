@@ -469,3 +469,37 @@ MethodCache.TagInterpolatedStringHandler.AppendFormatted<TEnum>(TEnum value) -> 
 MethodCache.TagInterpolatedStringHandler.AppendLiteral(string! value) -> void
 MethodCache.TagInterpolatedStringHandler.TagInterpolatedStringHandler() -> void
 MethodCache.TagInterpolatedStringHandler.TagInterpolatedStringHandler(int literalLength, int formattedCount) -> void
+static MethodCache.MethodCacheKeys.Part(bool? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(bool? value) -> void
+static MethodCache.MethodCacheKeys.Part(char? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(char? value) -> void
+static MethodCache.MethodCacheKeys.Part(byte? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(byte? value) -> void
+static MethodCache.MethodCacheKeys.Part(sbyte? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(sbyte? value) -> void
+static MethodCache.MethodCacheKeys.Part(short? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(short? value) -> void
+static MethodCache.MethodCacheKeys.Part(ushort? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(ushort? value) -> void
+static MethodCache.MethodCacheKeys.Part(int? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(int? value) -> void
+static MethodCache.MethodCacheKeys.Part(uint? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(uint? value) -> void
+static MethodCache.MethodCacheKeys.Part(long? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(long? value) -> void
+static MethodCache.MethodCacheKeys.Part(ulong? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(ulong? value) -> void
+static MethodCache.MethodCacheKeys.Part(float? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(float? value) -> void
+static MethodCache.MethodCacheKeys.Part(double? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(double? value) -> void
+static MethodCache.MethodCacheKeys.Part(decimal? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(decimal? value) -> void
+static MethodCache.MethodCacheKeys.Part(System.Guid? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.Guid? value) -> void
+static MethodCache.MethodCacheKeys.Part(System.DateTime? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.DateTime? value) -> void
+static MethodCache.MethodCacheKeys.Part(System.DateTimeOffset? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.DateTimeOffset? value) -> void
+static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum? value) -> string!
+MethodCache.TagInterpolatedStringHandler.AppendFormatted<TEnum>(TEnum? value) -> void
