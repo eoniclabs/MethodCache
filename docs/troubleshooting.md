@@ -26,6 +26,8 @@
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
   the result is `null` with `CacheNullValues = false`, or the call threw. Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
+- **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning
+  the first time that happens; raise `MaxItems` ([Memory cache](features/memory-cache.md#bounding-by-size)).
 
 ## Old data after an update
 

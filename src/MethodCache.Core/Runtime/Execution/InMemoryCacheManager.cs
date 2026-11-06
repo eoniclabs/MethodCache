@@ -89,10 +89,12 @@ namespace MethodCache.Extensibility
             _jitter = ToNanos(_options.JitterMaxDuration);
 
             // Without a weigher every entry weighs one, so the weight limit is the item limit.
+            var onFirstFull = logger == null ? null : FullWarning(logger, _options);
             _engine = _weigher != null
                 ? new MemoryCacheEngine(_options.WeightLimit, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider),
-                    (int)_options.MaxItems, maximumEntries: _options.MaxItems)
-                : new MemoryCacheEngine(_options.MaxItems, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)_options.MaxItems);
+                    (int)_options.MaxItems, maximumEntries: _options.MaxItems) { OnFirstFull = onFirstFull }
+                : new MemoryCacheEngine(_options.MaxItems, ToEngineMode(_options.EvictionPolicy), CreateClock(timeProvider), (int)_options.MaxItems)
+                    { OnFirstFull = onFirstFull };
 
             if (_options.EnableBackgroundCleanup)
             {
@@ -109,6 +111,20 @@ namespace MethodCache.Extensibility
                 onCleared: ClearLocal,
                 onError: static _ => { },
                 onMethodInvalidated: methodId => { _onMethodInvalidated?.Invoke(methodId); InvalidateMethodLocally(methodId); });
+        }
+
+        /// <summary>
+        /// Warns once that the memory cache is full, so an application whose entries are removed before they expire sees
+        /// why and which limit to raise.
+        /// </summary>
+        private static Action FullWarning(Microsoft.Extensions.Logging.ILogger logger, MethodCacheMemoryOptions options)
+        {
+            var limit = options.Weigher == null
+                ? $"MaxItems ({options.MaxItems} entries)"
+                : $"WeightLimit ({options.WeightLimit}) or MaxItems ({options.MaxItems} entries)";
+            return () => Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(logger,
+                "MethodCache's memory cache is full at {Limit}, so each new entry now removes a less used one. If entries " +
+                "are removed before they expire, raise the limit with mc.Memory(o => ...). Shown once.", limit);
         }
 
         /// <summary>The underlying engine; exposed to tests that need deterministic policy behavior.</summary>

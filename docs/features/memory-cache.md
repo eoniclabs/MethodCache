@@ -65,6 +65,10 @@ The weigher must be fast, thread-safe and return a non-negative value. Both limi
 as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when many small entries should fit. Setting
 `WeightLimit` without a `Weigher` fails at startup, since there is nothing to weigh entries with.
 
+The first time the cache is full and removes an entry to make room, MethodCache logs one warning that names the limit
+it reached. A full cache is normal when the limit is what you want; when entries are removed before they expire, and
+the hit ratio in `GetStatsAsync` drops, raise `MaxItems` (or `WeightLimit`).
+
 ## Memory statistics
 
 `GetStatsAsync().TotalWeight` reports the resident method weight in the configured weigher's units. Without a

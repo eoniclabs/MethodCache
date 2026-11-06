@@ -26,6 +26,8 @@ release.
   option `methodcache.request_state_types`.
 - `GetOrCreateManyAsync<TId, T>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)` takes ids and how each
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
+- The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
+  (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 
 ### Changed
 

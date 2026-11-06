@@ -95,6 +95,10 @@ internal sealed class MemoryCacheEngine
     private long _entryCount;
     private long _observedEntries;
     internal Func<Node, bool>? ObservationFilter { get; init; }
+
+    /// <summary>Runs once, the first time the cache is full and removes entries to make room.</summary>
+    internal Action? OnFirstFull { get; init; }
+    private bool _wasFull;
     internal long ObservedEntries => Volatile.Read(ref _observedEntries);
     private long _sketchCapacity = InitialSketchCapacity;
     private long _maintenanceScheduledAt;
@@ -677,6 +681,12 @@ internal sealed class MemoryCacheEngine
 
     private void Evict()
     {
+        if (!_wasFull && OverCapacity)
+        {
+            _wasFull = true;
+            OnFirstFull?.Invoke();
+        }
+
         if (_mode != EngineEvictionMode.TinyLfu)
         {
             while (OverCapacity && _window.First is { } victim)

@@ -618,6 +618,38 @@ public class InMemoryCacheEngineTests
     }
 
     [Fact]
+    public async Task Full_WarnsOnce_NamingTheLimitToRaise()
+    {
+        var logger = new WarningLogger();
+        var manager = new InMemoryCacheManager(MsOptions.Create(new MethodCacheMemoryOptions { EnableBackgroundCleanup = false, MaxItems = 10 }),
+            _time, logger: logger);
+
+        for (var i = 0; i < 10; i++) await manager.SetAsync($"k{i}", i, OneMinute);
+        await manager.GetStatsAsync();
+        logger.Warnings.Should().BeEmpty("the cache holds no more than its limit");
+
+        for (var i = 10; i < 100; i++) await manager.SetAsync($"k{i}", i, OneMinute);
+        (await manager.GetStatsAsync()).Evictions.Should().BePositive();
+
+        logger.Warnings.Should().ContainSingle().Which.Should().Contain("full at MaxItems (10 entries)");
+    }
+
+    private sealed class WarningLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        public List<string> Warnings { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state,
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning) lock (Warnings) Warnings.Add(formatter(state, exception));
+        }
+    }
+
+    [Fact]
     public async Task Statistics_CountHitsOnTheFastPath()
     {
         // Generated decorators read hits through TryGetFastTask, so skipping them there left the hit ratio near zero
