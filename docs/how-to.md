@@ -261,6 +261,10 @@ one app. ([Invalidations only](features/distributed-cache.md#invalidations-only)
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
 after a failure, and invalidations are retried. ([Distributed cache](features/distributed-cache.md))
 
+**How do I check that every instance uses the same distributed cache?**
+Each instance logs one `Information` line when its cache starts, naming `MaxItems`, the distributed cache, its
+`KeyPrefix` and the backplane, or that there is no distributed cache. ([Monitoring](features/monitoring.md#which-layers-an-instance-uses))
+
 **How do I see what's cached?**
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
 show the same. ([Monitoring](features/monitoring.md))

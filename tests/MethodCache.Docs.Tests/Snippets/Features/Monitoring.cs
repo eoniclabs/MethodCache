@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using MethodCache;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Docs.Monitoring;
@@ -21,6 +22,15 @@ public static class Setup
 
         var entries = admin.ListEntries(tag: "user:42");
         await admin.InvalidateTagsAsync(["user:42"]);
+        // end-snippet
+    }
+
+    public static void StatsEndpoint(WebApplication app)
+    {
+        // begin-snippet: monitoring-stats-endpoint
+        // Hits, misses, evictions and entries of this instance, as JSON; protect it like any admin endpoint
+        app.MapGet("/health/cache", async (ICacheAdministrator admin, CancellationToken ct) =>
+            Results.Ok(await admin.GetStatsAsync(ct)));
         // end-snippet
     }
 

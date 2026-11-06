@@ -53,6 +53,10 @@ warning [MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell wh
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
 only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
 
+Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
+when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
+([Which layers an instance uses](features/monitoring.md#which-layers-an-instance-uses)).
+
 ## Keys look different than expected
 
 List the keys with `ICacheAdministrator.ListEntries()` or `GET /methodcache/entries`, and get the key you expect from

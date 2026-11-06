@@ -17,6 +17,9 @@ release.
   order found by its id: `mc.Method(...).TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`, and
   `TagsFor<T>` on `CacheEntryOptions.Builder` for manual caching. Custom managers read them with
   `CacheEntryOptions.TagsOf(value)`.
+- The cache logs one `Information` line when it starts, naming the memory cache's `MaxItems`, and the distributed
+  cache's store, `KeyPrefix` and backplane, or that there is no distributed cache, so configuration that differs
+  between instances shows in the log.
 - `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
   the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but

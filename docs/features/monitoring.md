@@ -6,6 +6,17 @@ Core emits standard .NET metrics and activities. `AddMethodCache()` uses the con
 one when needed, and owns an `ActivitySource` with the same `MethodCacheTelemetry.Name` (`MethodCache`). Both use the
 assembly version. Separate containers keep their observation callbacks separate.
 
+## Which layers an instance uses
+
+When the cache starts, MethodCache logs one `Information` line that names its layers: the memory cache with its
+`MaxItems`, and the distributed cache with its store, `KeyPrefix` and backplane, or that there is none. Compare it
+between instances and environments when they don't seem to share entries or invalidations:
+
+```text
+MethodCache caches in memory, up to 10000 entries per instance, and in the distributed cache Redis under the key
+prefix 'methodcache:', with the Redis backplane telling other instances to drop their copy.
+```
+
 ## Administration and statistics
 
 `ICacheAdministrator`, registered for the built-in manager, exposes local statistics, methods and entries:
@@ -23,6 +34,16 @@ foreach (var method in admin.GetMethods())
 
 var entries = admin.ListEntries(tag: "user:42");
 await admin.InvalidateTagsAsync(["user:42"]);
+```
+<!-- endSnippet -->
+
+To read the statistics from outside, such as on a `/health` page, return them as JSON:
+
+<!-- snippet: monitoring-stats-endpoint -->
+```cs
+// Hits, misses, evictions and entries of this instance, as JSON; protect it like any admin endpoint
+app.MapGet("/health/cache", async (ICacheAdministrator admin, CancellationToken ct) =>
+    Results.Ok(await admin.GetStatsAsync(ct)));
 ```
 <!-- endSnippet -->
 

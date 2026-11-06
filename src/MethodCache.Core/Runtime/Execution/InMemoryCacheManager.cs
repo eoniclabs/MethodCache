@@ -102,6 +102,7 @@ namespace MethodCache.Extensibility
             }
 
             _distributed = distributed;
+            if (logger != null) LogLayers(logger, _options, distributed);
             _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight));
             _onMethodInvalidated = onMethodInvalidated;
             _syncDiagnostics = new GeneratedDiagnostics(logger);
@@ -111,6 +112,40 @@ namespace MethodCache.Extensibility
                 onCleared: ClearLocal,
                 onError: static _ => { },
                 onMethodInvalidated: methodId => { _onMethodInvalidated?.Invoke(methodId); InvalidateMethodLocally(methodId); });
+        }
+
+        /// <summary>
+        /// Says which layers the cache uses when it starts, so configuration that drifted apart between instances or
+        /// environments, such as a missing distributed cache or another key prefix, shows in the log.
+        /// </summary>
+        private static void LogLayers(Microsoft.Extensions.Logging.ILogger logger, MethodCacheMemoryOptions options, DistributedCacheLayer? distributed)
+        {
+            if (!logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information)) return;
+            var memory = options.Weigher == null
+                ? $"{options.MaxItems} entries"
+                : $"{options.MaxItems} entries or a weight of {options.WeightLimit}";
+            if (distributed == null)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache caches in memory, up to {Memory} per instance, without a distributed cache, so each instance " +
+                    "caches on its own.", memory);
+                return;
+            }
+
+            var (store, keyPrefix, backplane) = distributed.Describe();
+            if (backplane == null)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache caches in memory, up to {Memory} per instance, and in the distributed cache {Store} under the " +
+                    "key prefix '{KeyPrefix}', without a backplane, so other instances keep their copy in memory until it " +
+                    "expires.", memory, store, keyPrefix);
+                return;
+            }
+
+            Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                "MethodCache caches in memory, up to {Memory} per instance, and in the distributed cache {Store} under the " +
+                "key prefix '{KeyPrefix}', with the {Backplane} backplane telling other instances to drop their copy.",
+                memory, store, keyPrefix, backplane);
         }
 
         /// <summary>
