@@ -645,5 +645,49 @@ namespace MethodCache.Core.Tests.Core
             FastHashKeyGenerator.TypeName(typeof(Dictionary<string, int[]>[]))
                 .Should().Be("[System.Private.CoreLib]System.Collections.Generic.Dictionary`2[[System.Private.CoreLib]System.String,[System.Private.CoreLib]System.Int32[]][]");
         }
+
+        public sealed record SearchCriteria(HashSet<int> CampaignIds, Dictionary<string, int> Limits, List<int> Order);
+
+        public static TheoryData<string> Generators() => new() { "fast", "json" };
+
+        private static ICacheKeyGenerator Generator(string name) => name == "fast" ? new FastHashKeyGenerator() : new JsonKeyGenerator();
+
+        private static string Key(string generator, object argument)
+            => Generator(generator).GenerateKey("Search", [argument], CacheRuntimePolicy.FromPolicy("Search", CachePolicy.Empty, CachePolicyFields.None));
+
+        [Theory]
+        [MemberData(nameof(Generators))]
+        public void EqualSetsAndDictionaries_InAnotherOrder_GetOneKey(string generator)
+        {
+            var first = new SearchCriteria([1, 2, 3], new() { ["a"] = 1, ["b"] = 2 }, [1, 2]);
+            var second = new SearchCriteria([3, 2, 1], new() { ["b"] = 2, ["a"] = 1 }, [1, 2]);
+
+            Key(generator, first).Should().Be(Key(generator, second));
+            Key(generator, new HashSet<string> { "x", "y" }).Should().Be(Key(generator, new HashSet<string> { "y", "x" }));
+            Key(generator, new Dictionary<int, string> { [2] = "b", [1] = "a" }).Should().Be(Key(generator, new Dictionary<int, string> { [1] = "a", [2] = "b" }));
+        }
+
+        [Theory]
+        [MemberData(nameof(Generators))]
+        public void ListsInAnotherOrder_AndDifferentSets_GetTwoKeys(string generator)
+        {
+            Key(generator, new SearchCriteria([1], [], [1, 2])).Should().NotBe(Key(generator, new SearchCriteria([1], [], [2, 1])));
+            Key(generator, new SearchCriteria([1, 2], [], [])).Should().NotBe(Key(generator, new SearchCriteria([1, 3], [], [])));
+            Key(generator, new Dictionary<string, int> { ["a"] = 1 }).Should().NotBe(Key(generator, new Dictionary<string, int> { ["a"] = 2 }));
+            Key(generator, new Dictionary<string, int> { ["a"] = 1 }).Should().NotBe(Key(generator, new Dictionary<string, int> { ["b"] = 1 }));
+        }
+
+        [Fact]
+        public void InlineSetsAndDictionaries_InAnotherOrder_GetOneKey()
+        {
+            static string Part(int value) => MethodCacheKeys.Part(value);
+
+            MethodCache.Generated.KeyParts.Sequence(new HashSet<int> { 1, 2, 3 }, Part)
+                .Should().Be(MethodCache.Generated.KeyParts.Sequence(new HashSet<int> { 3, 2, 1 }, Part));
+            MethodCache.Generated.KeyParts.Sequence(new Dictionary<int, int> { [1] = 1, [2] = 2 }, static pair => Part(pair.Key) + ":" + Part(pair.Value))
+                .Should().Be(MethodCache.Generated.KeyParts.Sequence(new Dictionary<int, int> { [2] = 2, [1] = 1 }, static pair => Part(pair.Key) + ":" + Part(pair.Value)));
+            MethodCache.Generated.KeyParts.Sequence(new List<int> { 1, 2 }, Part)
+                .Should().NotBe(MethodCache.Generated.KeyParts.Sequence(new List<int> { 2, 1 }, Part));
+        }
     }
 }

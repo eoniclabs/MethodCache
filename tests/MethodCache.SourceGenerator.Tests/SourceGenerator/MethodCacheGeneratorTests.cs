@@ -64,6 +64,34 @@ namespace MethodCache.SourceGenerator.Tests.SourceGenerator
             return result;
         }
 
+        [Fact]
+        public async Task ProjectCallingAddMethodCache_MarksItsAssembly()
+        {
+            const string source = @"using Microsoft.Extensions.DependencyInjection;
+namespace App { public static class Setup { public static void Add(IServiceCollection services) => services.AddMethodCache(); } }";
+
+            var result = await GetGeneratedSources(source);
+
+            var markers = Assert.Single(result.GeneratedSources, s => s.Key.EndsWith("MethodCacheHostMarkers.g.cs", StringComparison.Ordinal)).Value;
+            Assert.Contains("AssemblyMetadata(\"MethodCache.CallsAddMethodCache\", \"true\")", markers);
+            Assert.DoesNotContain("MethodCache.CachedServices", markers);
+        }
+
+        [Fact]
+        public async Task AnotherLibrarysAddMethodCache_MarksNothing()
+        {
+            const string source = @"using Microsoft.Extensions.DependencyInjection;
+namespace App
+{
+    public static class Other { public static IServiceCollection AddMethodCache(IServiceCollection services) => services; }
+    public static class Setup { public static void Add(IServiceCollection services) => Other.AddMethodCache(services); }
+}";
+
+            var result = await GetGeneratedSources(source);
+
+            Assert.DoesNotContain(result.GeneratedSources, s => s.Key.EndsWith("MethodCacheHostMarkers.g.cs", StringComparison.Ordinal));
+        }
+
         private void LogGeneratedSources(GeneratedSourceResult result)
         {
             _output.WriteLine("=== GENERATED SOURCES ===");

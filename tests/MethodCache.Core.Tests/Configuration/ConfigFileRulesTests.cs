@@ -25,6 +25,12 @@ public class ConfigFileRulesTests
         Task SaveAsync(int id);
     }
 
+    // A cached service another host registers: startup code and configuration shared by several hosts name it
+    public interface IOtherHostRules
+    {
+        [Cache] ValueTask<int> FindAsync(int id);
+    }
+
     public sealed class Rules : IRules
     {
         public ValueTask<int> GetAsync(int id) => ValueTask.FromResult(id);
@@ -386,6 +392,35 @@ public class ConfigFileRulesTests
         Assert.StartsWith("mc.Method(...) configures a method that isn't cached.", error.Message, StringComparison.Ordinal);
         Assert.Contains($"'{MethodIds.For(typeof(IRules), nameof(IRules.NotCachedAsync))}' is not a cached method; did you mean", error.Message, StringComparison.Ordinal);
         Assert.Contains(MethodIds.Format, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CodePolicyForACachedServiceThisHostDoesNotRegister_IsSkipped()
+    {
+        using var provider = Services(mc =>
+        {
+            mc.Method((IOtherHostRules r) => r.FindAsync(0)).CacheWhen(value => value > 0);
+            mc.Method((IRules r) => r.GetAsync(0)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(3)));
+        }).BuildServiceProvider();
+
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+
+        Assert.Equal(TimeSpan.FromMinutes(3), registry.GetPolicy(GetId).Policy.Duration);
+    }
+
+    [Fact]
+    public void ConfiguredPolicyForACachedServiceThisHostDoesNotRegister_IsSkipped()
+    {
+        var otherId = MethodIds.For(typeof(IOtherHostRules), nameof(IOtherHostRules.FindAsync));
+        using var provider = Build(Configuration(new()
+        {
+            [$"MethodCache:Methods:{otherId}:Duration"] = "1m",
+            [$"MethodCache:Methods:{GetId}:Duration"] = "2m"
+        }));
+
+        var registry = provider.GetRequiredService<IPolicyRegistry>();
+
+        Assert.Equal(TimeSpan.FromMinutes(2), registry.GetPolicy(GetId).Policy.Duration);
     }
 
     [Fact]

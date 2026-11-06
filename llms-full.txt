@@ -64,10 +64,12 @@ builder.Services.AddMethodCache();                               // after your r
 
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
-- Callers must use the interface. Calling the method from inside the class, or resolving the class itself, bypasses
-  the cache.
+- Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`,
+  or resolving the class itself, bypasses the cache. A program with cached services must call `AddMethodCache()`
+  (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
-  is not part of the key. Every value that changes the result must be a parameter.
+  is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written
+  sorted; lists and arrays keep their order, so pass ids whose order doesn't matter as a set.
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Tag values are formatted like `MethodCacheKeys.Part`: `:` and `\` in strings are escaped, a `Guid` is written
@@ -365,12 +367,22 @@ No. Put it on the interface method. On a class member it does nothing, and warni
 the attribute to the interface. ([Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md))
 
 **Where do I call `AddMethodCache()`?**
-After you register the services it caches. A cached service registered after it fails when the host starts.
+After you register the services it caches. A cached service registered after it fails when the host starts. A
+program with cached services that never calls it gets warning MC0030.
 ([Registration reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md#order))
 
 **Why does my method still run on every call?**
-The caller uses the class instead of the interface, the call comes from inside the class, or the service was
-registered after `AddMethodCache()`. ([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#the-method-runs-on-every-call))
+The caller uses the class instead of the interface, the call comes from inside the class (warning MC0031), the class
+was created with `new`, or the service was registered after `AddMethodCache()`.
+([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#the-method-runs-on-every-call))
+
+**Can several applications share startup code or `appsettings.json` that configures cached methods?**
+Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there; only an id
+that matches no `[Cache]` method fails. ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md))
+
+**My cached service lives in another project of the solution. Does it need its own MethodCache reference?**
+No. The project gets the generator through the project it references. If the generator doesn't run there,
+`AddMethodCache` fails and names the project. ([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#exceptions))
 
 **Which return types can be cached?**
 Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `IEnumerable<T>` or `IQueryable<T>`.
@@ -725,9 +737,16 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
   could hold a subclass with more members. A dictionary counts when its keys and values are simple values. When a
   collection's runtime type differs from its declared type (an array or a list passed as `IEnumerable<int>`), the key
   includes that type, so an array and a list with the same elements stay two entries. Unknown collection subclasses passed through a base class or interface use the key generator so their own runtime state is preserved.
+- **Sets and dictionaries** (`HashSet<T>`, `ISet<T>`, `IReadOnlySet<T>`, `Dictionary<TKey, TValue>` and the other
+  dictionaries) have no order of their own, so their elements are written sorted, wherever they appear in an
+  argument: two equal sets get one key, also on two servers that enumerate them differently. A list or an array keeps
+  its order, because `[1, 2]` and `[2, 1]` are two different lists. When the order of your ids doesn't matter, pass
+  them as a set, such as `IReadOnlySet<int>`, or sort them before the call.
 - **Collection subclasses with public state**, such as a list with a tenant or scope property, use the key generator. Their keys include both that public state and the elements, including when the collection is behind a base-class property. This applies to the internal fallback generator.
 - **Everything else**, such as an interface or `object` argument or a collection of collections, goes through the key
-  generator. The internal default generator hashes the arguments into a key such as `CountAsync:fc08ab0d…`.
+  generator. The internal default generator hashes the arguments into a key such as `CountAsync:fc08ab0d…`. A hashed
+  key is built from every public property and field, so it tells values apart as exactly as the readable form;
+  `IMethodCacheKeys.For` shows the key of a call ([Building a key yourself](#building-a-key-yourself)).
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
   [Framework types](#framework-types). Other framework types are a build error.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
@@ -1831,6 +1850,8 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   their policy but can't make other methods cached. A method id that matches no cached method, such as a misspelled
   name or an id without its `[Assembly]` prefix, fails at startup and suggests the closest cached id. `*` and
   `group:<name>` are not method ids; use `Defaults` and `Groups`.
+- A setting for a `[Cache]` method whose service this application doesn't register is skipped, in the file and in
+  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them.
 - An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
   `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
   reloaded file has one, the reload is logged as an error naming the setting's path, never its value, and the
@@ -3326,13 +3347,16 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
 
 ## The method runs on every call
 
+- **`AddMethodCache()` is never called.** Without it nothing caches. Warning
+  [MC0030](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0030) reports a program with cached services that doesn't call it.
 - **The attribute is on the class.** `[Cache]` is read from the interface only. The analyzer reports
   [MC0001](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0001) and its code fix moves the attribute.
 - **A late or unsupported registration raises a named binding error.** Register cacheable services before
   `AddMethodCache()`. Open generic registrations such as `AddScoped(typeof(IRepository<>), ...)` are rejected;
   register generated closed types ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
-  class itself, or calling the method from inside the class (`this.GetAsync(...)`), skips it.
+  class itself, creating it with `new`, or calling the method from inside the class (`this.GetAsync(...)`) skips it.
+  Warning [MC0031](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0031) reports a call from inside the class.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)).
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
@@ -3386,6 +3410,7 @@ key.
 | Exception | Cause |
 |-----------|-------|
 | `InvalidOperationException` when building a key | An argument type has only private state, so every value would get the same key. Implement `ICacheKeyProvider` ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private)) |
+| `InvalidOperationException` from `AddMethodCache`: an interface has `[Cache]` methods, but MethodCache's source generator didn't run in its project | The project that declares the interface was built without MethodCache's source generator, so its calls would run uncached. Check that the project gets the `MethodCache` package, directly or through a project it references, and that `MethodCache.SourceGenerator` is among its analyzers (Dependencies > Analyzers in Rider or Visual Studio) |
 | `InvalidOperationException` from `AddMethodCache` naming two assemblies | Multiple generated modules contain the same interface; choose the one that wins with `FromAssemblyOf<T>()` ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md)) |
 | `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. Use `WithEnabled(false)` to disable caching, including in runtime overrides |
 | `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name (such as a `Services` section from 1.0.0-rc.1: it is now `Methods`), a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, an invalid duration, an unknown method id, the same method listed twice, `Group`, `Metadata` or `Notes` in `Defaults` or a group, or a tag template that names no parameter of a method it reaches; positive invariant unit durations such as `30s` are supported |
@@ -3450,6 +3475,8 @@ generator and the analyzer run, each problem is reported once.
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
 | [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
+| [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
+| [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 
 ## MC0001
 
@@ -3813,6 +3840,68 @@ Task<IReadOnlyList<Recipe>> ListAsync();
 Write the tag as it is written in `Tags`. A placeholder matches any value, so `"recipe:{Id}"` matches
 `"recipe:{id}"`. Not reported when the attribute has no `Tags`, because the method's tags then come from
 configuration.
+
+## MC0030
+
+A program has cached services, in its own code or in a project it references, but neither the program nor a project
+it references calls `AddMethodCache`. Nothing of MethodCache runs then, so every `[Cache]` method runs uncached, and
+nothing at run time can tell.
+
+```cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped<IProducts, Products>();   // IProducts has [Cache] methods
+var app = builder.Build();                             // MC0030: no AddMethodCache
+```
+
+Call `AddMethodCache()` after registering the services ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md)):
+
+```cs
+builder.Services.AddScoped<IProducts, Products>();
+builder.Services.AddMethodCache();
+```
+
+A call in a referenced project counts, such as one inside a `services.AddData()` extension method of your own. Test
+projects aren't reported, since tests may use the implementations without the cache. A program that references a
+project with cached services but doesn't use them, such as a migration tool, can turn the warning off with
+`<NoWarn>$(NoWarn);MC0030</NoWarn>`.
+
+## MC0031
+
+A class calls one of its own `[Cache]` methods. The cache is a generated decorator in front of the service, so a call
+from inside the class goes straight to the method and runs every time, also through `this` or a cast of `this` to
+the interface.
+
+```cs
+public sealed class Prices(IPriceApi api) : IPrices
+{
+    public Task<decimal> GetAsync(int id) => api.GetAsync(id);   // [Cache] on IPrices.GetAsync
+
+    public async Task<decimal> TotalAsync(int[] ids)
+    {
+        var total = 0m;
+        foreach (var id in ids) total += await GetAsync(id);   // MC0031: not cached
+        return total;
+    }
+}
+```
+
+Move the cached method to a service of its own and call it through that service's interface, so the call passes
+the cache:
+
+```cs
+public sealed class Totals(IPrices prices) : ITotals
+{
+    public async Task<decimal> TotalAsync(int[] ids)
+    {
+        var total = 0m;
+        foreach (var id in ids) total += await prices.GetAsync(id);   // cached
+        return total;
+    }
+}
+```
+
+A class created with `new` has no decorator either, so its calls aren't cached; get the service from dependency
+injection instead.
 
 
 ---
@@ -4879,6 +4968,26 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Added
+
+- `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
+  MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
+  project and what to check.
+- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when neither it nor a
+  referenced project calls `AddMethodCache`. For this, MethodCache marks a project's assembly with `AssemblyMetadata`
+  attributes when it has cached services or calls `AddMethodCache`.
+- Analyzer MC0031 reports a call a class makes to its own cached method, which skips the cache.
+
+### Changed
+
+- A setting for a `[Cache]` method whose service the application doesn't register, in `mc.Method(...)` or in
+  `appsettings.json`, is skipped instead of failing startup, so startup code and configuration shared by several
+  applications works in each of them. A method id that matches no `[Cache]` method still fails.
+- Sets and dictionaries in arguments are written sorted in keys, so two equal sets or dictionaries get one key whatever
+  order they enumerate in, also on two servers. Existing entries with a set or dictionary argument are missed once.
 
 ## 1.0.0-rc.9 (2026-11-05)
 

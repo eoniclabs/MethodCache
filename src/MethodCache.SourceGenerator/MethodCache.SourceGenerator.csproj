@@ -30,5 +30,6 @@
     <Compile Include="../Shared/AssemblyIdentity.cs" Link="Internal/AssemblyIdentity.cs" />
     <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
     <Compile Include="../Shared/EntityMappingCall.cs" Link="Internal/EntityMappingCall.cs" />
+    <Compile Include="../Shared/HostMarkers.cs" Link="Internal/HostMarkers.cs" />
   </ItemGroup>
 </Project>

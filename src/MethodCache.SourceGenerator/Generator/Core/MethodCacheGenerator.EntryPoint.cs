@@ -102,6 +102,7 @@ namespace MethodCache.SourceGenerator
             context.RegisterSourceOutput(summaries.Combine(classProvider), static (ctx, input) => EmitRegistrations(ctx, input.Left, input.Right));
 
             RegisterEntityMapping(context);
+            RegisterHostMarkers(context, summaries.Select(static (items, _) => items.Count > 0));
         }
 
         private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces)
@@ -135,6 +136,7 @@ namespace MethodCache.SourceGenerator
             public const string Decorators = nameof(Decorators);
             public const string Summaries = nameof(Summaries);
             public const string EntityMapping = nameof(EntityMapping);
+            public const string HostMarkers = nameof(HostMarkers);
         }
     }
 }

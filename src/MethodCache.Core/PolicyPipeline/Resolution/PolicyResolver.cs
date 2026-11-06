@@ -22,6 +22,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     private readonly IReadOnlyDictionary<string, string[]>? _parameterNames;
     private readonly PolicyLimits _limits;
     private readonly bool _knowsCachedMethods;
+    private readonly IReadOnlySet<string>? _describedMethods;
     private readonly List<Task> _watcherTasks = new();
     private readonly List<(IImmediatePolicySource Source, Action<PolicyChange> Handler)> _immediateSubscriptions = new();
     private readonly Dictionary<PolicySourceRegistration, long> _snapshotRevisions = new(ReferenceEqualityComparer.Instance);
@@ -52,11 +53,17 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     /// What the cache can honor: the longest duration, and each cached method's result type for checking
     /// <c>CacheWhen&lt;T&gt;</c>; without them neither is checked.
     /// </param>
+    /// <param name="describedMethods">
+    /// Every <c>[Cache]</c> method the generated code describes, also one whose service this container doesn't
+    /// register, so startup code shared by several hosts can configure it.
+    /// </param>
     public PolicyResolver(IEnumerable<PolicySourceRegistration> registrations, ILogger<PolicyResolver>? logger = null,
-        IReadOnlyDictionary<string, string[]>? parameterNames = null, PolicyLimits? limits = null)
+        IReadOnlyDictionary<string, string[]>? parameterNames = null, PolicyLimits? limits = null,
+        IReadOnlySet<string>? describedMethods = null)
     {
         _logger = (ILogger?)logger ?? NullLogger.Instance;
         _parameterNames = parameterNames;
+        _describedMethods = describedMethods;
         _limits = limits ?? PolicyLimits.None;
         if (registrations == null)
         {
@@ -402,9 +409,18 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             .Select(static pair => pair.Key)
             .ToHashSet(StringComparer.Ordinal);
 
+    // The cached methods and the [Cache] methods whose service this container leaves out: configuration shared by
+    // several hosts may name either, and only an id outside both is a mistake
+    private HashSet<string> ConfigurableMethodIds()
+    {
+        var ids = CachedMethodIds();
+        if (_describedMethods != null) ids.UnionWith(_describedMethods);
+        return ids;
+    }
+
     private PolicyLoadChecks ChecksFor(LayerKey key)
         => new(
-            () => _knowsCachedMethods ? CachedMethodIds() : Array.Empty<string>(),
+            () => _knowsCachedMethods ? ConfigurableMethodIds() : Array.Empty<string>(),
             drafts => FindTagProblems(key, drafts.Select(draft => (draft.MethodId, draft.Policy, draft.Fields)), replaceAll: true).FirstOrDefault())
         {
             MaxDuration = _limits.MaxDuration
@@ -432,8 +448,10 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
     /// <summary>
     /// Fails loading for a policy whose method isn't cached, usually a misspelled id or a method without
-    /// <c>[Cache]</c>, and for a tag template that doesn't fit a cached method it reaches. Configuration checks its own
-    /// policies as it reads them, so its errors name the configuration path; <c>[Cache]</c> is checked by the generator.
+    /// <c>[Cache]</c>, and for a tag template that doesn't fit a cached method it reaches. A policy for a <c>[Cache]</c>
+    /// method whose service this container doesn't register is skipped, so startup code or configuration shared by
+    /// several hosts works in each of them. Configuration checks its own policies as it reads them, so its errors name
+    /// the configuration path; <c>[Cache]</c> is checked by the generator.
     /// </summary>
     private void CheckLoadedPolicies()
     {
@@ -445,6 +463,12 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 var layers = aggregator.Layers;
                 if (MethodIds.IsDefaults(methodId) || layers.Length == 0 || cached.Contains(methodId))
                 {
+                    continue;
+                }
+
+                if (_describedMethods?.Contains(methodId) == true)
+                {
+                    _logger.LogDebug("A policy configures '{MethodId}', whose service isn't registered in this container, so it doesn't apply here.", methodId);
                     continue;
                 }
 

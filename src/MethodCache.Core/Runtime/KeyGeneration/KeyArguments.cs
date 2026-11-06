@@ -158,8 +158,80 @@ internal static class KeyArguments
     private static JsonTypeInfo? ExactInfo(DefaultJsonTypeInfoResolver resolver, Type type, JsonSerializerOptions options)
     {
         var info = RefuseHiddenState(resolver.GetTypeInfo(type, options));
+        if (info != null && IsUnordered(type))
+            info = (JsonTypeInfo)CreateUnorderedInfoMethod.MakeGenericMethod(type).Invoke(null, [info, options])!;
         return KeyCollectionState.For(type).Length == 0 ? info
             : (JsonTypeInfo)CreateCollectionInfoMethod.MakeGenericMethod(type).Invoke(null, [info, options])!;
+    }
+
+    /// <summary>A set or a dictionary, whose enumeration order says nothing about its value.</summary>
+    private static bool IsUnordered(Type type)
+        => typeof(System.Collections.IDictionary).IsAssignableFrom(type)
+           || type.GetInterfaces().Append(type).Any(static i => i.IsGenericType && i.GetGenericTypeDefinition() is var definition &&
+               (definition == typeof(ISet<>) || definition == typeof(IReadOnlySet<>) || definition == typeof(IReadOnlyDictionary<,>)));
+
+    private static readonly MethodInfo CreateUnorderedInfoMethod = typeof(KeyArguments)
+        .GetMethod(nameof(CreateUnorderedInfo), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static JsonTypeInfo<T> CreateUnorderedInfo<T>(JsonTypeInfo<T> elements, JsonSerializerOptions options)
+        => JsonMetadataServices.CreateValueInfo<T>(options, new UnorderedConverter<T>(elements));
+
+    /// <summary>
+    /// Writes a set's elements, or a dictionary's entries as <c>[name, value]</c> pairs, sorted by their JSON, so two
+    /// equal sets or dictionaries get one key whatever order they enumerate in (a <c>HashSet&lt;string&gt;</c>
+    /// enumerates differently in every process).
+    /// </summary>
+    private sealed class UnorderedConverter<T>(JsonTypeInfo<T> elements) : JsonConverter<T>
+    {
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => throw new NotSupportedException();
+
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+        {
+            var json = JsonSerializer.SerializeToUtf8Bytes(value, elements);
+            var reader = new Utf8JsonReader(json);
+            reader.Read();
+            if (reader.TokenType is not (JsonTokenType.StartArray or JsonTokenType.StartObject))
+            {
+                writer.WriteRawValue(json, skipInputValidation: true);
+                return;
+            }
+
+            var isObject = reader.TokenType == JsonTokenType.StartObject;
+            var items = new List<(byte[] Name, byte[] Value)>();
+            while (reader.Read() && reader.TokenType is not (JsonTokenType.EndArray or JsonTokenType.EndObject))
+            {
+                byte[] name = [];
+                if (isObject)
+                {
+                    // The name as written, escapes included, so no two names read alike
+                    name = [(byte)'"', .. reader.ValueSpan, (byte)'"'];
+                    reader.Read();
+                }
+
+                var start = (int)reader.TokenStartIndex;
+                reader.Skip();
+                items.Add((name, json.AsSpan(start, (int)reader.BytesConsumed - start).ToArray()));
+            }
+
+            items.Sort(static (left, right) => left.Name.AsSpan().SequenceCompareTo(right.Name) is var byName and not 0
+                ? byName
+                : left.Value.AsSpan().SequenceCompareTo(right.Value));
+            writer.WriteStartArray();
+            foreach (var (name, item) in items)
+            {
+                if (isObject)
+                {
+                    writer.WriteStartArray();
+                    writer.WriteRawValue(name, skipInputValidation: true);
+                }
+
+                writer.WriteRawValue(item, skipInputValidation: true);
+                if (isObject) writer.WriteEndArray();
+            }
+
+            writer.WriteEndArray();
+        }
     }
 
     private static readonly MethodInfo CreateCollectionInfoMethod = typeof(KeyArguments)

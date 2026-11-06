@@ -4,6 +4,26 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Added
+
+- `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
+  MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
+  project and what to check.
+- Analyzer MC0030 reports a program with cached services, its own or a referenced project's, when neither it nor a
+  referenced project calls `AddMethodCache`. For this, MethodCache marks a project's assembly with `AssemblyMetadata`
+  attributes when it has cached services or calls `AddMethodCache`.
+- Analyzer MC0031 reports a call a class makes to its own cached method, which skips the cache.
+
+### Changed
+
+- A setting for a `[Cache]` method whose service the application doesn't register, in `mc.Method(...)` or in
+  `appsettings.json`, is skipped instead of failing startup, so startup code and configuration shared by several
+  applications works in each of them. A method id that matches no `[Cache]` method still fails.
+- Sets and dictionaries in arguments are written sorted in keys, so two equal sets or dictionaries get one key whatever
+  order they enumerate in, also on two servers. Existing entries with a set or dictionary argument are missed once.
+
 ## 1.0.0-rc.9 (2026-11-05)
 
 ### Changed
