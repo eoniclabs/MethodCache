@@ -602,7 +602,8 @@ public class DistributedCacheTests
     public async Task HangingBackplane_HoldsAnInvalidationForOneTimeout_HoweverManyKeys(bool asynchronousCache)
     {
         // Each publish has a cancellation timer and a WaitAsync timer. Cache-operation timers are disposed
-        // before publishing starts; the held stamp below has only two, so it cannot signal this barrier.
+        // before publishing starts, except the held stamp's WaitAsync timer: the runtime disposes it only after the
+        // stamp's continuations ran, and they publish. So once the stamp is held, only new timers count.
         var time = new TimerRegistrationTimeProvider(expectedTimers: 100);
         var cache = new ToggleDistributedCache(_shared);
         var releaseStamp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -622,6 +623,7 @@ public class DistributedCacheTests
             layer);
 
         var invalidation = node.InvalidateByKeysAsync(Enumerable.Range(0, 50).Select(i => $"key{i}").ToArray());
+        if (asynchronousCache) time.CountOnlyNewTimers();
         releaseStamp.SetResult();
         // Wall-time waits are deadlock guards only; fake time controls the timeout being tested.
         await time.TimersRegistered.WaitAsync(TimeSpan.FromSeconds(30));
