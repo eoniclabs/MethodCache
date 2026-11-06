@@ -150,8 +150,8 @@ public class TelemetryPrivacyTests
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
         configuration["MethodCache:Methods:Sample.Read:Duration"] = Canary;
         configuration.Reload();
-        var message = Assert.Single(logs.Messages);
-        Assert.DoesNotContain(Canary, message);
+        var message = Assert.Single(logs.Errors);
+        Assert.DoesNotContain(logs.Messages, logged => logged.Contains(Canary, StringComparison.Ordinal));
         Assert.Contains("Sample.Read:Duration' is not a duration", message);
         Assert.Equal(TimeSpan.FromMinutes(1), registry.GetPolicy("Sample.Read").Policy.Duration);
     }
@@ -194,16 +194,19 @@ public class TelemetryPrivacyTests
     private sealed class RecordingLogs : ILoggerProvider
     {
         internal ConcurrentQueue<string> Messages { get; } = new();
+        internal ConcurrentQueue<string> Errors { get; } = new();
         internal TaskCompletionSource<bool> FirstMessage { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public ILogger CreateLogger(string categoryName) => new Sink(Messages, FirstMessage);
+        public ILogger CreateLogger(string categoryName) => new Sink(Messages, Errors, FirstMessage);
         public void Dispose() { }
-        private sealed class Sink(ConcurrentQueue<string> messages, TaskCompletionSource<bool> firstMessage) : ILogger
+        private sealed class Sink(ConcurrentQueue<string> messages, ConcurrentQueue<string> errors, TaskCompletionSource<bool> firstMessage) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
             {
-                messages.Enqueue(formatter(state, error) + error?.ToString());
+                var text = formatter(state, error) + error?.ToString();
+                messages.Enqueue(text);
+                if (level >= LogLevel.Error) errors.Enqueue(text);
                 firstMessage.TrySetResult(true);
             }
         }

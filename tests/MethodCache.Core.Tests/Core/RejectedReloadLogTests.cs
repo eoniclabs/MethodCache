@@ -37,10 +37,10 @@ public class RejectedReloadLogTests
         configuration[key] = Secret;
         configuration.Reload();
 
-        var message = Assert.Single(logs.Messages);
+        var message = Assert.Single(logs.Errors);
         Assert.Contains(expected, message);
         Assert.StartsWith("Ignored reloaded MethodCache configuration", message, StringComparison.Ordinal);
-        Assert.DoesNotContain("secret-canary", message);
+        Assert.DoesNotContain(logs.Messages, logged => logged.Contains("secret-canary", StringComparison.Ordinal));
         Assert.Equal(TimeSpan.FromMinutes(1), Duration(provider));
     }
 
@@ -75,17 +75,18 @@ public class RejectedReloadLogTests
 
     private sealed class Logs : ILoggerProvider
     {
-        private readonly ConcurrentQueue<string> _messages = new();
-        internal IReadOnlyCollection<string> Messages => _messages.ToArray();
+        private readonly ConcurrentQueue<(LogLevel Level, string Text)> _messages = new();
+        internal IReadOnlyCollection<string> Messages => _messages.Select(m => m.Text).ToArray();
+        internal IReadOnlyCollection<string> Errors => _messages.Where(m => m.Level >= LogLevel.Error).Select(m => m.Text).ToArray();
         public ILogger CreateLogger(string categoryName) => new Sink(_messages);
         public void Dispose() { }
 
-        private sealed class Sink(ConcurrentQueue<string> messages) : ILogger
+        private sealed class Sink(ConcurrentQueue<(LogLevel Level, string Text)> messages) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
             public bool IsEnabled(LogLevel logLevel) => true;
             public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> formatter)
-                => messages.Enqueue(formatter(state, error) + error);
+                => messages.Enqueue((level, formatter(state, error) + error));
         }
     }
 }
