@@ -100,6 +100,8 @@ public static class KeyParts
     /// Formats a collection argument as <c>[{count}:{element}:{element}...]</c>, and <c>null</c> as <see cref="Null"/>.
     /// <paramref name="part"/> formats each element, and its text is escaped like a string part, so an element can't
     /// read as two; the count keeps the last element apart from the next argument. No two argument lists share a key.
+    /// A set or a dictionary has no order of its own, so its elements are written sorted: two equal sets get one key,
+    /// also in two processes that enumerate them differently.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string Sequence<T>(IEnumerable<T>? values, Func<T, string> part)
@@ -134,6 +136,7 @@ public static class KeyParts
 
     private static string Enumerated<T>(IEnumerable<T> values, Func<T, string> part)
     {
+        if (IsUnordered(values)) return Sorted(values, part);
         var builder = new StringBuilder();
         var count = 0;
         foreach (var value in values)
@@ -143,6 +146,20 @@ public static class KeyParts
         }
 
         return string.Concat("[", count.ToString(CultureInfo.InvariantCulture), builder.ToString(), "]");
+    }
+
+    /// <summary>A set or a dictionary, whose enumeration order says nothing about its value.</summary>
+    internal static bool IsUnordered<T>(IEnumerable<T> values)
+        => values is ISet<T> or IReadOnlySet<T> or System.Collections.IDictionary;
+
+    private static string Sorted<T>(IEnumerable<T> values, Func<T, string> part)
+    {
+        var parts = new List<string>();
+        foreach (var value in values) parts.Add(MethodCacheKeys.Part(part(value)));
+        parts.Sort(StringComparer.Ordinal);
+        var builder = new StringBuilder().Append('[').Append(parts.Count.ToString(CultureInfo.InvariantCulture));
+        foreach (var text in parts) builder.Append(Separator).Append(text);
+        return builder.Append(']').ToString();
     }
 
     /// <summary>Formats an enum argument by its numeric value, so renaming a member keeps existing keys.</summary>
