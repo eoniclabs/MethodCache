@@ -68,7 +68,8 @@ var list = await cache.GetOrCreateAsync(
 `ICacheManager` has four operations: `GetOrCreateAsync`, `TryGetAsync`, `InvalidateKeysAsync` and
 `InvalidateTagsAsync`. The interface takes every argument; extension methods give the short forms, such as
 `TryGetAsync<T>(key, cancellationToken)`, `InvalidateKeyAsync(key)` and `InvalidateKeyAsync(key, version)`, and take a
-builder action instead of built options. To write your own manager, see
+builder action instead of built options. `SetAsync` is an extension method too: on a manager of your own it invalidates
+the key and then stores the value through `GetOrCreateAsync`. To write your own manager, see
 [Registration](../reference/registration.md#your-own-cache-manager).
 
 ## Reading without loading
@@ -84,6 +85,30 @@ if (lookup.Found)
 <!-- endSnippet -->
 
 `TryGetAsync` takes the `version` an entry was stored with: `TryGetAsync<Order>("order:42", 2)`.
+
+## Storing a value you already have
+
+When you already have the new value, such as right after you saved it, `SetAsync` stores it so the next read doesn't
+load it again:
+
+<!-- snippet: manual-set -->
+```cs
+var saved = await orders.SaveAsync(order, ct);
+await cache.SetAsync($"order:{saved.Id}", saved,
+    o => o.WithDuration(TimeSpan.FromMinutes(30)).AddTags("orders", $"order:{saved.Id}"),
+    ct);
+```
+<!-- endSnippet -->
+
+- It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
+  gets the new value from the distributed cache. With `WithDistributed(false)` it stays in this instance's memory, and
+  the copies in the distributed cache and on other instances are removed.
+- It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
+  since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
+- A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
+  one `DurationFor<T>` gives no time, or `null` without `CacheNullValues`. `WithEnabled(false)` does nothing.
+- A load of the key that is running when you call it doesn't overwrite the value with what it read before.
+- To remove a value instead, invalidate the key or its tags ([Invalidation](invalidation.md)).
 
 ## Versions and the stored key
 

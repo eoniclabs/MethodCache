@@ -10,9 +10,11 @@ release.
 
 - A way for coding agents to report problems: the agent instructions (`docs/ai/methodcache.md`, Feedback) say when
   and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an issue form with the same fields.
+- `ICacheManager.SetAsync(key, value, options)` stores a value you already have, such as one you just saved, in memory
+  and the distributed cache. Other instances drop their copy, and a load already running for the key doesn't overwrite
+  it. A value the options turn down removes the key's old value instead.
 - `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
   the other value types they take), writing the value or null the way tag templates do.
-
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but
   MethodCache's source generator didn't run in its project, so its calls would run uncached. The message names the
   project and what to check.
@@ -35,7 +37,7 @@ release.
 - Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
   registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
 - Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
-  `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
+  `GetOrCreateAsync`, `GetOrCreateManyAsync` or `SetAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
   (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 

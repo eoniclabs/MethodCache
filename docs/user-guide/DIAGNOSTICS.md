@@ -535,4 +535,5 @@ mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
 A base type, an interface or the nullable form of the result type is fine: `CacheWhen<object>`,
 `CacheWhen<IReadOnlyList<Product>>` for a `List<Product>`, or `CacheWhen<int?>` for an `int`. A numeric type
 the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
-`GetOrCreateAsync` and `GetOrCreateManyAsync`; options built elsewhere and passed in are checked when the call runs.
+`GetOrCreateAsync`, `GetOrCreateManyAsync` and `SetAsync`; options built elsewhere and passed in are checked when the
+call runs.

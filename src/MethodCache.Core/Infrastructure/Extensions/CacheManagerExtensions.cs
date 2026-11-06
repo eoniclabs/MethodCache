@@ -52,6 +52,53 @@ namespace MethodCache
         }
 
         /// <summary>
+        /// Stores <paramref name="value"/> under <paramref name="key"/> with the options set in
+        /// <paramref name="configure"/>, in memory and in the distributed cache, replacing the value every instance holds.
+        /// </summary>
+        /// <remarks>
+        /// Use it when you already have the new value, such as right after you saved it, so the next read doesn't load it
+        /// again. Other instances drop their copy and read the new one from the distributed cache. A load already running
+        /// for the key doesn't overwrite it. A value the options reject, such as one a <c>CacheWhen</c> predicate turns
+        /// down, isn't stored, and the key's old value is removed instead. With <c>WithEnabled(false)</c> nothing happens.
+        /// </remarks>
+        public static ValueTask SetAsync<T>(this ICacheManager cacheManager, string key, T value,
+            Action<CacheEntryOptions.Builder>? configure = null, CancellationToken cancellationToken = default)
+            => SetAsync(cacheManager, key, value, BuildOptions(configure), cancellationToken);
+
+        /// <summary>
+        /// Stores <paramref name="value"/> under <paramref name="key"/> with <paramref name="options"/>, in memory and in
+        /// the distributed cache, replacing the value every instance holds.
+        /// </summary>
+        /// <remarks>
+        /// Use it when you already have the new value, such as right after you saved it, so the next read doesn't load it
+        /// again. Other instances drop their copy and read the new one from the distributed cache. A load already running
+        /// for the key doesn't overwrite it. A value the options reject, such as one a <c>CacheWhen</c> predicate turns
+        /// down, isn't stored, and the key's old value is removed instead. With <c>WithEnabled(false)</c> nothing happens.
+        /// A manager of your own gets the key invalidated and then the value through its <c>GetOrCreateAsync</c>.
+        /// </remarks>
+        public static ValueTask SetAsync<T>(this ICacheManager cacheManager, string key, T value, CacheEntryOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            ArgumentNullException.ThrowIfNull(options);
+            ValidateKey(key);
+            return FindMemoryManager(cacheManager) is { } memory
+                ? memory.SetUserAsync(key, value, options, cancellationToken)
+                : SetCustomAsync(cacheManager, key, value, options, cancellationToken);
+        }
+
+        private static async ValueTask SetCustomAsync<T>(ICacheManager manager, string key, T value, CacheEntryOptions options,
+            CancellationToken cancellationToken)
+        {
+            if (options.Enabled == false) return;
+            // A setting for another type fails before the old value is removed
+            CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
+            CachePredicateCheck.EnsureMatches(options.DurationFor, typeof(T), key);
+            await manager.InvalidateKeysAsync([key], options.Version, cancellationToken).ConfigureAwait(false);
+            await manager.GetOrCreateAsync(key, value, static (item, _) => new ValueTask<T>(item), options, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Invalidates one key cached without a version, such as a key from <see cref="IMethodCacheKeys.For{TService}"/>,
         /// which already carries the method's version.
         /// </summary>

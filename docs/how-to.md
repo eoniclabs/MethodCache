@@ -116,6 +116,12 @@ culture, and `:` and `\` escaped in strings, so `gemma3:4b` becomes `gemma3\:4b`
 differently and matches nothing, silently. Analyzer MC0024 warns about such tags and its code fix wraps them in
 `MethodCacheKeys.Tag`. `MethodCacheKeys.Part` formats one value. ([Build diagnostics](user-guide/DIAGNOSTICS.md#mc0024))
 
+**I just saved the new value. Can I put it in the cache instead of invalidating?**
+For a key of your own, yes: `await cache.SetAsync($"order:{saved.Id}", saved, o => o.WithDuration(TimeSpan.FromMinutes(30)))`.
+It replaces the value in memory and the distributed cache, other instances drop their copy, and a load already running
+for the key doesn't overwrite it. Use the options of the calls that read the key. For a `[Cache]` method, invalidate
+its key or tags. ([Storing a value you already have](features/manual-caching.md#storing-a-value-you-already-have))
+
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.
 ([Invalidation](features/invalidation.md#from-code))

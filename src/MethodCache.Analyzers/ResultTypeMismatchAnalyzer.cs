@@ -24,7 +24,7 @@ namespace MethodCache.Analyzers
             "Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "CacheWhen<T> and DurationFor<T> on CacheEntryOptions.Builder get each result as a T. Set inside Method(...).Configure(...) or passed to GetOrCreateAsync or GetOrCreateManyAsync, a T that the call's result can never be fails at startup or on the first call. Reported when neither type converts to the other.",
+            description: "CacheWhen<T> and DurationFor<T> on CacheEntryOptions.Builder get each result as a T. Set inside Method(...).Configure(...) or passed to GetOrCreateAsync, GetOrCreateManyAsync or SetAsync, a T that the call's result can never be fails at startup or on the first call. Reported when neither type converts to the other.",
             helpLinkUri: HelpLink("MC0033"));
 
         /// <inheritdoc />
@@ -71,7 +71,7 @@ namespace MethodCache.Analyzers
 
         /// <summary>
         /// The result type the options apply to: <c>TResult</c> of <c>Method(...).Configure(...)</c>, or <c>T</c> of
-        /// <c>GetOrCreateAsync&lt;T&gt;</c> and <c>GetOrCreateManyAsync</c>.
+        /// <c>GetOrCreateAsync&lt;T&gt;</c>, <c>GetOrCreateManyAsync</c> and <c>SetAsync&lt;T&gt;</c>.
         /// </summary>
         private static ITypeSymbol? ResultType(IInvocationOperation call)
         {
@@ -81,7 +81,7 @@ namespace MethodCache.Analyzers
             return target.Name switch
             {
                 "Configure" when type is { Name: "IFluentMethodConfiguration", TypeArguments.Length: 1 } => type.TypeArguments[0],
-                "GetOrCreateAsync" or "GetOrCreateManyAsync" when type.Name == "CacheManagerExtensions" && target.TypeArguments.Length > 0 => target.TypeArguments.Last(),
+                "GetOrCreateAsync" or "GetOrCreateManyAsync" or "SetAsync" when type.Name == "CacheManagerExtensions" && target.TypeArguments.Length > 0 => target.TypeArguments.Last(),
                 _ => null,
             };
         }
