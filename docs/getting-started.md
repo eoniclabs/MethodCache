@@ -12,6 +12,10 @@ dotnet add package MethodCache --prerelease
 The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
 .NET 10 SDK, as every add-on package does.
 
+MethodCache uses the `Microsoft.Extensions.*` packages from version 9.0.9 (`MethodCache.EntityFrameworkCore`,
+`MethodCache.PostgreSql` and `MethodCache.Testing` from 10.0.0), and any later version works. A project that pins an
+older version, such as 8.0, gets warning NU1605 (a package downgrade); raise its version to the one in the warning.
+
 ## 1. Start from a service
 
 A typical service talks to a database on every call:

@@ -65,9 +65,10 @@ sequenceDiagram
 - MethodCache keeps its own distributed cache and connection, so your application's `IDistributedCache` is left alone
   and is never used as a fallback.
 
-> [!IMPORTANT]
-> Run the same MethodCache version on every instance that shares a cache and backplane; messages from another version
-> are ignored with one warning.
+> [!NOTE]
+> Instances on different 1.x versions can share a cache and backplane, so you can upgrade them one at a time: every
+> 1.x version reads the others' invalidations, and an entry in a format an instance doesn't read is a miss for it. A
+> backplane message an instance can't read clears its memory cache, with one warning.
 
 ## When the distributed cache is down
 
@@ -195,7 +196,7 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 - Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
   so values the previous version wrote are not read.
-- Run the same MethodCache version on every instance that shares a store.
+- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works.
 - SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
   before 1.0, or a login that may not create tables, see the
   [SQL Server](../../src/MethodCache.SqlServer/README.md) and [PostgreSQL](../../src/MethodCache.PostgreSql/README.md) guides.

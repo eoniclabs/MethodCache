@@ -48,8 +48,9 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 - With `EnableBackplane = false`, another instance keeps an invalidated value in memory until it expires.
 - Disposing the service provider unsubscribes. A backplane that doesn't answer delays shutdown by at most twice
   `OperationTimeout`.
-- A message from another MethodCache version is ignored, with one warning. A damaged message makes the instance clear
-  its memory cache, with one warning that leaves out the message's contents.
+- Every 1.x version writes and reads the same backplane messages, so instances on different 1.x versions see each
+  other's invalidations. A message an instance can't read, damaged or from a later major version, makes it clear its
+  memory cache, with one warning that leaves out the message's contents.
 
 ## Invalidation results
 
