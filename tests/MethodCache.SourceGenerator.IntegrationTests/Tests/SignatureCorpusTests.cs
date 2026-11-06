@@ -89,7 +89,7 @@ public class SignatureCorpusTests
         var shape = Cases[name];
         var compiled = await _engine.CompileWithSourceGeneratorAsync(shape.ToSource(), "LongNames");
         var again = await _engine.CompileWithSourceGeneratorAsync(shape.ToSource(), "LongNamesAgain");
-        Assert.Equal(4, compiled.GeneratedSources.Count); // Two decorators plus policy and module registration.
+        Assert.Equal(5, compiled.GeneratedSources.Count); // Two decorators plus policy and module registration and the assembly marker.
         Assert.Equal(compiled.GeneratedSources.Keys.Order(), again.GeneratedSources.Keys.Order());
         var directory = Path.Combine(Path.GetTempPath(), "methodcache-generated-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);

@@ -18,12 +18,22 @@ No. Put it on the interface method. On a class member it does nothing, and warni
 the attribute to the interface. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
 
 **Where do I call `AddMethodCache()`?**
-After you register the services it caches. A cached service registered after it fails when the host starts.
+After you register the services it caches. A cached service registered after it fails when the host starts. A
+program with cached services that never calls it gets warning MC0030.
 ([Registration reference](reference/registration.md#order))
 
 **Why does my method still run on every call?**
-The caller uses the class instead of the interface, the call comes from inside the class, or the service was
-registered after `AddMethodCache()`. ([Troubleshooting](troubleshooting.md#the-method-runs-on-every-call))
+The caller uses the class instead of the interface, the call comes from inside the class (warning MC0031), the class
+was created with `new`, or the service was registered after `AddMethodCache()`.
+([Troubleshooting](troubleshooting.md#the-method-runs-on-every-call))
+
+**Can several applications share startup code or `appsettings.json` that configures cached methods?**
+Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there; only an id
+that matches no `[Cache]` method fails. ([Configuration](features/configuration.md))
+
+**My cached service lives in another project of the solution. Does it need its own MethodCache reference?**
+No. The project gets the generator through the project it references. If the generator doesn't run there,
+`AddMethodCache` fails and names the project. ([Troubleshooting](troubleshooting.md#exceptions))
 
 **Which return types can be cached?**
 Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `IEnumerable<T>` or `IQueryable<T>`.

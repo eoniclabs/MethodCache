@@ -143,6 +143,8 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   their policy but can't make other methods cached. A method id that matches no cached method, such as a misspelled
   name or an id without its `[Assembly]` prefix, fails at startup and suggests the closest cached id. `*` and
   `group:<name>` are not method ids; use `Defaults` and `Groups`.
+- A setting for a `[Cache]` method whose service this application doesn't register is skipped, in the file and in
+  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them.
 - An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
   `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
   reloaded file has one, the reload is logged as an error naming the setting's path, never its value, and the

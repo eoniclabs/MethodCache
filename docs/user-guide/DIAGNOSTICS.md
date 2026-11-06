@@ -37,6 +37,8 @@ generator and the analyzer run, each problem is reported once.
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
 | [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
+| [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
+| [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 
 ## MC0001
 
@@ -400,3 +402,65 @@ Task<IReadOnlyList<Recipe>> ListAsync();
 Write the tag as it is written in `Tags`. A placeholder matches any value, so `"recipe:{Id}"` matches
 `"recipe:{id}"`. Not reported when the attribute has no `Tags`, because the method's tags then come from
 configuration.
+
+## MC0030
+
+A program has cached services, in its own code or in a project it references, but neither the program nor a project
+it references calls `AddMethodCache`. Nothing of MethodCache runs then, so every `[Cache]` method runs uncached, and
+nothing at run time can tell.
+
+```cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped<IProducts, Products>();   // IProducts has [Cache] methods
+var app = builder.Build();                             // MC0030: no AddMethodCache
+```
+
+Call `AddMethodCache()` after registering the services ([Getting started](../getting-started.md)):
+
+```cs
+builder.Services.AddScoped<IProducts, Products>();
+builder.Services.AddMethodCache();
+```
+
+A call in a referenced project counts, such as one inside a `services.AddData()` extension method of your own. Test
+projects aren't reported, since tests may use the implementations without the cache. A program that references a
+project with cached services but doesn't use them, such as a migration tool, can turn the warning off with
+`<NoWarn>$(NoWarn);MC0030</NoWarn>`.
+
+## MC0031
+
+A class calls one of its own `[Cache]` methods. The cache is a generated decorator in front of the service, so a call
+from inside the class goes straight to the method and runs every time, also through `this` or a cast of `this` to
+the interface.
+
+```cs
+public sealed class Prices(IPriceApi api) : IPrices
+{
+    public Task<decimal> GetAsync(int id) => api.GetAsync(id);   // [Cache] on IPrices.GetAsync
+
+    public async Task<decimal> TotalAsync(int[] ids)
+    {
+        var total = 0m;
+        foreach (var id in ids) total += await GetAsync(id);   // MC0031: not cached
+        return total;
+    }
+}
+```
+
+Move the cached method to a service of its own and call it through that service's interface, so the call passes
+the cache:
+
+```cs
+public sealed class Totals(IPrices prices) : ITotals
+{
+    public async Task<decimal> TotalAsync(int[] ids)
+    {
+        var total = 0m;
+        foreach (var id in ids) total += await prices.GetAsync(id);   // cached
+        return total;
+    }
+}
+```
+
+A class created with `new` has no decorator either, so its calls aren't cached; get the service from dependency
+injection instead.
