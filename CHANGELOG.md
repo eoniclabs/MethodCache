@@ -4,12 +4,23 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.10 (2026-11-06)
+
+### Upgrading from 1.0.0-rc.9
+
+- Two new build errors find what failed when the call ran: MC0033 for `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>`
+  of a type the result can never be, and MC0034 for a key argument whose state is all private.
+- `AddMethodCache` throws when a registered interface has `[Cache]` methods but the source generator didn't run in its
+  project, where its calls ran uncached before.
+- New warnings MC0030, MC0031, MC0032 and MC0035 fail a build that treats warnings as errors until they are fixed or
+  suppressed.
+- Entries with a set or dictionary argument get a new key, so they are missed once after the upgrade.
 
 ### Added
 
 - A way for coding agents to report problems: the agent instructions (`docs/ai/methodcache.md`, Feedback) say when
-  and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an issue form with the same fields.
+  and how to file an `[Agent feedback]` issue, without the project's code, names or secrets, and the repository has an
+  issue form with the same fields.
 - `ICacheManager.SetAsync(key, value, options)` stores a value you already have, such as one you just saved, in memory
   and the distributed cache. Other instances drop their copy, and a load already running for the key doesn't overwrite
   it. A value the options turn down removes the key's old value instead.
