@@ -49,7 +49,8 @@ or in `appsettings.json`:
   while the reload ran: callers then wait for the reload, or get its exception.
 - Without an expired value, the exception reaches the caller as usual.
 - `GetOrCreateManyAsync` works the same way for each key: when the batch factory throws, each key gets its own
-  fallback, and the exception is thrown only when a key has none.
+  fallback, and the exception is thrown only when a key has none. A key the factory leaves out also gets its
+  fallback, and is left out of the result when it has none.
 
 ## Per method
 

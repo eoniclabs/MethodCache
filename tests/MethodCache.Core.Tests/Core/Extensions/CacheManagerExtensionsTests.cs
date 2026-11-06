@@ -189,14 +189,16 @@ namespace MethodCache.Core.Tests.Core.Extensions
         }
 
         [Fact]
-        public async Task GetOrCreateManyAsync_ThrowsWhenFactoryOmitsKey()
+        public async Task GetOrCreateManyAsync_LeavesOutAndDoesNotCacheAKeyTheFactoryOmits()
         {
             var cacheManager = new MockCacheManager();
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await cacheManager.GetOrCreateManyAsync(
-                    new[] { "missing" },
-                    (missing, _) => new ValueTask<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>())));
+            var values = await cacheManager.GetOrCreateManyAsync(
+                new[] { "missing" },
+                (missing, _) => new ValueTask<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>()));
+
+            Assert.Empty(values);
+            Assert.False((await cacheManager.TryGetAsync<string>("missing")).Found);
         }
 
         [Fact]

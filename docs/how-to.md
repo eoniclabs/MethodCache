@@ -209,6 +209,11 @@ Arguments whose only state is private are rejected; implement `ICacheKeyProvider
 `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with a prefixed key such as `$"order:{id}"`.
 ([Manual caching](features/manual-caching.md))
 
+**How do I load many ids with one query, caching each one?**
+`ICacheManager.GetOrCreateManyAsync<int, User>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)`. The
+factory gets only the ids that aren't cached and returns a dictionary by id; an id it leaves out is not cached and not
+returned. ([Many keys at once](features/manual-caching.md#many-keys-at-once))
+
 **How do I cache a client from a NuGet package?**
 `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` caches chosen methods of its
 own interface. ([Caching third-party code](features/third-party.md))

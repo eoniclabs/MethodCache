@@ -140,9 +140,12 @@ namespace MethodCache
         /// </summary>
         /// <remarks>
         /// <para>Each key behaves as <c>GetOrCreateAsync</c> would for it. Keys missing from memory are looked up in the
-        /// distributed cache first, so the factory receives only the keys neither holds, and must return a value for each
-        /// of them. A concurrent writer may still supply the final value for a key the factory produced; the returned
-        /// dictionary uses the value the cache keeps.</para>
+        /// distributed cache first, so the factory receives only the keys neither holds. A concurrent writer may still
+        /// supply the final value for a key the factory produced; the returned dictionary uses the value the cache
+        /// keeps.</para>
+        /// <para>A key the factory leaves out is not cached. It gets its fail-safe value when it has one, as when the
+        /// factory throws, and is otherwise left out of the returned dictionary. To cache that a key has no value, return
+        /// it with <see langword="null"/>.</para>
         /// <para>When the factory throws, every key it was asked for gets its fail-safe value, as with
         /// <c>GetOrCreateAsync</c>; when a key has none, the factory's exception is thrown.
         /// <paramref name="cancellationToken"/> cancels this caller's wait: a factory that does not observe it finishes in
@@ -165,9 +168,12 @@ namespace MethodCache
         /// </summary>
         /// <remarks>
         /// <para>Each key behaves as <c>GetOrCreateAsync</c> would for it. Keys missing from memory are looked up in the
-        /// distributed cache first, so the factory receives only the keys neither holds, and must return a value for each
-        /// of them. A concurrent writer may still supply the final value for a key the factory produced; the returned
-        /// dictionary uses the value the cache keeps.</para>
+        /// distributed cache first, so the factory receives only the keys neither holds. A concurrent writer may still
+        /// supply the final value for a key the factory produced; the returned dictionary uses the value the cache
+        /// keeps.</para>
+        /// <para>A key the factory leaves out is not cached. It gets its fail-safe value when it has one, as when the
+        /// factory throws, and is otherwise left out of the returned dictionary. To cache that a key has no value, return
+        /// it with <see langword="null"/>.</para>
         /// <para>When the factory throws, every key it was asked for gets its fail-safe value, as with
         /// <c>GetOrCreateAsync</c>; when a key has none, the factory's exception is thrown.
         /// <paramref name="cancellationToken"/> cancels this caller's wait: a factory that does not observe it finishes in
@@ -231,6 +237,84 @@ namespace MethodCache
         }
 
         /// <summary>
+        /// Gets the values cached for <paramref name="ids"/>, under the key <paramref name="keyFor"/> gives each id, and
+        /// runs <paramref name="factory"/> once for the ids that are not cached, caching its results with the options set
+        /// in <paramref name="configure"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>Works as the overload with string keys: the factory gets the ids neither cache holds and returns a
+        /// dictionary by id. An id the factory leaves out is not cached; it gets its fail-safe value when it has one, and
+        /// is otherwise left out of the returned dictionary.</para>
+        /// <para><paramref name="configure"/> builds new options on every call; on a hot path, build them once and pass
+        /// the <see cref="CacheEntryOptions"/> instead.</para>
+        /// </remarks>
+        /// <exception cref="ArgumentException">Two different ids give the same key.</exception>
+        public static ValueTask<IReadOnlyDictionary<TId, T>> GetOrCreateManyAsync<TId, T>(
+            this ICacheManager cacheManager,
+            IEnumerable<TId> ids,
+            Func<TId, string> keyFor,
+            Func<IReadOnlyList<TId>, CancellationToken, ValueTask<IReadOnlyDictionary<TId, T>>> factory,
+            Action<CacheEntryOptions.Builder>? configure = null,
+            CancellationToken cancellationToken = default)
+            where TId : notnull
+            => GetOrCreateManyAsync(cacheManager, ids, keyFor, factory, BuildOptions(configure), cancellationToken);
+
+        /// <summary>
+        /// Gets the values cached for <paramref name="ids"/>, under the key <paramref name="keyFor"/> gives each id, and
+        /// runs <paramref name="factory"/> once for the ids that are not cached, caching its results with
+        /// <paramref name="options"/>, which can be built once and reused for every call.
+        /// </summary>
+        /// <remarks>
+        /// Works as the overload with string keys: the factory gets the ids neither cache holds and returns a dictionary
+        /// by id. An id the factory leaves out is not cached; it gets its fail-safe value when it has one, and is
+        /// otherwise left out of the returned dictionary.
+        /// </remarks>
+        /// <exception cref="ArgumentException">Two different ids give the same key.</exception>
+        public static async ValueTask<IReadOnlyDictionary<TId, T>> GetOrCreateManyAsync<TId, T>(
+            this ICacheManager cacheManager,
+            IEnumerable<TId> ids,
+            Func<TId, string> keyFor,
+            Func<IReadOnlyList<TId>, CancellationToken, ValueTask<IReadOnlyDictionary<TId, T>>> factory,
+            CacheEntryOptions options,
+            CancellationToken cancellationToken = default)
+            where TId : notnull
+        {
+            ArgumentNullException.ThrowIfNull(cacheManager);
+            ArgumentNullException.ThrowIfNull(ids);
+            ArgumentNullException.ThrowIfNull(keyFor);
+            ArgumentNullException.ThrowIfNull(factory);
+            ArgumentNullException.ThrowIfNull(options);
+
+            var idByKey = new Dictionary<string, TId>(StringComparer.Ordinal);
+            foreach (var id in ids)
+            {
+                var key = keyFor(id);
+                ValidateKey(key);
+                if (!idByKey.TryAdd(key, id) && !EqualityComparer<TId>.Default.Equals(idByKey[key], id))
+                {
+                    throw new ArgumentException(
+                        $"The ids '{idByKey[key]}' and '{id}' both give the key '{key}', so one would get the other's value. " +
+                        "Give each id its own key.", nameof(keyFor));
+                }
+            }
+
+            var values = await GetOrCreateManyAsync<T>(cacheManager, idByKey.Keys, async (missingKeys, token) =>
+            {
+                var missingIds = new TId[missingKeys.Count];
+                for (var i = 0; i < missingIds.Length; i++) missingIds[i] = idByKey[missingKeys[i]];
+                var loaded = EnsureAnswer(await factory(missingIds, token).ConfigureAwait(false));
+                var byKey = new Dictionary<string, T>(loaded.Count, StringComparer.Ordinal);
+                for (var i = 0; i < missingIds.Length; i++)
+                    if (loaded.TryGetValue(missingIds[i], out var value)) byKey[missingKeys[i]] = value;
+                return byKey;
+            }, options, cancellationToken).ConfigureAwait(false);
+
+            var results = new Dictionary<TId, T>(values.Count);
+            foreach (var (key, value) in values) results[idByKey[key]] = value;
+            return results;
+        }
+
+        /// <summary>
         /// Runs the batch factory for keys missing from the built-in manager and publishes its values. Reports whether
         /// the factory failed and the keys got their fail-safe values instead.
         /// </summary>
@@ -246,7 +330,7 @@ namespace MethodCache
             Exception? failure = null;
             using (var origin = memory.Telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))
             {
-                try { produced = EnsureComplete(await factory(keys, cancellationToken).ConfigureAwait(false), keys); }
+                try { produced = EnsureAnswer(await factory(keys, cancellationToken).ConfigureAwait(false)); }
                 catch (Exception error)
                 {
                     origin?.Fail(error);
@@ -259,31 +343,42 @@ namespace MethodCache
             var values = new Dictionary<string, T>(keys.Count, StringComparer.Ordinal);
             if (bypass)
             {
-                foreach (var key in keys) values[key] = Candidate(produced!, key);
+                // Without caching there is no fail-safe value, so a key the factory left out is left out
+                foreach (var key in keys)
+                    if (produced!.TryGetValue(key, out var value)) values[key] = value;
                 return (values, false);
             }
 
             // Each key takes the single-key load path, so a distributed hit or a concurrent writer can still win over the
-            // batch's value, an invalidation during the batch keeps its value out of the cache, and a failed batch gives
-            // each key its fail-safe value. Not with the caller's token: publication outlives a caller that stopped waiting.
+            // batch's value, an invalidation during the batch keeps its value out of the cache, and a failed batch, or a
+            // key the batch left out, gets its fail-safe value. Not with the caller's token: publication outlives a caller
+            // that stopped waiting.
             var unserved = false;
             foreach (var key in keys)
             {
                 Func<Task<T>> load;
-                if (failure == null)
+                if (failure != null)
                 {
-                    var value = Candidate(produced!, key);
+                    load = () => Task.FromException<T>(failure);
+                }
+                else if (produced!.TryGetValue(key, out var value))
+                {
                     load = () => Task.FromResult(value);
                 }
                 else
                 {
-                    load = () => Task.FromException<T>(failure);
+                    var leftOut = new LeftOutOfBatchException(key);
+                    load = () => Task.FromException<T>(leftOut);
                 }
 
                 try
                 {
                     values[key] = await batch!.GetOrCreateAsync(cacheManager, MethodCacheKeys.VersionedKey(key, options.Version), load, CancellationToken.None)
                         .ConfigureAwait(false);
+                }
+                catch (LeftOutOfBatchException)
+                {
+                    // Left out by the batch and without a fail-safe value: not in the result
                 }
                 catch (Exception) when (failure != null)
                 {
@@ -304,7 +399,8 @@ namespace MethodCache
             if (options.Enabled == false)
             {
                 var bypass = await RunFactoryAsync(factory, keys, token).WaitAsync(token).ConfigureAwait(false);
-                foreach (var key in keys) results[key] = Candidate(bypass, key);
+                foreach (var key in keys)
+                    if (bypass.TryGetValue(key, out var value)) results[key] = value;
                 return results;
             }
             var hits = new CacheLookupResult<T>[keys.Length];
@@ -339,7 +435,9 @@ namespace MethodCache
                         entered[index] = true;
                         arrivals[index].TrySetResult();
                         // Like a single load's factory, the batch alone decides whether the caller's token stops it
-                        return Candidate(await produced.Task.ConfigureAwait(false), missing[index]);
+                        var values = await produced.Task.ConfigureAwait(false);
+                        // A key the batch left out fails its load, so the manager can give it its fail-safe value
+                        return values.TryGetValue(missing[index], out var value) ? value : throw new LeftOutOfBatchException(missing[index]);
                     }, options, token).AsTask();
                     Observe(pending[i]);
                     _ = pending[i].ContinueWith(static (_, state) => ((TaskCompletionSource)state!).TrySetResult(), arrivals[i],
@@ -362,15 +460,20 @@ namespace MethodCache
                     failure = error;
                 }
 
-                T[] published;
-                try { published = await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false); }
+                try { await Task.WhenAll(pending).WaitAsync(token).ConfigureAwait(false); }
+                catch (Exception) when (failure == null && !token.IsCancellationRequested &&
+                    pending.All(static load => load.IsCompletedSuccessfully || load.Exception?.InnerException is LeftOutOfBatchException))
+                {
+                    // Only keys the batch left out failed, and they had no fail-safe value: they are not in the result
+                }
                 catch (Exception) when (failure != null && !token.IsCancellationRequested)
                 {
                     ExceptionDispatchInfo.Throw(failure);
                     throw;
                 }
 
-                for (var i = 0; i < missing.Count; i++) results[missing[i]] = published[i];
+                for (var i = 0; i < missing.Count; i++)
+                    if (pending[i].IsCompletedSuccessfully) results[missing[i]] = pending[i].Result;
                 return results;
             }
             catch (Exception error) when (batch == null)
@@ -385,22 +488,19 @@ namespace MethodCache
         private static async Task<IReadOnlyDictionary<string, T>> RunFactoryAsync<T>(
             Func<IReadOnlyList<string>, CancellationToken, ValueTask<IReadOnlyDictionary<string, T>>> factory,
             IReadOnlyList<string> keys, CancellationToken token)
-            => EnsureComplete(await factory(keys, token).ConfigureAwait(false), keys);
+            => EnsureAnswer(await factory(keys, token).ConfigureAwait(false));
+
+        /// <summary>Rejects a <see langword="null"/> answer, which fails like a factory that throws.</summary>
+        private static IReadOnlyDictionary<TKey, T> EnsureAnswer<TKey, T>(IReadOnlyDictionary<TKey, T>? values) where TKey : notnull
+            => values ?? throw new InvalidOperationException(
+                "The bulk cache factory returned null. Return a dictionary with the keys that have a value; an empty one when none has.");
 
         /// <summary>
-        /// Rejects an answer without a value for every requested key before any of it is stored, so a wrong answer
-        /// fails like a factory that throws, never with part of the batch cached.
+        /// Fails the load of a key the bulk factory left out, so it gets its fail-safe value or stays out of the result,
+        /// and nothing is cached for it.
         /// </summary>
-        private static IReadOnlyDictionary<string, T> EnsureComplete<T>(IReadOnlyDictionary<string, T>? values, IReadOnlyList<string> keys)
-        {
-            if (values == null) throw new InvalidOperationException("Bulk cache factory returned null instead of a value for each key.");
-            foreach (var key in keys)
-            {
-                if (!values.ContainsKey(key)) throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
-            }
-
-            return values;
-        }
+        private sealed class LeftOutOfBatchException(string key)
+            : InvalidOperationException($"The bulk cache factory returned no value for key '{key}', so nothing was cached for it.");
 
         private static async Task ForwardAsync<T>(Task<T> source, TaskCompletionSource<T> target)
         {
@@ -408,9 +508,6 @@ namespace MethodCache
             catch (OperationCanceledException cancelled) { target.TrySetCanceled(cancelled.CancellationToken); }
             catch (Exception error) { target.TrySetException(error); }
         }
-
-        private static T Candidate<T>(IReadOnlyDictionary<string, T> values, string key)
-            => values.TryGetValue(key, out var value) ? value : throw new InvalidOperationException($"Bulk cache factory did not return a value for key '{key}'.");
 
         private static void Observe(Task task)
             => _ = task.ContinueWith(static completed => _ = completed.Exception, CancellationToken.None,

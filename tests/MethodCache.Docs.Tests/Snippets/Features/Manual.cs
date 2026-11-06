@@ -60,13 +60,28 @@ namespace Docs.Manual
         public static async Task Many(ICacheManager cache, IOrderRepository repository, int[] userIds)
         {
             // begin-snippet: manual-many
+            var users = await cache.GetOrCreateManyAsync<int, User>(
+                userIds,
+                id => $"user:{id}",
+                async (missingIds, ct) =>
+                {
+                    var loaded = await repository.GetUsersAsync(missingIds, ct);   // one query for all misses
+                    return loaded.ToDictionary(u => u.Id);   // an id without a user is left out
+                },
+                o => o.WithDuration(TimeSpan.FromHours(1)));
+            // end-snippet
+        }
+
+        public static async Task ManyByKey(ICacheManager cache, IOrderRepository repository, int[] userIds)
+        {
+            // begin-snippet: manual-many-keys
             var users = await cache.GetOrCreateManyAsync<User>(
                 userIds.Select(id => $"user:{id}"),
                 async (missingKeys, ct) =>
                 {
                     var ids = missingKeys.Select(k => int.Parse(k["user:".Length..])).ToList();
-                    var loaded = await repository.GetUsersAsync(ids, ct);   // one query for all misses
-                    return loaded.ToDictionary(u => $"user:{u.Id}", u => u);
+                    var loaded = await repository.GetUsersAsync(ids, ct);
+                    return loaded.ToDictionary(u => $"user:{u.Id}");
                 },
                 o => o.WithDuration(TimeSpan.FromHours(1)));
             // end-snippet

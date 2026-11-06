@@ -24,6 +24,8 @@ release.
   fix offers it, and MC0028 counts tags built with it.
 - MC0026 reads the application's own request-state types, such as an `ICurrentUser` service, from the `.editorconfig`
   option `methodcache.request_state_types`.
+- `GetOrCreateManyAsync<TId, T>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)` takes ids and how each
+  makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
 
 ### Changed
 
@@ -37,6 +39,9 @@ release.
   takes `IHttpContextAccessor`, is reported.
 - Sets and dictionaries in arguments are written sorted in keys, so two equal sets or dictionaries get one key whatever
   order they enumerate in, also on two servers. Existing entries with a set or dictionary argument are missed once.
+- `GetOrCreateManyAsync` accepts a factory answer that leaves out keys, such as ids that don't exist, instead of
+  failing the whole call. A key left out is not cached and not returned, unless it has a fail-safe value, which it
+  then gets as when the factory throws. A `null` answer still fails.
 
 ## 1.0.0-rc.9 (2026-11-05)
 
