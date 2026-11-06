@@ -79,7 +79,54 @@ public interface IDbFactory<T> { T Create(); }
             Assert.Empty(await AnalyzeAsync(Header + declaration));
         }
 
-        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
+        [Theory]
+        // An interface whose implementation in this project reads the request
+        [InlineData("public interface IReports { } public sealed class Reports(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : IReports { } public sealed class Prices(IReports reports) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }",
+            "'reports' (IReports, and Reports's constructor takes IHttpContextAccessor)")]
+        // Two constructors down: Prices takes Reports, which takes an IStats whose implementation reads the request
+        [InlineData("public interface IStats { } public sealed class Stats(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : IStats { } public sealed class Reports(IStats stats) { } public sealed class Prices(Reports reports) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }",
+            "'reports' (Reports, and Stats's constructor takes IHttpContextAccessor)")]
+        public async Task RequestStateFurtherDown_IsReported(string declaration, string taken)
+        {
+            var diagnostic = Assert.Single(await AnalyzeAsync(Header + declaration));
+
+            Assert.Equal("MC0026", diagnostic.Id);
+            Assert.Contains(taken, diagnostic.GetMessage());
+        }
+
+        [Fact]
+        public async Task RequestStateThreeConstructorsDown_IsNotReported()
+        {
+            var source = Header + "public sealed class Http(Microsoft.AspNetCore.Http.IHttpContextAccessor http) { } public sealed class Stats(Http http) { } public sealed class Reports(Stats stats) { } public sealed class Prices(Reports reports) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task TypeNamedInEditorConfig_IsRequestState()
+        {
+            var source = Header + "namespace App { public interface ICurrentUser { } public sealed class Prices(ICurrentUser user) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); } }";
+
+            var diagnostic = Assert.Single(await AnalyzeAsync(source, new Dictionary<string, string> { ["methodcache.request_state_types"] = "App.ITenant, App.ICurrentUser" }));
+
+            Assert.Contains("'user' (ICurrentUser)", diagnostic.GetMessage());
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        private sealed class EditorConfig(Dictionary<string, string> values) : AnalyzerConfigOptionsProvider
+        {
+            private readonly Options _options = new(values);
+            public override AnalyzerConfigOptions GlobalOptions => _options;
+            public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _options;
+            public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _options;
+
+            private sealed class Options(Dictionary<string, string> values) : AnalyzerConfigOptions
+            {
+                public override bool TryGetValue(string key, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? value) => values.TryGetValue(key, out value);
+            }
+        }
+
+        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source, Dictionary<string, string>? editorConfig = null)
         {
             var trusted = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);
             var references = trusted
@@ -89,8 +136,9 @@ public interface IDbFactory<T> { T Create(); }
             var compilation = CSharpCompilation.Create("TestAssembly", [CSharpSyntaxTree.ParseText(source)], references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
             Assert.Empty(compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+            var options = new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, new EditorConfig(editorConfig ?? new Dictionary<string, string>()));
             return await compilation
-                .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new RequestStateAnalyzer()))
+                .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new RequestStateAnalyzer()), options)
                 .GetAnalyzerDiagnosticsAsync();
         }
     }

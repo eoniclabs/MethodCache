@@ -272,8 +272,17 @@ a cached one ([cached objects are shared](../features/memory-cache.md#cached-obj
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
 `IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
 when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
-directly or through a factory such as `IDbContextFactory<T>`. The analyzer looks one level down, and doesn't see a
-setting that an interceptor makes on the connection.
+directly or through a factory such as `IDbContextFactory<T>`. The analyzer follows constructors two levels down (the
+class the implementation takes, and a class that class takes), and follows an interface to the classes in the same
+project that implement it. It doesn't see a setting that an interceptor makes on the connection.
+
+Name your own request-state types, such as an `ICurrentUser` service or a tenant context, in `.editorconfig`, comma
+separated, with namespace. A class that takes one, or takes a class that does, is reported too:
+
+```ini
+[*.cs]
+methodcache.request_state_types = MyApp.ICurrentUser, MyApp.TenantContext
+```
 
 The cache key is built from the method's arguments only. A result that depends on the current request or user, such
 as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
