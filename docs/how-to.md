@@ -109,10 +109,11 @@ either: it changes nothing and throws `DbUpdateConcurrencyException`. EF Core qu
 that read. ([Saves of rows the context didn't load](features/entity-framework-core.md#saves-of-rows-the-context-didnt-load))
 
 **Can I build a tag string myself, such as `$"price:{model}"`?**
-Only with `MethodCacheKeys.Part` around each value. MethodCache writes a `Guid` without hyphens (format `N`), an enum
-as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture, and escapes `:` and `\` in strings,
-so `gemma3:4b` becomes `gemma3\:4b`. A tag formatted differently matches nothing, silently. Analyzer MC0024 warns
-about hand-built tags and its code fix adds `MethodCacheKeys.Part`. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
+Yes, in `MethodCacheKeys.Tag`: `MethodCacheKeys.Tag($"price:{model}")`. It writes each value the way tags do: a `Guid`
+without hyphens (format `N`), an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant
+culture, and `:` and `\` escaped in strings, so `gemma3:4b` becomes `gemma3\:4b`. Plain interpolation formats them
+differently and matches nothing, silently. Analyzer MC0024 warns about such tags and its code fix wraps them in
+`MethodCacheKeys.Tag`. `MethodCacheKeys.Part` formats one value. ([Build diagnostics](user-guide/DIAGNOSTICS.md#mc0024))
 
 **How do I invalidate one call of a cached method?**
 `await cache.InvalidateKeyAsync(keys.For<IProductService>(s => s.GetAsync(42)))`.

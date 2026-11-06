@@ -31,7 +31,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0020](#mc0020) | Warning | A cached result type of `object`, an interface or an abstract class, which a distributed cache can't restore | |
 | [MC0021](#mc0021) | Error | An explicitly negative cache version | |
 | [MC0023](#mc0023) | Error | `RefreshAhead` not shorter than `Duration` or `SlidingExpiration` on the same attribute | |
-| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Format with `MethodCacheKeys.Part` |
+| [MC0024](#mc0024) | Warning | A value in a hand-built tag is written differently from MethodCache's tags | Wrap the tag in `MethodCacheKeys.Tag`, or format the value with `MethodCacheKeys.Part` |
 | [MC0025](#mc0025) | Warning | A cached result type that isn't safe to share between callers, such as `JsonObject`, `DataTable` or `Stream` | |
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
@@ -245,9 +245,13 @@ Build the tag from a call to the cached method instead, so the template and the 
 await cache.InvalidateTagAsync(keys.Tag<IPrices>(s => s.GetRateAsync(provider, model), "price:{provider}:{model}"));
 ```
 
-Or format each value with `MethodCacheKeys.Part`, which the code fix does:
-`$"price:{MethodCacheKeys.Part(provider)}:{MethodCacheKeys.Part(model)}"`.
-A value with a format such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
+Or wrap the interpolated string in `MethodCacheKeys.Tag`, which writes every value the way tags do:
+`MethodCacheKeys.Tag($"price:{provider}:{model}")`. A value of a type tags can't hold, or with a format, doesn't
+compile there.
+
+**Code fix:** wraps the tag in `MethodCacheKeys.Tag` when every value in it can go there, and otherwise formats the
+reported value with `MethodCacheKeys.Part`: `$"price:{MethodCacheKeys.Part(provider)}:{id}"`. A value with a format
+such as `{price:F2}` has no fix, since the tag MethodCache stores has no format.
 
 ## MC0025
 

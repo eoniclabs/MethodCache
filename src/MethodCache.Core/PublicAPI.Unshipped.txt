@@ -440,7 +440,30 @@ static MethodCache.MethodCacheKeys.Part(ulong value) -> string!
 static MethodCache.MethodCacheKeys.Part(ushort value) -> string!
 static MethodCache.MethodCacheKeys.Part<TEnum>(TEnum value) -> string!
 static MethodCache.MethodCacheKeys.StoredKey(string! key, int? version = null) -> string!
+static MethodCache.MethodCacheKeys.Tag(ref MethodCache.TagInterpolatedStringHandler tag) -> string!
 static MethodCache.RuntimeCacheConfiguratorExtensions.RemoveAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService!, object?>!>! method, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 static MethodCache.RuntimeCacheConfiguratorExtensions.UpsertAsync<TService>(this MethodCache.IRuntimeCacheConfigurator! configurator, System.Linq.Expressions.Expression<System.Func<TService!, object?>!>! method, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<MethodCache.MethodCacheBuilder!>! configureBuilder) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+MethodCache.TagInterpolatedStringHandler
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.DateTime value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.DateTimeOffset value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(System.Guid value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(bool value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(byte value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(char value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(decimal value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(double value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(float value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(int value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(long value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(sbyte value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(short value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(string? value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(uint value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(ulong value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted(ushort value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendFormatted<TEnum>(TEnum value) -> void
+MethodCache.TagInterpolatedStringHandler.AppendLiteral(string! value) -> void
+MethodCache.TagInterpolatedStringHandler.TagInterpolatedStringHandler() -> void
+MethodCache.TagInterpolatedStringHandler.TagInterpolatedStringHandler(int literalLength, int formattedCount) -> void

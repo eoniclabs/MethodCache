@@ -30,7 +30,7 @@ namespace MethodCache.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "A tag on a [Cache] method is there to be invalidated. The warning is reported when the project invalidates something, but nothing names this tag: no [CacheInvalidate] tag, EF Core mapping (Entity<T>, Tags, WhenDeleted), InvalidateTagAsync, InvalidateTagsAsync or InvalidateAfterCommit call, or call to an [InvalidatesCache] method with the tag as a constant, an interpolated string or IMethodCacheKeys.Tag. A tag in InvalidatedElsewhere on any [Cache] counts as invalidated. A [CacheInvalidate] tag on an interface of a referenced project counts too. A placeholder matches any value. Tags in configuration and other invalidations in other projects aren't seen.",
+            description: "A tag on a [Cache] method is there to be invalidated. The warning is reported when the project invalidates something, but nothing names this tag: no [CacheInvalidate] tag, EF Core mapping (Entity<T>, Tags, WhenDeleted), InvalidateTagAsync, InvalidateTagsAsync or InvalidateAfterCommit call, or call to an [InvalidatesCache] method with the tag as a constant, an interpolated string, MethodCacheKeys.Tag or IMethodCacheKeys.Tag. A tag in InvalidatedElsewhere on any [Cache] counts as invalidated. A [CacheInvalidate] tag on an interface of a referenced project counts too. A placeholder matches any value. Tags in configuration and other invalidations in other projects aren't seen.",
             helpLinkUri: HelpLink("MC0028"),
             customTags: WellKnownDiagnosticTags.CompilationEnd);
 
@@ -254,10 +254,17 @@ namespace MethodCache.Analyzers
                     var pattern = new StringBuilder();
                     foreach (var part in interpolated.Parts)
                     {
-                        if (part is IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string piece } }) pattern.Append(piece);
+                        if (LiteralText(part) is { } piece) pattern.Append(piece);
                         else pattern.Append(Any);
                     }
                     tags.Add(pattern.ToString());
+                    return;
+                case IInterpolatedStringHandlerCreationOperation handler:
+                    // MethodCacheKeys.Tag($"..."): the interpolated string goes to a handler instead of a string
+                    Collect(handler.Content, template, tags);
+                    return;
+                case IInvocationOperation { TargetMethod.Name: "Tag" } call when IsMethodCacheType(call.TargetMethod.ContainingType, "MethodCacheKeys"):
+                    foreach (var argument in call.Arguments) Collect(argument.Value, template, tags);
                     return;
                 case IInvocationOperation { TargetMethod.Name: "Tag" } call when IsKeys(call.TargetMethod.ContainingType):
                     var templateArgument = call.Arguments.FirstOrDefault(a => a.Parameter?.Name == "template")?.Value;
@@ -272,6 +279,15 @@ namespace MethodCache.Analyzers
                     return;
             }
         }
+
+        // Constant text of an interpolated string: a text part, or the AppendLiteral call of a handler
+        private static string? LiteralText(IInterpolatedStringContentOperation part) => part switch
+        {
+            IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string text } } => text,
+            IInterpolatedStringAppendOperation { Kind: OperationKind.InterpolatedStringAppendLiteral, AppendCall: IInvocationOperation literal }
+                when literal.Arguments.Length == 1 && literal.Arguments[0].Value.ConstantValue is { HasValue: true, Value: string text } => text,
+            _ => null,
+        };
 
         private static bool IsKeys(INamedTypeSymbol? type)
         {

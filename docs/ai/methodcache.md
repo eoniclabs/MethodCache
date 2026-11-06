@@ -68,7 +68,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Tags take templates with a **parameter name** only: `"product:{id}"`. `"{product.Id}"` is not a template, stays
   literal and gives warning MC0016; add an `id` parameter instead. Use the same tags on the cached method and on its `[CacheInvalidate]`.
 - Tag values are formatted like `MethodCacheKeys.Part`: `:` and `\` in strings are escaped, a `Guid` is written
-  without hyphens, an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture. Prefer
+  without hyphens, an enum as its number, `bool` as `true`/`false`, numbers and dates in the invariant culture. Build
+  a tag by hand only with `MethodCacheKeys.Tag($"price:{provider}:{model}")` or `IMethodCacheKeys.Tag`, never plain
+  interpolation (MC0024). Prefer
   ids (`int`, `Guid`) and never pass passwords or tokens as arguments of cached methods.
 - `[CacheInvalidate]` runs after the method, or its task, succeeds; never when it throws.
 - Synchronous `[Cache]` methods use the memory cache only, also with Redis, SQL Server or PostgreSQL. Make a method

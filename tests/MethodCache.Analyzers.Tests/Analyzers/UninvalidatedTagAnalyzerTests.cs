@@ -72,6 +72,8 @@ public sealed class Writes
         [InlineData("await cache.InvalidateTagsAsync(new[] { \"orders\", \"product:1\" });")]
         [InlineData("await cache.InvalidateTagsAsync([\"product:1\"]);")]
         [InlineData("await cache.InvalidateTagAsync(keys.Tag<IProductReads>(r => r.GetAsync(id), \"product:{id}\"));")]
+        [InlineData("await cache.InvalidateTagAsync(MethodCacheKeys.Tag($\"product:{id}\"));")]
+        [InlineData("await cache.InvalidateTagsAsync([MethodCacheKeys.Tag($\"product:{id}\")]);")]
         [InlineData("db.InvalidateAfterCommit(\"orders\", \"product:7\");")]
         [InlineData("ef.Entity<Product>(\"product:{Id}\");")]
         [InlineData("ef.Entity<Product>(p => p.Tags(\"products\").WhenDeleted(\"product:{Id}\"));")]

@@ -19,6 +19,9 @@ release.
   shorter time for an empty result: `mc.Method(...).DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow)`, and
   `DurationFor<T>` on `CacheEntryOptions.Builder` for manual caching. Zero or less doesn't cache the result. Custom
   managers read it with `CacheEntryOptions.DurationOf(value)`.
+- `MethodCacheKeys.Tag($"price:{provider}:{model}")` builds a tag from an interpolated string, writing each value the
+  way `[Cache]` tag templates do. A value of a type tags can't hold, or with a format, doesn't compile. MC0024's code
+  fix offers it, and MC0028 counts tags built with it.
 - MC0026 reads the application's own request-state types, such as an `ICurrentUser` service, from the `.editorconfig`
   option `methodcache.request_state_types`.
 

@@ -23,11 +23,11 @@ namespace MethodCache.Analyzers
         internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
             "A hand-built tag formats an argument differently from MethodCache",
-            "'{0}' is written into the tag as {1}, but MethodCache writes it differently in the tags it stores, so this invalidation can silently match nothing. Use IMethodCacheKeys.Tag, or format it with MethodCacheKeys.Part.",
+            "'{0}' is written into the tag as {1}, but MethodCache writes it differently in the tags it stores, so this invalidation can silently match nothing. Wrap the tag in MethodCacheKeys.Tag($\"...\"), or build it with IMethodCacheKeys.Tag.",
             "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "Tag templates such as \"user:{id}\" format arguments in a canonical way: a Guid as 32 digits without hyphens, an enum as its number, true and false in lower case, dates in ISO 8601, numbers in the invariant culture, and ':' and '\\' escaped in strings. String interpolation formats them differently, so a tag built by hand for InvalidateTagAsync doesn't match the cached entries. IMethodCacheKeys.Tag builds the tag from a call to the cached method; MethodCacheKeys.Part formats one value.",
+            description: "Tag templates such as \"user:{id}\" format arguments in a canonical way: a Guid as 32 digits without hyphens, an enum as its number, true and false in lower case, dates in ISO 8601, numbers in the invariant culture, and ':' and '\\' escaped in strings. String interpolation formats them differently, so a tag built by hand for InvalidateTagAsync doesn't match the cached entries. MethodCacheKeys.Tag($\"...\") writes every value of an interpolated tag the way MethodCache does; IMethodCacheKeys.Tag builds the tag from a call to the cached method; MethodCacheKeys.Part formats one value.",
             helpLinkUri: "https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0024");
 
         /// <inheritdoc />
