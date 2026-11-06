@@ -406,5 +406,7 @@ Then:
 5. Build, and fix every MC diagnostic.
 6. Add tests that show a cached read and its invalidation.
 
-Report which methods you cached, for how long, and how each one is invalidated.
+Report which methods you cached, for how long, and how each one is invalidated. If the MethodCache docs were
+wrong or missing, or you needed a workaround, draft feedback as ai/methodcache.md describes under Feedback and
+show it to me.
 ```
