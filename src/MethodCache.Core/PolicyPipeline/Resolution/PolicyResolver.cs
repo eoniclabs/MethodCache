@@ -53,10 +53,6 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
     /// What the cache can honor: the longest duration, and each cached method's result type for checking
     /// <c>CacheWhen&lt;T&gt;</c>; without them neither is checked.
     /// </param>
-    /// <param name="registrations">The policy sources.</param>
-    /// <param name="logger">The logger.</param>
-    /// <param name="parameterNames">The parameter names of each method whose service is registered and cached.</param>
-    /// <param name="limits">The limits a policy is checked against.</param>
     /// <param name="describedMethods">
     /// Every <c>[Cache]</c> method the generated code describes, also one whose service this container doesn't
     /// register, so startup code shared by several hosts can configure it.

@@ -41,6 +41,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var builder = new MethodCacheBuilder(services);
             configureBuilder(builder);
             var modules = GeneratedCode.Describe(builder.Assemblies, services.Select(static d => d.ServiceType));
+            MissingGeneratedCode.ThrowIfAny(services, modules);
             var catalog = new ModuleCatalog(modules, builder.Assemblies.ToArray());
             var parameters = services.FirstOrDefault(d => d.ServiceType == typeof(GeneratedParameters))?.ImplementationInstance as GeneratedParameters;
             if (parameters == null) services.AddSingleton(parameters = new GeneratedParameters());
