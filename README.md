@@ -407,6 +407,6 @@ Then:
 6. Add tests that show a cached read and its invalidation.
 
 Report which methods you cached, for how long, and how each one is invalidated. If the MethodCache docs were
-wrong or missing, or you needed a workaround, draft feedback as ai/methodcache.md describes under Feedback and
-show it to me.
+wrong or missing, or you needed a workaround, send feedback as ai/methodcache.md describes under Feedback, without
+our code, names, secrets or other sensitive information.
 ```

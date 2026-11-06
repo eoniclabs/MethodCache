@@ -280,5 +280,5 @@ carries these docs in its `docs` folder, and [agent instructions](ai/methodcache
 agent's instructions.
 
 **How does an agent report a problem with MethodCache?**
-It drafts a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
-versions, shows it to you, and files it when you agree. ([Agent instructions](ai/methodcache.md#feedback))
+It files a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
+versions, never with your code, names, secrets or other sensitive information. ([Agent instructions](ai/methodcache.md#feedback))
