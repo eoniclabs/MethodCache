@@ -47,7 +47,9 @@ public class ReadmeComparisonBenchmarks
     private static readonly Guid HitGuid = new("6f9619ff-8b86-d011-b42d-00cf4fc964ff");
     private static readonly TimeSpan Duration = TimeSpan.FromMinutes(10);
 
+#pragma warning disable MC0032 // The uncached source the other caches wrap, on purpose
     private readonly ReadmeUserService _source = new();
+#pragma warning restore MC0032
     private readonly Func<int, Task<BenchUser<int>>> _loadById;
     private readonly Func<Guid, Task<BenchUser<Guid>>> _loadByGuid;
     private IReadmeUserService _methodCache = null!;

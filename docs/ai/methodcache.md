@@ -59,8 +59,8 @@ builder.Services.AddMethodCache();                               // after your r
 
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
-- Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`,
-  or resolving the class itself, bypasses the cache. A program with cached services must call `AddMethodCache()`,
+- Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`
+  (MC0032), or resolving the class itself, bypasses the cache. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
   itself or through a setup method of a referenced project (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written

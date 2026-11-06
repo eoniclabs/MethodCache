@@ -215,6 +215,11 @@ Under the same `KeyPrefix` they share entries and invalidations, which is how on
 keys include the method's assembly and interface, but keys passed to `ICacheManager` don't, so the same manual key is
 one entry in both. ([Several applications on one store](features/distributed-cache.md#several-applications-on-one-store))
 
+**I need several instances of a cached class, one per provider. How?**
+Register each as a keyed service before `AddMethodCache`, such as `AddKeyedSingleton<IRates>("ecb", ...)`, and inject
+it with `[FromKeyedServices("ecb")]`. Each caches its own results. An instance created with `new` isn't cached
+(MC0032). ([Keyed registrations](reference/registration.md#keyed-registrations))
+
 **How do I load many ids with one query, caching each one?**
 `ICacheManager.GetOrCreateManyAsync<int, User>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)`. The
 factory gets only the ids that aren't cached and returns a dictionary by id; an id it leaves out is not cached and not

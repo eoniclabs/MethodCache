@@ -17,7 +17,8 @@
   register generated closed types ([Getting started](getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, creating it with `new`, or calling the method from inside the class (`this.GetAsync(...)`) skips it.
-  Warning [MC0031](user-guide/DIAGNOSTICS.md#mc0031) reports a call from inside the class.
+  Warning [MC0032](user-guide/DIAGNOSTICS.md#mc0032) reports a class created with `new`, and
+  [MC0031](user-guide/DIAGNOSTICS.md#mc0031) a call from inside the class.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
   makes every key different. List the keys to check ([Cache keys](features/keys.md)).
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error

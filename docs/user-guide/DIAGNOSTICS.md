@@ -39,6 +39,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
+| [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
 | [MC0033](#mc0033) | Error | `CacheWhen<T>` or `DurationFor<T>` for a type the call's result can never be | |
 
 ## MC0001
@@ -482,8 +483,36 @@ public sealed class Totals(IPrices prices) : ITotals
 }
 ```
 
-A class created with `new` has no decorator either, so its calls aren't cached; get the service from dependency
-injection instead.
+A class created with `new` has no decorator either, so its calls aren't cached; [MC0032](#mc0032) reports it.
+
+## MC0032
+
+A class that implements a cached interface is created with `new`. The cache is a decorator that dependency injection
+puts in front of the service when `AddMethodCache` runs, so an instance made with `new` has none, and its `[Cache]`
+methods run every time.
+
+```cs
+var rates = new EcbRates(http);              // MC0032: not cached
+var rate = await rates.GetAsync("SEK");
+```
+
+Get the interface from dependency injection instead. When you need several instances of one class, such as one per
+provider or tenant, register each as a keyed service before `AddMethodCache`; each caches its own results:
+
+```cs
+builder.Services.AddKeyedSingleton<IRates>("ecb", (sp, _) => new EcbRates(sp.GetRequiredService<HttpClient>()));
+builder.Services.AddKeyedSingleton<IRates>("fed", (sp, _) => new FedRates(sp.GetRequiredService<HttpClient>()));
+builder.Services.AddMethodCache();
+
+public sealed class Converter([FromKeyedServices("ecb")] IRates rates) { /* rates is cached */ }
+```
+
+Creating the instance inside a registration, as above or as `services.AddSingleton<IRates>(new EcbRates(http))`, isn't
+reported, since `AddMethodCache` wraps what the registration gives. Passing it to another constructor first, as in
+`new Converter(new EcbRates(http))`, is. For code that can't get its services from dependency injection, cache the call
+with [`ICacheManager`](../features/manual-caching.md) instead. Test projects aren't reported, since tests create
+implementations to test them without the cache. Where you want the uncached class on purpose, suppress the warning
+there with `#pragma warning disable MC0032`.
 
 ## MC0033
 

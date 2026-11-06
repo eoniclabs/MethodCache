@@ -27,6 +27,8 @@ release.
   option `methodcache.request_state_types`.
 - `GetOrCreateManyAsync<TId, T>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)` takes ids and how each
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
+- Analyzer MC0032 reports a class that implements a cached interface created with `new` outside a service
+  registration, since its calls skip the cache. The docs show keyed registrations for several instances of one class.
 - Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
   `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
