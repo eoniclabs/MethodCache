@@ -57,6 +57,13 @@ internal sealed record CachePolicy
     public Func<object?, bool>? CacheWhen { get; init; }
 
     /// <summary>
+    /// Gives each loaded result its own duration, in place of <see cref="Duration"/>; a duration of zero or less, or
+    /// one that throws, doesn't store the result. Set from code only (fluent <c>DurationFor</c>), never from
+    /// configuration files.
+    /// </summary>
+    public Func<object?, TimeSpan>? DurationFor { get; init; }
+
+    /// <summary>
     /// How long an expired value is kept and returned when reloading it fails or exceeds <see cref="FailSafeTimeout"/>.
     /// <see cref="TimeSpan.Zero"/> turns fail-safe off.
     /// </summary>

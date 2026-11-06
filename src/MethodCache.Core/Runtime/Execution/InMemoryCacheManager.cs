@@ -180,7 +180,7 @@ namespace MethodCache.Extensibility
                         catch (Exception error) { origin?.Fail(error); throw; }
                     }
                     outcome = RequestResult.Miss;
-                    if (ShouldStore(value, policy, name)) StoreLoaded(key, value, policy, flight);
+                    if (ShouldStore(value, policy, name, out var lifetime)) StoreLoaded(key, value, policy, flight, lifetime: lifetime);
                     flight.Value = value;
                     flight.Complete(value);
                     return value;
@@ -826,7 +826,7 @@ namespace MethodCache.Extensibility
                 if (_distributed != null && policy.Source?.Distributed != false && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
                 {
                     var stored = await ReadDistributedAsync<T>(key, policy, cancellationToken).ConfigureAwait(false);
-                    if (stored.Found && Remaining(stored, policy) is > 0 and var remaining && ShouldStore(stored.Value, policy, methodName))
+                    if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime) && Remaining(stored, policy, storedLifetime) is > 0 and var remaining)
                     {
                         StoreLoaded(key, stored.Value, policy, flight, duration: remaining);
                         flight.Outcome = RequestResult.Hit;
@@ -847,10 +847,10 @@ namespace MethodCache.Extensibility
                     catch (Exception error) { origin?.Fail(error); throw; }
                 }
 
-                if (ShouldStore(result, policy, methodName))
+                if (ShouldStore(result, policy, methodName, out var lifetime))
                 {
-                    StoreLoaded(key, result, policy, flight);
-                    await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt).ConfigureAwait(false);
+                    StoreLoaded(key, result, policy, flight, lifetime: lifetime);
+                    await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
                 }
 
                 flight.Complete(result);
@@ -892,9 +892,9 @@ namespace MethodCache.Extensibility
         private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, EntryPolicy policy, CancellationToken cancellationToken)
             => _distributed!.TryGetAsync<T>(key, cancellationToken, policy.Source?.Identity);
 
-        private long Remaining<T>(DistributedEntry<T> entry, EntryPolicy policy)
+        private long Remaining<T>(DistributedEntry<T> entry, EntryPolicy policy, long? lifetime)
         {
-            var receiverLimit = Math.Min(policy.Duration ?? _defaultDuration, _maxDuration);
+            var receiverLimit = Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration);
             var elapsedMilliseconds = Math.Max(0, _distributed!.Now - entry.CreatedAt);
             var elapsed = elapsedMilliseconds > MaxNanos / 1_000_000 ? MaxNanos : elapsedMilliseconds * 1_000_000;
             return Math.Min(ToNanos(entry.RemainingLifetime), receiverLimit - elapsed);
@@ -935,7 +935,7 @@ namespace MethodCache.Extensibility
                 }
 
                 var stored = await ReadDistributedAsync<T>(key, entryPolicy, cancellationToken).ConfigureAwait(false);
-                if (stored.Found && Remaining(stored, entryPolicy) is > 0 and var remaining && ShouldStore(stored.Value, entryPolicy, methodName))
+                if (stored.Found && ShouldStore(stored.Value, entryPolicy, methodName, out var storedLifetime) && Remaining(stored, entryPolicy, storedLifetime) is > 0 and var remaining)
                 {
                     entryPolicy = EntryPolicy.From(policy with { Tags = stored.Tags ?? [] });
                     StoreLoaded(key, stored.Value, entryPolicy, flight, duration: remaining);
@@ -1023,10 +1023,10 @@ namespace MethodCache.Extensibility
                     // refresh registered its flight is never overwritten or resurrected.
                     // A result CacheWhen rejects leaves the current value in place until it expires.
                     if (result == null && !_options.CacheNullValues) StoreLoaded(key, result, policy, flight, replacing: node);
-                    if (ShouldStore(result, policy, methodName))
+                    if (ShouldStore(result, policy, methodName, out var lifetime))
                     {
-                        StoreLoaded(key, result, policy, flight, replacing: node);
-                        await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt).ConfigureAwait(false);
+                        StoreLoaded(key, result, policy, flight, replacing: node, lifetime: lifetime);
+                        await WriteDistributedAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime).ConfigureAwait(false);
                     }
 
                     flight.Complete(result);
@@ -1128,33 +1128,49 @@ namespace MethodCache.Extensibility
         }
 
         /// <summary>
-        /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored. A predicate that throws
-        /// is reported and treated as "don't store", so a successful call never fails because of it.
+        /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored, and its
+        /// <c>DurationFor</c> how long (<paramref name="lifetime"/>, null without one). A predicate or duration that
+        /// throws, and a duration of zero or less, is treated as "don't store", so a successful call never fails because of it.
         /// </summary>
-        private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName)
+        private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName, out long? lifetime)
         {
+            lifetime = null;
             if (result == null && !_options.CacheNullValues) return false;
-            if (policy.CacheWhen is not { } cacheWhen)
+            if (policy.CacheWhen is { } cacheWhen)
             {
-                return true;
+                CachePredicateCheck.EnsureMatches(cacheWhen, typeof(T), methodName);
+                try
+                {
+                    if (!cacheWhen(result)) return false;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
             }
 
-            CachePredicateCheck.EnsureMatches(cacheWhen, typeof(T), methodName);
+            if (policy.DurationFor is not { } durationFor) return true;
+            CachePredicateCheck.EnsureMatches(durationFor, typeof(T), methodName);
+            TimeSpan duration;
             try
             {
-                return cacheWhen(result);
+                duration = durationFor(result);
             }
             catch (Exception)
             {
                 return false;
             }
+
+            if (duration <= TimeSpan.Zero) return false;
+            lifetime = ToNanos(duration);
+            return true;
         }
 
         /// <summary>
         /// Stores a factory result unless invalidated. Publication and the invalidation flag share a flight lock,
         /// so an invalidated load can never briefly publish a node or overwrite a newer write.
         /// </summary>
-        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, Node? replacing = null, long? duration = null)
+        private void StoreLoaded<T>(string key, T result, EntryPolicy policy, Flight flight, Node? replacing = null, long? duration = null, long? lifetime = null)
         {
             if (flight.Invalidated) return;
             if (result == null && !_options.CacheNullValues)
@@ -1171,7 +1187,7 @@ namespace MethodCache.Extensibility
                 }
                 return;
             }
-            Store(key, result, policy, duration, replacing, flight);
+            Store(key, result, policy, duration, replacing, flight, lifetime);
         }
 
         private Node? PublishLoaded(Node node, Node? replacing, Flight flight)
@@ -1182,7 +1198,9 @@ namespace MethodCache.Extensibility
             return stored;
         }
 
-        private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null, Flight? flight = null)
+        // duration: the time left of a value read from the distributed cache, which the entry never outlives.
+        // lifetime: the duration DurationFor gave this value, in place of the policy's duration.
+        private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null, Flight? flight = null, long? lifetime = null)
         {
             if (value == null && !_options.CacheNullValues)
             {
@@ -1191,26 +1209,27 @@ namespace MethodCache.Extensibility
             }
 
             var now = _engine.Now;
-            var explicitDuration = duration ?? policy.Duration;
-            var lifetime = explicitDuration ?? _defaultDuration;
-            if (_jitter > 0 && duration == null)
+            var explicitDuration = duration ?? lifetime ?? policy.Duration;
+            var entryLifetime = explicitDuration ?? _defaultDuration;
+            // A duration the value gave itself (DurationFor) is how long it is valid, so no jitter lengthens it
+            if (_jitter > 0 && duration == null && lifetime == null)
             {
-                lifetime += Random.Shared.NextInt64(_jitter);
+                entryLifetime += Random.Shared.NextInt64(_jitter);
             }
 
-            lifetime = Math.Min(lifetime, _maxDuration); // after jitter, so MaxExpiration stays a hard upper bound
+            entryLifetime = Math.Min(entryLifetime, _maxDuration); // after jitter, so MaxExpiration stays a hard upper bound
             var absoluteExpiresAt = now + _maxDuration;
             if (policy.Sliding > 0)
             {
                 // An entry nobody reads expires after one sliding window; reads extend it (see TryGetFresh), but
                 // never past its Duration. Without a Duration, only MaxExpiration bounds it.
-                var cap = explicitDuration != null ? lifetime : _maxDuration;
+                var cap = explicitDuration != null ? entryLifetime : _maxDuration;
                 absoluteExpiresAt = now + cap;
-                lifetime = Math.Min(cap, policy.Sliding);
+                entryLifetime = Math.Min(cap, policy.Sliding);
             }
 
             if (duration.HasValue) absoluteExpiresAt = Math.Min(absoluteExpiresAt, now + duration.Value);
-            var logicalExpiresAt = now + lifetime;
+            var logicalExpiresAt = now + entryLifetime;
             var node = new ValueNode<T>(key, value)
             {
                 CreatedAt = now,
@@ -1351,15 +1370,15 @@ namespace MethodCache.Extensibility
         /// read it. This never throws and is bounded by the distributed cache's operation timeout. A removal of the
         /// key during the write is seen through the flight, and the written value is removed again.
         /// </summary>
-        private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt)
+        private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt, long? lifetime)
         {
             if (_distributed == null || policy.Source?.Distributed == false || flight.Invalidated || (result == null && !_options.CacheNullValues))
             {
                 return Task.CompletedTask;
             }
 
-            var lifetime = TimeSpan.FromTicks(Math.Min(policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
-            return WriteDistributedCoreAsync(key, result, policy, methodName, flight, loadStartedAt, lifetime);
+            var written = TimeSpan.FromTicks(Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
+            return WriteDistributedCoreAsync(key, result, policy, methodName, flight, loadStartedAt, written);
         }
 
         // The invalidation predicate captures its flight. Its allocation belongs
@@ -1518,6 +1537,8 @@ namespace MethodCache.Extensibility
 
             public Func<object?, bool>? CacheWhen { get; init; }
 
+            public Func<object?, TimeSpan>? DurationFor { get; init; }
+
             /// <summary>How long an expired value is kept as a fail-safe fallback; zero when fail-safe is off.</summary>
             public long FailSafe { get; init; }
 
@@ -1550,6 +1571,7 @@ namespace MethodCache.Extensibility
                     Sliding = policy.SlidingExpiration is { } sliding && sliding > TimeSpan.Zero ? ToNanos(sliding) : 0,
                     RefreshWindow = refreshWindow,
                     CacheWhen = policy.CacheWhen,
+                    DurationFor = policy.DurationFor,
                     FailSafe = Positive(policy.FailSafe),
                     FailSafeTimeout = Positive(policy.FailSafeTimeout),
                     FailSafeRetryAfter = Positive(policy.FailSafeRetryAfter) is > 0 and var retryAfter ? retryAfter : DefaultFailSafeRetryAfter,

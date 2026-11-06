@@ -73,6 +73,15 @@ namespace MethodCache
         /// where a rejected value is skipped and the method runs; it never runs on a hit in memory.
         /// </summary>
         IFluentMethodConfiguration<TResult> CacheWhen(Func<TResult, bool> predicate);
+        /// <summary>
+        /// Gives each result its own duration in place of the method's <c>Duration</c>, such as the time left on a token:
+        /// <c>DurationFor(t =&gt; t.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))</c>, or a shorter time
+        /// for an empty result. A duration of zero or less, or a function that throws, doesn't cache the result, which is
+        /// still returned to the caller. The function runs once per load and on each value read from the distributed
+        /// cache; it never runs on a hit in memory. No jitter is added, and <c>MaxExpiration</c> still caps it. A
+        /// <c>Duration</c> set for the method in <c>appsettings.json</c> or a runtime override replaces it.
+        /// </summary>
+        IFluentMethodConfiguration<TResult> DurationFor(Func<TResult, TimeSpan> duration);
     }
 
     /// <summary>

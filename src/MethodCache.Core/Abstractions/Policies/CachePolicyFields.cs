@@ -60,5 +60,10 @@ internal enum CachePolicyFields
     /// <summary>Whether method caching is enabled.</summary>
     Enabled = 1 << 11,
     /// <summary>Whether the distributed layer is enabled.</summary>
-    Distributed = 1 << 12
+    Distributed = 1 << 12,
+    /// <summary>
+    /// The <see cref="CachePolicy.DurationFor"/> field. A layer that sets it or <see cref="Duration"/> decides the
+    /// duration, so a higher layer's <see cref="Duration"/> replaces a lower layer's <see cref="CachePolicy.DurationFor"/>.
+    /// </summary>
+    DurationFor = 1 << 13
 }

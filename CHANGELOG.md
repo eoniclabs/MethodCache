@@ -15,6 +15,10 @@ release.
   referenced project calls `AddMethodCache`. For this, MethodCache marks a project's assembly with `AssemblyMetadata`
   attributes when it has cached services or calls `AddMethodCache`.
 - Analyzer MC0031 reports a call a class makes to its own cached method, which skips the cache.
+- `DurationFor` gives each result its own duration in place of `Duration`, such as the time left on a token or a
+  shorter time for an empty result: `mc.Method(...).DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow)`, and
+  `DurationFor<T>` on `CacheEntryOptions.Builder` for manual caching. Zero or less doesn't cache the result. Custom
+  managers read it with `CacheEntryOptions.DurationOf(value)`.
 - MC0026 reads the application's own request-state types, such as an `ICurrentUser` service, from the `.editorconfig`
   option `methodcache.request_state_types`.
 

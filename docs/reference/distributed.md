@@ -28,8 +28,8 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   every keyed registration and every closed generic type, without changing their settings.
 - A value loaded before an invalidation is never stored after it, also when the write lands after a timeout and retry.
 - Each entry remembers when its load started and when it expires. Reading it applies the reading instance's
-  `CacheNullValues` and `CacheWhen`, and never keeps it longer than its own `Duration` from when it was first stored, or
-  `MaxExpiration`. A slow method doesn't use up the entry's duration.
+  `CacheNullValues` and `CacheWhen`, and never keeps it longer than its own `Duration` (or the duration its
+  `DurationFor` gives the value) from when it was first stored, or `MaxExpiration`. A slow method doesn't use up the entry's duration.
 
 ## Backplanes
 

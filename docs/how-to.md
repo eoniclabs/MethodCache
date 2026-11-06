@@ -155,6 +155,11 @@ Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off fo
 `CacheWhen`: `mc.Method((IProductService s) => s.FindAsync(Any<int>.Value)).CacheWhen(product => product is not null)`.
 ([Null values](features/memory-cache.md#null-values), [CacheWhen](features/conditional-caching.md#cachewhen))
 
+**How do I cache a token until it expires, or an empty result for a shorter time?**
+`DurationFor` gives each result its own duration: `mc.Method((ITokenClient c) => c.GetTokenAsync(Any<string>.Value))
+.DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
+the result. ([A duration from the result](features/expiration.md#a-duration-from-the-result))
+
 **How do I cache only some results?**
 `CacheWhen` decides per method from the result whether to store it. ([Conditional caching](features/conditional-caching.md))
 

@@ -646,7 +646,7 @@ namespace Microsoft.Extensions.DependencyInjection
             // whose service a host leaves out is told apart from a misspelled id
             internal HashSet<string> DescribedMethods { get; } = new(StringComparer.Ordinal);
 
-            // Each cached method's result type, which a CacheWhen<T> set for the method is checked against
+            // Each cached method's result type, which a CacheWhen<T> or DurationFor<T> set for the method is checked against
             internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);
 
             // The service key part of each registration; an implementation part before it is skipped when matching

@@ -60,6 +60,7 @@ MethodCache.CacheEntryOptions.Builder.AddTags(params string![]! tags) -> MethodC
 MethodCache.CacheEntryOptions.Builder.Build() -> MethodCache.CacheEntryOptions!
 MethodCache.CacheEntryOptions.Builder.Builder() -> void
 MethodCache.CacheEntryOptions.Builder.CacheWhen<T>(System.Func<T, bool>! predicate) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.Builder.DurationFor<T>(System.Func<T, System.TimeSpan>! duration) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.ClearTags() -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithDistributed(bool distributed) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithDuration(System.TimeSpan duration) -> MethodCache.CacheEntryOptions.Builder!
@@ -71,6 +72,7 @@ MethodCache.CacheEntryOptions.Builder.WithRefreshAhead(System.TimeSpan window) -
 MethodCache.CacheEntryOptions.Builder.WithSlidingExpiration(System.TimeSpan slidingExpiration) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.Builder.WithVersion(int version) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.CanCache<T>(T value) -> bool
+MethodCache.CacheEntryOptions.DurationOf<T>(T value) -> System.TimeSpan?
 MethodCache.CacheEntryOptions.ClearsTags.get -> bool
 MethodCache.CacheEntryOptions.Distributed.get -> bool?
 MethodCache.CacheEntryOptions.Duration.get -> System.TimeSpan?
@@ -275,6 +277,7 @@ MethodCache.ICacheManager.InvalidateTagsAsync(System.Collections.Generic.IEnumer
 MethodCache.ICacheManager.TryGetAsync<T>(string! key, int? version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<MethodCache.CacheLookupResult<T>>
 MethodCache.IFluentMethodConfiguration<TResult>
 MethodCache.IFluentMethodConfiguration<TResult>.CacheWhen(System.Func<TResult, bool>! predicate) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.IFluentMethodConfiguration<TResult>.DurationFor(System.Func<TResult, System.TimeSpan>! duration) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.Configure(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IFluentMethodConfiguration<TResult>.WithGroup(string! groupName) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.IMethodCacheKeys

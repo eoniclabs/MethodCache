@@ -226,6 +226,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 _inner.Configure(builder => builder.CacheWhen(predicate));
                 return this;
             }
+
+            public IFluentMethodConfiguration<TResult> DurationFor(Func<TResult, TimeSpan> duration)
+            {
+                ArgumentNullException.ThrowIfNull(duration);
+
+                // In the same ordered list as Configure, so a later WithDuration replaces it and it replaces an earlier one
+                _inner.Configure(builder => builder.DurationFor(duration));
+                return this;
+            }
         }
 
         private sealed class FluentGroupConfiguration : IFluentGroupConfiguration

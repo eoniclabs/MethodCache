@@ -28,6 +28,9 @@ internal sealed class CachePolicyBuilder
     private Func<object?, bool>? _cacheWhen;
     private bool _cacheWhenSet;
 
+    private Func<object?, TimeSpan>? _durationFor;
+    private bool _durationForSet;
+
     private TimeSpan? _failSafe;
     private bool _failSafeSet;
 
@@ -47,6 +50,7 @@ internal sealed class CachePolicyBuilder
         _versionSet ||
         _refreshAheadSet ||
         _cacheWhenSet ||
+        _durationForSet ||
         _failSafeSet ||
         _failSafeTimeoutSet ||
         _failSafeRetryAfterSet ||
@@ -126,6 +130,13 @@ internal sealed class CachePolicyBuilder
     {
         _cacheWhen = cacheWhen;
         _cacheWhenSet = true;
+        return this;
+    }
+
+    public CachePolicyBuilder WithDurationFor(Func<object?, TimeSpan>? durationFor)
+    {
+        _durationFor = durationFor;
+        _durationForSet = true;
         return this;
     }
 
@@ -221,6 +232,12 @@ internal sealed class CachePolicyBuilder
             _cacheWhenSet = true;
         }
 
+        if (source._durationForSet && (overwriteExisting || !_durationForSet))
+        {
+            _durationFor = source._durationFor;
+            _durationForSet = true;
+        }
+
         if (source._failSafeSet && (overwriteExisting || !_failSafeSet))
         {
             _failSafe = source._failSafe;
@@ -271,6 +288,8 @@ internal sealed class CachePolicyBuilder
             _refreshAheadSet = _refreshAheadSet,
             _cacheWhen = _cacheWhen,
             _cacheWhenSet = _cacheWhenSet,
+            _durationFor = _durationFor,
+            _durationForSet = _durationForSet,
             _failSafe = _failSafe,
             _failSafeSet = _failSafeSet,
             _failSafeTimeout = _failSafeTimeout,
@@ -354,6 +373,12 @@ internal sealed class CachePolicyBuilder
         {
             policy = policy with { CacheWhen = _cacheWhen };
             fields |= CachePolicyFields.CacheWhen;
+        }
+
+        if (_durationForSet)
+        {
+            policy = policy with { DurationFor = _durationFor };
+            fields |= CachePolicyFields.DurationFor;
         }
 
         if (_failSafeSet)

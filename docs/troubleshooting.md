@@ -23,8 +23,8 @@
 - **`StringBuilder`, `CultureInfo` or another framework type in an argument** is build error
   [MC0019](user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](features/keys.md#framework-types)).
-- **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, the result is `null` with
-  `CacheNullValues = false`, or the call threw. Exceptions are never cached.
+- **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
+  the result is `null` with `CacheNullValues = false`, or the call threw. Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
 
 ## Old data after an update

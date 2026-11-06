@@ -68,6 +68,40 @@ cut short: at startup, in a runtime override or in a manual call. For longer ent
 with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
 [Memory cache](memory-cache.md).
 
+## A duration from the result
+
+`DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token or a
+shorter time for an empty result. Set it in startup code, for one method:
+
+<!-- snippet: expiration-duration-for -->
+```cs
+builder.Services.AddMethodCache(mc =>
+{
+    // A token is kept until a minute before it expires; one that expires sooner isn't cached
+    mc.Method((ITokenClient c) => c.GetTokenAsync(Any<string>.Value))
+        .DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1));
+
+    // An empty result is kept for 30 seconds instead of ten minutes
+    mc.Method((ISearch s) => s.FindAsync(Any<string>.Value))
+        .DurationFor(result => result.Items.Count == 0 ? TimeSpan.FromSeconds(30) : TimeSpan.FromMinutes(10));
+});
+```
+<!-- endSnippet -->
+
+- A duration of zero or less doesn't cache the result, and neither does a function that throws. The caller still gets
+  the result, and the next call runs the method again.
+- It runs once per load and on each value read from the distributed cache, which keeps the value for the time the
+  result gives on every instance. It never runs on a hit in memory.
+- No jitter is added ([Spreading out expiry](#spreading-out-expiry)), and `MaxExpiration` still caps it.
+  `SlidingExpiration` and `RefreshAhead` count from the duration the result gives, so keep `RefreshAhead` shorter
+  than the shortest one.
+- `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
+  method in `appsettings.json` or a runtime override replaces `DurationFor`.
+- In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
+  for a type the method can't return.
+- With manual caching, pass it in the options: `o => o.DurationFor<AccessToken>(token => ...)`
+  ([Manual caching](manual-caching.md)).
+
 ## Sliding expiration
 
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
