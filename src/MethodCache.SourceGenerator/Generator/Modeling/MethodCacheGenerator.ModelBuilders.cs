@@ -65,7 +65,7 @@ namespace MethodCache.SourceGenerator
                 if (!Utils.IsCancellationToken(parameter.Type) &&
                     FindTypeWithoutKeyForm(parameter.Type, parameter.Name, visited) is { } found)
                 {
-                    return (DiagnosticInfo.Create(Diagnostics.FrameworkTypeWithoutKeyForm, location, methodName, found.Path,
+                    return (DiagnosticInfo.Create(found.HiddenState ? Diagnostics.HiddenStateKeyType : Diagnostics.FrameworkTypeWithoutKeyForm, location, methodName, found.Path,
                         found.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), false);
                 }
             }

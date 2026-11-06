@@ -20,6 +20,8 @@ release.
 - The cache logs one `Information` line when it starts, naming the memory cache's `MaxItems`, and the distributed
   cache's store, `KeyPrefix` and backplane, or that there is no distributed cache, so configuration that differs
   between instances shows in the log.
+- Build error MC0034 reports a key argument of a `[Cache]` method, or a value inside one, whose type has only private
+  state, which MethodCache refuses when the call runs since every value would get the same key.
 - `MethodCacheKeys.Part` and `MethodCacheKeys.Tag($"...")` take nullable values (`int?`, `Guid?`, a nullable enum and
   the other value types they take), writing the value or null the way tag templates do.
 - `AddMethodCache` fails with an `InvalidOperationException` when a registered interface has `[Cache]` methods but

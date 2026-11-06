@@ -214,7 +214,8 @@ From the assembly, interface, method and the arguments' values. A `CancellationT
 ([Cache keys](features/keys.md))
 
 **My argument is a class with private fields. What happens?**
-Arguments whose only state is private are rejected; implement `ICacheKeyProvider` on the type.
+Arguments whose only state is private are rejected, at build time with error MC0034; implement `ICacheKeyProvider` on
+the type.
 ([Types whose state is private](features/keys.md#types-whose-state-is-private))
 
 **How do I cache something without an attribute?**

@@ -80,10 +80,12 @@ namespace MethodCache.SourceGenerator
             => type.ContainingNamespace is { IsGlobalNamespace: false } ns ? ns.ToDisplayString() + "." + type.MetadataName : type.MetadataName;
 
         /// <summary>
-        /// The first framework type without a key form in a key parameter: the parameter's type, an element, a tuple
-        /// item, or a public property or field of one of your own types. Null when every value has a key form.
+        /// The first type without a key form in a key parameter: the parameter's type, an element, a tuple item, or a
+        /// public property or field of one of your own types. That is a framework type without one (MC0019), or one of
+        /// your own types whose state is all non-public (<c>HiddenState</c>, MC0034), which every value would write the
+        /// same. Null when every value has a key form.
         /// </summary>
-        private static (string Path, ITypeSymbol Type)? FindTypeWithoutKeyForm(ITypeSymbol type, string path, HashSet<ITypeSymbol> visited)
+        private static (string Path, ITypeSymbol Type, bool HiddenState)? FindTypeWithoutKeyForm(ITypeSymbol type, string path, HashSet<ITypeSymbol> visited)
         {
             switch (type)
             {
@@ -125,12 +127,19 @@ namespace MethodCache.SourceGenerator
 
             if (IsFrameworkType(named))
             {
-                return FrameworkTypesWithKeyForm.Contains(MetadataName(named.OriginalDefinition)) ? null : (path, named);
+                return FrameworkTypesWithKeyForm.Contains(MetadataName(named.OriginalDefinition)) ? null : (path, named, false);
             }
 
             if (named.TypeKind is not (TypeKind.Class or TypeKind.Struct))
             {
                 return null;
+            }
+
+            // A type written with no member but holding state would give every value one key, so the cache refuses it
+            // when the call runs; an abstract type's values are of other types, and a JSON converter writes its own form
+            if (!named.IsAbstract && !HasJsonConverter(named) && !WritesAnyMember(named) && HoldsState(named))
+            {
+                return (path, named, true);
             }
 
             // Your own types are written by their public properties and fields, so check those
@@ -159,6 +168,55 @@ namespace MethodCache.SourceGenerator
 
             return null;
         }
+
+        private static bool HasJsonConverter(INamedTypeSymbol type)
+            => type.GetAttributes().Any(a => a.AttributeClass?.Name == "JsonConverterAttribute");
+
+        /// <summary>
+        /// Whether System.Text.Json writes a member of <paramref name="type"/> with the cache's key options: a public
+        /// property with a public getter or a public field, without <c>[JsonIgnore]</c>, or a member with <c>[JsonInclude]</c>.
+        /// </summary>
+        private static bool WritesAnyMember(INamedTypeSymbol type)
+        {
+            for (var current = type; current is not null && current.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); current = current.BaseType)
+            {
+                foreach (var member in current.GetMembers())
+                {
+                    if (member.IsStatic || member.IsImplicitlyDeclared || member is not (IPropertySymbol { IsIndexer: false } or IFieldSymbol)) continue;
+                    var attributes = member.GetAttributes();
+                    if (attributes.Any(a => a.AttributeClass?.Name == "JsonIncludeAttribute")) return true;
+                    if (attributes.Any(a => a.AttributeClass?.Name == "JsonIgnoreAttribute")) continue;
+                    if (member is IPropertySymbol { GetMethod.DeclaredAccessibility: Accessibility.Public, DeclaredAccessibility: Accessibility.Public } ||
+                        member is IFieldSymbol { DeclaredAccessibility: Accessibility.Public })
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Whether <paramref name="type"/> or a base type has an instance field, an auto-property's included.</summary>
+        private static bool HoldsState(INamedTypeSymbol type)
+        {
+            for (var current = type; current is not null && current.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); current = current.BaseType)
+            {
+                foreach (var member in current.GetMembers())
+                {
+                    if (member.IsStatic) continue;
+                    if (member is IFieldSymbol) return true;
+                    if (member is IPropertySymbol { IsIndexer: false, IsAbstract: false } property && IsAutoProperty(property)) return true;
+                }
+            }
+
+            return false;
+        }
+
+        // A property declared without accessor bodies keeps its value in a field the compiler adds
+        private static bool IsAutoProperty(IPropertySymbol property)
+            => property.DeclaringSyntaxReferences.Select(r => r.GetSyntax()).OfType<Microsoft.CodeAnalysis.CSharp.Syntax.PropertyDeclarationSyntax>()
+                .Any(p => p.ExpressionBody == null && p.AccessorList?.Accessors.All(a => a.Body == null && a.ExpressionBody == null) == true);
 
         /// <summary>Where a composite's type argument is, as the path in MC0019 names it.</summary>
         private static string CompositeItemPath(INamedTypeSymbol composite, int index) => composite.Name switch

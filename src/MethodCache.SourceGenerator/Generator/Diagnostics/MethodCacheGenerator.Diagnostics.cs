@@ -168,6 +168,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0019"));
 
+            internal static readonly DiagnosticDescriptor HiddenStateKeyType = new(
+                id: "MC0034",
+                title: "Cache key argument has a type whose state isn't public",
+                messageFormat: "[Cache] on '{0}' is not supported: '{1}' is a '{2}', whose state is not public, so every value would get the same key and callers would get each other's results. Implement ICacheKeyProvider on the type, or give it public properties that identify the value.",
+                category: "Design",
+                defaultSeverity: DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0034"));
+
             internal static readonly DiagnosticDescriptor UnrestorableResultType = new(
                 id: "MC0020",
                 title: "Cached result type can't be read back from a distributed cache",

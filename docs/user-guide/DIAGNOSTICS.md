@@ -41,6 +41,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
 | [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
+| [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
 
 ## MC0001
 
@@ -537,3 +538,20 @@ A base type, an interface or the nullable form of the result type is fine: `Cach
 the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
 `GetOrCreateAsync`, `GetOrCreateManyAsync` and `SetAsync`; options built elsewhere and passed in are checked when the
 call runs.
+
+## MC0034
+
+A key argument of a `[Cache]` method, or a value inside it (a property of a record, an element, a tuple item), has a
+type of your own whose state is all private: private fields or properties, also inherited ones, and no public property
+or field. Every value of it would be written the same, so all calls would share one key and callers would get each
+other's results. MethodCache refuses it with an `InvalidOperationException` when the call runs; this error finds it
+while building. The message names the value, such as `'query.Owner' is a 'UserId'`.
+
+```cs
+public readonly struct UserId(int value) { private readonly int _value = value; }
+public interface IUsers { [Cache] Task<User> GetAsync(UserId id); }   // MC0034
+```
+
+Implement `ICacheKeyProvider` on the type, or give it public properties that identify the value
+([Types whose state is private](../features/keys.md#types-whose-state-is-private)). A type with a `[JsonConverter]`
+and an abstract type aren't reported.
