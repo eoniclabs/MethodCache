@@ -278,3 +278,7 @@ Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimePro
 Give it the prompt in the README's [Using a coding agent](../README.md#using-a-coding-agent). The `MethodCache` package
 carries these docs in its `docs` folder, and [agent instructions](ai/methodcache.md) has the rules to copy into your
 agent's instructions.
+
+**How does an agent report a problem with MethodCache?**
+It files a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
+versions, never with your code, names, secrets or other sensitive information. ([Agent instructions](ai/methodcache.md#feedback))

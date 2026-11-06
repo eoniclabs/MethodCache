@@ -1,0 +1,66 @@
+name: Feedback from a coding agent
+description: A coding agent (Copilot, Cursor, Claude Code, Codex...) hit a problem or a gap while using MethodCache.
+title: "[Agent feedback] "
+labels: ["agent-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public. Never include the project's code, names of its types, services, tables or
+        customers, data, connection strings, secrets or anything else sensitive. Write a minimal example instead.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Bug (MethodCache did something wrong)
+        - Docs were wrong, missing or hard to find
+        - Error or diagnostic did not say what to do
+        - Needed a workaround or hand-written code
+        - Idea
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you were trying to do
+      placeholder: Cache a repository method whose result depends on the current tenant.
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The exact error or MC diagnostic text, or what you had to work around.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, or what would have helped
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Minimal example
+      description: The smallest interface, registration or configuration that shows it. No code from the user's project.
+      render: csharp
+  - type: textarea
+    id: docs
+    attributes:
+      label: Docs you read
+      description: The pages you used, for example ai/methodcache.md, how-to.md or features/invalidation.md.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: MethodCache packages and versions, and the .NET SDK (dotnet --version).
+      placeholder: MethodCache 1.0.0, MethodCache.Redis 1.0.0, SDK 10.0.100
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent
+      placeholder: Claude Code, GitHub Copilot, Cursor, Codex...
