@@ -35,7 +35,8 @@ builder.Services.AddMethodCache(config =>
   can't return, such as `CacheWhen<string>` on a method that returns `int`, fails where it is set instead of silently
   caching nothing: in code with an `InvalidOperationException` at startup, and in a runtime override with an
   `ArgumentException` that leaves the policy as it was. A generic method's result type depends on the call, so there
-  the call throws the `InvalidOperationException`.
+  the call throws the `InvalidOperationException`. In `Method(...).Configure(...)`, `GetOrCreateAsync` and
+  `GetOrCreateManyAsync`, build error [MC0033](../user-guide/DIAGNOSTICS.md#mc0033) finds it first.
 - It is set for one method in code only, so it can't come from `appsettings.json`. In `Defaults` or a group it fails
   at startup. `.CacheWhen(...)` and `.Configure(o => o.CacheWhen<T>(...))` set the same thing: the last call wins.
   `Any<T>.Value` stands for any argument.

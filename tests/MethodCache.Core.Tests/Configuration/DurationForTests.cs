@@ -101,7 +101,7 @@ public class DurationForTests
 
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
 
-        Assert.Contains("DurationFor<String> can't check the Int32 result", error.Message, StringComparison.Ordinal);
+        Assert.Contains("DurationFor<string> can't check the int result", error.Message, StringComparison.Ordinal);
         Assert.Contains(CountId, error.Message, StringComparison.Ordinal);
     }
 

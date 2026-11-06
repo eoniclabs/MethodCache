@@ -39,6 +39,7 @@ generator and the analyzer run, each problem is reported once.
 | [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>` or `DurationFor<T>` for a type the call's result can never be | |
 
 ## MC0001
 
@@ -483,3 +484,26 @@ public sealed class Totals(IPrices prices) : ITotals
 
 A class created with `new` has no decorator either, so its calls aren't cached; get the service from dependency
 injection instead.
+
+## MC0033
+
+`CacheWhen<T>` or `DurationFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can never be, such
+as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
+application starts or the call runs; this error finds it while building.
+
+```cs
+mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s => s.Length > 0));   // MC0033
+await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
+```
+
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)` and `Method(...).DurationFor(...)`,
+which take the result type from the method:
+
+```cs
+mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
+```
+
+A base type, an interface or the nullable form of the result type is fine: `CacheWhen<object>`,
+`CacheWhen<IReadOnlyList<Product>>` for a `List<Product>`, or `CacheWhen<int?>` for an `int`. A numeric type
+the result converts to isn't, since a boxed `int` is not a `long`. Reported in `Method(...).Configure(...)`,
+`GetOrCreateAsync` and `GetOrCreateManyAsync`; options built elsewhere and passed in are checked when the call runs.

@@ -38,7 +38,27 @@ internal static class CachePredicateCheck
         var expected = typed.ResultType;
         if (expected.IsAssignableFrom(resultType) || resultType.IsAssignableFrom(expected)) return;
         throw new InvalidOperationException(
-            $"{typed.Setting}<{expected.Name}> can't check the {resultType.Name} result of {methodName}, so nothing would be cached. " +
+            $"{typed.Setting}<{Readable(expected)}> can't check the {Readable(resultType)} result of {methodName}, so nothing would be cached. " +
             $"Use the result type of the call, or set it for the method with Method(...).{typed.Setting}(...).");
+    }
+
+    private static readonly Dictionary<Type, string> Keywords = new()
+    {
+        [typeof(bool)] = "bool", [typeof(byte)] = "byte", [typeof(sbyte)] = "sbyte", [typeof(short)] = "short",
+        [typeof(ushort)] = "ushort", [typeof(int)] = "int", [typeof(uint)] = "uint", [typeof(long)] = "long",
+        [typeof(ulong)] = "ulong", [typeof(float)] = "float", [typeof(double)] = "double", [typeof(decimal)] = "decimal",
+        [typeof(char)] = "char", [typeof(string)] = "string", [typeof(object)] = "object",
+    };
+
+    /// <summary>A type as C# writes it, such as <c>int?</c> or <c>List&lt;string&gt;</c>, not <c>Nullable`1</c>.</summary>
+    internal static string Readable(Type type)
+    {
+        if (Keywords.TryGetValue(type, out var keyword)) return keyword;
+        if (Nullable.GetUnderlyingType(type) is { } underlying) return Readable(underlying) + "?";
+        if (type.IsArray) return Readable(type.GetElementType()!) + "[" + new string(',', type.GetArrayRank() - 1) + "]";
+        if (!type.IsGenericType) return type.Name;
+        var name = type.Name;
+        var tick = name.IndexOf('`', StringComparison.Ordinal);
+        return (tick < 0 ? name : name[..tick]) + "<" + string.Join(", ", type.GetGenericArguments().Select(Readable)) + ">";
     }
 }

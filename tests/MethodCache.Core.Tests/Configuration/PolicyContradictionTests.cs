@@ -194,7 +194,7 @@ public class PolicyContradictionTests
         await cached.CountAsync(1);
         await cached.CountAsync(1);
 
-        Assert.Contains("CacheWhen<String> can't check the Int32 result", typed.Message, StringComparison.Ordinal);
+        Assert.Contains("CacheWhen<string> can't check the int result", typed.Message, StringComparison.Ordinal);
         Assert.Contains(CountId, byId.Message, StringComparison.Ordinal);
         Assert.Empty(runtime.GetOverrides());
         Assert.Equal(1, service.Calls);
@@ -223,7 +223,7 @@ public class PolicyContradictionTests
 
         var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
 
-        Assert.Contains("CacheWhen<String> can't check the Int32 result", error.Message, StringComparison.Ordinal);
+        Assert.Contains("CacheWhen<string> can't check the int result", error.Message, StringComparison.Ordinal);
         Assert.Contains(CountId, error.Message, StringComparison.Ordinal);
     }
 

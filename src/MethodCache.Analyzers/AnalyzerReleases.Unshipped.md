@@ -12,3 +12,4 @@ MC0028 | Reliability | Warning | Reports a tag on a cached method that no invali
 MC0029 | Usage | Warning | Reports a tag in InvalidatedElsewhere on [Cache] that matches none of the method's Tags.
 MC0030 | Usage | Warning | Reports a program (not a test project) with cached services, its own or a referenced project's, when its code calls neither AddMethodCache nor a method of a referenced project that calls it.
 MC0031 | Usage | Warning | Reports a call a class makes to its own cached method, which skips the cache.
+MC0033 | Usage | Error | Reports CacheWhen<T> or DurationFor<T> set in Method(...).Configure(...), GetOrCreateAsync or GetOrCreateManyAsync for a T that the call's result type can never be.

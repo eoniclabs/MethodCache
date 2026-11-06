@@ -27,6 +27,8 @@ release.
   option `methodcache.request_state_types`.
 - `GetOrCreateManyAsync<TId, T>(ids, id => $"user:{id}", (missingIds, ct) => ..., options)` takes ids and how each
   makes its key; the factory gets the missing ids and returns a dictionary by id, and so does the call.
+- Analyzer MC0033 is a build error for `CacheWhen<T>` or `DurationFor<T>` in `Method(...).Configure(...)`,
+  `GetOrCreateAsync` or `GetOrCreateManyAsync` for a `T` the call's result can never be.
 - The memory cache logs one warning the first time it is full and removes an entry to make room, naming the limit
   (`MaxItems`, or `WeightLimit` with a weigher) to raise when entries are removed before they expire.
 
@@ -42,6 +44,9 @@ release.
   takes `IHttpContextAccessor`, is reported.
 - Sets and dictionaries in arguments are written sorted in keys, so two equal sets or dictionaries get one key whatever
   order they enumerate in, also on two servers. Existing entries with a set or dictionary argument are missed once.
+- The error for a `CacheWhen<T>` or `DurationFor<T>` of another result type names the types as C# writes them,
+  `CacheWhen<long?> can't check the int result`, instead of ``Nullable`1`` and `Int32`. `NoOpCacheManager` makes the same
+  check, so a test with it finds the mistake too.
 - `GetOrCreateManyAsync` accepts a factory answer that leaves out keys, such as ids that don't exist, instead of
   failing the whole call. A key left out is not cached and not returned, unless it has a fail-safe value, which it
   then gets as when the factory throws. A `null` answer still fails.
