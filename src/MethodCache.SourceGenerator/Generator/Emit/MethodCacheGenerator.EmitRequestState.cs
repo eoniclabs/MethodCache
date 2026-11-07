@@ -26,8 +26,10 @@ namespace MethodCache.SourceGenerator
         {
             var values = context.SyntaxProvider
                 .CreateSyntaxProvider(
-                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
-                    transform: static (ctx, ct) => RequestStateClassOf(ctx.SemanticModel, (ClassDeclarationSyntax)ctx.Node, ct))
+                    // Classes and record classes; a struct is copied, so it isn't the shared service MC0026 is about
+                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null }
+                        or RecordDeclarationSyntax { BaseList: not null, ClassOrStructKeyword.RawKind: not (int)SyntaxKind.StructKeyword },
+                    transform: static (ctx, ct) => RequestStateClassOf(ctx.SemanticModel, (TypeDeclarationSyntax)ctx.Node, ct))
                 .Where(static candidate => candidate != null)
                 .Combine(context.AnalyzerConfigOptionsProvider)
                 .Select(static (input, _) => RequestStateValues(input.Left!, input.Right))
@@ -50,7 +52,7 @@ namespace MethodCache.SourceGenerator
         // The classes of a project that implement each interface, found once per compilation when a class takes an interface
         private static readonly ConditionalWeakTable<Compilation, ILookup<ISymbol, INamedTypeSymbol>> ImplementationsByCompilation = new();
 
-        private static RequestStateClass? RequestStateClassOf(SemanticModel model, ClassDeclarationSyntax declaration, CancellationToken cancellationToken)
+        private static RequestStateClass? RequestStateClassOf(SemanticModel model, TypeDeclarationSyntax declaration, CancellationToken cancellationToken)
         {
             if (model.GetDeclaredSymbol(declaration, cancellationToken) is not INamedTypeSymbol { TypeKind: TypeKind.Class, IsAbstract: false } type) return null;
             var interfaces = type.AllInterfaces

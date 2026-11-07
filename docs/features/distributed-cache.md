@@ -247,7 +247,8 @@ Entries written in the other format read as misses and are replaced, so switchin
 > [!WARNING]
 > Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
 > stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
-> it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+> it expires. Runtime override records are stored the same way, and an evicted one no longer reaches instances that
+> start. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
 > as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.

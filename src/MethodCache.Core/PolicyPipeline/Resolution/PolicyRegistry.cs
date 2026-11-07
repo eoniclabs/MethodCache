@@ -12,6 +12,8 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     private readonly ConcurrentDictionary<string, PolicyHandle> _handles = new(StringComparer.Ordinal);
     private int _disposed;
     private readonly Func<string, Task>? _invalidate;
+    // Drops the method's entries on this instance only
+    private readonly Action<string>? _invalidateHere;
     private readonly ConcurrentDictionary<string, Task> _invalidations = new(StringComparer.Ordinal);
     internal Task Invalidation(string methodId) => _invalidations.GetValueOrDefault(methodId) ?? Task.CompletedTask;
     internal void ForgetInvalidation(string methodId, Task completed)
@@ -23,6 +25,7 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     private readonly Func<SharedRuntimeOverrides?>? _shared;
     private readonly object _sharedSync = new();
     private volatile bool _sharedStarted;
+    private SharedRuntimeOverrides? _startedShared;
 
     /// <summary>
     /// Whether runtime overrides apply on every instance, so entries cached under one are shared like any other.
@@ -30,11 +33,13 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     /// </summary>
     internal bool SharesOverrides { get; private set; }
 
-    public PolicyRegistry(PolicyResolver resolver, Func<string, Task>? invalidate = null, Func<SharedRuntimeOverrides?>? shared = null)
+    public PolicyRegistry(PolicyResolver resolver, Func<string, Task>? invalidate = null, Func<SharedRuntimeOverrides?>? shared = null,
+        Action<string>? invalidateHere = null)
     {
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         _invalidate = invalidate;
         _shared = shared;
+        _invalidateHere = invalidateHere;
 
         // Subscribed before any handle exists, so no change can slip between creating a handle and watching it
         _resolver.Changed += OnPolicyChanged;
@@ -62,7 +67,13 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     /// Reads the overrides every instance applies from the distributed cache and waits for them, so an instance that
     /// starts with a generic host serves its first call with them. Called when the host starts.
     /// </summary>
-    internal void StartSharedOverrides() => EnsureSharedOverrides(wait: true);
+    internal void StartSharedOverrides()
+    {
+        EnsureSharedOverrides(wait: true);
+        // A cached service resolved before the host started, such as a hosted service's dependency, started reading
+        // them without waiting
+        Volatile.Read(ref _startedShared)?.WaitForStart();
+    }
 
     /// <summary>
     /// Starts reading the overrides every instance applies when the first policy is read. Without a host, a first call
@@ -82,6 +93,7 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
                     .ToHashSet(StringComparer.Ordinal);
                 SharesOverrides = true;
                 shared.Start(cached, _resolver, wait);
+                Volatile.Write(ref _startedShared, shared);
             }
 
             _sharedStarted = true;
@@ -144,8 +156,17 @@ internal sealed class PolicyRegistry : IPolicyRegistry, IDisposable
     {
         if (_handles.TryGetValue(result.MethodId, out var handle))
         {
+            var scope = OverrideChangeScope.For(result.MethodId);
+            if (scope is { InvalidatedElsewhere: true })
+            {
+                // The instance that changed the override invalidated the method everywhere before it told this one
+                if (handle.Update(result, awaitInvalidation: false, SharesOverrides)) _invalidateHere?.Invoke(result.MethodId);
+                return;
+            }
+
             if (handle.Update(result, awaitInvalidation: _invalidate != null, SharesOverrides) && _invalidate != null)
             {
+                scope?.MarkSpread();
                 var pending = CompleteInvalidationAsync(result.MethodId, handle.Current.Generation!);
                 _invalidations[result.MethodId] = pending;
                 _ = pending.ContinueWith(static task => _ = task.Exception, CancellationToken.None,

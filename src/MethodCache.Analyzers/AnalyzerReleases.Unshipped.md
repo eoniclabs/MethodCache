@@ -15,4 +15,4 @@ MC0031 | Usage | Warning | Reports a call a class makes to its own cached method
 MC0032 | Usage | Warning | Reports a class that implements a cached interface created with new outside a service registration and outside test projects, since its calls skip the cache.
 MC0033 | Usage | Error | Reports CacheWhen<T>, DurationFor<T>, SlidingFor<T> or TagsFor<T> set in Method(...).Configure(...), GetOrCreateAsync, GetOrCreateManyAsync or SetAsync for a T that the call's result type can never be.
 MC0035 | Reliability | Warning | Reports a cancellation token from outside the factory of GetOrCreateAsync or GetOrCreateManyAsync (a parameter, local, field or a property of one) that the factory uses and the call doesn't pass as its cancellationToken.
-MC0036 | Usage | Warning | Reports a name in the .editorconfig option methodcache.request_state_types that matches no type, in a project that sees the name's namespace.
+MC0036 | Usage | Warning | Reports a name in the .editorconfig option methodcache.request_state_types that matches no type, in a project that sees types in the name's namespace.

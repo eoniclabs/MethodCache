@@ -10,7 +10,8 @@ namespace MethodCache
     /// The check runs when the cached method loads a value, not on a hit: a caller that passes another tenant's id gets
     /// that tenant's cached result without the check. Take the value from the request, or authorize it, before the call,
     /// as for every cached method that takes a tenant or user id. Refresh-ahead loads run without a request, so the
-    /// check fails in them and the entry is loaded again on the next call instead.
+    /// check fails in them and the entry is loaded again on the next call instead. The analyzer reads the attribute on
+    /// the method that is called: when the check is called through an interface, mark the interface method.
     /// </remarks>
     /// <example>
     /// <code>

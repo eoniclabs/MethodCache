@@ -23,11 +23,19 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   `appsettings.json` and runtime overrides.
 - With a backplane, a runtime override (`IRuntimeCacheConfigurator`) applies on every instance. It is stored in the
   distributed cache, one record per method, before `UpsertAsync` returns, and expires with its `ExpiresAt`. Applying
-  it invalidates the method, as any change of settings does, and an instance that hears of the invalidation reads the
-  method's record again. An instance that starts reads the records of all its cached methods: a generic host waits for
-  them in `StartAsync`, at most `OperationTimeout` per eight methods, and without a host the first cached call starts
-  reading them without waiting. An instance that may have missed messages (when its backplane clears its memory cache)
-  reads them all again.
+  it invalidates the method on every instance, as any change of settings does; a change that invalidates nothing,
+  such as one to `Owner`, `Reason` or `ExpiresAt` only, still sends the method's message. An instance that hears of the
+  method reads its record again and drops only its own entries of the method. An instance that starts reads the
+  records of all its cached methods: a generic host waits for them in `StartAsync`, at most `OperationTimeout` per
+  eight methods, also when a cached service was resolved before the host started, and without a host the first cached
+  call starts reading them without waiting. An instance that may have missed messages (when its backplane clears its
+  memory cache) reads them all again. `ClearAsync` removes the records of every cached method, also ones the instance
+  hasn't read yet.
+- Override records are kept in the distributed cache with the entries, and like the invalidation stamps they must
+  not be evicted. With an LRU or LFU `maxmemory-policy`, Redis evicts the records, which are rarely read, among the
+  first: running instances keep the override until they read the records again, and an instance that starts goes
+  without it. Use `noeviction`, as for the stamps
+  ([Keep invalidations from being evicted](../features/distributed-cache.md#keep-invalidations-from-being-evicted)).
 - An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
   (`ArgumentException`). A record an instance can't apply, because it contradicts that instance's own settings or was
   written by a later format, is skipped with a warning. When the distributed cache doesn't answer, `UpsertAsync` and

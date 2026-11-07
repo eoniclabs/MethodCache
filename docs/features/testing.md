@@ -118,13 +118,13 @@ MethodCache, over the same database. With EF Core's in-memory provider, give bot
 ## Every cached service resolves
 
 A service registered after `AddMethodCache`, or one with a dependency the container lacks, fails when the application
-starts or on its first call. `CachedServices.Problems` finds it in a test: it resolves each registered service with
+starts or on its first call. `CachedServices.ProblemsAsync` finds it in a test: it resolves each registered service with
 cached methods, in a scope of its own, and checks that it is the generated caching decorator:
 
 <!-- snippet: testing-cached-services -->
 ```cs
 // Every service with cached methods resolves, and to its generated caching decorator
-Assert.Empty(CachedServices.Problems(provider));
+Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 <!-- endSnippet -->
 

@@ -192,21 +192,43 @@ namespace MethodCache.Internal
             => type != null && type.Name == name && type.ContainingNamespace is { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true };
 
         /// <summary>
-        /// Whether an invocation may pass a tag, told from its syntax alone: an argument is a string literal or an
-        /// interpolated string, or an array, collection or <c>Tag(...)</c> call that holds one.
+        /// Whether an invocation may pass a tag, told from its syntax alone: an argument is a string literal, an
+        /// interpolated string or a name that may be a constant, or an array, collection or <c>Tag(...)</c> call that
+        /// holds one. Any name may be a constant in a call to a MethodCache method that takes tags; in other calls, which
+        /// may be the application's own [InvalidatesCache] helpers, only a name written as constants are, such as
+        /// <c>Products</c> or <c>CacheTags.Products</c>, so the generator doesn't read every call of the project.
         /// </summary>
         public static bool IsCandidate(SyntaxNode node)
-            => node is InvocationExpressionSyntax invocation && invocation.ArgumentList.Arguments.Any(argument => MayHoldTag(argument.Expression));
+        {
+            if (node is not InvocationExpressionSyntax invocation) return false;
+            var anyName = TakesTags(invocation);
+            return invocation.ArgumentList.Arguments.Any(argument => MayHoldTag(argument.Expression, anyName));
+        }
 
-        private static bool MayHoldTag(ExpressionSyntax expression) => expression switch
+        // The MethodCache methods that take tags: invalidations, the EF Core mapping and keys.Tag(call, template)
+        private static bool TakesTags(InvocationExpressionSyntax invocation)
+            => (invocation.Expression switch
+            {
+                MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+                SimpleNameSyntax name => name.Identifier.ValueText,
+                _ => null,
+            }) is "InvalidateTagAsync" or "InvalidateTagsAsync" or "InvalidateAfterCommit" or "Entity" or "Tags" or "WhenDeleted" or "Tag";
+
+        private static bool MayHoldTag(ExpressionSyntax expression, bool anyName) => expression switch
         {
             LiteralExpressionSyntax literal => literal.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression),
             InterpolatedStringExpressionSyntax => true,
-            CollectionExpressionSyntax collection => collection.Elements.OfType<ExpressionElementSyntax>().Any(e => MayHoldTag(e.Expression)),
-            ArrayCreationExpressionSyntax { Initializer: { } initializer } => initializer.Expressions.Any(MayHoldTag),
-            ImplicitArrayCreationExpressionSyntax array => array.Initializer.Expressions.Any(MayHoldTag),
-            InvocationExpressionSyntax call => call.ArgumentList.Arguments.Any(a => MayHoldTag(a.Expression)),
+            IdentifierNameSyntax name => anyName || IsConstantStyle(name),
+            MemberAccessExpressionSyntax { Expression: var owner, Name: IdentifierNameSyntax name } => anyName || IsConstantStyle(name) && owner is IdentifierNameSyntax or MemberAccessExpressionSyntax or AliasQualifiedNameSyntax,
+            CollectionExpressionSyntax collection => collection.Elements.OfType<ExpressionElementSyntax>().Any(e => MayHoldTag(e.Expression, anyName)),
+            ArrayCreationExpressionSyntax { Initializer: { } initializer } => initializer.Expressions.Any(e => MayHoldTag(e, anyName)),
+            ImplicitArrayCreationExpressionSyntax array => array.Initializer.Expressions.Any(e => MayHoldTag(e, anyName)),
+            InvocationExpressionSyntax call => call.ArgumentList.Arguments.Any(a => MayHoldTag(a.Expression, anyName || TakesTags(call))),
             _ => false,
         };
+
+        // A constant is named in PascalCase; parameters and locals, which most arguments are, in camelCase
+        private static bool IsConstantStyle(IdentifierNameSyntax name)
+            => name.Identifier.ValueText is { Length: > 0 } text && char.IsUpper(text[0]);
     }
 }

@@ -11,7 +11,7 @@ namespace MethodCache.Testing;
 /// </summary>
 /// <example>
 /// <code>
-/// Assert.Empty(CachedServices.Problems(provider));
+/// Assert.Empty(await CachedServices.ProblemsAsync(provider));
 /// </code>
 /// </example>
 public static class CachedServices
@@ -23,7 +23,9 @@ public static class CachedServices
     /// calls aren't cached. An empty list means every one of them resolves to its decorator.
     /// </summary>
     /// <remarks>
-    /// Each service is resolved in a scope of its own, which is disposed afterwards. A service registered with an open
+    /// Each service is resolved in a scope of its own, which is disposed asynchronously afterwards, so a service or
+    /// dependency that only implements <see cref="IAsyncDisposable"/> is disposed as the application disposes it. A
+    /// service registered with an open
     /// generic type, such as <c>typeof(IRepository&lt;&gt;)</c>, can't be resolved without its type arguments and is
     /// skipped. When a service is registered after <c>AddMethodCache</c>, only those registrations are reported,
     /// since resolving any cached service fails until they are fixed.
@@ -31,7 +33,7 @@ public static class CachedServices
     /// <param name="provider">The application's service provider, built as in the application.</param>
     /// <returns>Each problem, with the service it is about.</returns>
     /// <exception cref="InvalidOperationException"><c>AddMethodCache</c> wasn't called on the provider's services.</exception>
-    public static IReadOnlyList<CachedServiceProblem> Problems(IServiceProvider provider)
+    public static async Task<IReadOnlyList<CachedServiceProblem>> ProblemsAsync(IServiceProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
         var validation = provider.GetService<Registration.RegistrationValidation>()
@@ -50,26 +52,29 @@ public static class CachedServices
             .Distinct();
         foreach (var (serviceType, serviceKey) in services)
         {
-            using var scope = provider.CreateScope();
-            object?[] instances;
-            try
+            var scope = provider.CreateAsyncScope();
+            await using (scope.ConfigureAwait(false))
             {
-                instances = (serviceKey == null
-                    ? scope.ServiceProvider.GetServices(serviceType)
-                    : scope.ServiceProvider.GetKeyedServices(serviceType, serviceKey)).ToArray();
-            }
-            catch (Exception error)
-            {
-                problems.Add(new CachedServiceProblem(serviceType, serviceKey, $"Resolving it throws {error.GetType().Name}: {error.Message}"));
-                continue;
-            }
+                object?[] instances;
+                try
+                {
+                    instances = (serviceKey == null
+                        ? scope.ServiceProvider.GetServices(serviceType)
+                        : scope.ServiceProvider.GetKeyedServices(serviceType, serviceKey)).ToArray();
+                }
+                catch (Exception error)
+                {
+                    problems.Add(new CachedServiceProblem(serviceType, serviceKey, $"Resolving it throws {error.GetType().Name}: {error.Message}"));
+                    continue;
+                }
 
-            foreach (var instance in instances)
-            {
-                if (instance == null || IsDecorator(instance.GetType())) continue;
-                problems.Add(new CachedServiceProblem(serviceType, serviceKey,
-                    $"It resolves to {instance.GetType()}, not its generated caching decorator, so its calls aren't cached. Register it with " +
-                    "AddSingleton, AddScoped or AddTransient before AddMethodCache, in the project where MethodCache's generator runs."));
+                foreach (var instance in instances)
+                {
+                    if (instance == null || IsDecorator(instance.GetType())) continue;
+                    problems.Add(new CachedServiceProblem(serviceType, serviceKey,
+                        $"It resolves to {instance.GetType()}, not its generated caching decorator, so its calls aren't cached. Register it with " +
+                        "AddSingleton, AddScoped or AddTransient before AddMethodCache, in the project where MethodCache's generator runs."));
+                }
             }
         }
 
@@ -80,7 +85,7 @@ public static class CachedServices
         => type.GetCustomAttribute<GeneratedCodeAttribute>() is { Tool: "MethodCacheGenerator" };
 }
 
-/// <summary>A problem with a service that has cached methods, as <see cref="CachedServices.Problems"/> reports it.</summary>
+/// <summary>A problem with a service that has cached methods, as <see cref="CachedServices.ProblemsAsync"/> reports it.</summary>
 /// <param name="Service">The service type, such as the interface with <c>[Cache]</c> methods.</param>
 /// <param name="ServiceKey">The key of a keyed registration, or <c>null</c>.</param>
 /// <param name="Problem">What is wrong, and how to fix it.</param>

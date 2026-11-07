@@ -54,7 +54,7 @@ release.
   ([Hit ratio per method](docs/features/monitoring.md#hit-ratio-per-method)).
 - `MethodCacheWeigher.Bytes`, a ready-made weigher that counts approximate bytes of strings and arrays of numbers:
   `o.Weigher = MethodCacheWeigher.Bytes`.
-- `CachedServices.Problems(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
+- `CachedServices.ProblemsAsync(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
   to its caching decorator, so a registration mistake fails a test
   ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
 - `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the

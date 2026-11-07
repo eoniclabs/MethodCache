@@ -35,8 +35,12 @@ public interface IRuntimeCacheConfigurator
     /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't store the change within its <c>OperationTimeout</c>; nothing changed on this instance.</exception>
     ValueTask RemoveAsync(string methodId, CancellationToken cancellationToken = default);
 
-    /// <summary>Removes every override.</summary>
+    /// <summary>
+    /// Removes every override. When every instance applies overrides, that is every override stored for the cached
+    /// methods, also one this instance hasn't read yet.
+    /// </summary>
     /// <param name="cancellationToken">Cancels waiting for the overrides' values to be invalidated.</param>
+    /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't answer within its <c>OperationTimeout</c>; the overrides removed before that stay removed.</exception>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
 
     /// <summary>The overrides active on this instance, ordered by method id; with a backplane, the ones every instance applies.</summary>

@@ -29,14 +29,33 @@ namespace Worker
         public static void Changed(string tag) { }
     }
 
+    public static class CacheTags
+    {
+        public const string Prices = ""prices"";
+        public const string Menus = ""menus"";
+        public const string Stock = ""stock"";
+    }
+
     public sealed class FoodImport(ICacheManager cache, IMethodCacheKeys keys)
     {
+        private const string Suppliers = ""suppliers"";
+        private string Name => ""not a tag either"";
+
         public async Task RunAsync(int id, CancellationToken ct)
         {
             await cache.InvalidateTagAsync(""food-catalog"", ct);
             await cache.InvalidateTagsAsync(new[] { $""food:{id}"", MethodCacheKeys.Tag($""region:{id}"") }, ct);
             Changes.Changed(""recipes"");
             Log(""not a tag"");
+
+            // Named constants, of a class of tags, of this class and local
+            const string orders = ""orders"";
+            await cache.InvalidateTagAsync(CacheTags.Prices, ct);
+            await cache.InvalidateTagAsync(Suppliers, ct);
+            await cache.InvalidateTagAsync(orders, ct);
+            await cache.InvalidateTagsAsync([CacheTags.Menus, Worker.CacheTags.Prices], ct);
+            Changes.Changed(CacheTags.Stock);
+            Log(Name);
         }
 
         private static void Log(string message) { }
@@ -49,7 +68,7 @@ namespace Worker
             var generated = Generate(Worker, References());
 
             Assert.Contains("// The tags this project invalidates", generated);
-            foreach (var tag in new[] { "imports", "import:{}", "food-catalog", "food:{}", "region:{}", "recipes" })
+            foreach (var tag in new[] { "imports", "import:{}", "food-catalog", "food:{}", "region:{}", "recipes", "prices", "suppliers", "orders", "menus", "stock" })
                 Assert.Contains($"[assembly: global::System.Reflection.AssemblyMetadata(\"MethodCache.InvalidatedTags\", \"{tag}\")]", generated);
             Assert.DoesNotContain("not a tag", generated);
         }

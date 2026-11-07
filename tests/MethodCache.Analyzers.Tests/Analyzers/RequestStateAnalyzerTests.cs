@@ -202,6 +202,8 @@ namespace Data
     internal sealed class Plans(ITenantSession session) : IPlans { public int Count() => 1; }
     public interface IClock { int Now(); }
     internal sealed class Clock(System.TimeProvider time) : IClock { public int Now() => 1; }
+    public interface IAudit { string User(); }
+    internal sealed record Audit(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : IAudit { public string User() => """"; }
 }
 ";
 
@@ -220,6 +222,8 @@ public interface IPrices
         [InlineData("public sealed class Prices(Data.IStats stats) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'stats' (IStats, and Headers's constructor takes IHttpContextAccessor)")]
         [InlineData("public sealed class Prices(Data.IHeaders headers) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'headers' (IHeaders, and Headers's constructor takes IHttpContextAccessor)")]
         [InlineData("public sealed class Prices(Data.IPlans plans) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'plans' (IPlans, and Plans's constructor takes ITenantSession)")]
+        // A record class implements the interface
+        [InlineData("public sealed class Prices(Data.IAudit audit) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "'audit' (IAudit, and Audit's constructor takes IHttpContextAccessor)")]
         public async Task InterfaceOfAReferencedProject_IsFollowedToItsImplementation(string declaration, string taken)
         {
             var data = await DataReferenceAsync(generate: true);
@@ -254,6 +258,7 @@ public interface IPrices
             Assert.Contains("\"MethodCache.RequestState\", \"Data.IHeaders|Headers||IHttpContextAccessor\"", generated);
             Assert.Contains("\"MethodCache.RequestState\", \"Data.IStats|RavenStats|Headers|IHttpContextAccessor\"", generated);
             Assert.Contains("\"MethodCache.RequestState\", \"Data.IPlans|Plans||ITenantSession\"", generated);
+            Assert.Contains("\"MethodCache.RequestState\", \"Data.IAudit|Audit||IHttpContextAccessor\"", generated);
             Assert.DoesNotContain("Data.IClock", generated);
         }
 
@@ -304,6 +309,15 @@ public interface IPrices
             var source = Header + "namespace App { public interface ICurrentUser { } public interface IRepository<T> { } public class Outer { public class Inner { } } }";
 
             Assert.Empty(await AnalyzeAsync(source, new Dictionary<string, string> { ["methodcache.request_state_types"] = configured }));
+        }
+
+        [Fact]
+        public async Task ConfiguredName_InANamespaceThatOnlyHoldsTheProjectsOwnNamespaces_IsNotReported()
+        {
+            // A library under App.Data reads the solution-wide .editorconfig that names the web project's App.ICurrentUser
+            var source = Header + "namespace App.Data { public interface IOrders { } }";
+
+            Assert.Empty(await AnalyzeAsync(source, new Dictionary<string, string> { ["methodcache.request_state_types"] = "App.ICurrentUser" }));
         }
 
         private sealed class EditorConfig(Dictionary<string, string> values) : AnalyzerConfigOptionsProvider

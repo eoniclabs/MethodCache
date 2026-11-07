@@ -15,9 +15,10 @@ namespace MethodCache.Core.Configuration.Surfaces.Runtime;
 /// <summary>
 /// Makes the runtime overrides apply on every instance when the cache has a distributed cache and a backplane. An
 /// override is stored in the distributed cache, one record per method, before it applies here. Applying it
-/// invalidates the method on every instance, as any override does, and an instance that hears of the invalidation
-/// reads the method's record again. An instance that starts reads the records of all its cached methods before it
-/// serves a policy, so overrides outlive restarts and new instances.
+/// invalidates the method on every instance, as any override does, or, when that changes nothing here, publishes a
+/// method message; an instance that hears of the method reads its record again and drops only its own entries, since
+/// the change was already invalidated everywhere. An instance that starts reads the records of all its cached methods
+/// before it serves a policy, so overrides outlive restarts and new instances.
 /// </summary>
 /// <remarks>
 /// Writing a record and applying records take one lock, but reading them doesn't, so a read the distributed cache is
@@ -47,6 +48,8 @@ internal sealed class SharedRuntimeOverrides : IDisposable
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _disposing = new();
+    // Read once, so work that runs after Dispose sees a cancelled token instead of a disposed source
+    private readonly CancellationToken _stopping;
     private readonly object _timerSync = new();
 
     // The revision of the record each method's override came from, so a record already applied isn't applied again
@@ -56,8 +59,22 @@ internal sealed class SharedRuntimeOverrides : IDisposable
     private IReadOnlySet<string> _cachedMethods = new HashSet<string>();
     private PolicyResolver? _resolver;
     private volatile bool _started;
+    private Task? _start;
     private ITimer? _retryTimer;
     private int _disposed;
+
+    // How the other instances learn of a change applied here
+    private enum Spread
+    {
+        /// <summary>Made on this instance: its invalidation tells them, or a method message when it invalidates nothing.</summary>
+        Announce,
+
+        /// <summary>Made on another instance, which invalidated the method everywhere and told them: drop only the entries here.</summary>
+        Known,
+
+        /// <summary>Read again at start or after a clear: invalidated as any change of policy.</summary>
+        Reload,
+    }
 
     public SharedRuntimeOverrides(DistributedCacheLayer layer, RuntimePolicyStore store, TimeProvider? timeProvider = null, ILogger? logger = null)
     {
@@ -65,6 +82,7 @@ internal sealed class SharedRuntimeOverrides : IDisposable
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _time = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger.Instance;
+        _stopping = _disposing.Token;
     }
 
     /// <summary>
@@ -89,8 +107,37 @@ internal sealed class SharedRuntimeOverrides : IDisposable
         _cachedMethods = cachedMethods;
         _resolver = resolver;
         _started = true;
-        if (wait) ReloadAsync(atStart: true).ConfigureAwait(false).GetAwaiter().GetResult();
-        else Observe(Task.Run(() => ReloadAsync(atStart: true)));
+        var start = Task.Run(() => ReloadAsync(Spread.Reload, atStart: true));
+        Volatile.Write(ref _start, start);
+        if (wait) WaitForStart();
+        else Observe(start);
+    }
+
+    /// <summary>
+    /// Returns once the records read at start apply, or the distributed cache failed to answer within its timeout, also
+    /// when a first call started reading them without waiting.
+    /// </summary>
+    internal void WaitForStart() => (Volatile.Read(ref _start) ?? Task.CompletedTask).ConfigureAwait(false).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// The cached methods that have a stored override, read from the distributed cache, so a clear also removes the
+    /// ones this instance hasn't read yet. Throws when the distributed cache doesn't answer.
+    /// </summary>
+    internal async Task<IReadOnlyList<string>> StoredMethodsAsync(CancellationToken cancellationToken)
+    {
+        var methods = _cachedMethods.Order(StringComparer.Ordinal).ToArray();
+        byte[]?[] records;
+        try
+        {
+            records = await ReadAllAsync(methods, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(
+                "MethodCache could not read the runtime overrides from the distributed cache, so none was removed. Try again once the distributed cache answers.", ex);
+        }
+
+        return methods.Where((_, index) => records[index] != null).ToList();
     }
 
     /// <summary>
@@ -111,7 +158,7 @@ internal sealed class SharedRuntimeOverrides : IDisposable
 
             Changed(methodId);
             _applied[methodId] = revision;
-            await _store.UpsertAsync(methodId, policy, fields, metadata, now).ConfigureAwait(false);
+            await ChangeHereAsync(methodId, Spread.Announce, () => _store.UpsertAsync(methodId, policy, fields, metadata, now)).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }
@@ -125,9 +172,29 @@ internal sealed class SharedRuntimeOverrides : IDisposable
             await StoreAsync(_layer.RemoveOverrideAsync(methodId, CancellationToken.None), methodId).ConfigureAwait(false);
             Changed(methodId);
             _applied.TryRemove(methodId, out _);
-            await _store.RemoveAsync(methodId).ConfigureAwait(false);
+            await ChangeHereAsync(methodId, Spread.Announce, () => _store.RemoveAsync(methodId)).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>
+    /// Applies a change to the override here, called holding <see cref="_gate"/>. The store raises the change on this
+    /// thread, so the registry reads <paramref name="spread"/> from the scope, and says whether its invalidation told
+    /// the others. A change made here that invalidated nothing, such as one to the audit fields only or of a method
+    /// no call has used yet, is told with a method message.
+    /// </summary>
+    private async Task ChangeHereAsync(string methodId, Spread spread, Func<Task> change)
+    {
+        Task applied;
+        bool told;
+        using (var scope = OverrideChangeScope.Begin(methodId, invalidatedElsewhere: spread == Spread.Known))
+        {
+            applied = change();
+            told = scope.Spread;
+        }
+
+        await applied.ConfigureAwait(false);
+        if (spread == Spread.Announce && !told) await _layer.PublishOverrideChangedAsync(methodId).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -153,8 +220,9 @@ internal sealed class SharedRuntimeOverrides : IDisposable
     internal void OnRemoteMethodInvalidated(string methodId)
     {
         if (!_started || !_cachedMethods.Contains(methodId) || Volatile.Read(ref _disposed) != 0) return;
-        // Off the backplane's thread, which delivers the next message only when this one returns
-        Observe(Task.Run(() => RefreshAsync(methodId)));
+        // Off the backplane's thread, which delivers the next message only when this one returns. The instance that
+        // sent it already invalidated the method everywhere.
+        Observe(Task.Run(() => RefreshAsync(methodId, Spread.Known)));
     }
 
     /// <summary>
@@ -163,7 +231,7 @@ internal sealed class SharedRuntimeOverrides : IDisposable
     internal void OnRemoteCleared()
     {
         if (!_started || Volatile.Read(ref _disposed) != 0) return;
-        Observe(Task.Run(() => ReloadAsync(atStart: false)));
+        Observe(Task.Run(() => ReloadAsync(Spread.Reload, atStart: false)));
     }
 
     private long Version(string methodId) => _versions.GetValueOrDefault(methodId);
@@ -171,7 +239,7 @@ internal sealed class SharedRuntimeOverrides : IDisposable
     // Called holding _gate
     private void Changed(string methodId) => _versions.AddOrUpdate(methodId, 1, static (_, version) => version + 1);
 
-    private async Task RefreshAsync(string methodId)
+    private async Task RefreshAsync(string methodId, Spread spread)
     {
         while (true)
         {
@@ -179,9 +247,9 @@ internal sealed class SharedRuntimeOverrides : IDisposable
             byte[]? record;
             try
             {
-                record = await _layer.ReadOverrideAsync(methodId, _disposing.Token).ConfigureAwait(false);
+                record = await _layer.ReadOverrideAsync(methodId, _stopping).ConfigureAwait(false);
             }
-            catch (Exception ex) when (!_disposing.IsCancellationRequested)
+            catch (Exception ex) when (!_stopping.IsCancellationRequested)
             {
                 _logger.LogWarning("MethodCache could not read the runtime override of '{MethodId}' from the distributed cache after another instance changed the method; it reads every override again in {Interval}. Error type: {ErrorType}.",
                     methodId, _layer.RetryInterval, ex.GetType().FullName);
@@ -189,35 +257,33 @@ internal sealed class SharedRuntimeOverrides : IDisposable
                 return;
             }
 
-            await _gate.WaitAsync(_disposing.Token).ConfigureAwait(false);
+            await _gate.WaitAsync(_stopping).ConfigureAwait(false);
             try
             {
                 // Changed here while the record was read: it may be older than what applies now
                 if (Version(methodId) != seen) continue;
-                await ApplyAsync(methodId, record).ConfigureAwait(false);
+                await ApplyAsync(methodId, record, spread).ConfigureAwait(false);
                 return;
             }
             finally { _gate.Release(); }
         }
     }
 
-    private async Task ReloadAsync(bool atStart)
+    /// <summary>
+    /// Reads every record again: at start, after a clear and after a failure. <paramref name="spread"/> is
+    /// <see cref="Spread.Announce"/> after a failure, when a write of this instance that seemed to fail may have landed.
+    /// </summary>
+    private async Task ReloadAsync(Spread spread, bool atStart)
     {
         var methods = _cachedMethods.Order(StringComparer.Ordinal).ToArray();
         if (methods.Length == 0) return;
         var seen = methods.Select(Version).ToArray();
-        var records = new byte[]?[methods.Length];
+        byte[]?[] records;
         try
         {
-            // One timeout per round of parallel reads; the first failure cancels the others
-            var rounds = (methods.Length + MaxParallelReads - 1) / MaxParallelReads;
-            using var deadline = new CancellationTokenSource(_layer.OperationTimeout * rounds, _time);
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, _disposing.Token);
-            await Parallel.ForEachAsync(Enumerable.Range(0, methods.Length),
-                new ParallelOptions { MaxDegreeOfParallelism = MaxParallelReads, CancellationToken = linked.Token },
-                async (index, token) => records[index] = await _layer.ReadOverrideAsync(methods[index], token).ConfigureAwait(false)).ConfigureAwait(false);
+            records = await ReadAllAsync(methods, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception ex) when (!_disposing.IsCancellationRequested)
+        catch (Exception ex) when (!_stopping.IsCancellationRequested)
         {
             _logger.LogWarning(atStart
                     ? "MethodCache could not read the runtime overrides from the distributed cache, so this instance starts without them and reads them again in {Interval}. Error type: {ErrorType}."
@@ -228,30 +294,45 @@ internal sealed class SharedRuntimeOverrides : IDisposable
         }
 
         List<string>? stale = null;
-        await _gate.WaitAsync(_disposing.Token).ConfigureAwait(false);
+        await _gate.WaitAsync(_stopping).ConfigureAwait(false);
         try
         {
             for (var index = 0; index < methods.Length; index++)
             {
                 if (Version(methods[index]) != seen[index]) (stale ??= []).Add(methods[index]);
-                else await ApplyAsync(methods[index], records[index]).ConfigureAwait(false);
+                else await ApplyAsync(methods[index], records[index], spread).ConfigureAwait(false);
             }
         }
         finally { _gate.Release(); }
 
         // Changed here while they were read: read them again
-        foreach (var method in stale ?? []) await RefreshAsync(method).ConfigureAwait(false);
+        foreach (var method in stale ?? []) await RefreshAsync(method, spread).ConfigureAwait(false);
+    }
+
+    /// <summary>The records of <paramref name="methods"/>, read in parallel. Throws when the distributed cache doesn't answer.</summary>
+    private async Task<byte[]?[]> ReadAllAsync(string[] methods, CancellationToken cancellationToken)
+    {
+        var records = new byte[]?[methods.Length];
+        if (methods.Length == 0) return records;
+        // One timeout per round of parallel reads; the first failure cancels the others
+        var rounds = (methods.Length + MaxParallelReads - 1) / MaxParallelReads;
+        using var deadline = new CancellationTokenSource(_layer.OperationTimeout * rounds, _time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token, _stopping, cancellationToken);
+        await Parallel.ForEachAsync(Enumerable.Range(0, methods.Length),
+            new ParallelOptions { MaxDegreeOfParallelism = MaxParallelReads, CancellationToken = linked.Token },
+            async (index, token) => records[index] = await _layer.ReadOverrideAsync(methods[index], token).ConfigureAwait(false)).ConfigureAwait(false);
+        return records;
     }
 
     // Called holding _gate
-    private async Task ApplyAsync(string methodId, byte[]? record)
+    private async Task ApplyAsync(string methodId, byte[]? record, Spread spread)
     {
         if (record == null)
         {
             var hadRecord = _applied.TryRemove(methodId, out _);
             if (!hadRecord && !_store.Contains(methodId)) return;
             Changed(methodId);
-            await _store.RemoveAsync(methodId).ConfigureAwait(false);
+            await ChangeHereAsync(methodId, spread, () => _store.RemoveAsync(methodId)).ConfigureAwait(false);
             return;
         }
 
@@ -277,7 +358,7 @@ internal sealed class SharedRuntimeOverrides : IDisposable
             return;
         }
 
-        await _store.UpsertAsync(methodId, stored.Policy, stored.Fields, stored.Metadata, stored.UpdatedAt).ConfigureAwait(false);
+        await ChangeHereAsync(methodId, spread, () => _store.UpsertAsync(methodId, stored.Policy, stored.Fields, stored.Metadata, stored.UpdatedAt)).ConfigureAwait(false);
     }
 
     private void ScheduleRetry()
@@ -294,7 +375,8 @@ internal sealed class SharedRuntimeOverrides : IDisposable
                     shared._retryTimer = null;
                 }
 
-                shared.Observe(shared.ReloadAsync(atStart: false));
+                // A write of this instance that seemed to fail may have landed: applying it tells the others
+                shared.Observe(shared.ReloadAsync(Spread.Announce, atStart: false));
             }, this, _layer.RetryInterval, Timeout.InfiniteTimeSpan);
         }
     }

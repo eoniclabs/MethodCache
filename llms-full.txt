@@ -128,7 +128,7 @@ builder.Services.AddMethodCache();                               // after your r
   invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
   a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
-  solution in `alsoInvalidatedBy`. `Assert.Empty(CachedServices.Problems(provider))` checks that every service with
+  solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
   cached methods resolves to its caching decorator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
@@ -624,8 +624,8 @@ connection. ([Per-user data](https://github.com/eoniclabs/MethodCache/blob/main/
 
 **My cached method takes the tenant id and checks it against the request's tenant. Why the warning MC0026?**
 The analyzer can't see the check. Mark your check method `[ChecksRequestState]`, such as `EnsureActsFor(tenantId)`, and
-call it with the parameter in each cached method; the class is then not reported. The check runs only when a value is
-loaded, so the caller must still take the id from the request.
+call it with the parameter in each cached method; the class is then not reported. Called through an interface, mark
+the interface method. The check runs only when a value is loaded, so the caller must still take the id from the request.
 ([A tenant parameter checked against the request](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#a-tenant-parameter-checked-against-the-request))
 
 **I renamed my `ICurrentUser`. Does MC0026 still find it?**
@@ -758,7 +758,7 @@ The save invalidates, so the read is fresh either way. Count the runs with `reco
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
 
 **How do I check in a test that every cached service is registered right?**
-`Assert.Empty(CachedServices.Problems(provider))` from `MethodCache.Testing`. It resolves each registered service with
+`Assert.Empty(await CachedServices.ProblemsAsync(provider))` from `MethodCache.Testing`. It resolves each registered service with
 cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
 isn't wrapped by its caching decorator. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
@@ -2895,7 +2895,8 @@ Entries written in the other format read as misses and are replaced, so switchin
 > [!WARNING]
 > Tag, clear and key-removal stamps are ordinary expiring keys next to the entries they invalidate. A store that evicts a
 > stamp under memory pressure while an entry it invalidated stays makes that entry valid again, on every instance, until
-> it expires. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
+> it expires. Runtime override records are stored the same way, and an evicted one no longer reaches instances that
+> start. Give the store room, and don't let it evict MethodCache's keys: for Redis, use `maxmemory-policy
 > noeviction` (or a Redis of its own). Every MethodCache key has a time to live, so the `volatile-*` policies can evict
 > them as well as the `allkeys-*` ones. With `noeviction`, a full Redis refuses writes instead: MethodCache then treats it
 > as down and answers from memory. SQL Server and PostgreSQL remove rows only once they expired.
@@ -3462,12 +3463,12 @@ MethodCache, over the same database. With EF Core's in-memory provider, give bot
 ## Every cached service resolves
 
 A service registered after `AddMethodCache`, or one with a dependency the container lacks, fails when the application
-starts or on its first call. `CachedServices.Problems` finds it in a test: it resolves each registered service with
+starts or on its first call. `CachedServices.ProblemsAsync` finds it in a test: it resolves each registered service with
 cached methods, in a scope of its own, and checks that it is the generated caching decorator:
 
 ```cs
 // Every service with cached methods resolves, and to its generated caching decorator
-Assert.Empty(CachedServices.Problems(provider));
+Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 
 Each problem names the service, its key for a keyed registration, and what is wrong: registered after
@@ -3754,11 +3755,19 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   `appsettings.json` and runtime overrides.
 - With a backplane, a runtime override (`IRuntimeCacheConfigurator`) applies on every instance. It is stored in the
   distributed cache, one record per method, before `UpsertAsync` returns, and expires with its `ExpiresAt`. Applying
-  it invalidates the method, as any change of settings does, and an instance that hears of the invalidation reads the
-  method's record again. An instance that starts reads the records of all its cached methods: a generic host waits for
-  them in `StartAsync`, at most `OperationTimeout` per eight methods, and without a host the first cached call starts
-  reading them without waiting. An instance that may have missed messages (when its backplane clears its memory cache)
-  reads them all again.
+  it invalidates the method on every instance, as any change of settings does; a change that invalidates nothing,
+  such as one to `Owner`, `Reason` or `ExpiresAt` only, still sends the method's message. An instance that hears of the
+  method reads its record again and drops only its own entries of the method. An instance that starts reads the
+  records of all its cached methods: a generic host waits for them in `StartAsync`, at most `OperationTimeout` per
+  eight methods, also when a cached service was resolved before the host started, and without a host the first cached
+  call starts reading them without waiting. An instance that may have missed messages (when its backplane clears its
+  memory cache) reads them all again. `ClearAsync` removes the records of every cached method, also ones the instance
+  hasn't read yet.
+- Override records are kept in the distributed cache with the entries, and like the invalidation stamps they must
+  not be evicted. With an LRU or LFU `maxmemory-policy`, Redis evicts the records, which are rarely read, among the
+  first: running instances keep the override until they read the records again, and an instance that starts goes
+  without it. Use `noeviction`, as for the stamps
+  ([Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted)).
 - An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
   (`ArgumentException`). A record an instance can't apply, because it contradicts that instance's own settings or was
   written by a later format, is skipped with a warning. When the distributed cache doesn't answer, `UpsertAsync` and
@@ -4394,6 +4403,10 @@ id from the request, or authorize it, before the call, as for any cached method 
 Refresh-ahead runs without a request, so the check fails there and the entry is loaded on the next call instead;
 don't combine the pattern with `RefreshAhead`. The attribute changes nothing at run time.
 
+The analyzer reads the attribute on the method the cached method calls. When you call the check through an interface,
+such as `ITenantContext.EnsureActsFor(tenantId)`, mark the interface method; the attribute on the class that implements
+it isn't seen through the interface.
+
 ## MC0027
 
 Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUpdate`, `ExecuteDelete`,
@@ -4682,7 +4695,7 @@ aren't reported.
 
 ## MC0036
 
-A name in the `.editorconfig` option `methodcache.request_state_types` matches no type, although its namespace exists.
+A name in the `.editorconfig` option `methodcache.request_state_types` matches no type, although its namespace has types.
 [MC0026](#mc0026) then doesn't look for that type, without a sign: this happens when the type is renamed or moved and
 the option isn't.
 
@@ -4692,9 +4705,10 @@ methodcache.request_state_types = MyApp.ICurrentUser   # MC0036 after ICurrentUs
 ```
 
 Write the type's full name as it is now, with its namespace, such as `MyApp.IUserContext`. A nested type is written
-`MyApp.Outer.Inner`, and a generic type `MyApp.IRepository<T>`. A name is checked only in a project that sees its
-namespace, so a solution-wide `.editorconfig` that names a type of the web project doesn't warn in a library that
-doesn't reference it. The warning has no location in a file; it names the option and the type.
+`MyApp.Outer.Inner`, and a generic type `MyApp.IRepository<T>`. A name is checked only in a project that sees types in
+its namespace, so a solution-wide `.editorconfig` that names a type of the web project doesn't warn in a library that
+doesn't reference it, even one whose own namespace, such as `MyApp.Data`, starts with the type's namespace. The warning
+has no location in a file; it names the option and the type.
 
 ## MC0037
 
@@ -5814,13 +5828,13 @@ The recorder sees the built-in cache manager: with `NoOpCacheManager` or your ow
 
 ## Every cached service resolves
 
-`CachedServices.Problems` resolves each registered service with cached methods and checks that it is the generated
+`CachedServices.ProblemsAsync` resolves each registered service with cached methods and checks that it is the generated
 caching decorator, so a service registered after `AddMethodCache` or one with a missing dependency fails a test instead
 of the application's startup:
 
 ```cs
 // Every service with cached methods resolves, and to its generated caching decorator
-Assert.Empty(CachedServices.Problems(provider));
+Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 
 ## Every tag has an invalidation
@@ -5908,7 +5922,7 @@ release.
   ([Hit ratio per method](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#hit-ratio-per-method)).
 - `MethodCacheWeigher.Bytes`, a ready-made weigher that counts approximate bytes of strings and arrays of numbers:
   `o.Weigher = MethodCacheWeigher.Bytes`.
-- `CachedServices.Problems(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
+- `CachedServices.ProblemsAsync(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
   to its caching decorator, so a registration mistake fails a test
   ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
 - `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
