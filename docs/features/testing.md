@@ -25,6 +25,26 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](monitoring.md)).
 
+## Replacing a cached service with a fake
+
+A `WebApplicationFactory` that swaps a cached service for a fake registers the fake after the application's
+`AddMethodCache()`. Call `AddMethodCache()` again after it, so the fake gets a decorator like the service it replaces:
+
+<!-- snippet: testing-replace-cached-service -->
+```cs
+// In a WebApplicationFactory: ConfigureTestServices runs after the app's AddMethodCache()
+builder.ConfigureTestServices(services =>
+{
+    services.AddScoped<IProductService, FakeProductService>();
+    services.AddMethodCache();   // again, so the fake gets a decorator like the service it replaces
+});
+```
+<!-- endSnippet -->
+
+Without the second call, the first cached service the test resolves fails with an error that says to register the
+service before `AddMethodCache()` or call it again. The fake's results are cached like the real service's; when a test
+changes what the fake returns, also register `NoOpCacheManager` ([Turning method caching off](#turning-method-caching-off)).
+
 ## Counting loads and invalidations
 
 The `MethodCache.Testing` package records what the cache does. Add it to the test project at the same version as

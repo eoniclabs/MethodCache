@@ -4,6 +4,8 @@ using ProductService = Docs.GettingStarted.After.ProductService;
 using MethodCache;
 using MethodCache.Extensibility;
 using MethodCache.Testing;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
@@ -89,5 +91,26 @@ namespace Docs.Testing
             // end-snippet
             return services.BuildServiceProvider();
         }
+
+        public static void ReplaceWithFake(IWebHostBuilder builder)
+        {
+            // begin-snippet: testing-replace-cached-service
+            // In a WebApplicationFactory: ConfigureTestServices runs after the app's AddMethodCache()
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<IProductService, FakeProductService>();
+                services.AddMethodCache();   // again, so the fake gets a decorator like the service it replaces
+            });
+            // end-snippet
+        }
+    }
+
+    public sealed class FakeProductService : IProductService
+    {
+        public Task<Product> GetAsync(int id, CancellationToken ct = default) => Task.FromResult(new Product(id, "Test tea", 1m));
+
+        public Task<List<Product>> SearchAsync(string text, int page) => Task.FromResult(new List<Product>());
+
+        public Task UpdateAsync(int id, Product product) => Task.CompletedTask;
     }
 }

@@ -9,9 +9,10 @@ Start with [Getting started](../getting-started.md#3-register-it).
 
 - `AddMethodCache()` wraps every registration of an interface that has cached methods in its generated decorator, and
   keeps the lifetime and implementation you registered. Register cached services before it.
-- A cached service registered after `AddMethodCache()` fails when the host starts, or, without a host, when its
-  decorator is first created. Other services can be registered later.
-- Calling `AddMethodCache()` again wraps the services added since, and leaves the existing decorators as they are.
+- A cached service registered after `AddMethodCache()` fails when the host starts, or, without a host, when the
+  first decorator is created. Other services can be registered later.
+- Calling `AddMethodCache()` again wraps the services added since, and leaves the existing decorators as they are. A
+  test that replaces a cached service with a fake after `AddMethodCache()` calls it again; the fake is then cached.
 - The container disposes the implementations it creates, and leaves instances you registered yourself open, as
   without MethodCache. A decorator is disposable only when the interface is.
 

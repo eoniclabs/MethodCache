@@ -25,6 +25,8 @@
     <!-- The user documentation ships in the package, so a coding agent can read the docs of the installed version -->
     <None Include="..\..\docs\**\*.md" Exclude="..\..\docs\developer\**" Pack="true" PackagePath="docs" Visible="false" />
     <None Include="..\..\llms-full.txt" Pack="true" PackagePath="docs" Visible="false" />
+    <!-- What changed in each version, and what to do when upgrading, next to the docs of that version -->
+    <None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="docs" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>

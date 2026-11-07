@@ -169,7 +169,7 @@ doesn't invalidate anything:
   any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
   `set` a session setting never count. In a project that sees no mapping, all other raw SQL is reported.
 - A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
-  ([MC0027](../user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
+  ([Generic helpers](#generic-helpers) shows what to do).
 
 A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
 your own marked `[InvalidatesCache]` counts as the invalidation:
@@ -226,6 +226,42 @@ doesn't drop them, since they don't belong to it.
 
 Writes outside EF Core, such as Dapper or another service, are covered in
 [When the write happens somewhere else](invalidation.md#when-the-write-happens-somewhere-else).
+
+### Generic helpers
+
+A helper that runs `ExecuteUpdate` or `ExecuteDelete` for any entity type can't know which cached results its rows
+feed, so MC0027 reports it. Have it take the tags of what it changes from its caller, invalidate them after the write,
+and mark it `[InvalidatesCache]`. MC0027 then counts each call to it as the invalidation, and doesn't report the helper:
+
+<!-- snippet: efcore-generic-helper -->
+```cs
+public static class Bulk
+{
+    // Deletes rows of any type past the change tracker, then invalidates the tags its caller names.
+    // [InvalidatesCache] makes each call count as the invalidation, so MC0027 doesn't report the helper
+    [InvalidatesCache]
+    public static async Task<int> DeleteWhereAsync<TEntity>(ShopDb db, ICacheManager cache,
+        Expression<Func<TEntity, bool>> where, string[] tags, CancellationToken ct) where TEntity : class
+    {
+        var deleted = await db.Set<TEntity>().Where(where).ExecuteDeleteAsync(ct);
+        await cache.InvalidateTagsAsync(tags, CancellationToken.None);
+        return deleted;
+    }
+}
+```
+<!-- endSnippet -->
+
+The caller names the tags, built from the cached method they belong to:
+
+<!-- snippet: efcore-generic-helper-call -->
+```cs
+await Bulk.DeleteWhereAsync<Product>(db, cache, p => p.CategoryId == categoryId,
+    [keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}")], ct);
+```
+<!-- endSnippet -->
+
+A helper that only ever gets types nothing caches, such as audit or log rows, turns the warning off inside it with
+`#pragma warning disable MC0027` and a comment that says why ([MC0027](../user-guide/DIAGNOSTICS.md#mc0027)).
 
 ## Row-level security
 

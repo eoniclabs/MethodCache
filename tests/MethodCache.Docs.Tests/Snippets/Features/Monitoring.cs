@@ -3,6 +3,7 @@ using MethodCache;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Prometheus;
 
 namespace Docs.Monitoring;
 
@@ -48,6 +49,19 @@ public static class Setup
             Console.WriteLine($"{instrument.Name}: {value}"));
         listener.Start(); // keep the listener alive for as long as measurements are needed
         // end-snippet
+    }
+
+    public static IDisposable PrometheusNetRegistry(CollectorRegistry registry)
+    {
+        // begin-snippet: monitoring-prometheus-net-registry
+        // A registry of your own needs both settings: with only Registry, no MethodCache series appear
+        var adapter = MeterAdapter.StartListening(new MeterAdapterOptions
+        {
+            Registry = registry,
+            MetricFactory = Metrics.WithCustomRegistry(registry),
+        });
+        // end-snippet
+        return adapter;
     }
 
     public static void CustomMetrics(WebApplicationBuilder builder)

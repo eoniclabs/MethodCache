@@ -20,6 +20,15 @@ namespace Docs.Expiration
         Task<AccessToken> GetTokenAsync(string audience);
     }
 
+    // The price in effect now, and when the next future-dated price takes over (null when none is scheduled)
+    public sealed record CurrentPrice(decimal Amount, DateTimeOffset? NextChangeAt);
+
+    public interface IPriceSchedule
+    {
+        [Cache(Duration = "1h")]
+        Task<CurrentPrice> GetCurrentAsync(string product);
+    }
+
     public interface ISearch
     {
         [Cache(Duration = "10m")]
@@ -72,6 +81,10 @@ namespace Docs.Expiration
                 // An empty result is kept for 30 seconds instead of ten minutes
                 mc.Method((ISearch s) => s.FindAsync(Any<string>.Value))
                     .DurationFor(result => result.Items.Count == 0 ? TimeSpan.FromSeconds(30) : TimeSpan.FromMinutes(10));
+
+                // A price is kept until the next one takes effect, so a future-dated price applies on time
+                mc.Method((IPriceSchedule s) => s.GetCurrentAsync(Any<string>.Value))
+                    .DurationFor(price => price.NextChangeAt is { } next ? next - DateTimeOffset.UtcNow : TimeSpan.FromHours(1));
             });
             // end-snippet
         }

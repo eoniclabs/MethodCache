@@ -54,6 +54,11 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
   `IMethodCacheKeys.For` shows the key of a call ([Building a key yourself](#building-a-key-yourself)).
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
   [Framework types](#framework-types). Other framework types are a build error.
+
+The generator writes the key code when you build. Only the values the list above sends to the key generator are read
+when the call runs, from the public properties and fields of their actual type. A type of your own whose public
+properties are simple values never goes there. To see which form a call gets, look at its key with
+`IMethodCacheKeys.For`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.

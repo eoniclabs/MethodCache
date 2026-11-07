@@ -28,11 +28,12 @@ up in a key by accident, and two calls share an entry only when their keys are e
 such as `order:42`, so keys from different places can't collide. An empty or whitespace key throws
 `ArgumentException`.
 
-The key is used as it is: MethodCache adds neither the result type nor the application to it. Applications that share
-a distributed cache under one `KeyPrefix`, as they do to invalidate each other's entries, therefore share these keys,
-and `order:42` in two of them is one entry. Cache the same type under a key everywhere, or start it with the
-application's name, such as `billing:order:42`. Keys of `[Cache]` methods include the method's assembly and interface,
-so they don't collide this way ([Several applications on one store](distributed-cache.md#several-applications-on-one-store)).
+The key is used as it is: MethodCache adds neither the result type, the service nor the application to it. Every
+service in the application shares these keys, and so does every application that shares a distributed cache under one
+`KeyPrefix`, as they do to invalidate each other's entries: `order:42` in two services, or in two of those applications,
+is one entry. Start each key with the area it belongs to, such as `billing:order:42`, and cache one type under a key.
+Keys of `[Cache]` methods include the method's assembly and interface, so they don't collide this way
+([Several applications on one store](distributed-cache.md#several-applications-on-one-store)).
 
 ## Options
 
@@ -148,7 +149,8 @@ var users = await cache.GetOrCreateManyAsync<int, User>(
 
 - An id the factory leaves out, such as one that doesn't exist, is not cached and is left out of the returned
   dictionary. When the key has an expired fail-safe value, it gets that value instead, as when the factory throws. To
-  cache that an id has no value, return it with `null`.
+  cache that an id has no value, return it with `null`. Nothing fails for a missing id, so when every id must have a
+  value, check the returned dictionary: an id missing from it had none.
 - Two different ids that make the same key throw an `ArgumentException`, since one would get the other's value.
 - The factory returns a dictionary, an empty one when no id has a value; `null` fails like a factory that throws.
 - On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.

@@ -35,8 +35,12 @@ How to check, tag and publish a release. Releases go to nuget.org, and each one 
 
 - [ ] `docs/security.md` still describes what the release does, and every threat in it has its test.
 - [ ] `llms.txt` and `llms-full.txt` are current (`python3 .github/scripts/generate-llms.py` changes nothing).
-- [ ] [CHANGELOG.md](../../CHANGELOG.md) lists the behavior changes and anything a user must do when upgrading,
-  under a heading for the new version.
+- [ ] [CHANGELOG.md](../../CHANGELOG.md) has a heading for the new version, `## <version> (<date>)`, with these
+  parts in this order, each only when it has entries:
+  - `### Upgrading from <previous version>`: what a user must change, new build errors and warnings, and every key
+    that is now written differently. For changed keys, say that instances on the two versions miss each other's
+    entries during a rolling deploy, and that an invalidation by key reaches only the entries of its own version.
+  - `### Added`, `### Changed`, `### Fixed` and `### Removed`.
 
 ## Tag the release
 
@@ -70,6 +74,16 @@ version for bug fixes.
 
 Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted on 2026-10-13; the first release is 1.0.0.
 
+### From 1.0.0: signed tags and immutable releases
+
+- Sign the tag: `git tag -s v1.0.0 -m "MethodCache 1.0.0"` with the maintainer's GPG or SSH signing key
+  (`git config gpg.format ssh` and `user.signingkey` for an SSH key). The key must be added to the maintainer's GitHub
+  account as a signing key, so GitHub shows the tag as Verified. `release.sh` and `release.ps1` create a plain tag:
+  for 1.0.0 and later, tag by hand as shown above, with `-s`.
+- Before publishing 1.0.0, turn on immutable releases in the repository settings (Settings, General, Releases). A
+  published release's tag and assets then can't be changed or deleted, so check the release text before publishing
+  it: create it as a draft (`gh release create ... --draft`), read it, then publish it.
+
 ## Publish it
 
 1. **Wait for the build servers.** The tagged commit is the head of `main`, so the coordinator runs every CI job on
@@ -91,7 +105,12 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
 3. **Check all ten packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
    symbols. Do this for `rc.1` before advancing the release. Verify symbol-server retrieval of the portable
    PDBs; an accepted upload alone does not prove symbol indexing succeeded.
-4. **Write the GitHub release** for the tag, with the version's section from [CHANGELOG.md](../../CHANGELOG.md).
+4. **Write the GitHub release** for the tag, titled `MethodCache <version>` (such as `MethodCache 1.0.0-rc.11`), with
+   the version's section from [CHANGELOG.md](../../CHANGELOG.md) as its text, and marked as a pre-release for an rc:
+
+   ```bash
+   gh release create v1.0.0-rc.11 --title "MethodCache 1.0.0-rc.11" --notes-file notes.md --prerelease
+   ```
 
 `./release.sh --status <version>` shows the tag, its `MethodCache CI` status and which packages nuget.org has
 indexed. `./release.sh --cleanup <version>` deletes the tag and reverts the version commit of a release that

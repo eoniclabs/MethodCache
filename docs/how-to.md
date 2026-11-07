@@ -11,7 +11,8 @@ from your question.
 The source generator writes a class that implements your interface, checks the cache and calls your implementation
 on a miss. Dependency injection hands out that class in place of yours. A class without an interface can't be
 replaced that way: add an interface, or use [manual caching](features/manual-caching.md) with `ICacheManager`.
-([Getting started](getting-started.md))
+Adding one changes the registrations, constructors and tests that name the class.
+([A class without an interface](getting-started.md#a-class-without-an-interface))
 
 **Can I put `[Cache]` on the class instead?**
 No. Put it on the interface method. On a class member it does nothing, and warning MC0001 says so; its code fix moves
@@ -19,6 +20,8 @@ the attribute to the interface. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
 
 **Where do I call `AddMethodCache()`?**
 After you register the services it caches. A cached service registered after it fails when the host starts. A
+test that replaces a cached service with a fake calls `AddMethodCache()` again after the fake
+([Testing](features/testing.md#replacing-a-cached-service-with-a-fake)). A
 program with cached services gets warning MC0030 when it calls neither `AddMethodCache` nor a setup method of a
 referenced project that calls it.
 ([Registration reference](reference/registration.md#order))
@@ -43,6 +46,11 @@ Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `I
 **Are synchronous methods cached in Redis, SQL Server or PostgreSQL?**
 No, synchronous methods use the memory cache only, so they never block on the network. Make the method async to share
 its results between instances. ([Distributed cache reference](reference/distributed.md#which-calls-use-the-distributed-cache))
+
+**What changed in a new version, and what do I change when I upgrade?**
+`CHANGELOG.md` lists each version's changes, and its "Upgrading" part says what to change in your code and which
+keys change. The `MethodCache` package carries it in its `docs` folder next to these pages.
+([CHANGELOG](https://github.com/eoniclabs/MethodCache/blob/main/CHANGELOG.md))
 
 ## Invalidation
 
@@ -261,7 +269,8 @@ Return records with public properties, or register a serializer with `UseJson(op
 Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
 stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
-one app. ([Invalidations only](features/distributed-cache.md#invalidations-only))
+one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
+([A worker and an API](features/distributed-cache.md#a-worker-and-an-api))
 
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
@@ -283,8 +292,9 @@ them. Send `-H "Content-Type: application/json" -d "{}"`.
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
 `MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
-prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`.
-([Monitoring](features/monitoring.md#standard-net-listeners))
+prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`. With a
+`CollectorRegistry` of your own, set both `Registry` and `MetricFactory = Metrics.WithCustomRegistry(registry)` on the
+meter adapter, or no series appear. ([Monitoring](features/monitoring.md#standard-net-listeners))
 
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](features/native-aot.md))
@@ -323,5 +333,6 @@ carries these docs in its `docs` folder, and [agent instructions](ai/methodcache
 agent's instructions.
 
 **How does an agent report a problem with MethodCache?**
-It files a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
-versions, never with your code, names, secrets or other sensitive information. ([Agent instructions](ai/methodcache.md#feedback))
+It drafts a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
+versions, never with your code, names, secrets or other sensitive information. It shows you the draft and files it
+only when you agree. ([Agent instructions](ai/methodcache.md#feedback))

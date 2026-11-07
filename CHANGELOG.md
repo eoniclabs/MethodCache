@@ -4,6 +4,24 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Added
+
+- The `MethodCache` package carries this `CHANGELOG.md` in its `docs` folder, next to the docs of that version.
+- New docs: giving a class an interface ([Getting started](docs/getting-started.md#a-class-without-an-interface)),
+  replacing a cached service with a fake in a test, generic EF Core helpers with `[InvalidatesCache]`, a worker and
+  an API with PostgreSQL in "invalidations only" mode, prometheus-net with a registry of your own, `DurationFor` for
+  future-dated rows, what changed keys mean during a rolling deploy, and where MC0027 and MC0030 read what they know
+  about referenced projects.
+
+### Changed
+
+- The agent instructions ask a coding agent to show its feedback draft to its user and to file it only when the user
+  agrees.
+- The error for a cached service registered after `AddMethodCache` says how a test that replaces a service with a
+  fake avoids it: call `AddMethodCache` again after the fake.
+
 ## 1.0.0-rc.10 (2026-11-06)
 
 ### Upgrading from 1.0.0-rc.9

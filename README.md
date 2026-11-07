@@ -149,9 +149,11 @@ dotnet add package MethodCache --prerelease
 3. Build. Analyzers report mistakes as `MC` diagnostics in the editor.
 
 **Why an interface?** The generator writes a class that implements your interface, checks the cache and calls your
-implementation on a miss. Dependency injection hands out that class in place of yours, so nothing in your code
-changes. To cache a class without an interface, add one, use [manual caching](docs/features/manual-caching.md) with
-`ICacheManager`, or, for a client from a NuGet package, [cache its interface](#caching-code-you-dont-own).
+implementation on a miss. Dependency injection hands out that class in place of yours, so code that already uses the
+interface doesn't change. A class without one needs an interface, and the constructors, registrations and tests that
+name the class switch to it ([how](docs/getting-started.md#a-class-without-an-interface)). You can also use
+[manual caching](docs/features/manual-caching.md) with `ICacheManager`, or, for a client from a NuGet package,
+[cache its interface](#caching-code-you-dont-own).
 
 **When the data changes somewhere else** (a repository, a message handler, another service), invalidate after the
 write with `ICacheManager` and a tag from `IMethodCacheKeys.Tag`, so it's formatted exactly as the cached method's tag
@@ -407,6 +409,6 @@ Then:
 6. Add tests that show a cached read and its invalidation.
 
 Report which methods you cached, for how long, and how each one is invalidated. If the MethodCache docs were
-wrong or missing, or you needed a workaround, send feedback as ai/methodcache.md describes under Feedback, without
-our code, names, secrets or other sensitive information.
+wrong or missing, or you needed a workaround, draft feedback as ai/methodcache.md describes under Feedback, without
+our code, names, secrets or other sensitive information, and show it to me before you send it.
 ```

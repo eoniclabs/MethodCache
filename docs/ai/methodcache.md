@@ -4,7 +4,10 @@ Copy this file into your project as agent instructions, for example as `.github/
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
 correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md. The `MethodCache` package
 carries the same docs in its `docs` folder (`~/.nuget/packages/methodcache/<version>/docs/`): `how-to.md` answers
-common questions and `reference/` has the exact rules.
+common questions, `reference/` has the exact rules and `CHANGELOG.md` says what changed in each version and what to
+do when upgrading. Read the page for the task at hand, listed under
+[Guides](#guides); `llms-full.txt` holds every page in one file, which is too large to read
+whole, so search it instead.
 
 ## Adding caching to a service
 
@@ -203,9 +206,8 @@ these sections: what you were trying to do, what happened (exact error or diagno
 would have helped, a minimal example, the docs you read, versions (MethodCache packages and `dotnet --version`) and
 which agent you are.
 
-File it yourself; you don't need to ask your user first. The repository is public, so never send the project's code,
-names of its types, services, tables or customers, its data, connection strings, secrets or anything else sensitive.
-Write a minimal example with made-up names instead. To file it, run
-`gh issue create --repo eoniclabs/MethodCache --title "[Agent feedback] ..." --body-file feedback.md`. When you can't
-(no `gh`, not signed in), put the draft and https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml,
-which has the same fields, in your report to your user.
+Show the draft to your user, and file it only when they say yes. The repository is public, so never put the project's
+code, names of its types, services, tables or customers, its data, connection strings, secrets or anything else
+sensitive in it. Write a minimal example with made-up names instead. When your user agrees, run
+`gh issue create --repo eoniclabs/MethodCache --title "[Agent feedback] ..." --body-file feedback.md`, or give them
+https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml, which has the same fields.

@@ -735,7 +735,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     if (descriptor.ServiceKey is not DecoratedServiceKey &&
                         (CachedTypes.Contains(descriptor.ServiceType) || descriptor.ServiceType.IsConstructedGenericType && CachedTypes.Contains(descriptor.ServiceType.GetGenericTypeDefinition())) &&
                         !Accepted.Contains(descriptor))
-                        throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache.");
+                        throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache, or call AddMethodCache again after it, as a test that replaces a service with a fake does.");
             }
 
             /// <summary>

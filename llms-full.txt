@@ -13,7 +13,10 @@ Copy this file into your project as agent instructions, for example as `.github/
 rule, a Claude Code skill or a section of `AGENTS.md`. It tells a coding agent how to add caching with MethodCache
 correctly. Full docs: https://github.com/eoniclabs/MethodCache/blob/main/docs/README.md. The `MethodCache` package
 carries the same docs in its `docs` folder (`~/.nuget/packages/methodcache/<version>/docs/`): `how-to.md` answers
-common questions and `reference/` has the exact rules.
+common questions, `reference/` has the exact rules and `CHANGELOG.md` says what changed in each version and what to
+do when upgrading. Read the page for the task at hand, listed under
+[Guides](#guides); `llms-full.txt` holds every page in one file, which is too large to read
+whole, so search it instead.
 
 ## Adding caching to a service
 
@@ -208,12 +211,11 @@ these sections: what you were trying to do, what happened (exact error or diagno
 would have helped, a minimal example, the docs you read, versions (MethodCache packages and `dotnet --version`) and
 which agent you are.
 
-File it yourself; you don't need to ask your user first. The repository is public, so never send the project's code,
-names of its types, services, tables or customers, its data, connection strings, secrets or anything else sensitive.
-Write a minimal example with made-up names instead. To file it, run
-`gh issue create --repo eoniclabs/MethodCache --title "[Agent feedback] ..." --body-file feedback.md`. When you can't
-(no `gh`, not signed in), put the draft and https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml,
-which has the same fields, in your report to your user.
+Show the draft to your user, and file it only when they say yes. The repository is public, so never put the project's
+code, names of its types, services, tables or customers, its data, connection strings, secrets or anything else
+sensitive in it. Write a minimal example with made-up names instead. When your user agrees, run
+`gh issue create --repo eoniclabs/MethodCache --title "[Agent feedback] ..." --body-file feedback.md`, or give them
+https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml, which has the same fields.
 
 
 ---
@@ -323,6 +325,23 @@ builder.Services.AddScoped<IProductService>(
 builder.Services.AddMethodCache();
 ```
 
+## A class without an interface
+
+A class that other code uses directly needs an interface before it can be cached. Its methods stay as they are; what
+changes is the code that names the class:
+
+1. Extract the interface (Extract Interface in Rider and Visual Studio) and put `[Cache]` and `[CacheInvalidate]` on
+   it.
+2. Register the interface: `AddScoped<ProductService>()` becomes `AddScoped<IProductService, ProductService>()`.
+3. Classes that take `ProductService` in their constructor take `IProductService` instead (Use Base Type Where
+   Possible in Rider). A call that still goes to the class skips the cache.
+4. Tests that create `new ProductService(db)` and pass it to the class under test keep working once that class takes
+   the interface. [MC0032](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0032) doesn't report `new` in a test project. A test that
+   replaces the service with a fake registers it for the interface
+   ([Replacing a cached service with a fake](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#replacing-a-cached-service-with-a-fake)).
+
+In a larger application the constructor change can reach many files, tests included, so move one service at a time.
+
 ## What can be cached
 
 ```cs
@@ -389,7 +408,8 @@ from your question.
 The source generator writes a class that implements your interface, checks the cache and calls your implementation
 on a miss. Dependency injection hands out that class in place of yours. A class without an interface can't be
 replaced that way: add an interface, or use [manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) with `ICacheManager`.
-([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md))
+Adding one changes the registrations, constructors and tests that name the class.
+([A class without an interface](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#a-class-without-an-interface))
 
 **Can I put `[Cache]` on the class instead?**
 No. Put it on the interface method. On a class member it does nothing, and warning MC0001 says so; its code fix moves
@@ -397,6 +417,8 @@ the attribute to the interface. ([Build diagnostics](https://github.com/eoniclab
 
 **Where do I call `AddMethodCache()`?**
 After you register the services it caches. A cached service registered after it fails when the host starts. A
+test that replaces a cached service with a fake calls `AddMethodCache()` again after the fake
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#replacing-a-cached-service-with-a-fake)). A
 program with cached services gets warning MC0030 when it calls neither `AddMethodCache` nor a setup method of a
 referenced project that calls it.
 ([Registration reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/registration.md#order))
@@ -421,6 +443,11 @@ Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `I
 **Are synchronous methods cached in Redis, SQL Server or PostgreSQL?**
 No, synchronous methods use the memory cache only, so they never block on the network. Make the method async to share
 its results between instances. ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#which-calls-use-the-distributed-cache))
+
+**What changed in a new version, and what do I change when I upgrade?**
+`CHANGELOG.md` lists each version's changes, and its "Upgrading" part says what to change in your code and which
+keys change. The `MethodCache` package carries it in its `docs` folder next to these pages.
+([CHANGELOG](https://github.com/eoniclabs/MethodCache/blob/main/CHANGELOG.md))
 
 ## Invalidation
 
@@ -639,7 +666,8 @@ Return records with public properties, or register a serializer with `UseJson(op
 Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
 stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
-one app. ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only))
+one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
+([A worker and an API](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#a-worker-and-an-api))
 
 **What happens when Redis is down?**
 Calls keep working from memory and your methods. Each call waits at most one second, Redis is skipped for ten seconds
@@ -661,8 +689,9 @@ them. Send `-H "Content-Type: application/json" -d "{}"`.
 **How do I get metrics into Prometheus?**
 Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` on the meter builder. The meter is named
 `MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
-prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`.
-([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
+prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`. With a
+`CollectorRegistry` of your own, set both `Registry` and `MetricFactory = Metrics.WithCustomRegistry(registry)` on the
+meter adapter, or no series appear. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
 
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md))
@@ -701,8 +730,9 @@ carries these docs in its `docs` folder, and [agent instructions](https://github
 agent's instructions.
 
 **How does an agent report a problem with MethodCache?**
-It files a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
-versions, never with your code, names, secrets or other sensitive information. ([Agent instructions](https://github.com/eoniclabs/MethodCache/blob/main/docs/ai/methodcache.md#feedback))
+It drafts a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
+versions, never with your code, names, secrets or other sensitive information. It shows you the draft and files it
+only when you agree. ([Agent instructions](https://github.com/eoniclabs/MethodCache/blob/main/docs/ai/methodcache.md#feedback))
 
 
 ---
@@ -827,6 +857,11 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
   `IMethodCacheKeys.For` shows the key of a call ([Building a key yourself](#building-a-key-yourself)).
 - **Framework types** are written by their value wherever they appear, not by their public properties; see
   [Framework types](#framework-types). Other framework types are a build error.
+
+The generator writes the key code when you build. Only the values the list above sends to the key generator are read
+when the call runs, from the public properties and fields of their actual type. A type of your own whose public
+properties are simple values never goes there. To see which form a call gets, look at its key with
+`IMethodCacheKeys.For`.
 - **`nint` and `nuint`** also go through the key generator, as the 64-bit number they hold, so a value gets the same
   key in 32-bit and 64-bit processes. Their type is kept: `(nint)1`, `1` and `1L` are three keys, also inside an
   `object[]` or an `object` property.
@@ -1062,8 +1097,9 @@ with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its
 
 ## A duration from the result
 
-`DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token or a
-shorter time for an empty result. Set it in startup code, for one method:
+`DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token, a
+shorter time for an empty result, or the time until the next row of a schedule takes effect, as with future-dated
+prices. Set it in startup code, for one method:
 
 ```cs
 builder.Services.AddMethodCache(mc =>
@@ -1075,6 +1111,10 @@ builder.Services.AddMethodCache(mc =>
     // An empty result is kept for 30 seconds instead of ten minutes
     mc.Method((ISearch s) => s.FindAsync(Any<string>.Value))
         .DurationFor(result => result.Items.Count == 0 ? TimeSpan.FromSeconds(30) : TimeSpan.FromMinutes(10));
+
+    // A price is kept until the next one takes effect, so a future-dated price applies on time
+    mc.Method((IPriceSchedule s) => s.GetCurrentAsync(Any<string>.Value))
+        .DurationFor(price => price.NextChangeAt is { } next ? next - DateTimeOffset.UtcNow : TimeSpan.FromHours(1));
 });
 ```
 
@@ -1545,7 +1585,7 @@ doesn't invalidate anything:
   any case, so `ai_model_prices` matches `AiModelPrice`. Statements that only `select`, such as an advisory lock, or
   `set` a session setting never count. In a project that sees no mapping, all other raw SQL is reported.
 - A generic helper, such as `PurgeAsync<TEntity>()`, since any type could reach it
-  ([MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027) shows what to do).
+  ([Generic helpers](#generic-helpers) shows what to do).
 
 A call to `InvalidateAfterCommit`, `ICacheManager.InvalidateTagsAsync`, a `[CacheInvalidate]` method or a method of
 your own marked `[InvalidatesCache]` counts as the invalidation:
@@ -1598,6 +1638,38 @@ doesn't drop them, since they don't belong to it.
 
 Writes outside EF Core, such as Dapper or another service, are covered in
 [When the write happens somewhere else](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#when-the-write-happens-somewhere-else).
+
+### Generic helpers
+
+A helper that runs `ExecuteUpdate` or `ExecuteDelete` for any entity type can't know which cached results its rows
+feed, so MC0027 reports it. Have it take the tags of what it changes from its caller, invalidate them after the write,
+and mark it `[InvalidatesCache]`. MC0027 then counts each call to it as the invalidation, and doesn't report the helper:
+
+```cs
+public static class Bulk
+{
+    // Deletes rows of any type past the change tracker, then invalidates the tags its caller names.
+    // [InvalidatesCache] makes each call count as the invalidation, so MC0027 doesn't report the helper
+    [InvalidatesCache]
+    public static async Task<int> DeleteWhereAsync<TEntity>(ShopDb db, ICacheManager cache,
+        Expression<Func<TEntity, bool>> where, string[] tags, CancellationToken ct) where TEntity : class
+    {
+        var deleted = await db.Set<TEntity>().Where(where).ExecuteDeleteAsync(ct);
+        await cache.InvalidateTagsAsync(tags, CancellationToken.None);
+        return deleted;
+    }
+}
+```
+
+The caller names the tags, built from the cached method they belong to:
+
+```cs
+await Bulk.DeleteWhereAsync<Product>(db, cache, p => p.CategoryId == categoryId,
+    [keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}")], ct);
+```
+
+A helper that only ever gets types nothing caches, such as audit or log rows, turns the warning off inside it with
+`#pragma warning disable MC0027` and a comment that says why ([MC0027](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0027)).
 
 ## Row-level security
 
@@ -2127,11 +2199,12 @@ up in a key by accident, and two calls share an entry only when their keys are e
 such as `order:42`, so keys from different places can't collide. An empty or whitespace key throws
 `ArgumentException`.
 
-The key is used as it is: MethodCache adds neither the result type nor the application to it. Applications that share
-a distributed cache under one `KeyPrefix`, as they do to invalidate each other's entries, therefore share these keys,
-and `order:42` in two of them is one entry. Cache the same type under a key everywhere, or start it with the
-application's name, such as `billing:order:42`. Keys of `[Cache]` methods include the method's assembly and interface,
-so they don't collide this way ([Several applications on one store](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#several-applications-on-one-store)).
+The key is used as it is: MethodCache adds neither the result type, the service nor the application to it. Every
+service in the application shares these keys, and so does every application that shares a distributed cache under one
+`KeyPrefix`, as they do to invalidate each other's entries: `order:42` in two services, or in two of those applications,
+is one entry. Start each key with the area it belongs to, such as `billing:order:42`, and cache one type under a key.
+Keys of `[Cache]` methods include the method's assembly and interface, so they don't collide this way
+([Several applications on one store](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#several-applications-on-one-store)).
 
 ## Options
 
@@ -2239,7 +2312,8 @@ var users = await cache.GetOrCreateManyAsync<int, User>(
 
 - An id the factory leaves out, such as one that doesn't exist, is not cached and is left out of the returned
   dictionary. When the key has an expired fail-safe value, it gets that value instead, as when the factory throws. To
-  cache that an id has no value, return it with `null`.
+  cache that an id has no value, return it with `null`. Nothing fails for a missing id, so when every id must have a
+  value, check the returned dictionary: an id missing from it had none.
 - Two different ids that make the same key throw an `ArgumentException`, since one would get the other's value.
 - The factory returns a dictionary, an empty one when no id has a value; `null` fails like a factory that throws.
 - On a hot path, build the options once and pass the `CacheEntryOptions` instead of a builder action.
@@ -2641,6 +2715,45 @@ builder.Services.AddMethodCache(mc => mc
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
 values are written there.
 
+### A worker and an API
+
+A common case: a worker writes data with EF Core, and an API caches reads of it. The API caches in its own memory and
+marks the tag as invalidated by another process:
+
+```cs
+public interface IFoodCatalog
+{
+    // The worker writes the catalog; its saves invalidate food-catalog in every process
+    [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedElsewhere = ["food-catalog"])]
+    Task<IReadOnlyList<FoodDto>> SearchAsync(string text);
+}
+```
+
+```cs
+// The API caches reads of the catalog in its own memory
+builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));
+```
+
+The worker caches nothing. With [MethodCache.EntityFrameworkCore](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md), its `SaveChanges`
+invalidates the tags its mapping names, and the invalidation reaches the API through PostgreSQL:
+
+```cs
+// The worker caches nothing: its saves invalidate the tags the mapping names, in every process
+builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false))
+    .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
+```
+
+The API reloads the catalog on its next read after the worker's save commits, usually within milliseconds. Writes
+the change tracker doesn't see, such as `ExecuteUpdate`, need their tags invalidated by hand
+([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
+
 ## What other instances see
 
 - An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then
@@ -2700,7 +2813,12 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 - Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
   so values the previous version wrote are not read.
-- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works.
+- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works. When a release
+  writes some keys differently, its CHANGELOG section says so under "Upgrading". During the rollout, instances on the
+  old and the new version then miss each other's entries for those methods: each loads once and caches under its own
+  key. An invalidation by tag reaches both. An invalidation by key, such as `IMethodCacheKeys.For(...)`, reaches only
+  the entry written by the version that sent it, so the other version's entry stays until it expires. Keep the same
+  `KeyPrefix` during the rollout, since a different one also keeps the two versions' invalidations apart.
 - SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
   before 1.0, or a login that may not create tables, see the
   [SQL Server](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.SqlServer/README.md) and [PostgreSQL](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md) guides.
@@ -2888,6 +3006,18 @@ Prometheus exporter with `AddMethodCacheInstrumentation()`.
 prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter puts the meter name in front, as in
 `methodcache_methodcache_requests{methodcache_result="hit"}`. It starts listening at the first scrape, exports counters
 as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
+
+With a `CollectorRegistry` of your own, start the meter adapter with the registry and a metric factory for it. With only
+`Registry` set, no MethodCache series appear:
+
+```cs
+// A registry of your own needs both settings: with only Registry, no MethodCache series appear
+var adapter = MeterAdapter.StartListening(new MeterAdapterOptions
+{
+    Registry = registry,
+    MetricFactory = Metrics.WithCustomRegistry(registry),
+});
+```
 
 A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
@@ -3104,6 +3234,24 @@ var products = provider.CreateScope().ServiceProvider.GetRequiredService<IProduc
 
 `ICacheAdministrator` from the same provider lists the entries and their keys, which helps when a test needs to check
 what was cached ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
+
+## Replacing a cached service with a fake
+
+A `WebApplicationFactory` that swaps a cached service for a fake registers the fake after the application's
+`AddMethodCache()`. Call `AddMethodCache()` again after it, so the fake gets a decorator like the service it replaces:
+
+```cs
+// In a WebApplicationFactory: ConfigureTestServices runs after the app's AddMethodCache()
+builder.ConfigureTestServices(services =>
+{
+    services.AddScoped<IProductService, FakeProductService>();
+    services.AddMethodCache();   // again, so the fake gets a decorator like the service it replaces
+});
+```
+
+Without the second call, the first cached service the test resolves fails with an error that says to register the
+service before `AddMethodCache()` or call it again. The fake's results are cached like the real service's; when a test
+changes what the fake returns, also register `NoOpCacheManager` ([Turning method caching off](#turning-method-caching-off)).
 
 ## Counting loads and invalidations
 
@@ -3341,9 +3489,10 @@ Start with [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/
 
 - `AddMethodCache()` wraps every registration of an interface that has cached methods in its generated decorator, and
   keeps the lifetime and implementation you registered. Register cached services before it.
-- A cached service registered after `AddMethodCache()` fails when the host starts, or, without a host, when its
-  decorator is first created. Other services can be registered later.
-- Calling `AddMethodCache()` again wraps the services added since, and leaves the existing decorators as they are.
+- A cached service registered after `AddMethodCache()` fails when the host starts, or, without a host, when the
+  first decorator is created. Other services can be registered later.
+- Calling `AddMethodCache()` again wraps the services added since, and leaves the existing decorators as they are. A
+  test that replaces a cached service with a fake after `AddMethodCache()` calls it again; the fake is then cached.
 - The container disposes the implementations it creates, and leaves instances you registered yourself open, as
   without MethodCache. A decorator is disposable only when the interface is.
 
@@ -4015,7 +4164,7 @@ results that read those rows stay until they expire.
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
   for `ExecuteDelete` alone. A project that references the one with the mapping, such as its tests or a worker,
   checks its writes against that mapping too: MethodCache writes the mapping into the assembly as `AssemblyMetadata`
-  attributes. When neither the project nor a project it references maps a type, as in a data layer that the startup
+  attributes ([where to see them](#what-the-analyzers-read-from-referenced-projects)). When neither the project nor a project it references maps a type, as in a data layer that the startup
   project references, every type is reported.
 - Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
   can't be read: SQL in a variable, or `ExecuteSqlRaw` with an interpolated value that is neither a constant nor a
@@ -4041,8 +4190,10 @@ is not reported inside either kind of method, since they invalidate themselves.
 When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.
 
 A generic helper, such as a retention job's `PurgeAsync<TEntity>()`, is reported, since any type could reach it.
-When the types it gets are never cached, turn the warning off in the helper and say why. When some are, have it take
-the tags and invalidate them, and mark it `[InvalidatesCache]` so the calls that pass them count too:
+When some of the types it gets are cached, have it take the tags of what it changes, invalidate them, and mark it
+`[InvalidatesCache]`, so each call to it counts as the invalidation
+([Generic helpers](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#generic-helpers)). When the types it gets are never cached,
+turn the warning off in the helper and say why:
 
 ```cs
 public static class Retention
@@ -4132,7 +4283,8 @@ A setup method of your own in a referenced project counts when the program calls
 `builder.Services.AddData()` whose code calls `AddMethodCache`. MethodCache marks such methods when it builds that
 project, also when they reach `AddMethodCache` through other setup methods of the project named `Add...`, `Use...`,
 `Configure...` or `Register...`. A program that references the project but never calls the method is reported, since
-nothing sets the cache up for it.
+nothing sets the cache up for it. ([What the analyzers read from referenced projects](#what-the-analyzers-read-from-referenced-projects)
+shows where these marks are.)
 
 Test projects aren't reported, since tests may use the implementations without the cache. A program that references a
 project with cached services but doesn't use them, such as a migration tool, or that reaches its setup some other way,
@@ -4268,6 +4420,22 @@ public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
 
 A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
 aren't reported.
+
+## What the analyzers read from referenced projects
+
+MC0027 and MC0030 also look at the projects yours references. MethodCache writes what they need into each project's
+assembly when it builds that project, as `[assembly: AssemblyMetadata(...)]` attributes in two generated files:
+
+| Generated file | Key | Written when | Read by |
+|----------------|-----|--------------|---------|
+| `MethodCacheHostMarkers.g.cs` | `MethodCache.CachedServices` | the project has cached services | [MC0030](#mc0030) |
+| `MethodCacheHostMarkers.g.cs` | `MethodCache.AddsMethodCache` | once for each method of the project that calls `AddMethodCache`, directly or through its own setup methods | [MC0030](#mc0030) |
+| `MethodCacheEntityMapping.g.cs` | `MethodCache.EntityFrameworkCore.Mapping` | the project maps entities with `ef.Entity<T>(...)` | [MC0027](#mc0027) |
+
+To see them, open the referenced project's generated files: under Dependencies, .NET, Source Generators,
+MethodCache.SourceGenerator in Rider, or Dependencies, Analyzers, MethodCache.SourceGenerator in Visual Studio. When
+one of these warnings looks wrong, check that file first. A project built with an older MethodCache, or not rebuilt
+since its setup or mapping changed, has old values: rebuild it.
 
 
 ---
@@ -5338,6 +5506,24 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Added
+
+- The `MethodCache` package carries this `CHANGELOG.md` in its `docs` folder, next to the docs of that version.
+- New docs: giving a class an interface ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#a-class-without-an-interface)),
+  replacing a cached service with a fake in a test, generic EF Core helpers with `[InvalidatesCache]`, a worker and
+  an API with PostgreSQL in "invalidations only" mode, prometheus-net with a registry of your own, `DurationFor` for
+  future-dated rows, what changed keys mean during a rolling deploy, and where MC0027 and MC0030 read what they know
+  about referenced projects.
+
+### Changed
+
+- The agent instructions ask a coding agent to show its feedback draft to its user and to file it only when the user
+  agrees.
+- The error for a cached service registered after `AddMethodCache` says how a test that replaces a service with a
+  fake avoids it: call `AddMethodCache` again after the fake.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

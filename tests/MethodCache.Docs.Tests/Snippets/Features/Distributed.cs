@@ -52,3 +52,64 @@ namespace Docs.Distributed
         }
     }
 }
+
+namespace Docs.Distributed.WorkerAndApi
+{
+    using MethodCache.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore;
+
+    public sealed class Food
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+    }
+
+    public sealed class FoodDb(DbContextOptions<FoodDb> options) : DbContext(options)
+    {
+        public DbSet<Food> Foods => Set<Food>();
+    }
+
+    public sealed record FoodDto(int Id, string Name);
+
+    // begin-snippet: distributed-worker-api-reads
+    public interface IFoodCatalog
+    {
+        // The worker writes the catalog; its saves invalidate food-catalog in every process
+        [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedElsewhere = ["food-catalog"])]
+        Task<IReadOnlyList<FoodDto>> SearchAsync(string text);
+    }
+    // end-snippet
+
+    public sealed class FoodCatalog(FoodDb db) : IFoodCatalog
+    {
+        public async Task<IReadOnlyList<FoodDto>> SearchAsync(string text)
+            => await db.Foods.Where(f => f.Name.Contains(text)).Select(f => new FoodDto(f.Id, f.Name)).ToListAsync();
+    }
+
+    public static class Programs
+    {
+        public static void Api(WebApplicationBuilder builder, string connectionString)
+        {
+            // begin-snippet: distributed-worker-api-api
+            // The API caches reads of the catalog in its own memory
+            builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+            builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
+            builder.Services.AddMethodCache(mc => mc
+                .UsePostgreSql(connectionString)
+                .Defaults(o => o.WithDistributed(false)));
+            // end-snippet
+        }
+
+        public static void Worker(WebApplicationBuilder builder, string connectionString)
+        {
+            // begin-snippet: distributed-worker-api-worker
+            // The worker caches nothing: its saves invalidate the tags the mapping names, in every process
+            builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+            builder.Services.AddMethodCache(mc => mc
+                .UsePostgreSql(connectionString)
+                .Defaults(o => o.WithDistributed(false))
+                .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
+            // end-snippet
+        }
+    }
+}
