@@ -88,8 +88,9 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 | Metrics | `methodcache.kind`, the static `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result`, `methodcache.invalidation.type` and `.stage`, `methodcache.operation` and `error.type` | None: keys, tags, URLs, user ids and tenant ids never become metric dimensions |
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
-export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. An invalid configuration reload logs the path of the setting it
+export destination is appropriate. Core, Redis, SQL and EF Core diagnostic logs omit backend exception text because it
+can contain credentials, keys or argument values, and a failed invalidation after an EF Core commit logs the number of
+tags, not the tags. An invalid configuration reload logs the path of the setting it
 rejected, never the value, and failed policy watchers log only the error type; both keep the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
@@ -98,5 +99,6 @@ context; MethodCache neither adds identity baggage nor strips the application's 
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
 `HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests`,
-`DistributedCacheSecurityTests` and `SharedRuntimeOverridesTests` (keys, tags and the distributed cache). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
+`DistributedCacheSecurityTests` and `SharedRuntimeOverridesTests` (keys, tags and the distributed cache), and
+`InvalidationLoggingTests` (EF Core). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
 [security internals](developer/security-internals.md).

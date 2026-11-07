@@ -1563,7 +1563,8 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
   number, `:` and `\` escaped in strings. So `"product:{Id}"` on the entity matches `"product:{id}"` on a method, and
   `"sku:{Sku}"` matches `"sku:{sku}"` for a SKU such as `ham:mer`.
 - **A changed row invalidates the tags of its old and its new values.** Moving a product to another category
-  invalidates `category:1` and `category:2`.
+  invalidates `category:1` and `category:2`. The new values include columns the database computes, such as a
+  computed column, which EF Core reads back after the save.
 - **A row you change without loading it is read once before it is saved**, for its stored values. That covers
   `Update(product)` with values from a request, `Attach` with a few properties set, and `Remove(new Product { Id = id })`:
   the category it had in the database is invalidated, not the empty value of a new object. A row the context loaded
@@ -1573,7 +1574,9 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
   A cached "not found" for that id is invalidated too.
 - **A derived type** invalidates the tags of every mapped type it derives from.
 - **A type mapped with `OwnsOne` or `OwnsMany`**, such as an address stored in the customer's row, invalidates the
-  tags of its owner. **A many-to-many link** added or removed invalidates the tags of both sides that are mapped.
+  tags of its owner. **A many-to-many link** added or removed invalidates the tags of both sides that are mapped. A
+  side the context hasn't loaded is read once before the save when its tags use more than its key, so a link added
+  with only the two ids still invalidates `category:{CategoryId}` of the product.
 - **A tag without braces**, such as `"top-sellers"`, is invalidated by any change to that entity type.
 - **Everything the save writes counts**: rows another `SaveChanges` interceptor changes, adds or deletes, and rows EF
   Core deletes by cascade during the save.
@@ -1637,6 +1640,8 @@ public static async Task MoveAsync(int id, int categoryId, ShopDb db, Cancellati
   PostgreSQL confirm in the background, so the call never waits on the network.
 - An invalidation after a commit never throws: the data is saved, and an exception would make the caller think the
   save failed. If the distributed cache is down, the invalidation is retried until it is back, and logged as a warning.
+  The warning names the context, the number of tags and the error's type, not the tags or the error's message, which
+  can hold user ids or connection details.
 - With several instances, the other instances drop their copies as with any invalidation
   ([With several instances](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#with-several-instances)).
 - Commit through EF Core: `Commit()` on what `BeginTransaction` returned, or `Database.CommitTransaction()`. A
@@ -1811,8 +1816,9 @@ builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef => ef
 
 ### Saves of rows the context didn't load
 
-A row changed or deleted without loading it is read for its stored values before the save
-([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on the save's connection:
+A row changed or deleted without loading it is read for its stored values before the save, and so is the side of a
+many-to-many link the context hasn't loaded ([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on
+the save's connection:
 
 - **EF Core query filters don't apply to it**, so a row that a tenant filter hides from queries is still read.
 - **Row-level security does.** When a policy hides the row from the user, the read finds nothing, and the values your
@@ -3633,8 +3639,9 @@ Core owns the `MethodCache` Meter/ActivitySource. The OpenTelemetry package only
 | Metrics | `methodcache.kind`, the static `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result`, `methodcache.invalidation.type` and `.stage`, `methodcache.operation` and `error.type` | None: keys, tags, URLs, user ids and tenant ids never become metric dimensions |
 
 Hashing creates stable identifiers and does not make keys anonymous. Leave identity recording disabled unless the
-export destination is appropriate. Core, Redis and SQL diagnostic logs omit backend exception text because it can
-contain credentials, keys or argument values. An invalid configuration reload logs the path of the setting it
+export destination is appropriate. Core, Redis, SQL and EF Core diagnostic logs omit backend exception text because it
+can contain credentials, keys or argument values, and a failed invalidation after an EF Core commit logs the number of
+tags, not the tags. An invalid configuration reload logs the path of the setting it
 rejected, never the value, and failed policy watchers log only the error type; both keep the last accepted policies. Health check failures expose exception types only. Standard
 application activity parentage and baggage remain intact, including when origin code uses its ambient authorization
 context; MethodCache neither adds identity baggage nor strips the application's context.
@@ -3643,7 +3650,8 @@ context; MethodCache neither adds identity baggage nor strips the application's 
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
 `HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests`,
-`DistributedCacheSecurityTests` and `SharedRuntimeOverridesTests` (keys, tags and the distributed cache). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
+`DistributedCacheSecurityTests` and `SharedRuntimeOverridesTests` (keys, tags and the distributed cache), and
+`InvalidationLoggingTests` (EF Core). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
 [security internals](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/security-internals.md).
 
 
@@ -5941,6 +5949,20 @@ release.
 - The MC0026 message points to `[ChecksRequestState]` for a tenant or user that the method takes as a parameter.
 - A policy in code or appsettings for a cached service that the application doesn't register is logged at
   `Information` instead of `Debug`, so a misspelt or moved service shows in the startup log.
+
+### Fixed
+
+- **`MethodCache.EntityFrameworkCore`**: a many-to-many link added or removed with only the two ids, without loading
+  either side, invalidates every mapped tag of both sides. The side the context hasn't loaded is read once before the
+  save when its tags use more than its key. Before, only tags that use the key alone, such as `product:{Id}`, were
+  invalidated, and a cached list by category kept the old links.
+- **`MethodCache.EntityFrameworkCore`**: a row changed without loading it invalidates the new value of a column the
+  database computes, such as `HasComputedColumnSql`. Before, only the old value was invalidated.
+- **`MethodCache.EntityFrameworkCore`**: the warning for an invalidation that can't be confirmed after a commit gives
+  the number of tags and the error's type. Before, it logged the tags, which can hold user or tenant ids, and the
+  exception with its message.
+- **`MethodCache.EntityFrameworkCore`**: `UseEntityFrameworkCore` works in a container without logging, such as a
+  `ServiceCollection` built without a generic host. Before, it threw because no `ILogger<T>` was registered.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

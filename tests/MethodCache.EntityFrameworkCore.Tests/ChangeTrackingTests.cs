@@ -51,6 +51,61 @@ public sealed class ChangeTrackingTests
         shop.Counter.Calls.Should().Be(3);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_join_row_written_without_loading_the_product_invalidates_all_of_the_products_tags(bool add)
+    {
+        await using var shop = await Shop.CreateAsync();
+        if (!add)
+        {
+            await using var db = await shop.CreateDbAsync();
+            (await db.Products.Include(p => p.Labels).SingleAsync(p => p.Id == 42)).Labels.Add(await db.Labels.SingleAsync(l => l.Id == 1));
+            await db.SaveChangesAsync();
+        }
+        await shop.Reads.NameBySkuAsync("ham:mer");
+        await shop.Reads.CountInCategoryAsync(1);
+        var calls = shop.Counter.Calls;
+
+        await using (var db = await shop.CreateDbAsync())
+        {
+            // The join row alone, through its property bag: neither the product nor the label is loaded
+            var links = db.Set<Dictionary<string, object>>("LabelProduct");
+            var link = new Dictionary<string, object> { ["LabelsId"] = 1, ["ProductsId"] = 42 };
+            if (add) links.Add(link);
+            else links.Remove(link);
+            await db.SaveChangesAsync();
+        }
+
+        // sku:{Sku} and category:{CategoryId} need the product's stored row, which the save read
+        await shop.Reads.NameBySkuAsync("ham:mer");
+        await shop.Reads.CountInCategoryAsync(1);
+        shop.Counter.Calls.Should().Be(calls + 2);
+    }
+
+    [Fact]
+    public async Task A_computed_column_of_a_row_that_was_not_loaded_invalidates_its_new_value()
+    {
+        await using var shop = await Shop.CreateAsync();
+        await using (var db = await shop.CreateDbAsync())
+        {
+            db.Articles.Add(new Article { Id = 1, Title = "old" });
+            await db.SaveChangesAsync();
+        }
+        (await shop.Reads.ArticleBySlugAsync("NEW")).Should().BeNull();
+
+        await using (var db = await shop.CreateDbAsync())
+        {
+            var stub = new Article { Id = 1 };
+            db.Articles.Attach(stub);
+            stub.Title = "new";
+            await db.SaveChangesAsync();
+            stub.Slug.Should().Be("NEW");
+        }
+
+        (await shop.Reads.ArticleBySlugAsync("NEW")).Should().Be(1);
+    }
+
     [Fact]
     public async Task A_cascade_delete_deferred_to_SaveChanges_invalidates_the_deleted_rows()
     {

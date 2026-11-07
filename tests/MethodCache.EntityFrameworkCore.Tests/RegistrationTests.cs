@@ -60,6 +60,24 @@ public sealed class RegistrationTests
     }
 
     [Fact]
+    public async Task A_container_without_a_host_or_logging_saves_through_the_interceptor()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<ShopDb>(o => o.UseSqlite(connection));
+        services.AddMethodCache(mc => mc.UseEntityFrameworkCore<ShopDb>(Shop.DefaultTags));
+        await using var provider = services.BuildServiceProvider();
+
+        await using var db = await provider.GetRequiredService<IDbContextFactory<ShopDb>>().CreateDbContextAsync();
+        await db.Database.EnsureCreatedAsync();
+        db.Categories.Add(new Category { Id = 1, Name = "Tools" });
+        db.Products.Add(new Product { Id = 42, Name = "Hammer", Sku = "ham:mer", CategoryId = 1 });
+
+        (await db.SaveChangesAsync()).Should().Be(2);
+    }
+
+    [Fact]
     public void Entity_needs_at_least_one_tag()
     {
         var services = new ServiceCollection();
