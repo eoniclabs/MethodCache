@@ -19,7 +19,7 @@ namespace MethodCache.Analyzers
         internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             "MC0031",
             "A call to the class's own cached method skips the cache",
-            "'{0}' calls its own cached method '{1}', so the call skips the cache and runs every time. The cache is in front of the service, so only calls through the interface from other classes use it. Move the method to a service of its own and call it through that service's interface.",
+            "'{0}' calls its own cached method '{1}', so the call skips the cache and runs every time. The cache is in front of the service, so only calls through the interface from other classes use it. When the call doesn't need the cache, such as a recursive call, call a private method that does the work. When it does, move the method to a service of its own and call it through that service's interface.",
             "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,

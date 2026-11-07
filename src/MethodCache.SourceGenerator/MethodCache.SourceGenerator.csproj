@@ -31,5 +31,8 @@
     <Compile Include="../Shared/DurationParser.cs" Link="Internal/DurationParser.cs" />
     <Compile Include="../Shared/EntityMappingCall.cs" Link="Internal/EntityMappingCall.cs" />
     <Compile Include="../Shared/HostMarkers.cs" Link="Internal/HostMarkers.cs" />
+    <Compile Include="../Shared/RequestState.cs" Link="Internal/RequestState.cs" />
+    <Compile Include="../Shared/TagPattern.cs" Link="Internal/TagPattern.cs" />
+    <Compile Include="../Shared/InvalidationTags.cs" Link="Internal/InvalidationTags.cs" />
   </ItemGroup>
 </Project>

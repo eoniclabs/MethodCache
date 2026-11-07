@@ -303,6 +303,32 @@ public class SignatureCorpusTests
     }
 
     [Fact]
+    public async Task RuntimeKeyArgument_IsInformation_AndStillCaches()
+    {
+        var source = Member(
+            "Task<int> Get(int page, object filter)",
+            "Task<int> Get(int page, object filter) { Counter.Hit(); return Task.FromResult(page); }",
+            "await s.Get(1, \"a\")", "await s.Get(1, \"b\")").ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "RuntimeKeyArgument", LanguageVersion.CSharp12);
+
+        var diagnostic = Assert.Single(compiled.Diagnostics, d => d.Id == "MC0037");
+        Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Contains("'filter' is a 'object'", diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
+        var run = compiled.Assembly.GetType("Corpus.Scenario")!.GetMethod("RunAsync")!;
+        Assert.Equal(new[] { 1, 2 }, await (Task<int[]>)run.Invoke(null, null)!);
+    }
+
+    [Theory]
+    [InlineData("Task<int> Get(int id, string name)", "Task<int> Get(int id, string name) { Counter.Hit(); return Task.FromResult(id); }", "await s.Get(1, \"a\")")]
+    [InlineData("Task<int> Get(int[] ids, CancellationToken ct)", "Task<int> Get(int[] ids, CancellationToken ct) { Counter.Hit(); return Task.FromResult(ids.Length); }", "await s.Get(new[] { 1 }, default)")]
+    public async Task KeyWrittenAtBuildTime_HasNoRuntimeKeyInformation(string signature, string implementation, string call)
+    {
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(Member(signature, implementation, call, call).ToSource(), "BuildTimeKey", LanguageVersion.CSharp12);
+
+        Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "MC0037");
+    }
+
+    [Fact]
     public async Task AmbiguousPlaceholder_ReportsWarning_AndKeepsLiteralTag()
     {
         var compiled = await _engine.CompileWithSourceGeneratorAsync("""

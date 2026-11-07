@@ -5,7 +5,8 @@ MethodCache can't do, such as caching a `void` method, or a setting is invalid. 
 attribute is ignored, such as `[Cache]` on a class member or on a `static` interface member, or it probably doesn't do
 what you meant, such as a tag placeholder that matches no parameter. Every diagnostic links to its section below, and
 the ones marked **Code fix** can be fixed from the light bulb in Visual Studio, Rider or VS Code. When both the
-generator and the analyzer run, each problem is reported once.
+generator and the analyzer run, each problem is reported once. Information, such as MC0037, shows in the editor and
+never stops a build.
 
 | Id | Severity | Summary | Code fix |
 |----|----------|---------|----------|
@@ -43,6 +44,25 @@ generator and the analyzer run, each problem is reported once.
 | [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
 | [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
 | [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
+| [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
+| [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
+
+## Rules of a later version
+
+A new version of MethodCache can bring new analyzer rules, and with warnings treated as errors a new warning stops the
+build. To upgrade first and turn the new rules on later, set `MethodCacheAnalysisLevel` to the version whose rules you
+want, in the project file or in `Directory.Build.props`:
+
+```xml
+<PropertyGroup>
+  <MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>
+</PropertyGroup>
+```
+
+The rules that came after that version are then off. Turn one of them on in `.editorconfig`, such as
+`dotnet_diagnostic.MC0040.severity = warning`, and raise the level when you have looked at the rest. Every rule of
+1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
+fails the build with MCB001.
 
 ## MC0001
 
@@ -281,8 +301,10 @@ A class implements an interface with `[Cache]` methods and takes per-request sta
 `IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
 when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
 directly or through a factory such as `IDbContextFactory<T>`. The analyzer follows constructors two levels down (the
-class the implementation takes, and a class that class takes), and follows an interface to the classes in the same
-project that implement it. It doesn't see a setting that an interceptor makes on the connection.
+class the implementation takes, and a class that class takes), and follows an interface to the classes that implement
+it, in the same project and in the projects it references
+([what the analyzers read from referenced projects](#what-the-analyzers-read-from-referenced-projects)). It doesn't
+see a setting that an interceptor makes on the connection.
 
 Name your own request-state types, such as an `ICurrentUser` service or a tenant context, in `.editorconfig`, comma
 separated, with namespace. A class that takes one, or takes a class that does, is reported too:
@@ -291,6 +313,9 @@ separated, with namespace. A class that takes one, or takes a class that does, i
 [*.cs]
 methodcache.request_state_types = MyApp.ICurrentUser, MyApp.TenantContext
 ```
+
+A name that matches no type, such as one left behind when the type was renamed, is reported as
+[MC0036](#mc0036).
 
 The cache key is built from the method's arguments only. A result that depends on the current request or user, such
 as a query filtered by row-level security on a connection set up for that user, is stored under a key that doesn't
@@ -315,6 +340,38 @@ Make what the result depends on a parameter of the cached method, so it becomes 
 For a context set up for the signed-in user, give the cached reads a context of their own
 ([Row-level security](../features/entity-framework-core.md#row-level-security)).
 See [Getting started](../getting-started.md#per-user-data).
+
+### A tenant parameter checked against the request
+
+When the cached method already takes the tenant or user as a parameter, and reads through a context that filters by
+the request's tenant, check that the two match. Mark your check method `[ChecksRequestState]` and call it with the
+parameter at the start of each cached method. A class whose cached methods all do isn't reported:
+
+```cs
+public sealed class TenantDb(DbContextOptions<TenantDb> options, ITenantContext tenant) : DbContext(options)
+{
+    [ChecksRequestState]
+    public void EnsureActsFor(Guid tenantId)
+    {
+        if (tenantId != tenant.Id) throw new UnauthorizedAccessException("Not the request's tenant.");
+    }
+}
+
+public sealed class Projects(TenantDb db) : IProjects
+{
+    public Task<List<ProjectDto>> ListAsync(Guid tenantId)   // [Cache] on IProjects.ListAsync
+    {
+        db.EnsureActsFor(tenantId);   // a load for another tenant throws, so nothing wrong is cached under its key
+        return db.Projects.Select(p => new ProjectDto(p.Id, p.Name)).ToListAsync();
+    }
+}
+```
+
+The check runs when the method loads a value, not on a hit. What is cached under a tenant's key was loaded for that
+tenant, but a caller that passes another tenant's id gets that tenant's cached result without the check. So take the
+id from the request, or authorize it, before the call, as for any cached method that takes a tenant or user id.
+Refresh-ahead runs without a request, so the check fails there and the entry is loaded on the next call instead;
+don't combine the pattern with `RefreshAhead`. The attribute changes nothing at run time.
 
 ## MC0027
 
@@ -394,7 +451,8 @@ These invalidations count, wherever they are in the project:
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and other invalidations in other
-projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test
+projects aren't seen; `TagCoverage` in `MethodCache.Testing` checks the whole application in a test, and checks that
+a referenced project invalidates each tag marked `InvalidatedElsewhere`
 ([Testing](../features/testing.md#every-tag-has-an-invalidation)).
 
 Invalidate the tag where the data changes ([Invalidation](../features/invalidation.md)). When another application or
@@ -484,6 +542,23 @@ public sealed class Totals(IPrices prices) : ITotals
         var total = 0m;
         foreach (var id in ids) total += await prices.GetAsync(id);   // cached
         return total;
+    }
+}
+```
+
+When the call doesn't need the cache, such as a method that calls itself to walk a tree, let the cached method call
+a private method that does the work, and recurse in that one. The private method isn't cached, and nothing suggests
+it is:
+
+```cs
+public sealed class Paths(IFolders folders) : IPaths
+{
+    public Task<string> ResolveAsync(int folderId) => ResolveCoreAsync(folderId);   // [Cache] on IPaths.ResolveAsync
+
+    private async Task<string> ResolveCoreAsync(int folderId)
+    {
+        var folder = await folders.GetAsync(folderId);
+        return folder.ParentId is { } parent ? await ResolveCoreAsync(parent) + "/" + folder.Name : folder.Name;
     }
 }
 ```
@@ -584,16 +659,57 @@ public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
 A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
 aren't reported.
 
+## MC0036
+
+A name in the `.editorconfig` option `methodcache.request_state_types` matches no type, although its namespace exists.
+[MC0026](#mc0026) then doesn't look for that type, without a sign: this happens when the type is renamed or moved and
+the option isn't.
+
+```ini
+[*.cs]
+methodcache.request_state_types = MyApp.ICurrentUser   # MC0036 after ICurrentUser was renamed IUserContext
+```
+
+Write the type's full name as it is now, with its namespace, such as `MyApp.IUserContext`. A nested type is written
+`MyApp.Outer.Inner`, and a generic type `MyApp.IRepository<T>`. A name is checked only in a project that sees its
+namespace, so a solution-wide `.editorconfig` that names a type of the web project doesn't warn in a library that
+doesn't reference it. The warning has no location in a file; it names the option and the type.
+
+## MC0037
+
+Information, not a warning: the decorator can't write the method's key when you build, so the key generator writes it
+when the call runs, from the actual type of the argument, and hashes it. That is the case for an argument of type
+`object`, an interface the decorator can't write, or a collection of collections
+([How arguments become keys](../features/keys.md#how-arguments-become-keys)). The key is right, but it takes longer to
+build and isn't readable in the admin list.
+
+```cs
+[Cache(Duration = "5m")]
+Task<Page<Order>> SearchAsync(object filter);   // MC0037: the key is written when the call runs
+```
+
+To have it written when you build, pass simple values or a sealed record of them:
+
+```cs
+public sealed record OrderFilter(string? Customer, OrderStatus? Status, int Page);
+
+[Cache(Duration = "5m")]
+Task<Page<Order>> SearchAsync(OrderFilter filter);   // SearchAsync:(alice:Open:2)
+```
+
 ## What the analyzers read from referenced projects
 
-MC0027 and MC0030 also look at the projects yours references. MethodCache writes what they need into each project's
-assembly when it builds that project, as `[assembly: AssemblyMetadata(...)]` attributes in two generated files:
+MC0026, MC0027 and MC0030 also look at the projects yours references, and so does `TagCoverage` in
+MethodCache.Testing. MethodCache writes what they need into each project's assembly when it builds that project, as
+`[assembly: AssemblyMetadata(...)]` attributes in these generated files:
 
 | Generated file | Key | Written when | Read by |
 |----------------|-----|--------------|---------|
 | `MethodCacheHostMarkers.g.cs` | `MethodCache.CachedServices` | the project has cached services | [MC0030](#mc0030) |
 | `MethodCacheHostMarkers.g.cs` | `MethodCache.AddsMethodCache` | once for each method of the project that calls `AddMethodCache`, directly or through its own setup methods | [MC0030](#mc0030) |
 | `MethodCacheEntityMapping.g.cs` | `MethodCache.EntityFrameworkCore.Mapping` | the project maps entities with `ef.Entity<T>(...)` | [MC0027](#mc0027) |
+| `MethodCacheInvalidatedTags.g.cs` | `MethodCache.InvalidatedTags` | once for each tag the project invalidates, with `{}` for a placeholder or an interpolated value; not in test projects | `TagCoverage` |
+| `MethodCacheRequestState.g.cs` | `MethodCache.RequestState` | once for each interface of a class whose constructor takes per-request state, or takes a class that does, such as `Data.IStats\|RavenStats\|\|IHttpContextAccessor` | [MC0026](#mc0026) |
 
 To see them, open the referenced project's generated files: under Dependencies, .NET, Source Generators,
 MethodCache.SourceGenerator in Rider, or Dependencies, Analyzers, MethodCache.SourceGenerator in Visual Studio. When

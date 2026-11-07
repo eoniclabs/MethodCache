@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using MethodCache.Internal;
 
 namespace MethodCache.Analyzers
 {
@@ -69,28 +70,7 @@ namespace MethodCache.Analyzers
             }
         }
 
-        internal static bool IsMethodCacheInvalidation(IMethodSymbol method)
-        {
-            var type = method.ReducedFrom?.ContainingType ?? method.ContainingType;
-            if (type is null) return false;
-            // MethodCache.EntityFrameworkCore: db.InvalidateAfterCommit(tags)
-            if (method.Name == "InvalidateAfterCommit")
-            {
-                return type is { Name: "MethodCacheDbContextExtensions", ContainingNamespace: { Name: "EntityFrameworkCore", ContainingNamespace: { Name: "Microsoft", ContainingNamespace.IsGlobalNamespace: true } } };
-            }
-            if (IsMethodCacheType(type, "ICacheManager") || IsMethodCacheType(type, "ICacheAdministrator") ||
-                IsMethodCacheType(type, "CacheManagerExtensions"))
-            {
-                return true;
-            }
-
-            foreach (var implemented in type.AllInterfaces)
-            {
-                if (IsMethodCacheType(implemented, "ICacheManager") || IsMethodCacheType(implemented, "ICacheAdministrator")) return true;
-            }
-
-            return false;
-        }
+        internal static bool IsMethodCacheInvalidation(IMethodSymbol method) => InvalidationTags.IsMethodCacheInvalidation(method);
 
         private static bool IsMethodCacheType(INamedTypeSymbol type, string name)
             => type.Name == name && type.ContainingNamespace is { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true };

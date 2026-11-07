@@ -220,27 +220,7 @@ namespace MethodCache.Analyzers
         /// The method, the one it overrides or an interface method it implements is marked [InvalidatesCache]: calls
         /// through the interface and through the class both count.
         /// </summary>
-        internal static bool HasInvalidatesCache(IMethodSymbol method)
-        {
-            method = method.ReducedFrom ?? method;
-            for (var current = method.OriginalDefinition; current != null; current = current.OverriddenMethod?.OriginalDefinition)
-            {
-                if (HasMethodCacheAttribute(current, "InvalidatesCacheAttribute")) return true;
-            }
-            var type = method.ContainingType;
-            if (method.IsStatic || type == null || type.TypeKind == TypeKind.Interface) return false;
-            foreach (var @interface in type.AllInterfaces)
-            {
-                foreach (var member in @interface.GetMembers(method.Name).OfType<IMethodSymbol>())
-                {
-                    // Compared as definitions, so a generic method or a method of a generic type matches too
-                    if (HasMethodCacheAttribute(member, "InvalidatesCacheAttribute")
-                        && SymbolEqualityComparer.Default.Equals(type.FindImplementationForInterfaceMember(member)?.OriginalDefinition, method.OriginalDefinition))
-                        return true;
-                }
-            }
-            return false;
-        }
+        internal static bool HasInvalidatesCache(IMethodSymbol method) => InvalidationTags.HasInvalidatesCache(method);
 
         internal static bool HasMethodCacheAttribute(IMethodSymbol method, string name)
             => method.GetAttributes().Any(a => a.AttributeClass is { ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } } attribute

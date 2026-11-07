@@ -29,17 +29,45 @@ public class TagCoverageTests
     }
 
     [Fact]
-    public void Uninvalidated_InvalidatedElsewhere_CoversTheTagOnEveryMethod()
+    public void Uninvalidated_InvalidatedElsewhere_CountsOnlyWhenAReferencedProjectInvalidatesTheTag()
+    {
+        using var provider = BuildWithImportedPrices();
+
+        // The price import invalidates imported-prices and imported-price:{id}, and nothing invalidates currency-rates
+        var tag = Assert.Single(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["prices"]));
+
+        Assert.Equal("currency-rates", tag.Tag);
+        Assert.True(tag.MarkedInvalidatedElsewhere);
+        Assert.EndsWith("(marked InvalidatedElsewhere, but no project the tests reference invalidates it)", tag.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Uninvalidated_InvalidatedElsewhere_AlsoInvalidatedBy_CoversATagNoProjectInvalidates()
+    {
+        using var provider = BuildWithImportedPrices();
+
+        Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["prices", "currency-rates"]));
+    }
+
+    [Fact]
+    public void Uninvalidated_InvalidationsInTheTestProject_DontCount()
+    {
+        // CacheRecorderTests invalidates "prices" itself, which says nothing about the application
+        using var provider = Build();
+
+        Assert.False(Assert.Single(TagCoverage.Uninvalidated(provider)).MarkedInvalidatedElsewhere);
+        Assert.DoesNotContain(ReferencedInvalidations.Read(AppContext.BaseDirectory), tag => tag == "prices");
+        Assert.Contains("imported-price:{}", ReferencedInvalidations.Read(AppContext.BaseDirectory));
+    }
+
+    private static ServiceProvider BuildWithImportedPrices()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IProducts, Products>();
         services.AddSingleton<IProductWriter, ProductWriter>();
         services.AddSingleton<IImportedPrices, ImportedPrices>();
         services.AddMethodCache();
-        using var provider = services.BuildServiceProvider();
-
-        // IImportedPrices marks "prices", which IProducts.PriceAsync has too
-        Assert.Empty(TagCoverage.Uninvalidated(provider));
+        return services.BuildServiceProvider();
     }
 
     [Fact]

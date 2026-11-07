@@ -8,4 +8,32 @@
   <PropertyGroup>
     <WarningsAsErrors>$(WarningsAsErrors);CS9057</WarningsAsErrors>
   </PropertyGroup>
+
+  <!--
+    MethodCacheAnalysisLevel, such as 1.0, turns off the analyzer rules that came in a later version, so a new version
+    of the package can't break a build that treats warnings as errors. Turn a rule on again in .editorconfig with
+    dotnet_diagnostic.<id>.severity = warning. Every rule of 1.0 stays on at any level.
+  -->
+  <ItemGroup>
+    <!-- A rule added after 1.0: <MethodCacheRule Include="MC0040" Since="1.1" /> -->
+  </ItemGroup>
+
+  <Target Name="_MethodCacheAnalysisLevel" BeforeTargets="CoreCompile" Condition="'$(MethodCacheAnalysisLevel)' != ''">
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MethodCacheAnalysisLevel)', '^\d+\.\d+(\.\d+)?$'))"
+           Code="MCB001" Text="MethodCacheAnalysisLevel is '$(MethodCacheAnalysisLevel)'. Set it to a MethodCache version, such as 1.0." />
+    <ItemGroup>
+      <_MethodCacheRuleAfterLevel Include="@(MethodCacheRule)" Condition="$([MSBuild]::VersionGreaterThan('%(MethodCacheRule.Since)', '$(MethodCacheAnalysisLevel)'))" />
+      <_MethodCacheAnalysisLevelLine Include="is_global = true" />
+      <_MethodCacheAnalysisLevelLine Include="global_level = -1" />
+      <_MethodCacheAnalysisLevelLine Include="@(_MethodCacheRuleAfterLevel->'dotnet_diagnostic.%(Identity).severity = none')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_MethodCacheAnalysisLevelFile>$(IntermediateOutputPath)MethodCacheAnalysisLevel.globalconfig</_MethodCacheAnalysisLevelFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_MethodCacheAnalysisLevelFile)" Lines="@(_MethodCacheAnalysisLevelLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <EditorConfigFiles Include="$(_MethodCacheAnalysisLevelFile)" />
+      <FileWrites Include="$(_MethodCacheAnalysisLevelFile)" />
+    </ItemGroup>
+  </Target>
 </Project>

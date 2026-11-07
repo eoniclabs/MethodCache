@@ -6,8 +6,33 @@ release.
 
 ## Unreleased
 
+### Upgrading from 1.0.0-rc.10
+
+- `TagCoverage.Uninvalidated` counts a tag marked `InvalidatedElsewhere` only when a project the test project references
+  invalidates it. Reference the project that invalidates it, such as the worker, from the test project, or name a tag
+  that is invalidated outside the solution in `alsoInvalidatedBy`. `UninvalidatedTag` has a third parameter,
+  `MarkedInvalidatedElsewhere`.
+- MC0026 also follows an interface to its implementations in referenced projects, once those projects are built with
+  this version, so it can report a cached implementation it didn't report before.
+- New warning MC0036 fails a build that treats warnings as errors when a name in `methodcache.request_state_types`
+  matches no type.
+
 ### Added
 
+- `[ChecksRequestState]` marks a method of your own that checks a parameter against the current request, such as
+  `EnsureActsFor(tenantId)`. MC0026 doesn't report a class whose cached methods each pass one of their parameters to
+  it ([A tenant parameter checked against the request](docs/user-guide/DIAGNOSTICS.md#a-tenant-parameter-checked-against-the-request)).
+- MC0026 follows an interface to the classes that implement it in referenced projects. The generator writes the
+  classes of each project that take per-request state into its assembly (`MethodCacheRequestState.g.cs`).
+- The generator writes the tags each project invalidates into its assembly (`MethodCacheInvalidatedTags.g.cs`), and
+  `TagCoverage` reads them from the projects next to the tests.
+- Warning MC0036: a name in `methodcache.request_state_types` that matches no type, such as one left behind by a
+  rename.
+- Information MC0037: a `[Cache]` method whose key is written when the call runs, such as one with an `object`
+  argument. It shows in the editor and never stops a build.
+- The MSBuild property `MethodCacheAnalysisLevel` turns off the analyzer rules that come in versions after the one it
+  names, so a new version can't break a build that treats warnings as errors
+  ([Rules of a later version](docs/user-guide/DIAGNOSTICS.md#rules-of-a-later-version)).
 - The `MethodCache` package carries this `CHANGELOG.md` in its `docs` folder, next to the docs of that version.
 - New docs: giving a class an interface ([Getting started](docs/getting-started.md#a-class-without-an-interface)),
   replacing a cached service with a fake in a test, generic EF Core helpers with `[InvalidatesCache]`, a worker and
@@ -21,6 +46,8 @@ release.
   agrees.
 - The error for a cached service registered after `AddMethodCache` says how a test that replaces a service with a
   fake avoids it: call `AddMethodCache` again after the fake.
+- MC0031 suggests a private method that does the work when the call doesn't need the cache, such as a recursive call.
+- The MC0026 message points to `[ChecksRequestState]` for a tenant or user that the method takes as a parameter.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

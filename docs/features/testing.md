@@ -119,18 +119,30 @@ MethodCache, over the same database. With EF Core's in-memory provider, give bot
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the
 cached methods, from attributes, startup code and configuration, that nothing invalidates. It counts the
-`[CacheInvalidate]` methods of the registered services, the tags marked `InvalidatedElsewhere` on `[Cache]`
-([In another application](invalidation.md#in-another-application)) and the entity mapping of
-[`MethodCache.EntityFrameworkCore`](entity-framework-core.md):
+`[CacheInvalidate]` methods of the registered services, the entity mapping of
+[`MethodCache.EntityFrameworkCore`](entity-framework-core.md), and the invalidations in the projects the test project
+references:
 
 <!-- snippet: testing-tag-coverage -->
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or an invalidation in a referenced project
 Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 <!-- endSnippet -->
 
-Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+When MethodCache builds a project, it writes the tags the project invalidates into its assembly: `[CacheInvalidate]`
+tags, and the tags its code passes to `InvalidateTagAsync`, `InvalidateTagsAsync`, `InvalidateAfterCommit`, the entity
+mapping or a helper marked `[InvalidatesCache]`, as constants, interpolated strings or `Tag(...)` calls. `TagCoverage`
+reads them from the assemblies next to the tests, so a tag the API caches and a worker invalidates is covered when the
+test project references the worker. The test project's own invalidations don't count.
+
+A tag marked `InvalidatedElsewhere` ([In another application](invalidation.md#in-another-application)) is covered only
+when a referenced project invalidates it. Otherwise it is reported, with `MarkedInvalidatedElsewhere` set, so the mark
+can't hide a tag that nothing invalidates any more. Reference the project that invalidates it, or, when it is
+invalidated outside the solution, such as by another team's application or a database trigger, name it in
+`alsoInvalidatedBy`.
+
+Name the tags your code invalidates in ways no project shows, such as a tag built in a variable:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
 value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 

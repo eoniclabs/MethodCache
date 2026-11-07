@@ -89,6 +89,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Testing", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Testing.Tests", "tests\MethodCache.Testing.Tests\MethodCache.Testing.Tests.csproj", "{D0C542C8-997F-4D68-8DF6-54C24CC21126}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodCache.Testing.Tests.PriceImport", "tests\MethodCache.Testing.Tests.PriceImport\MethodCache.Testing.Tests.PriceImport.csproj", "{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -567,6 +569,18 @@ Global
 		{D0C542C8-997F-4D68-8DF6-54C24CC21126}.Release|x64.Build.0 = Release|Any CPU
 		{D0C542C8-997F-4D68-8DF6-54C24CC21126}.Release|x86.ActiveCfg = Release|Any CPU
 		{D0C542C8-997F-4D68-8DF6-54C24CC21126}.Release|x86.Build.0 = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|x64.Build.0 = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Debug|x86.Build.0 = Debug|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|x64.ActiveCfg = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|x64.Build.0 = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|x86.ActiveCfg = Release|Any CPU
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -611,5 +625,6 @@ Global
 		{5A0FD8DF-BD97-4369-AD63-527414EC8F29} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{501A8FCF-8EEB-42E2-B8B5-4542EB52900A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{D0C542C8-997F-4D68-8DF6-54C24CC21126} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{C3CC60DE-607B-4A65-85AD-6AF3A0EDA84A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

@@ -97,8 +97,8 @@ reported. ([Writes the change tracker doesn't see](features/entity-framework-cor
 **Why the warning MC0028 on a tag?**
 Nothing in the project invalidates it, so its entries stay until they expire. Invalidate it where the data changes,
 with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `InvalidateAfterCommit`. When another application
-invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 and `TagCoverage`
-then count it. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028), [In another application](features/invalidation.md#in-another-application))
+invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 then counts it,
+and `TagCoverage` counts it when the test project references the worker that invalidates it. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028), [In another application](features/invalidation.md#in-another-application))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -215,6 +215,16 @@ Not as it is: the key holds only the method's arguments, so one user's result re
 tenant id as an argument. Warning MC0026 reports such services. The same goes for row-level security on the
 connection. ([Per-user data](getting-started.md#per-user-data))
 
+**My cached method takes the tenant id and checks it against the request's tenant. Why the warning MC0026?**
+The analyzer can't see the check. Mark your check method `[ChecksRequestState]`, such as `EnsureActsFor(tenantId)`, and
+call it with the parameter in each cached method; the class is then not reported. The check runs only when a value is
+loaded, so the caller must still take the id from the request.
+([A tenant parameter checked against the request](user-guide/DIAGNOSTICS.md#a-tenant-parameter-checked-against-the-request))
+
+**I renamed my `ICurrentUser`. Does MC0026 still find it?**
+Not until you update `methodcache.request_state_types` in `.editorconfig`. Warning MC0036 reports a name there that
+matches no type. ([MC0036](user-guide/DIAGNOSTICS.md#mc0036))
+
 **My database uses row-level security on the connection. How do I cache reads?**
 Give the cached reads a context of their own from `IDbContextFactory<T>`, not the one set up for the signed-in user,
 and pass what the policies filter on, such as the tenant id, as an argument. Check in the endpoint that the user may
@@ -230,6 +240,11 @@ From the assembly, interface, method and the arguments' values. A `CancellationT
 Arguments whose only state is private are rejected, at build time with error MC0034; implement `ICacheKeyProvider` on
 the type.
 ([Types whose state is private](features/keys.md#types-whose-state-is-private))
+
+**Which methods get a key that is written when the call runs?**
+Those with an argument of type `object`, an interface the decorator can't write or a collection of collections.
+Information MC0037 marks them in the editor; pass simple values or a sealed record to have the key written when you
+build. ([MC0037](user-guide/DIAGNOSTICS.md#mc0037))
 
 **How do I cache something without an attribute?**
 `ICacheManager.GetOrCreateAsync(key, factory, o => o.WithDuration(...))` with a prefixed key such as `$"order:{id}"`.
@@ -253,6 +268,13 @@ returned. ([Many keys at once](features/manual-caching.md#many-keys-at-once))
 **How do I cache a client from a NuGet package?**
 `[assembly: CacheInterface(typeof(IClient), nameof(IClient.Method), Duration = "...")]` caches chosen methods of its
 own interface. ([Caching third-party code](features/third-party.md))
+
+## Upgrading
+
+**A new MethodCache version brings new warnings, and we treat warnings as errors. How do we upgrade?**
+Set `<MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>` (the version whose rules you want) in
+`Directory.Build.props`: rules that came later are off until you raise it. Turn one on in `.editorconfig` with
+`dotnet_diagnostic.<id>.severity = warning`. ([Rules of a later version](user-guide/DIAGNOSTICS.md#rules-of-a-later-version))
 
 ## Running in production
 
@@ -318,8 +340,9 @@ or a context that isn't connected to MethodCache. ([Proving that a result is cac
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
-`InvalidatedElsewhere` and the EF Core mapping; pass the tags your code invalidates with `InvalidateTagAsync` in
-`alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
+the EF Core mapping and the invalidations in the projects the test project references, such as a worker's
+`InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it.
+Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
 ([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**

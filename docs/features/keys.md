@@ -68,8 +68,9 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
 
 The generator writes the key code when you build. Only the values the list above sends to the key generator are read
 when the call runs, from the public properties and fields of their actual type. A type of your own whose public
-properties are simple values never goes there. To see which form a call gets, look at its key with
-`IMethodCacheKeys.For`.
+properties are simple values never goes there. Information [MC0037](../user-guide/DIAGNOSTICS.md#mc0037) marks each
+`[Cache]` method whose key is written when the call runs, in the editor. To see which form a call gets, look at its key
+with `IMethodCacheKeys.For`.
 
 On .NET 10 the decorator writes simple keys into a stack buffer and looks them up without allocating.
 

@@ -92,6 +92,22 @@ namespace MethodCache.SourceGenerator
         }
 
         /// <summary>
+        /// MC0037, information only: a key argument that the decorator can't write at build time, such as one of type
+        /// object, an interface or a collection of collections, so the key generator writes the whole key when the call
+        /// runs. Reported on the first such argument.
+        /// </summary>
+        private static DiagnosticInfo? RuntimeKeyArgument(IMethodSymbol method)
+        {
+            var keyParams = method.Parameters.Where(p => !Utils.IsCancellationToken(p.Type)).ToList();
+            if (keyParams.Count == 0 || keyParams.All(p => DecoratorEmitter.IsSimpleType(p.Type)) || DecoratorEmitter.TryBuildInlineParts(keyParams, out _, out _))
+                return null;
+            var parameter = keyParams.FirstOrDefault(p => !DecoratorEmitter.IsSimpleType(p.Type)
+                && !DecoratorEmitter.TryBuildInlineParts(new List<IParameterSymbol> { p }, out _, out _)) ?? keyParams[0];
+            return DiagnosticInfo.Create(Diagnostics.RuntimeKeyArgument, parameter.Locations.FirstOrDefault() ?? method.Locations.FirstOrDefault(),
+                method.ToDisplayString(), parameter.Name, parameter.Type.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat));
+        }
+
+        /// <summary>
         /// Names the lazy sequence a method returns, directly or through Task/ValueTask: IEnumerable, IQueryable or
         /// IAsyncEnumerable. Task&lt;IEnumerable&lt;T&gt;&gt; is allowed, since async methods return materialized results.
         /// </summary>

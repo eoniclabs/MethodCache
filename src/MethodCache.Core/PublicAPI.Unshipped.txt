@@ -159,6 +159,8 @@ MethodCache.CachedMethodInfo.Options.get -> MethodCache.CacheEntryOptions!
 MethodCache.CachedMethodInfo.Options.init -> void
 MethodCache.CachedMethodInfo.SettingSources.get -> System.Collections.Generic.IReadOnlyDictionary<string!, MethodCache.CacheSettingSource>!
 MethodCache.CachedMethodInfo.SettingSources.init -> void
+MethodCache.ChecksRequestStateAttribute
+MethodCache.ChecksRequestStateAttribute.ChecksRequestStateAttribute() -> void
 MethodCache.DistributedCacheOptions
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.CircuitBreakerDuration.set -> void

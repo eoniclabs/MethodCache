@@ -186,6 +186,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0020"));
 
+            internal static readonly DiagnosticDescriptor RuntimeKeyArgument = new(
+                id: "MC0037",
+                title: "Cache key is written when the call runs",
+                messageFormat: "The key of '{0}' is written when the call runs: '{1}' is a '{2}', so the key generator reads the argument's actual type and hashes it. The key is right, but slower to build than one written at build time, and not readable. To have it written at build time, pass simple values or a sealed record of them.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Info,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0037"));
+
             internal static readonly DiagnosticDescriptor SharedUnsafeResultType = new(
                 id: "MC0025",
                 title: "Cached result type isn't safe to share between threads",

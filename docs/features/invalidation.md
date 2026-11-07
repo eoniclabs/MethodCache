@@ -176,9 +176,10 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 ### In another application
 
 When another application or process invalidates a tag, such as a worker that imports the data, list the tag in
-`InvalidatedElsewhere`. Caching works the same; analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) and
-`TagCoverage` ([Testing](testing.md#every-tag-has-an-invalidation)) count the tag as invalidated, on every method that
-has it:
+`InvalidatedElsewhere`. Caching works the same; analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) counts the tag
+as invalidated, on every method that has it. `TagCoverage` ([Testing](testing.md#every-tag-has-an-invalidation))
+checks the mark: it counts the tag only when a project the test project references, such as the worker, invalidates
+it:
 
 <!-- snippet: invalidation-other-application -->
 ```cs
