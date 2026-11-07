@@ -150,6 +150,51 @@ builder.Services.AddMethodCache(mc => mc
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
 values are written there.
 
+### A worker and an API
+
+A common case: a worker writes data with EF Core, and an API caches reads of it. The API caches in its own memory and
+marks the tag as invalidated by another process:
+
+<!-- snippet: distributed-worker-api-reads -->
+```cs
+public interface IFoodCatalog
+{
+    // The worker writes the catalog; its saves invalidate food-catalog in every process
+    [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedElsewhere = ["food-catalog"])]
+    Task<IReadOnlyList<FoodDto>> SearchAsync(string text);
+}
+```
+<!-- endSnippet -->
+
+<!-- snippet: distributed-worker-api-api -->
+```cs
+// The API caches reads of the catalog in its own memory
+builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false)));
+```
+<!-- endSnippet -->
+
+The worker caches nothing. With [MethodCache.EntityFrameworkCore](entity-framework-core.md), its `SaveChanges`
+invalidates the tags its mapping names, and the invalidation reaches the API through PostgreSQL:
+
+<!-- snippet: distributed-worker-api-worker -->
+```cs
+// The worker caches nothing: its saves invalidate the tags the mapping names, in every process
+builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
+builder.Services.AddMethodCache(mc => mc
+    .UsePostgreSql(connectionString)
+    .Defaults(o => o.WithDistributed(false))
+    .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
+```
+<!-- endSnippet -->
+
+The API reloads the catalog on its next read after the worker's save commits, usually within milliseconds. Writes
+the change tracker doesn't see, such as `ExecuteUpdate`, need their tags invalidated by hand
+([Writes the change tracker doesn't see](entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
+
 ## What other instances see
 
 - An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then
@@ -211,7 +256,12 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 - Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
   so values the previous version wrote are not read.
-- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works.
+- Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works. When a release
+  writes some keys differently, its CHANGELOG section says so under "Upgrading". During the rollout, instances on the
+  old and the new version then miss each other's entries for those methods: each loads once and caches under its own
+  key. An invalidation by tag reaches both. An invalidation by key, such as `IMethodCacheKeys.For(...)`, reaches only
+  the entry written by the version that sent it, so the other version's entry stays until it expires. Keep the same
+  `KeyPrefix` during the rollout, since a different one also keeps the two versions' invalidations apart.
 - SQL Server and PostgreSQL create their tables on first use. With an existing SQL Server invalidations table from
   before 1.0, or a login that may not create tables, see the
   [SQL Server](../../src/MethodCache.SqlServer/README.md) and [PostgreSQL](../../src/MethodCache.PostgreSql/README.md) guides.

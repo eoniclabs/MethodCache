@@ -111,6 +111,23 @@ builder.Services.AddMethodCache();
 ```
 <!-- endSnippet -->
 
+## A class without an interface
+
+A class that other code uses directly needs an interface before it can be cached. Its methods stay as they are; what
+changes is the code that names the class:
+
+1. Extract the interface (Extract Interface in Rider and Visual Studio) and put `[Cache]` and `[CacheInvalidate]` on
+   it.
+2. Register the interface: `AddScoped<ProductService>()` becomes `AddScoped<IProductService, ProductService>()`.
+3. Classes that take `ProductService` in their constructor take `IProductService` instead (Use Base Type Where
+   Possible in Rider). A call that still goes to the class skips the cache.
+4. Tests that create `new ProductService(db)` and pass it to the class under test keep working once that class takes
+   the interface. [MC0032](user-guide/DIAGNOSTICS.md#mc0032) doesn't report `new` in a test project. A test that
+   replaces the service with a fake registers it for the interface
+   ([Replacing a cached service with a fake](features/testing.md#replacing-a-cached-service-with-a-fake)).
+
+In a larger application the constructor change can reach many files, tests included, so move one service at a time.
+
 ## What can be cached
 
 <!-- snippet: getting-started-shapes -->

@@ -172,6 +172,20 @@ prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter 
 `methodcache_methodcache_requests{methodcache_result="hit"}`. It starts listening at the first scrape, exports counters
 as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
 
+With a `CollectorRegistry` of your own, start the meter adapter with the registry and a metric factory for it. With only
+`Registry` set, no MethodCache series appear:
+
+<!-- snippet: monitoring-prometheus-net-registry -->
+```cs
+// A registry of your own needs both settings: with only Registry, no MethodCache series appear
+var adapter = MeterAdapter.StartListening(new MeterAdapterOptions
+{
+    Registry = registry,
+    MetricFactory = Metrics.WithCustomRegistry(registry),
+});
+```
+<!-- endSnippet -->
+
 A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
 <!-- snippet: monitoring-console-metrics -->

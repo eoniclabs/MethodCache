@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq.Expressions;
 using Xunit;
 
 namespace Docs.EntityFrameworkCore
@@ -163,7 +164,32 @@ namespace Docs.EntityFrameworkCore
                 keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}"), CancellationToken.None);
         }
         // end-snippet
+
+        public static async Task DeleteCategoryWithHelperAsync(ShopDb db, ICacheManager cache, IMethodCacheKeys keys,
+            int categoryId, CancellationToken ct)
+        {
+            // begin-snippet: efcore-generic-helper-call
+            await Bulk.DeleteWhereAsync<Product>(db, cache, p => p.CategoryId == categoryId,
+                [keys.Tag<IProductReads>(r => r.ListAsync(categoryId), "category:{categoryId}")], ct);
+            // end-snippet
+        }
     }
+
+    // begin-snippet: efcore-generic-helper
+    public static class Bulk
+    {
+        // Deletes rows of any type past the change tracker, then invalidates the tags its caller names.
+        // [InvalidatesCache] makes each call count as the invalidation, so MC0027 doesn't report the helper
+        [InvalidatesCache]
+        public static async Task<int> DeleteWhereAsync<TEntity>(ShopDb db, ICacheManager cache,
+            Expression<Func<TEntity, bool>> where, string[] tags, CancellationToken ct) where TEntity : class
+        {
+            var deleted = await db.Set<TEntity>().Where(where).ExecuteDeleteAsync(ct);
+            await cache.InvalidateTagsAsync(tags, CancellationToken.None);
+            return deleted;
+        }
+    }
+    // end-snippet
 }
 
 namespace Docs.EntityFrameworkCore.SharedRead

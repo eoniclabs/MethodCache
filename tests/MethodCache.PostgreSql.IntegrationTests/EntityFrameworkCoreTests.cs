@@ -78,6 +78,36 @@ public class EntityFrameworkCoreTests(PostgreSqlFixture postgres)
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
     }
 
+    /// <summary>
+    /// The recipe in docs/features/distributed-cache.md, "A worker and an API": values stay in each process's memory,
+    /// the worker caches nothing and only writes through EF Core, and its save reaches the API's memory cache.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_worker_save_invalidates_the_apis_memory_only_cache()
+    {
+        var options = postgres.Options("efworker");
+        try
+        {
+            var id = await CreateItemAsync(options.ConnectionString, "Before");
+            await using var worker = await StartAsync(options, memoryOnly: true, cachedReads: false);
+            await using var api = await StartAsync(options, memoryOnly: true, cachedReads: true);
+            var names = api.GetRequiredService<IItemNames>();
+            Assert.Equal("Before", await names.GetAsync(id));
+            Assert.Equal("Before", await names.GetAsync(id));
+            Assert.Equal(1, api.GetRequiredService<ItemNames>().Calls);   // the second read came from the API's memory
+
+            await using (var scope = worker.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ItemsDb>();
+                (await db.Items.SingleAsync(i => i.Id == id)).Name = "After";
+                await db.SaveChangesAsync();
+            }
+
+            Assert.Equal("After", await EventuallyAsync(() => names.GetAsync(id), "After"));
+        }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
     [SkippableFact]
     public async Task An_ambient_transaction_invalidates_the_other_processes_when_it_commits()
     {
@@ -215,20 +245,27 @@ public class EntityFrameworkCoreTests(PostgreSqlFixture postgres)
         return (int)(await insert.ExecuteScalarAsync())!;
     }
 
-    private static async Task<ServiceProvider> StartAsync(PostgreSqlOptions options)
+    private static async Task<ServiceProvider> StartAsync(PostgreSqlOptions options, bool memoryOnly = false, bool cachedReads = true)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<ItemsDb>(o => o.UseNpgsql(options.ConnectionString));
-        services.AddSingleton<IItemNames, ItemNames>();
-        services.AddMethodCache(mc => mc
-            .UsePostgreSql(o =>
-            {
-                o.ConnectionString = options.ConnectionString;
-                o.SchemaName = options.SchemaName;
-                o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
-            })
-            .UseEntityFrameworkCore<ItemsDb>(ef => ef.Entity<Item>("item:{Id}")));
+        if (cachedReads)
+        {
+            services.AddSingleton<ItemNames>();
+            services.AddSingleton<IItemNames>(provider => provider.GetRequiredService<ItemNames>());
+        }
+        services.AddMethodCache(mc =>
+        {
+            mc.UsePostgreSql(o =>
+                {
+                    o.ConnectionString = options.ConnectionString;
+                    o.SchemaName = options.SchemaName;
+                    o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
+                })
+                .UseEntityFrameworkCore<ItemsDb>(ef => ef.Entity<Item>("item:{Id}"));
+            if (memoryOnly) mc.Defaults(o => o.WithDistributed(false));
+        });
         var provider = services.BuildServiceProvider();
         var hosted = provider.GetServices<IHostedService>().ToArray();
         foreach (var service in hosted) await service.StartAsync(CancellationToken.None);

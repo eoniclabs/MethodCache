@@ -86,7 +86,8 @@ def main():
         "`builder.Services.AddMethodCache()` after them. Every C# example in these docs is compiled in CI. "
         "For coding agents, " + "[docs/ai/methodcache.md](" + RAW + "docs/ai/methodcache.md) is a compact rule set, "
         "[docs/how-to.md](" + RAW + "docs/how-to.md) answers common questions, the reference pages give the exact rules, "
-        "and [llms-full.txt](" + RAW + "llms-full.txt) has all the docs in one file. The MethodCache NuGet package "
+        "and [llms-full.txt](" + RAW + "llms-full.txt) has all the docs in one file, too large to read whole: read the page "
+        "for your task from the list below, and search llms-full.txt for a term. The MethodCache NuGet package "
         "carries the same pages in its docs folder.",
         "",
         "## Docs",

@@ -66,6 +66,11 @@ Use `IMethodCacheKeys` to get the exact key of a call ([Building a key yourself]
 - `0.0` and `-0.0` are two keys in every key form (`1 / x` tells them apart). `NaN` and the infinities work anywhere,
   also inside a hashed argument, such as `double.PositiveInfinity` as a "no limit" value in a filter record.
 
+The generator writes the key code when you build. Only the values the list above sends to the key generator are read
+when the call runs, from the public properties and fields of their actual type. A type of your own whose public
+properties are simple values never goes there. To see which form a call gets, look at its key with
+`IMethodCacheKeys.For`.
+
 On .NET 10 the decorator writes simple keys into a stack buffer and looks them up without allocating.
 
 ## Types whose state is private

@@ -70,8 +70,9 @@ with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its
 
 ## A duration from the result
 
-`DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token or a
-shorter time for an empty result. Set it in startup code, for one method:
+`DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token, a
+shorter time for an empty result, or the time until the next row of a schedule takes effect, as with future-dated
+prices. Set it in startup code, for one method:
 
 <!-- snippet: expiration-duration-for -->
 ```cs
@@ -84,6 +85,10 @@ builder.Services.AddMethodCache(mc =>
     // An empty result is kept for 30 seconds instead of ten minutes
     mc.Method((ISearch s) => s.FindAsync(Any<string>.Value))
         .DurationFor(result => result.Items.Count == 0 ? TimeSpan.FromSeconds(30) : TimeSpan.FromMinutes(10));
+
+    // A price is kept until the next one takes effect, so a future-dated price applies on time
+    mc.Method((IPriceSchedule s) => s.GetCurrentAsync(Any<string>.Value))
+        .DurationFor(price => price.NextChangeAt is { } next ? next - DateTimeOffset.UtcNow : TimeSpan.FromHours(1));
 });
 ```
 <!-- endSnippet -->

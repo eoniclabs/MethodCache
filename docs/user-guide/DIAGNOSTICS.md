@@ -327,7 +327,7 @@ results that read those rows stay until they expire.
   `ef.Entity<T>(...)`, and on their base and derived types. A type mapped only with `WhenDeleted(...)` is reported
   for `ExecuteDelete` alone. A project that references the one with the mapping, such as its tests or a worker,
   checks its writes against that mapping too: MethodCache writes the mapping into the assembly as `AssemblyMetadata`
-  attributes. When neither the project nor a project it references maps a type, as in a data layer that the startup
+  attributes ([where to see them](#what-the-analyzers-read-from-referenced-projects)). When neither the project nor a project it references maps a type, as in a data layer that the startup
   project references, every type is reported.
 - Raw SQL is reported when it names the table of such a type, runs code (`call`, `exec`, `execute` or `do`), or
   can't be read: SQL in a variable, or `ExecuteSqlRaw` with an interpolated value that is neither a constant nor a
@@ -353,8 +353,10 @@ is not reported inside either kind of method, since they invalidate themselves.
 When nothing cached reads the rows of a mapped type, turn it off for that line with `#pragma warning disable MC0027`.
 
 A generic helper, such as a retention job's `PurgeAsync<TEntity>()`, is reported, since any type could reach it.
-When the types it gets are never cached, turn the warning off in the helper and say why. When some are, have it take
-the tags and invalidate them, and mark it `[InvalidatesCache]` so the calls that pass them count too:
+When some of the types it gets are cached, have it take the tags of what it changes, invalidate them, and mark it
+`[InvalidatesCache]`, so each call to it counts as the invalidation
+([Generic helpers](../features/entity-framework-core.md#generic-helpers)). When the types it gets are never cached,
+turn the warning off in the helper and say why:
 
 ```cs
 public static class Retention
@@ -444,7 +446,8 @@ A setup method of your own in a referenced project counts when the program calls
 `builder.Services.AddData()` whose code calls `AddMethodCache`. MethodCache marks such methods when it builds that
 project, also when they reach `AddMethodCache` through other setup methods of the project named `Add...`, `Use...`,
 `Configure...` or `Register...`. A program that references the project but never calls the method is reported, since
-nothing sets the cache up for it.
+nothing sets the cache up for it. ([What the analyzers read from referenced projects](#what-the-analyzers-read-from-referenced-projects)
+shows where these marks are.)
 
 Test projects aren't reported, since tests may use the implementations without the cache. A program that references a
 project with cached services but doesn't use them, such as a migration tool, or that reaches its setup some other way,
@@ -580,3 +583,19 @@ public ValueTask<Order> GetAsync(int id, CancellationToken ct) =>
 
 A token the call passes as its `cancellationToken`, `CancellationToken.None` and a token the factory makes itself
 aren't reported.
+
+## What the analyzers read from referenced projects
+
+MC0027 and MC0030 also look at the projects yours references. MethodCache writes what they need into each project's
+assembly when it builds that project, as `[assembly: AssemblyMetadata(...)]` attributes in two generated files:
+
+| Generated file | Key | Written when | Read by |
+|----------------|-----|--------------|---------|
+| `MethodCacheHostMarkers.g.cs` | `MethodCache.CachedServices` | the project has cached services | [MC0030](#mc0030) |
+| `MethodCacheHostMarkers.g.cs` | `MethodCache.AddsMethodCache` | once for each method of the project that calls `AddMethodCache`, directly or through its own setup methods | [MC0030](#mc0030) |
+| `MethodCacheEntityMapping.g.cs` | `MethodCache.EntityFrameworkCore.Mapping` | the project maps entities with `ef.Entity<T>(...)` | [MC0027](#mc0027) |
+
+To see them, open the referenced project's generated files: under Dependencies, .NET, Source Generators,
+MethodCache.SourceGenerator in Rider, or Dependencies, Analyzers, MethodCache.SourceGenerator in Visual Studio. When
+one of these warnings looks wrong, check that file first. A project built with an older MethodCache, or not rebuilt
+since its setup or mapping changed, has old values: rebuild it.
