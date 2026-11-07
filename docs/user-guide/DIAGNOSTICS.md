@@ -65,6 +65,9 @@ The rules that came after that version are then off. Turn one of them on in `.ed
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
+Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in the release candidates. Set the level
+only when warnings are errors. Without that, leave it unset, so an upgrade shows its new warnings.
+
 ## MC0001
 
 `[Cache]` or `[CacheInvalidate]` is on a class, struct or record member. MethodCache generates a decorator for the

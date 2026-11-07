@@ -135,7 +135,11 @@ builder.Services.AddMethodCache();                               // after your r
   `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
   cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
-  service.
+  service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
+  list and catch one that is never registered.
+- `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
+  `WithDuration` it lives five minutes.
+- Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -396,11 +400,16 @@ anything else the result depends on must be an argument too:
 
 ## Recommended project setup
 
-Three things catch most mistakes before they reach production.
+Four things catch most mistakes before they reach production.
 
-**Pin the analysis level.** A new version of MethodCache can bring new analyzer warnings, and with warnings treated as
-errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` once for the solution, in
-`Directory.Build.props`, and raise it when you want a later version's rules
+**Use one version of every MethodCache package.** The packages are built and tested together, and each add-on, such as
+`MethodCache.Testing`, requires the exact `MethodCache` version it was built with. NuGet warns with NU1608 when they
+differ. To make that an error, add `<WarningsAsErrors>$(WarningsAsErrors);NU1608</WarningsAsErrors>`; it then applies to
+every package's version constraint, not only MethodCache's.
+
+**Pin the analysis level when warnings are errors.** A new version of MethodCache can bring new analyzer warnings, and
+with warnings treated as errors one would stop your build on the upgrade. Then set `MethodCacheAnalysisLevel` once for
+the solution, in `Directory.Build.props`, and raise it when you want a later version's rules
 ([Rules of a later version](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#rules-of-a-later-version)):
 
 ```xml
@@ -410,6 +419,10 @@ errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` 
   </PropertyGroup>
 </Project>
 ```
+
+Without warnings as errors, leave it unset: each upgrade then shows its new warnings, which is where new rules find
+real problems. Every rule up to 1.0.0 counts as a rule of 1.0, so the level turns nothing off in the release
+candidates.
 
 **Test the setup.** Add the `MethodCache.Testing` package to a test project that references the application, and
 every project that invalidates its tags, such as a worker. With the application's service provider,
@@ -614,6 +627,11 @@ it is cancelled; warning MC0035 reports it, with a code fix. ([Things to know](h
 `appsettings.json`. ([Writing a duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#writing-a-duration),
 [Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
 
+**Does `Defaults` apply to `GetOrCreateAsync`?**
+No. `Defaults` and groups are for cached methods; a manual call has only the options it passes. Without `WithDuration`
+its entry lives five minutes, and with only `WithSlidingExpiration` only `MaxExpiration` limits how long reads keep it.
+([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md), [Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration))
+
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
 in the background. ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead))
@@ -738,7 +756,12 @@ own interface. ([Caching third-party code](https://github.com/eoniclabs/MethodCa
 **A new MethodCache version brings new warnings, and we treat warnings as errors. How do we upgrade?**
 Set `<MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>` (the version whose rules you want) in
 `Directory.Build.props`: rules that came later are off until you raise it. Turn one on in `.editorconfig` with
-`dotnet_diagnostic.<id>.severity = warning`. ([Rules of a later version](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#rules-of-a-later-version))
+`dotnet_diagnostic.<id>.severity = warning`. Without warnings as errors, leave it unset so each upgrade shows its new
+warnings. Every rule up to 1.0.0 counts as a rule of 1.0. ([Rules of a later version](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#rules-of-a-later-version))
+
+**Can the MethodCache packages in a project have different versions?**
+No: use one version of all of them. Each add-on requires the exact `MethodCache` version it was built with, and NuGet
+warns with NU1608 when they differ. ([Recommended project setup](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#recommended-project-setup))
 
 ## Running in production
 
@@ -826,6 +849,16 @@ cached methods and reports one registered after `AddMethodCache`, one that throw
 isn't wrapped by its caching decorator. When the services need a database or a key vault to resolve,
 `CachedServices.RegistrationProblems(provider)` checks the registrations only. Both throw when the provider has no
 cached service. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
+
+**How do I catch a cached service that the application never registers?**
+Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
+the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+`ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
+
+**How do I test that a cached method refuses another tenant's id?**
+Set the request's tenant to one tenant, call the method with another tenant's id, and assert that the `[ChecksRequestState]`
+check throws. The check runs on a load, so nothing is cached under the other tenant's key.
+([A load for another tenant fails](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#a-load-for-another-tenant-fails))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
@@ -1205,7 +1238,9 @@ builder.Services.AddMethodCache(config =>
     config.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(15))));
 ```
 
-Without any default, entries live for five minutes. No entry lives longer than
+Without any default, entries live for five minutes. `Defaults` and groups are for cached methods; a manual call
+([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md)) has only the options it passes, so without a `Duration` its entry lives five
+minutes. No entry lives longer than
 `MethodCacheMemoryOptions.MaxExpiration` (seven days), so a longer `Duration` fails where it is set instead of being
 cut short: at startup, in a runtime override or in a manual call. For longer entries, raise the limit, up to 365 days,
 with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
@@ -1257,7 +1292,9 @@ builder.Services.AddMethodCache(mc =>
 ## Sliding expiration
 
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
-past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
+past its `Duration`; without a `Duration`, only `MaxExpiration` limits it. A cached method can get its `Duration` from
+`Defaults` or a group; a manual call only from its own options, so a manual call with only a sliding window is kept as
+long as it is read, up to `MaxExpiration`.
 
 So the window must be shorter than the `Duration`, or reads never extend anything: `Duration = "5m"` with
 `SlidingExpiration = "1d"` expires each entry five minutes after it was loaded. On one `[Cache]` that is warning
@@ -2418,6 +2455,9 @@ var list = await cache.GetOrCreateAsync(
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md) and
   [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
+- `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
+  its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
+  limits how long reads keep it.
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
@@ -3398,6 +3438,9 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
 }));
 ```
 
+The key is weighed on top of `otherValue`, as for every value, so a record weighs 1024 bytes plus two per character of
+its key. Allow for that when you choose `WeightLimit`.
+
 To weigh your own types more closely, weigh them yourself and leave the rest to it:
 
 ```cs
@@ -3648,7 +3691,17 @@ Assert.Empty(CachedServices.RegistrationProblems(provider));
 ```
 
 It finds a service registered after `AddMethodCache`, the most common mistake, but not a dependency the container
-lacks.
+lacks. Both methods take the provider the application builds, so whatever its registration code does still runs: a
+client that connects to its database while it is registered needs that database in the test too.
+
+Neither method can see a service that is never registered: it has no registration to check. `CachedServices.Registered`
+lists the services with cached methods that the provider registers, each once and ordered by full name, so a test
+can compare it with the services the application should have:
+
+```cs
+// The application registers exactly these services with cached methods, none forgotten
+Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
+```
 
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
@@ -3690,6 +3743,25 @@ value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.
+
+## A load for another tenant fails
+
+A cached method that takes the tenant as a parameter and checks it against the request's tenant with a
+`[ChecksRequestState]` method ([MC0026](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0026)) should fail for another tenant's id.
+Test it with the request set to one tenant and a call for another:
+
+```cs
+await using var scope = provider.CreateAsyncScope();
+scope.ServiceProvider.GetRequiredService<RequestTenant>().Id = tenantA;   // the request is tenant A's
+var projects = scope.ServiceProvider.GetRequiredService<IProjects>();
+
+// A load for tenant B fails in the check, so nothing is cached under B's key
+await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(tenantB));
+```
+
+The check runs when the method loads a value, not on a hit, so this test proves that nothing wrong is cached under
+another tenant's key. That a caller takes the id from the request is the caller's part; test it where the id is taken,
+such as in the endpoint.
 
 ## Turning method caching off
 
@@ -4279,6 +4351,9 @@ The rules that came after that version are then off. Turn one of them on in `.ed
 `dotnet_diagnostic.MC0040.severity = warning`, and raise the level when you have looked at the rest. Every rule of
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
+
+Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in the release candidates. Set the level
+only when warnings are errors. Without that, leave it unset, so an upgrade shows its new warnings.
 
 ## MC0001
 
@@ -6086,6 +6161,14 @@ Assert.Empty(CachedServices.RegistrationProblems(provider));
 Both throw `InvalidOperationException` when the provider has no service with cached methods, so a test with the wrong
 provider can't pass without checking anything.
 
+Neither can see a service the application never registers. `CachedServices.Registered` lists the registered services
+with cached methods, ordered by full name, for a test to compare with the services the application should have:
+
+```cs
+// The application registers exactly these services with cached methods, none forgotten
+Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
+```
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -6121,6 +6204,26 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.13 (2026-11-07)
+
+### Added
+
+- `CachedServices.Registered(provider)` in `MethodCache.Testing` lists the registered services with cached methods,
+  so a test can compare it with the services the application should have and catch one that is never registered,
+  which `ProblemsAsync` and `RegistrationProblems` can't see
+  ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
+
+### Documentation
+
+- Expiration and manual caching: `Defaults` and groups apply to cached methods, not to manual calls. A manual call
+  without a `Duration` lives five minutes, and one with only a sliding window is limited by `MaxExpiration`.
+- Getting started: use one version of every MethodCache package (NuGet warns with NU1608 when they differ), and pin
+  `MethodCacheAnalysisLevel` only when warnings are errors. Every rule up to 1.0.0 counts as a rule of 1.0.
+- Memory cache: `MethodCacheWeigher.Bytes(otherValue)` weighs the key on top of `otherValue`.
+- Testing: `RegistrationProblems` runs the application's registration code, so infrastructure registered eagerly is
+  still needed, and a recipe for testing that a cached method refuses another tenant's id
+  ([A load for another tenant fails](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#a-load-for-another-tenant-fails)).
 
 ## 1.0.0-rc.12 (2026-11-07)
 

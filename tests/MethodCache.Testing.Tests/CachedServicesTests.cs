@@ -159,6 +159,51 @@ public class CachedServicesTests
     }
 
     [Fact]
+    public async Task Registered_ListsEachServiceWithCachedMethodsOnce_ByFullName()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddScoped<IProductWriter, ProductWriter>();
+        services.AddKeyedTransient<IImportedPrices, ImportedPrices>("import");
+        services.AddKeyedTransient<IImportedPrices, ImportedPrices>("backfill");
+        services.AddSingleton<IPriceSource>(new FixedPrice()); // no cached methods
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Equal([typeof(IImportedPrices), typeof(IProductWriter), typeof(IProducts)], CachedServices.Registered(provider));
+    }
+
+    [Fact]
+    public async Task Registered_AServiceNeverRegistered_IsMissingFromTheList()
+    {
+        // ProblemsAsync can't see a service the application forgot to register; comparing the list can
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(await CachedServices.ProblemsAsync(provider));
+        Assert.DoesNotContain(typeof(IProductWriter), CachedServices.Registered(provider));
+    }
+
+    [Fact]
+    public async Task Registered_WithNoServiceWithCachedMethods_Throws()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => CachedServices.Registered(provider));
+
+        Assert.Contains("nothing was checked", error.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class FixedPrice : IPriceSource
+    {
+        public decimal Price(int id) => 1m;
+    }
+
+    [Fact]
     public async Task Problems_WithoutAddMethodCache_Throws()
     {
         await using var provider = new ServiceCollection().BuildServiceProvider();

@@ -75,6 +75,16 @@ Assert.Empty(CachedServices.RegistrationProblems(provider));
 Both throw `InvalidOperationException` when the provider has no service with cached methods, so a test with the wrong
 provider can't pass without checking anything.
 
+Neither can see a service the application never registers. `CachedServices.Registered` lists the registered services
+with cached methods, ordered by full name, for a test to compare with the services the application should have:
+
+<!-- snippet: testing-cached-services-registered -->
+```cs
+// The application registers exactly these services with cached methods, none forgotten
+Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,

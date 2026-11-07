@@ -42,6 +42,29 @@ public static class CachedServices
     }
 
     /// <summary>
+    /// The services with cached methods that <paramref name="provider"/> registers, each once, ordered by full name:
+    /// the services <see cref="ProblemsAsync"/> and <see cref="RegistrationProblems"/> check. Compare it with the
+    /// services the application should have, so a test also fails for a service that is never registered, which
+    /// neither check can see.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// Assert.Equal([typeof(IOrderService), typeof(IPriceService)], CachedServices.Registered(provider));
+    /// </code>
+    /// </example>
+    /// <param name="provider">The application's service provider, built as in the application.</param>
+    /// <returns>The service types, such as the interfaces with <c>[Cache]</c> methods; a keyed service is listed once.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <c>AddMethodCache</c> wasn't called on the provider's services, or no service with cached methods is registered.
+    /// </exception>
+    public static IReadOnlyList<Type> Registered(IServiceProvider provider)
+        => Registrations(Validation(provider))
+            .Select(static descriptor => descriptor.ServiceType)
+            .Distinct()
+            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
     /// The problems of the services with cached methods registered in <paramref name="provider"/>: a service
     /// registered after <c>AddMethodCache</c>, which has no decorator; one that can't be resolved, such as one with a
     /// dependency the container lacks; and one that resolves to something other than its generated decorator, so its

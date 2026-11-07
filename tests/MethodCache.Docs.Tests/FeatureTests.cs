@@ -300,6 +300,32 @@ public class FeatureTests(ITestOutputHelper output)
     public Task Testing_RecorderCountsLoadsAndInvalidations() => global::Docs.Testing.Examples.RecordAsync();
 
     [Fact]
+    public async Task Testing_Registered_ListsTheGettingStartedService()
+    {
+        await using var provider = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();
+
+        global::Docs.Testing.Examples.CheckRegisteredServices(provider);
+    }
+
+    [Fact]
+    public async Task Testing_ALoadForAnotherTenant_Throws_AndCachesNothing()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<global::Docs.Testing.RequestTenant>();
+        services.AddScoped<global::Docs.Testing.IProjects, global::Docs.Testing.Projects>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+        Guid tenantA = Guid.NewGuid(), tenantB = Guid.NewGuid();
+
+        await global::Docs.Testing.Examples.OtherTenantAsync(provider, tenantA, tenantB);
+
+        // Tenant B's own request loads its projects: the failed load left nothing behind
+        await using var scope = provider.CreateAsyncScope();
+        scope.ServiceProvider.GetRequiredService<global::Docs.Testing.RequestTenant>().Id = tenantB;
+        Assert.Equal([$"project of {tenantB}"], await scope.ServiceProvider.GetRequiredService<global::Docs.Testing.IProjects>().ListAsync(tenantB));
+    }
+
+    [Fact]
     public async Task Testing_TagCoverage_CoversTheTagsOfTheGettingStartedService()
     {
         await using var provider = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();

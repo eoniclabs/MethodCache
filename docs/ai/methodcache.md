@@ -130,7 +130,11 @@ builder.Services.AddMethodCache();                               // after your r
   `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
   cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
-  service.
+  service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
+  list and catch one that is never registered.
+- `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
+  `WithDuration` it lives five minutes.
+- Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:

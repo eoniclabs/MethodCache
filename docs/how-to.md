@@ -179,6 +179,11 @@ it is cancelled; warning MC0035 reports it, with a code fix. ([Things to know](f
 `appsettings.json`. ([Writing a duration](features/expiration.md#writing-a-duration),
 [Configuration](features/configuration.md#appsettingsjson))
 
+**Does `Defaults` apply to `GetOrCreateAsync`?**
+No. `Defaults` and groups are for cached methods; a manual call has only the options it passes. Without `WithDuration`
+its entry lives five minutes, and with only `WithSlidingExpiration` only `MaxExpiration` limits how long reads keep it.
+([Manual caching](features/manual-caching.md), [Sliding expiration](features/expiration.md#sliding-expiration))
+
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
 in the background. ([Refresh-ahead](features/expiration.md#refresh-ahead))
@@ -303,7 +308,12 @@ own interface. ([Caching third-party code](features/third-party.md))
 **A new MethodCache version brings new warnings, and we treat warnings as errors. How do we upgrade?**
 Set `<MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>` (the version whose rules you want) in
 `Directory.Build.props`: rules that came later are off until you raise it. Turn one on in `.editorconfig` with
-`dotnet_diagnostic.<id>.severity = warning`. ([Rules of a later version](user-guide/DIAGNOSTICS.md#rules-of-a-later-version))
+`dotnet_diagnostic.<id>.severity = warning`. Without warnings as errors, leave it unset so each upgrade shows its new
+warnings. Every rule up to 1.0.0 counts as a rule of 1.0. ([Rules of a later version](user-guide/DIAGNOSTICS.md#rules-of-a-later-version))
+
+**Can the MethodCache packages in a project have different versions?**
+No: use one version of all of them. Each add-on requires the exact `MethodCache` version it was built with, and NuGet
+warns with NU1608 when they differ. ([Recommended project setup](getting-started.md#recommended-project-setup))
 
 ## Running in production
 
@@ -391,6 +401,16 @@ cached methods and reports one registered after `AddMethodCache`, one that throw
 isn't wrapped by its caching decorator. When the services need a database or a key vault to resolve,
 `CachedServices.RegistrationProblems(provider)` checks the registrations only. Both throw when the provider has no
 cached service. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
+
+**How do I catch a cached service that the application never registers?**
+Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
+the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+`ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
+
+**How do I test that a cached method refuses another tenant's id?**
+Set the request's tenant to one tenant, call the method with another tenant's id, and assert that the `[ChecksRequestState]`
+check throws. The check runs on a load, so nothing is cached under the other tenant's key.
+([A load for another tenant fails](features/testing.md#a-load-for-another-tenant-fails))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,

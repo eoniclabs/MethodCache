@@ -30,7 +30,8 @@ namespace MethodCache
         /// <summary>
         /// A weigher like <see cref="Bytes(string, object)"/> that gives <paramref name="otherValue"/> to a value it can't
         /// measure, such as a record of your own, in place of <see cref="OtherValue"/>. Pick about the size of a typical
-        /// result: <c>o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);</c> for records of around 1 KB.
+        /// result: <c>o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);</c> for records of around 1 KB. The key's
+        /// two bytes per character come on top, as for every value.
         /// </summary>
         /// <param name="otherValue">The weight of a value other than <c>null</c>, a string or an array of numbers.</param>
         /// <returns>The weigher, for <see cref="MethodCacheMemoryOptions.Weigher"/>.</returns>

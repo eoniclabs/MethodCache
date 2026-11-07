@@ -88,6 +88,26 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void CheckRegisteredServices(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services-registered
+            // The application registers exactly these services with cached methods, none forgotten
+            Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
+            // end-snippet
+        }
+
+        public static async Task OtherTenantAsync(IServiceProvider provider, Guid tenantA, Guid tenantB)
+        {
+            // begin-snippet: testing-other-tenant
+            await using var scope = provider.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<RequestTenant>().Id = tenantA;   // the request is tenant A's
+            var projects = scope.ServiceProvider.GetRequiredService<IProjects>();
+
+            // A load for tenant B fails in the check, so nothing is cached under B's key
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(tenantB));
+            // end-snippet
+        }
+
         public static void CheckTags(IServiceProvider provider)
         {
             // begin-snippet: testing-tag-coverage
@@ -118,6 +138,32 @@ namespace Docs.Testing
                 services.AddMethodCache();   // again, so the fake gets a decorator like the service it replaces
             });
             // end-snippet
+        }
+    }
+
+    public interface IProjects
+    {
+        [Cache(Duration = "5m")]
+        Task<List<string>> ListAsync(Guid tenantId);
+    }
+
+    public sealed class RequestTenant
+    {
+        public Guid Id { get; set; }
+
+        [ChecksRequestState]
+        public void EnsureActsFor(Guid tenantId)
+        {
+            if (tenantId != Id) throw new UnauthorizedAccessException("Not the request's tenant.");
+        }
+    }
+
+    public sealed class Projects(RequestTenant tenant) : IProjects
+    {
+        public Task<List<string>> ListAsync(Guid tenantId)
+        {
+            tenant.EnsureActsFor(tenantId);
+            return Task.FromResult(new List<string> { $"project of {tenantId}" });
         }
     }
 
