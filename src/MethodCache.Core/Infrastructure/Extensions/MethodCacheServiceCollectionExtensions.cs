@@ -729,13 +729,23 @@ namespace Microsoft.Extensions.DependencyInjection
             /// <summary>Whether <c>mc.Distributed(...)</c> was called.</summary>
             internal bool ConfiguresDistributed { get; set; }
 
+            /// <summary>
+            /// The registrations of cached services the application resolves: the generated decorators and any
+            /// registration of a cached service made after <c>AddMethodCache</c>, not the inner registrations the
+            /// decorators wrap.
+            /// </summary>
+            internal IEnumerable<ServiceDescriptor> CachedRegistrations()
+                => services.Where(descriptor => descriptor.ServiceKey is not DecoratedServiceKey &&
+                    (CachedTypes.Contains(descriptor.ServiceType) || descriptor.ServiceType.IsConstructedGenericType && CachedTypes.Contains(descriptor.ServiceType.GetGenericTypeDefinition())));
+
+            internal static string RegisteredAfter(Type serviceType)
+                => $"Cacheable service {serviceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache, or call AddMethodCache again after it, as a test that replaces a service with a fake does.";
+
             internal void Validate()
             {
-                foreach (var descriptor in services)
-                    if (descriptor.ServiceKey is not DecoratedServiceKey &&
-                        (CachedTypes.Contains(descriptor.ServiceType) || descriptor.ServiceType.IsConstructedGenericType && CachedTypes.Contains(descriptor.ServiceType.GetGenericTypeDefinition())) &&
-                        !Accepted.Contains(descriptor))
-                        throw new InvalidOperationException($"Cacheable service {descriptor.ServiceType} was registered after AddMethodCache and has no generated decorator. Register it before AddMethodCache, or call AddMethodCache again after it, as a test that replaces a service with a fake does.");
+                foreach (var descriptor in CachedRegistrations())
+                    if (!Accepted.Contains(descriptor))
+                        throw new InvalidOperationException(RegisteredAfter(descriptor.ServiceType));
             }
 
             /// <summary>

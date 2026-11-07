@@ -48,6 +48,37 @@ public class CoreTelemetryTests
     }
 
     [Fact]
+    public async Task Evictions_CountsEntriesRemovedToMakeRoom_AndKeepsCountingAfterAClear()
+    {
+        await using var provider = new ServiceCollection().AddMethodCache(mc => mc.Memory(o => o.MaxItems = 10)).BuildServiceProvider();
+        var factory = provider.GetRequiredService<IMeterFactory>();
+        var evictions = new Dictionary<string, long>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, self) =>
+            {
+                if (ReferenceEquals(instrument.Meter.Scope, factory) && instrument.Name == "methodcache.evictions") self.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) => evictions[(string)tags.ToArray().Single(t => t.Key == "methodcache.kind").Value!] = value);
+        listener.Start();
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var administrator = provider.GetRequiredService<ICacheAdministrator>();
+
+        for (var i = 0; i < 100; i++) await cache.SetAsync($"k{i}", i, o => o.WithDuration(TimeSpan.FromMinutes(1)));
+        var evicted = (await administrator.GetStatsAsync()).Evictions;
+        listener.RecordObservableInstruments();
+        var beforeClear = evictions["method"];
+        await administrator.ClearAsync();
+        listener.RecordObservableInstruments();
+
+        Assert.True(beforeClear >= 90, $"{beforeClear} evictions");
+        Assert.Equal(evicted, beforeClear);
+        Assert.Equal(beforeClear, evictions["method"]);
+        Assert.Equal(0, evictions["http"]);
+    }
+
+    [Fact]
     public async Task DecoratedBuiltInManager_EmitsOneRequestAndOneOriginLoad()
     {
         using var provider = new ServiceCollection().AddMethodCache().BuildServiceProvider();

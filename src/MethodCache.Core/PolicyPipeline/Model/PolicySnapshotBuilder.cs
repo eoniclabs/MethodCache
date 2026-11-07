@@ -51,6 +51,7 @@ internal static class PolicySnapshotBuilder
                             CachePolicyFields.CacheWhen |
                             CachePolicyFields.DurationFor |
                             CachePolicyFields.TagsFor |
+                            CachePolicyFields.SlidingFor |
                             CachePolicyFields.FailSafe |
                             CachePolicyFields.FailSafeTimeout |
                             CachePolicyFields.FailSafeRetryAfter | CachePolicyFields.Enabled | CachePolicyFields.Distributed;

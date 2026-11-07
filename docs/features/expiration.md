@@ -99,7 +99,8 @@ builder.Services.AddMethodCache(mc =>
   result gives on every instance. It never runs on a hit in memory.
 - No jitter is added ([Spreading out expiry](#spreading-out-expiry)), and `MaxExpiration` still caps it.
   `SlidingExpiration` and `RefreshAhead` count from the duration the result gives, so keep `RefreshAhead` shorter
-  than the shortest one.
+  than the shortest one. To slide some results and not others, add
+  [`SlidingFor`](#a-sliding-window-from-the-result).
 - `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
   method in `appsettings.json` or a runtime override replaces `DurationFor`.
 - In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
@@ -115,6 +116,31 @@ past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 A method that inherits a sliding window from the defaults, a group or configuration turns it off with
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.
+
+### A sliding window from the result
+
+`SlidingFor` gives each result its own sliding window, in place of `SlidingExpiration`. Zero turns sliding off for that
+result, so it lives its duration whether it is read or not. Together with `DurationFor`, a result that loaded can stay
+while it is read and one that failed can be tried again after a fixed time:
+
+<!-- snippet: expiration-sliding-for -->
+```cs
+builder.Services.AddMethodCache(mc =>
+    // A preview that loaded is kept while it is read at least every 30 minutes, for at most a day.
+    // One that failed is kept for two hours, read or not, and then the page is tried again.
+    mc.Method((ILinkPreviews p) => p.GetAsync(Any<string>.Value))
+        .DurationFor(preview => preview.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
+        .SlidingFor(preview => preview.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero));
+```
+<!-- endSnippet -->
+
+- It never keeps a result past its duration, the one `DurationFor` gives or the method's `Duration`.
+- A function that throws doesn't cache the result. It runs once per load and on each value read from the distributed
+  cache, never on a hit in memory.
+- `WithSlidingExpiration` and `SlidingFor` replace each other in code: whichever is called last wins. A
+  `SlidingExpiration` for the method in `appsettings.json` or a runtime override replaces `SlidingFor`.
+- Like `DurationFor`, it is set for one method, in startup code or in the options of a manual call:
+  `o => o.SlidingFor<LinkPreview>(preview => ...)`.
 
 ## Refresh-ahead
 

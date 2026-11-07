@@ -105,7 +105,8 @@ builder.Services.AddMethodCache();                               // after your r
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
-  gives each result its own duration (zero or less doesn't cache it), and `TagsFor`, which adds tags read from the
+  gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own
+  sliding window (zero turns sliding off for it), and `TagsFor`, which adds tags read from the
   result, such as `TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`.
 - A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
   fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
@@ -122,7 +123,8 @@ builder.Services.AddMethodCache();                               // after your r
   invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
   a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
-  solution in `alsoInvalidatedBy`.
+  solution in `alsoInvalidatedBy`. `Assert.Empty(CachedServices.Problems(provider))` checks that every service with
+  cached methods resolves to its caching decorator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -177,7 +179,8 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
 - `http-caching.md`: caching `HttpClient` responses.
 - `monitoring.md`: metrics, activities, the admin endpoints.
-- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `TagCoverage`), time.
+- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `CachedServices`,
+  `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
 - `source-generator.md`: what the generated decorator does.
 

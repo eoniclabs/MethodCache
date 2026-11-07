@@ -15,7 +15,7 @@ internal static class CachePolicyBuilderFactory
     /// <summary>
     /// Builds defaults that apply to many cached methods, described by <paramref name="target"/> in errors.
     /// </summary>
-    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen, DurationFor or TagsFor.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen, DurationFor, SlidingFor or TagsFor.</exception>
     public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
     {
         // A predicate checks one result type, so in defaults it would reject every other method's results
@@ -31,6 +31,13 @@ internal static class CachePolicyBuilderFactory
             throw new InvalidOperationException(
                 $"DurationFor is set in {target}, but a DurationFor function reads the result type of one method, so it can only be " +
                 "set for one method: mc.Method(...).DurationFor(...) or mc.Method(...).Configure(o => o.DurationFor<T>(...)).");
+        }
+
+        if (options?.SlidingFor != null)
+        {
+            throw new InvalidOperationException(
+                $"SlidingFor is set in {target}, but a SlidingFor function reads the result type of one method, so it can only be " +
+                "set for one method: mc.Method(...).SlidingFor(...) or mc.Method(...).Configure(o => o.SlidingFor<T>(...)).");
         }
 
         if (options?.TagsFor != null)
@@ -56,6 +63,7 @@ internal static class CachePolicyBuilderFactory
         if (options.CacheWhen != null) builder.WithCacheWhen(options.CacheWhen);
         if (options.DurationFor != null) builder.WithDurationFor(options.DurationFor);
         if (options.TagsFor != null) builder.WithTagsFor(options.TagsFor);
+        if (options.SlidingFor != null) builder.WithSlidingFor(options.SlidingFor);
 
         if (options.Duration.HasValue)
         {

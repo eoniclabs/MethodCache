@@ -236,6 +236,15 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
                 return this;
             }
 
+            public IFluentMethodConfiguration<TResult> SlidingFor(Func<TResult, TimeSpan> sliding)
+            {
+                ArgumentNullException.ThrowIfNull(sliding);
+
+                // In the same ordered list as Configure, so a later WithSlidingExpiration replaces it and it replaces an earlier one
+                _inner.Configure(builder => builder.SlidingFor(sliding));
+                return this;
+            }
+
             public IFluentMethodConfiguration<TResult> TagsFor(Func<TResult, IEnumerable<string>> tags)
             {
                 ArgumentNullException.ThrowIfNull(tags);

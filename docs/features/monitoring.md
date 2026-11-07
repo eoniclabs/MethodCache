@@ -100,6 +100,22 @@ app.MapHealthChecks("/health");
 The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
 use [runtime overrides](configuration.md#runtime-overrides) to change them.
 
+To record who removes entries, pass `audit`. It gets the user, what the request removes (`Kind` and `Targets`) and the
+time, before the change; when it throws, nothing changes
+([Audit](../../src/MethodCache.AspNetCore/README.md#audit)):
+
+<!-- snippet: aspnetcore-audit -->
+```cs
+var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
+app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
+{
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    return ValueTask.CompletedTask;
+});
+```
+<!-- endSnippet -->
+
 Configure your application's authentication scheme as well as the authorization policy. The
 [web demo](../../samples/MethodCache.WebDemo/) uses cookies and returns 401 for anonymous admin requests and
 403 for signed-in callers without the `Admin` role outside Development. It has no sign-in page; its
@@ -153,7 +169,8 @@ actually runs, background refreshes included; callers that join a running load a
 cache record none. A bulk call has one outcome and measures its one batch factory call.
 
 Histograms use seconds, with bucket boundaries from 5 ms to 10 s. Local entry/HTTP byte instruments are observable
-up-down counters. Invalidation counters count
+up-down counters. `methodcache.evictions` counts the entries an instance removed because its memory cache was full
+(`MaxItems` or `WeightLimit`), by `methodcache.kind`; expired and invalidated entries aren't in it. Invalidation counters count
 distinct targets at each stage, not operation totals; do not add stages together. See the
 [full instrument table](../../src/MethodCache.OpenTelemetry/README.md#metrics).
 
@@ -161,6 +178,23 @@ Spans cover runs of your method, individual distributed operations and invalidat
 and tags require explicit Core options; keys are hashed by default when enabled. Metrics never include keys, tags,
 URLs, user ids or tenant ids. MethodCache adds no baggage and copies no HTTP or URL attributes; your application's
 own activity context and baggage flow as usual.
+
+### Hit ratio per method
+
+`methodcache.requests` carries the method and the outcome, so a dashboard computes the hit ratio of each method. With
+OpenTelemetry's Prometheus exporter, which writes the names with underscores:
+
+```promql
+sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method", methodcache_result="hit"}[5m]))
+/
+sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m]))
+```
+
+A `bypass` (caching turned off for the call) counts as a request that wasn't a hit; leave it out with
+`methodcache_result!="bypass"` in the second sum to see the ratio of the calls the cache could answer. A `stale` result
+is an old value fail-safe returned because the method failed or took longer than `FailSafeTimeout`. A method whose ratio is low while `methodcache.evictions` rises
+needs a larger memory cache; one whose ratio is low without evictions is called with different arguments each time, or
+its entries expire before they are read again.
 
 ## Standard .NET listeners
 

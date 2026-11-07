@@ -102,10 +102,11 @@ namespace MethodCache
         /// <c>key</c> is the entry's stored key and <c>value</c> the cached result, which can be <c>null</c>. When set,
         /// the cache is bounded by <see cref="WeightLimit"/> measured in these units as well as by <see cref="MaxItems"/>.
         /// It is called once when an entry is stored, and must be fast, thread-safe and return a non-negative value.
+        /// <see cref="MethodCacheWeigher.Bytes"/> weighs strings and arrays of numbers in bytes.
         /// </summary>
         /// <example>
         /// <code>
-        /// options.Weigher = (key, value) =&gt; value is string text ? text.Length * 2 : 64;
+        /// options.Weigher = MethodCacheWeigher.Bytes;
         /// options.WeightLimit = 200 * 1024 * 1024;   // about 200 MB
         /// </code>
         /// </example>

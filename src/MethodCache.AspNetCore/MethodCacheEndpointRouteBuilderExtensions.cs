@@ -3,6 +3,7 @@ using MethodCache.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json.Serialization;
 
 namespace Microsoft.AspNetCore.Builder;
@@ -26,7 +27,8 @@ public static class MethodCacheEndpointRouteBuilderExtensions
     /// <item><c>POST clear</c> with <c>{}</c>: remove every entry</item>
     /// </list>
     /// The endpoints expose cache keys and can empty the cache, so every request must satisfy the authorization
-    /// policy <paramref name="policyName"/>. A signed-in user is not enough on its own.
+    /// policy <paramref name="policyName"/>. A signed-in user is not enough on its own. <paramref name="audit"/> records
+    /// who changed the cache.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -39,14 +41,30 @@ public static class MethodCacheEndpointRouteBuilderExtensions
     /// When a removal has completed locally but its distributed confirmation is still pending, the endpoint answers
     /// 503; the cache retains the operation and retries it.
     /// </para>
+    /// <para>
+    /// <paramref name="audit"/> runs for each valid request that changes the cache, <c>DELETE entry</c>,
+    /// <c>invalidate</c>, <c>invalidate-method</c> and <c>clear</c>, after authorization and before the change. When it
+    /// throws, the request fails and nothing changes, so no change goes unrecorded. Requests that only read aren't
+    /// passed to it.
+    /// </para>
     /// </remarks>
+    /// <param name="endpoints">The application's routes.</param>
+    /// <param name="policyName">The authorization policy every request must satisfy.</param>
+    /// <param name="prefix">The path the endpoints are mapped under.</param>
+    /// <param name="audit">Records each change: who made it, what it removes and when. <c>null</c> records nothing.</param>
+    /// <returns>The group of endpoints, for more conventions such as rate limiting.</returns>
     /// <example>
     /// <code>
     /// builder.Services.AddAuthorization(o => o.AddPolicy("CacheAdmins", p => p.RequireRole("Admin")));
-    /// app.MapMethodCacheAdmin("CacheAdmins");
+    /// app.MapMethodCacheAdmin("CacheAdmins", audit: (action, ct) =>
+    /// {
+    ///     logger.LogInformation("{User} ran {Action} on {Targets} at {Time}", action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    ///     return ValueTask.CompletedTask;
+    /// });
     /// </code>
     /// </example>
-    public static RouteGroupBuilder MapMethodCacheAdmin(this IEndpointRouteBuilder endpoints, string policyName, string prefix = "/methodcache")
+    public static RouteGroupBuilder MapMethodCacheAdmin(this IEndpointRouteBuilder endpoints, string policyName, string prefix = "/methodcache",
+        Func<MethodCacheAdminAction, CancellationToken, ValueTask>? audit = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
@@ -72,12 +90,34 @@ public static class MethodCacheEndpointRouteBuilderExtensions
         group.MapGet("/methods", (ICacheAdministrator admin) => TypedResults.Ok(admin.GetMethods())).AcceptsQuery();
         group.MapGet("/entries", ListEntries).AcceptsQuery("storedKeyPrefix", "tag", "methodId", "limit");
         group.MapGet("/entry", GetEntry).AcceptsQuery("storedKey");
-        group.MapDelete("/entry", RemoveEntryAsync).AcceptsQuery("storedKey");
-        group.MapPost("/invalidate", InvalidateAsync).AcceptsQuery();
-        group.MapPost("/invalidate-method", InvalidateMethodAsync).AcceptsQuery();
-        group.MapPost("/clear", ClearAsync).AcceptsQuery();
+        var auditor = new Auditor(audit);
+        group.MapDelete("/entry", (ICacheAdministrator admin, string? storedKey, HttpContext http, CancellationToken cancellationToken)
+            => RemoveEntryAsync(admin, storedKey, auditor.For(http), cancellationToken)).AcceptsQuery("storedKey");
+        group.MapPost("/invalidate", (ICacheAdministrator admin, InvalidateRequest request, HttpContext http, CancellationToken cancellationToken)
+            => InvalidateAsync(admin, request, auditor.For(http), cancellationToken)).AcceptsQuery();
+        group.MapPost("/invalidate-method", (ICacheAdministrator admin, InvalidateMethodRequest request, HttpContext http, CancellationToken cancellationToken)
+            => InvalidateMethodAsync(admin, request, auditor.For(http), cancellationToken)).AcceptsQuery();
+        group.MapPost("/clear", (ICacheAdministrator admin, ClearRequest request, HttpContext http, CancellationToken cancellationToken)
+            => ClearAsync(admin, request, auditor.For(http), cancellationToken)).AcceptsQuery();
 
         return group;
+    }
+
+    /// <summary>The audit function of one <c>MapMethodCacheAdmin</c>, if any.</summary>
+    private sealed class Auditor(Func<MethodCacheAdminAction, CancellationToken, ValueTask>? audit)
+    {
+        public Audit For(HttpContext http) => new(audit, http);
+    }
+
+    /// <summary>Records a change of one request before it is made.</summary>
+    private readonly struct Audit(Func<MethodCacheAdminAction, CancellationToken, ValueTask>? audit, HttpContext http)
+    {
+        public ValueTask RecordAsync(MethodCacheAdminActionKind kind, IReadOnlyList<string> targets, CancellationToken cancellationToken)
+        {
+            if (audit == null) return ValueTask.CompletedTask;
+            var time = (http.RequestServices.GetService<TimeProvider>() ?? TimeProvider.System).GetUtcNow();
+            return audit(new MethodCacheAdminAction(kind, targets, http, time), cancellationToken);
+        }
     }
 
     private static async Task<Ok<CacheStats>> GetStatsAsync(ICacheAdministrator admin, CancellationToken cancellationToken)
@@ -108,28 +148,34 @@ public static class MethodCacheEndpointRouteBuilderExtensions
     }
 
     private static async Task<Results<NoContent, NotFound, ValidationProblem>> RemoveEntryAsync(
-        ICacheAdministrator admin, string? storedKey, CancellationToken cancellationToken)
+        ICacheAdministrator admin, string? storedKey, Audit audit, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(storedKey)) return MissingStoredKey();
+        await audit.RecordAsync(MethodCacheAdminActionKind.RemoveEntry, [storedKey], cancellationToken).ConfigureAwait(false);
         var removed = await admin.RemoveEntryAsync(storedKey, cancellationToken).ConfigureAwait(false);
         return removed ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 
     private static async Task<Results<NoContent, ValidationProblem>> InvalidateAsync(
-        ICacheAdministrator admin, InvalidateRequest request, CancellationToken cancellationToken)
+        ICacheAdministrator admin, InvalidateRequest request, Audit audit, CancellationToken cancellationToken)
     {
         if (request.Tags is not { Count: > 0 } tags || tags.Any(string.IsNullOrWhiteSpace))
             return Invalid("tags", "Provide at least one non-empty tag.");
 
+        await audit.RecordAsync(MethodCacheAdminActionKind.InvalidateTags, tags.ToArray(), cancellationToken).ConfigureAwait(false);
         await admin.InvalidateTagsAsync(tags, cancellationToken).ConfigureAwait(false);
         return TypedResults.NoContent();
     }
 
     private static async Task<Results<NoContent, ValidationProblem>> InvalidateMethodAsync(
-        ICacheAdministrator admin, InvalidateMethodRequest request, CancellationToken cancellationToken)
+        ICacheAdministrator admin, InvalidateMethodRequest request, Audit audit, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.MethodId)) return MissingMethodId();
+        // An unknown id is a 400 that changes nothing, so it isn't recorded as a change
+        if (!admin.GetMethods().Any(method => string.Equals(method.MethodId, request.MethodId, StringComparison.Ordinal)))
+            return UnknownMethodId();
 
+        await audit.RecordAsync(MethodCacheAdminActionKind.InvalidateMethod, [request.MethodId], cancellationToken).ConfigureAwait(false);
         try
         {
             await admin.InvalidateMethodAsync(request.MethodId, cancellationToken).ConfigureAwait(false);
@@ -145,8 +191,9 @@ public static class MethodCacheEndpointRouteBuilderExtensions
 
     // The body is required, so a request without one (which a browser sends cross-site without a preflight) is a 400
     private static async Task<NoContent> ClearAsync(
-        ICacheAdministrator admin, ClearRequest request, CancellationToken cancellationToken)
+        ICacheAdministrator admin, ClearRequest request, Audit audit, CancellationToken cancellationToken)
     {
+        await audit.RecordAsync(MethodCacheAdminActionKind.Clear, [], cancellationToken).ConfigureAwait(false);
         await admin.ClearAsync(cancellationToken).ConfigureAwait(false);
         return TypedResults.NoContent();
     }

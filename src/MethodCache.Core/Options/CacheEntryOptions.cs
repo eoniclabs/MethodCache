@@ -22,13 +22,14 @@ namespace MethodCache
             TimeSpan? failSafeTimeout,
             TimeSpan? failSafeRetryAfter,
             bool clearsTags = false, bool? enabled = null, bool? distributed = null, Func<object?, bool>? cacheWhen = null,
-            Func<object?, TimeSpan>? durationFor = null, Func<object?, string[]>? tagsFor = null)
+            Func<object?, TimeSpan>? durationFor = null, Func<object?, string[]>? tagsFor = null, Func<object?, TimeSpan>? slidingFor = null)
         {
             Enabled = enabled;
             Distributed = distributed;
             CacheWhen = cacheWhen;
             DurationFor = durationFor;
             TagsFor = tagsFor;
+            SlidingFor = slidingFor;
             ClearsTags = clearsTags;
             Duration = duration;
             SlidingExpiration = slidingExpiration;
@@ -72,14 +73,15 @@ namespace MethodCache
         internal Func<object?, bool>? CacheWhen { get; }
         internal Func<object?, TimeSpan>? DurationFor { get; }
         internal Func<object?, string[]>? TagsFor { get; }
+        internal Func<object?, TimeSpan>? SlidingFor { get; }
 
         /// <summary>
         /// Checks whether the typed result may be cached: the <c>CacheWhen</c> predicate accepts it, a
-        /// <c>DurationFor</c> function gives it a positive duration, and a <c>TagsFor</c> function gives it valid tags.
-        /// A throwing predicate or function rejects the result.
+        /// <c>DurationFor</c> function gives it a positive duration, a <c>SlidingFor</c> function doesn't throw, and a
+        /// <c>TagsFor</c> function gives it valid tags. A throwing predicate or function rejects the result.
         /// </summary>
         /// <remarks>Custom managers apply this check both before publication and after distributed reads.</remarks>
-        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        /// <exception cref="InvalidOperationException">The <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c>, <c>SlidingFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
         public bool CanCache<T>(T value)
         {
             if (Enabled == false) return false;
@@ -87,6 +89,12 @@ namespace MethodCache
             try { if (CacheWhen?.Invoke(value) == false) return false; }
             catch (Exception) { return false; }
             if (DurationFor != null && DurationOf(value) <= TimeSpan.Zero) return false;
+            if (SlidingFor != null)
+            {
+                CachePredicateCheck.EnsureMatches(SlidingFor, typeof(T), "this call");
+                try { _ = SlidingFor(value); }
+                catch (Exception) { return false; }
+            }
             if (TagsFor == null) return true;
             CachePredicateCheck.EnsureMatches(TagsFor, typeof(T), "this call");
             try { _ = TagsFor(value); return true; }
@@ -124,6 +132,21 @@ namespace MethodCache
             try { return DurationFor(value) is var duration && duration > TimeSpan.Zero ? duration : TimeSpan.Zero; }
             catch (Exception) { return TimeSpan.Zero; }
         }
+        /// <summary>
+        /// Gets the sliding window of <paramref name="value"/>: what the <c>SlidingFor</c> function gives it, else
+        /// <see cref="SlidingExpiration"/>. <see cref="TimeSpan.Zero"/> when the function gives zero or less, which turns
+        /// sliding off for the value, or throws, in which case <see cref="CanCache{T}"/> rejects the value.
+        /// </summary>
+        /// <remarks>Custom managers use this in place of <see cref="SlidingExpiration"/>.</remarks>
+        /// <exception cref="InvalidOperationException">The <c>SlidingFor&lt;T&gt;</c> function is for a type that a <typeparamref name="T"/> result can never be.</exception>
+        public TimeSpan? SlidingExpirationOf<T>(T value)
+        {
+            if (SlidingFor == null) return SlidingExpiration;
+            CachePredicateCheck.EnsureMatches(SlidingFor, typeof(T), "this call");
+            try { return SlidingFor(value) is var sliding && sliding > TimeSpan.Zero ? sliding : TimeSpan.Zero; }
+            catch (Exception) { return TimeSpan.Zero; }
+        }
+
         /// <summary>The policy of a generated call, whose key is already complete; null for options built by the application.</summary>
         internal CacheRuntimePolicy? Runtime { get; init; }
 
@@ -138,7 +161,7 @@ namespace MethodCache
             policy.FailSafe, policy.FailSafeTimeout, policy.FailSafeRetryAfter,
             clearsTags: policy.Fields.HasFlag(Policies.CachePolicyFields.ClearTags),
             enabled: policy.Enabled, distributed: policy.Distributed, cacheWhen: policy.CacheWhen, durationFor: policy.DurationFor,
-            tagsFor: policy.TagsFor)
+            tagsFor: policy.TagsFor, slidingFor: policy.SlidingFor)
         { Runtime = preparedKey ? policy : null };
 
         /// <summary>
@@ -173,6 +196,7 @@ namespace MethodCache
             private Func<object?, bool>? _cacheWhen;
             private Func<object?, TimeSpan>? _durationFor;
             private Func<object?, string[]>? _tagsFor;
+            private Func<object?, TimeSpan>? _slidingFor;
             /// <summary>Enables or disables all caching for the invocation or method.</summary>
             public Builder WithEnabled(bool enabled) { _enabled = enabled; return this; }
             /// <summary>Enables or disables distributed reads and writes.</summary>
@@ -197,6 +221,22 @@ namespace MethodCache
                 ArgumentNullException.ThrowIfNull(duration);
                 _durationFor = new TypedDuration<T>(duration).For;
                 _duration = null;
+                return this;
+            }
+
+            /// <summary>
+            /// Gives each result its own sliding window, such as one for a successful result and none for a failed one:
+            /// <c>SlidingFor&lt;Report&gt;(r =&gt; r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)</c>. Zero or less
+            /// turns sliding off for that result, so it lives its duration whether it is read or not. It replaces
+            /// <see cref="WithSlidingExpiration"/>; whichever is called last wins. A function that throws doesn't cache the
+            /// result.
+            /// </summary>
+            /// <exception cref="ArgumentNullException"><paramref name="sliding"/> is <c>null</c>.</exception>
+            public Builder SlidingFor<T>(Func<T, TimeSpan> sliding)
+            {
+                ArgumentNullException.ThrowIfNull(sliding);
+                _slidingFor = new TypedDuration<T>(sliding, "SlidingFor").For;
+                _slidingExpiration = null;
                 return this;
             }
 
@@ -286,7 +326,8 @@ namespace MethodCache
 
             /// <summary>
             /// Sets the sliding expiration window for the cache entry. <see cref="TimeSpan.Zero"/> turns sliding
-            /// expiration off, for example for one method when it is on for all of them.
+            /// expiration off, for example for one method when it is on for all of them. It replaces
+            /// <see cref="SlidingFor{T}"/>; whichever is called last wins.
             /// </summary>
             public Builder WithSlidingExpiration(TimeSpan slidingExpiration)
             {
@@ -301,6 +342,7 @@ namespace MethodCache
                 }
 
                 _slidingExpiration = slidingExpiration;
+                _slidingFor = null;
                 return this;
             }
 
@@ -410,7 +452,7 @@ namespace MethodCache
                     _failSafe,
                     _failSafeTimeout,
                     _failSafeRetryAfter,
-                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor, _tagsFor);
+                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor, _tagsFor, _slidingFor);
             }
         }
     }

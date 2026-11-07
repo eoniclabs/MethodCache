@@ -75,6 +75,9 @@ namespace MethodCache.Infrastructure
         /// <summary>Gives each loaded result tags of its own, stored next to <see cref="Tags"/>.</summary>
         public Func<object?, string[]>? TagsFor { get; init; }
 
+        /// <summary>Gives each loaded result its own sliding window, in place of <see cref="SlidingExpiration"/>.</summary>
+        public Func<object?, TimeSpan>? SlidingFor { get; init; }
+
         /// <summary>How long an expired value is kept as a fail-safe fallback; zero or null turns fail-safe off.</summary>
         public TimeSpan? FailSafe { get; init; }
 
@@ -114,12 +117,6 @@ namespace MethodCache.Infrastructure
         /// </summary>
         public bool HasVersion => Version.HasValue;
 
-        /// <summary>
-        /// Indicates whether sliding expiration or refresh-ahead is configured.
-        /// </summary>
-        public bool HasRuntimeOptions =>
-            SlidingExpiration > TimeSpan.Zero ||
-            RefreshAhead > TimeSpan.Zero;
 
         // ============= Factory Methods =============
 
@@ -160,6 +157,7 @@ namespace MethodCache.Infrastructure
                 CacheWhen = result.Policy.CacheWhen,
                 DurationFor = result.Policy.DurationFor,
                 TagsFor = result.Policy.TagsFor,
+                SlidingFor = result.Policy.SlidingFor,
                 FailSafe = result.Policy.FailSafe,
                 FailSafeTimeout = result.Policy.FailSafeTimeout,
                 FailSafeRetryAfter = result.Policy.FailSafeRetryAfter,
@@ -209,6 +207,7 @@ namespace MethodCache.Infrastructure
                 CacheWhen = policy.CacheWhen,
                 DurationFor = policy.DurationFor,
                 TagsFor = policy.TagsFor,
+                SlidingFor = policy.SlidingFor,
                 FailSafe = policy.FailSafe,
                 FailSafeTimeout = policy.FailSafeTimeout,
                 FailSafeRetryAfter = policy.FailSafeRetryAfter,

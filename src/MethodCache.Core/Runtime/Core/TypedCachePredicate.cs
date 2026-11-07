@@ -1,6 +1,6 @@
 namespace MethodCache.Infrastructure;
 
-/// <summary>A typed CacheWhen predicate, DurationFor or TagsFor function, wrapped to take the result as an object.</summary>
+/// <summary>A typed CacheWhen predicate, DurationFor, SlidingFor or TagsFor function, wrapped to take the result as an object.</summary>
 internal interface ICachePredicate
 {
     Delegate Identity { get; }
@@ -17,11 +17,12 @@ internal sealed class TypedCachePredicate<T>(Func<T, bool> predicate) : ICachePr
     internal bool Accept(object? value) => predicate(value is null ? default! : (T)value);
 }
 
-internal sealed class TypedDuration<T>(Func<T, TimeSpan> duration) : ICachePredicate
+/// <summary>A DurationFor function, or a SlidingFor function when its setting says so.</summary>
+internal sealed class TypedDuration<T>(Func<T, TimeSpan> duration, string setting = "DurationFor") : ICachePredicate
 {
     public Delegate Identity => duration;
     public Type ResultType => typeof(T);
-    public string Setting => "DurationFor";
+    public string Setting => setting;
     internal TimeSpan For(object? value) => duration(value is null ? default! : (T)value);
 }
 
@@ -51,7 +52,7 @@ internal sealed class TypedTags<T>(Func<T, IEnumerable<string>?> tags) : ICacheP
 internal static class CachePredicateCheck
 {
     /// <summary>
-    /// Throws when a <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function can never see a result of
+    /// Throws when a <c>CacheWhen&lt;T&gt;</c> predicate, <c>DurationFor&lt;T&gt;</c>, <c>SlidingFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> function can never see a result of
     /// <paramref name="resultType"/>, for example a rule for <c>string</c> on a call that returns <c>int</c>, instead of
     /// silently caching nothing.
     /// </summary>

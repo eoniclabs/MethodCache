@@ -25,7 +25,7 @@
   [MC0019](user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
-  `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
+  `SlidingFor` threw, `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
   Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](features/testing.md)).
 - **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning

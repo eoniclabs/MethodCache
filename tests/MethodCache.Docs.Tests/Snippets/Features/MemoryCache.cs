@@ -26,7 +26,23 @@ namespace Docs.MemoryCache
             builder.Services.AddMethodCache(cache => cache.Memory(o =>
             {
                 o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
-                o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
+                o.Weigher = MethodCacheWeigher.Bytes; // strings and arrays such as float[] by size, other values 64
+            }));
+            // end-snippet
+        }
+
+        public sealed record Report(IReadOnlyList<string> Rows);
+
+        public static void OwnWeigher(WebApplicationBuilder builder)
+        {
+            // begin-snippet: memory-own-weigher
+            builder.Services.AddMethodCache(cache => cache.Memory(o =>
+            {
+                o.WeightLimit = 256 * 1024 * 1024;
+                // Weigh your own types, and let MethodCacheWeigher weigh the rest
+                o.Weigher = (key, value) => value is Report report
+                    ? report.Rows.Sum(row => row.Length * 2L)
+                    : MethodCacheWeigher.Bytes(key, value);
             }));
             // end-snippet
         }

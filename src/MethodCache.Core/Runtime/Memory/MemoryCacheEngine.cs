@@ -90,6 +90,7 @@ internal sealed class MemoryCacheEngine
     private long _windowEntries;
     private long _protectedEntries;
     private long _evictionCount;
+    private long _evictionsSinceStart; // Not reset by Clear, so the methodcache.evictions counter only grows
     private long _expirationCount;
     private int _maintenanceScheduled;
     private long _entryCount;
@@ -166,6 +167,9 @@ internal sealed class MemoryCacheEngine
     public long TotalWeight => Volatile.Read(ref _totalWeight);
 
     public long EvictionCount => Volatile.Read(ref _evictionCount);
+
+    /// <summary>Entries evicted to make room since the engine was created; <see cref="Clear"/> doesn't reset it.</summary>
+    public long EvictionsSinceStart => Volatile.Read(ref _evictionsSinceStart);
 
     public long ExpirationCount => Volatile.Read(ref _expirationCount);
 
@@ -777,6 +781,7 @@ internal sealed class MemoryCacheEngine
         {
             Interlocked.CompareExchange(ref node.State, Node.StateRetired, Node.StateAlive);
             _evictionCount++;
+            _evictionsSinceStart++;
         }
 
         Unlink(node);

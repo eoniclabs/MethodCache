@@ -41,7 +41,7 @@ never stops a build.
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
-| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
 | [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
 | [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
@@ -596,7 +596,7 @@ there with `#pragma warning disable MC0032`.
 
 ## MC0033
 
-`CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
+`CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
 never be, such as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
 application starts or the call runs; this error finds it while building.
 
@@ -605,8 +605,8 @@ mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s =
 await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
 ```
 
-Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)` and
-`Method(...).TagsFor(...)`, which take the result type from the method:
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)`,
+`Method(...).SlidingFor(...)` and `Method(...).TagsFor(...)`, which take the result type from the method:
 
 ```cs
 mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);

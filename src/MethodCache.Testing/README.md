@@ -1,7 +1,8 @@
 # MethodCache.Testing
 
 Helpers for tests of the caching itself: a fake clock, a recorder that counts how often your implementation ran and
-what was invalidated, and a check that every cache tag has something that invalidates it.
+what was invalidated, a check that every cached service resolves to its caching decorator, and a check that every
+cache tag has something that invalidates it.
 
 Install it in the test project, at the same version as `MethodCache`.
 
@@ -47,6 +48,19 @@ invalidated, in order. `Clear()` forgets what a test's setup recorded. The clock
 when the test advances it, so nothing expires on its own.
 
 The recorder sees the built-in cache manager: with `NoOpCacheManager` or your own `ICacheManager` it records nothing.
+
+## Every cached service resolves
+
+`CachedServices.Problems` resolves each registered service with cached methods and checks that it is the generated
+caching decorator, so a service registered after `AddMethodCache` or one with a missing dependency fails a test instead
+of the application's startup:
+
+<!-- snippet: testing-cached-services -->
+```cs
+// Every service with cached methods resolves, and to its generated caching decorator
+Assert.Empty(CachedServices.Problems(provider));
+```
+<!-- endSnippet -->
 
 ## Every tag has an invalidation
 

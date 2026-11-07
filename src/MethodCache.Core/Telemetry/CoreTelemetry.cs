@@ -10,7 +10,7 @@ namespace MethodCache.Core.Telemetry;
 internal enum RequestResult : byte { Hit, Miss, Stale, Revalidated, Bypass, Error }
 
 internal readonly record struct CacheObservation(long LocalMethodEntries, long LocalHttpEntries,
-    long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight);
+    long LocalHttpBytes, long ObservedDistributedEntries, long TotalWeight, long MethodEvictions = 0, long HttpEvictions = 0);
 
 /// <summary>
 /// The attribute names on MethodCache's metrics and spans. They are part of the public contract: dashboards and
@@ -100,6 +100,7 @@ internal sealed class CoreTelemetry : IDisposable
         _invalidations = meter.CreateCounter<long>("methodcache.invalidations", "{invalidation}");
         _distributed = meter.CreateHistogram<double>("methodcache.distributed.duration", "s", description: null, tags: null, SecondsAdvice);
         meter.CreateObservableUpDownCounter("methodcache.entries", ObserveEntries, "{entry}");
+        meter.CreateObservableCounter("methodcache.evictions", ObserveEvictions, "{entry}");
         meter.CreateObservableUpDownCounter("methodcache.http.size", () => Observe().LocalHttpBytes, "By");
         meter.CreateObservableUpDownCounter("methodcache.distributed.queue", ObserveQueues, "{invalidation}");
     }
@@ -196,7 +197,7 @@ internal sealed class CoreTelemetry : IDisposable
         var methods = Volatile.Read(ref _observeMethods)?.Invoke() ?? default;
         var http = Volatile.Read(ref _observeHttp)?.Invoke() ?? default;
         return new CacheObservation(methods.LocalMethodEntries, http.LocalHttpEntries, http.LocalHttpBytes,
-            http.ObservedDistributedEntries, methods.TotalWeight);
+            http.ObservedDistributedEntries, methods.TotalWeight, methods.MethodEvictions, http.HttpEvictions);
     }
 
     private IEnumerable<Measurement<long>> ObserveEntries()
@@ -204,6 +205,14 @@ internal sealed class CoreTelemetry : IDisposable
         var current = Observe();
         yield return new Measurement<long>(current.LocalMethodEntries, KindMethod);
         yield return new Measurement<long>(current.LocalHttpEntries, KindHttp);
+    }
+
+    // Entries removed to make room in this instance's memory, since it started; expired and invalidated entries aren't counted
+    private IEnumerable<Measurement<long>> ObserveEvictions()
+    {
+        var current = Observe();
+        yield return new Measurement<long>(current.MethodEvictions, KindMethod);
+        yield return new Measurement<long>(current.HttpEvictions, KindHttp);
     }
 
     private IEnumerable<Measurement<long>> ObserveQueues()
