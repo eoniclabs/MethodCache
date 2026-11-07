@@ -95,6 +95,11 @@ builder.Services.AddMethodCache(mc =>
 
 - A duration of zero or less doesn't cache the result, and neither does a function that throws. The caller still gets
   the result, and the next call runs the method again.
+- A null result reaches the function as null, so a method that returns `Task<Price?>` needs
+  `price => price is null ? ... : ...`. Null carries no time of its own: when "no row yet" has a known time at which
+  one takes effect, such as a price that starts next week, return a type that can say so, such as
+  `record CurrentPrice(Price? Price, DateTimeOffset? NextChangeAt)`, or give null a fixed duration. With
+  `CacheNullValues = false` a null result isn't cached at all.
 - It runs once per load and on each value read from the distributed cache, which keeps the value for the time the
   result gives on every instance. It never runs on a hit in memory.
 - No jitter is added ([Spreading out expiry](#spreading-out-expiry)), and `MaxExpiration` still caps it.

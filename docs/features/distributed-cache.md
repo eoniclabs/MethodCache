@@ -195,6 +195,14 @@ The API reloads the catalog on its next read after the worker's save commits, us
 the change tracker doesn't see, such as `ExecuteUpdate`, need their tags invalidated by hand
 ([Writes the change tracker doesn't see](entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
 
+Both processes use the same four tables. When a login may not create tables, such as an API that connects as a role
+other than the owner because the database uses row-level security, create them once with the package's script and
+grant that login `SELECT, INSERT, UPDATE, DELETE` on them
+([Tables](../../src/MethodCache.PostgreSql/README.md#tables)).
+
+`TagCoverage` ([Testing](testing.md#every-tag-has-an-invalidation)) counts `food-catalog` as invalidated only when the
+API's test project references the worker project, since the worker is where the invalidation is.
+
 ## What other instances see
 
 - An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then

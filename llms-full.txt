@@ -394,6 +394,34 @@ anything else the result depends on must be an argument too:
   ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do
   the same from the method's arguments.
 
+## Recommended project setup
+
+Three things catch most mistakes before they reach production.
+
+**Pin the analysis level.** A new version of MethodCache can bring new analyzer warnings, and with warnings treated as
+errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` once for the solution, in
+`Directory.Build.props`, and raise it when you want a later version's rules
+([Rules of a later version](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#rules-of-a-later-version)):
+
+```xml
+<Project>
+  <PropertyGroup>
+    <MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>
+  </PropertyGroup>
+</Project>
+```
+
+**Test the setup.** Add the `MethodCache.Testing` package to a test project that references the application, and
+every project that invalidates its tags, such as a worker. With the application's service provider,
+`Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every cached service resolves to its caching
+decorator, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` that every tag has an invalidation
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
+
+**Watch evictions and the hit ratio.** With `AddMethodCacheInstrumentation()`, chart `methodcache.evictions` and the
+hit ratio of each method ([Hit ratio per method](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#hit-ratio-per-method)). Rising evictions mean
+the memory cache is too small. A low ratio without evictions means the method is called with different arguments each
+time, or its entries expire before they are read again.
+
 ## Next steps
 
 - Choose how long entries live: [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md).
@@ -604,6 +632,12 @@ Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off fo
 .DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
 the result. ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result))
 
+**My method returns null when there is no row yet, but one takes effect at a known time. How long is null kept?**
+`DurationFor` gets the null too, and null can't say when the row starts. Return a type that can, such as
+`record CurrentPrice(Price? Price, DateTimeOffset? NextChangeAt)`, and keep it until `NextChangeAt`; or give null a
+fixed duration with `price => price is null ? TimeSpan.FromMinutes(5) : ...`.
+([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result))
+
 **How do I let successful results slide and keep failed ones for a fixed time?**
 Add `SlidingFor` next to `DurationFor`: `.DurationFor(r => r.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
 .SlidingFor(r => r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)`. Zero turns sliding off for that result.
@@ -649,6 +683,11 @@ the interface method. The check runs only when a value is loaded, so the caller 
 **I renamed my `ICurrentUser`. Does MC0026 still find it?**
 Not until you update `methodcache.request_state_types` in `.editorconfig`. Warning MC0036 reports a name there that
 matches no type. ([MC0036](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0036))
+
+**My cached read uses a table without row-level security, through a context that has the request's tenant. Why MC0026?**
+The analyzer can't tell which tables a method reads. When the result depends only on the arguments, such as an API key
+looked up by its hash, suppress MC0026 on that class with the reason.
+([A table the request doesn't filter](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#a-table-the-request-doesnt-filter))
 
 **My database uses row-level security on the connection. How do I cache reads?**
 Give the cached reads a context of their own from `IDbContextFactory<T>`, not the one set up for the signed-in user,
@@ -753,7 +792,13 @@ Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` o
 `MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
 prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`. With a
 `CollectorRegistry` of your own, set both `Registry` and `MetricFactory = Metrics.WithCustomRegistry(registry)` on the
-meter adapter, or no series appear. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
+meter adapter, or no series appear, and `InstrumentFilterPredicate = i => i.Meter.Name == MethodCacheTelemetry.Name`
+to leave out the process's other meters. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#standard-net-listeners))
+
+**The `methodcache_method` label is too long for my dashboard. Can I shorten it?**
+It is the full method id, so methods with the same name in different assemblies never share a series. Copy the
+interface and method into a label of their own with `label_replace` in the query, or with `metric_relabel_configs`
+when Prometheus scrapes. ([Hit ratio per method](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#hit-ratio-per-method))
 
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md))
@@ -1191,6 +1236,11 @@ builder.Services.AddMethodCache(mc =>
 
 - A duration of zero or less doesn't cache the result, and neither does a function that throws. The caller still gets
   the result, and the next call runs the method again.
+- A null result reaches the function as null, so a method that returns `Task<Price?>` needs
+  `price => price is null ? ... : ...`. Null carries no time of its own: when "no row yet" has a known time at which
+  one takes effect, such as a price that starts next week, return a type that can say so, such as
+  `record CurrentPrice(Price? Price, DateTimeOffset? NextChangeAt)`, or give null a fixed duration. With
+  `CacheNullValues = false` a null result isn't cached at all.
 - It runs once per load and on each value read from the distributed cache, which keeps the value for the time the
   result gives on every instance. It never runs on a hit in memory.
 - No jitter is added ([Spreading out expiry](#spreading-out-expiry)), and `MaxExpiration` still caps it.
@@ -2899,6 +2949,14 @@ The API reloads the catalog on its next read after the worker's save commits, us
 the change tracker doesn't see, such as `ExecuteUpdate`, need their tags invalidated by hand
 ([Writes the change tracker doesn't see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#writes-the-change-tracker-doesnt-see)).
 
+Both processes use the same four tables. When a login may not create tables, such as an API that connects as a role
+other than the owner because the database uses row-level security, create them once with the package's script and
+grant that login `SELECT, INSERT, UPDATE, DELETE` on them
+([Tables](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.PostgreSql/README.md#tables)).
+
+`TagCoverage` ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation)) counts `food-catalog` as invalidated only when the
+API's test project references the worker project, since the worker is where the invalidation is.
+
 ## What other instances see
 
 - An invalidation reaches another instance when the backplane delivers it, usually within milliseconds; until then
@@ -3169,6 +3227,36 @@ sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="m
 sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m]))
 ```
 
+With prometheus-net ([Standard .NET listeners](#standard-net-listeners)), the series is
+`methodcache_methodcache_requests`, without `_total`. It is a gauge that holds the running total, so `rate` works on it
+as on a counter:
+
+```promql
+sum by (methodcache_method) (rate(methodcache_methodcache_requests{methodcache_kind="method", methodcache_result="hit"}[5m]))
+/
+sum by (methodcache_method) (rate(methodcache_methodcache_requests{methodcache_kind="method"}[5m]))
+```
+
+`methodcache_method` is the full method id, such as `[MyApp.Api]MyApp.Api.Services.IPriceSource.GetRateAsync`, so
+that two methods with the same name in different assemblies never share a series. For a shorter name on a dashboard,
+copy the interface and method into a label of their own with `label_replace`:
+
+```promql
+label_replace(
+  sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m])),
+  "method", "$1", "methodcache_method", `.*\.([^.]+\.[^.]+)`)
+```
+
+Or do it once when Prometheus scrapes, in the job's `metric_relabel_configs`:
+
+```yaml
+metric_relabel_configs:
+  - source_labels: [methodcache_method]
+    regex: '.*\.([^.]+\.[^.]+)'
+    target_label: method
+    replacement: '$1'
+```
+
 A `bypass` (caching turned off for the call) counts as a request that wasn't a hit; leave it out with
 `methodcache_result!="bypass"` in the second sum to see the ratio of the calls the cache could answer. A `stale` result
 is an old value fail-safe returned because the method failed or took longer than `FailSafeTimeout`. A method whose ratio is low while `methodcache.evictions` rises
@@ -3186,7 +3274,8 @@ prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter 
 as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
 
 With a `CollectorRegistry` of your own, start the meter adapter with the registry and a metric factory for it. With only
-`Registry` set, no MethodCache series appear:
+`Registry` set, no MethodCache series appear. The adapter exports every meter in the process unless you filter it, so
+pass `InstrumentFilterPredicate` to export MethodCache's alone:
 
 ```cs
 // A registry of your own needs both settings: with only Registry, no MethodCache series appear
@@ -3194,8 +3283,15 @@ var adapter = MeterAdapter.StartListening(new MeterAdapterOptions
 {
     Registry = registry,
     MetricFactory = Metrics.WithCustomRegistry(registry),
+    // Without a filter the adapter exports every meter in the process, ASP.NET Core's and the runtime's too
+    InstrumentFilterPredicate = instrument => instrument.Meter.Name == MethodCacheTelemetry.Name,
 });
 ```
+
+With prometheus-net's default registry, set the same filter at startup with `Metrics.ConfigureMeterAdapter(o =>
+o.InstrumentFilterPredicate = ...)`. Start the adapter in `Program.cs` and keep what it returns.
+Started from a hosted service of your own instead, it exports nothing in a test host that removes hosted services,
+as some `WebApplicationFactory` setups do.
 
 A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
@@ -4496,6 +4592,25 @@ don't combine the pattern with `RefreshAhead`. The attribute changes nothing at 
 The analyzer reads the attribute on the method the cached method calls. When you call the check through an interface,
 such as `ITenantContext.EnsureActsFor(tenantId)`, mark the interface method; the attribute on the class that implements
 it isn't seen through the interface.
+
+### A table the request doesn't filter
+
+Some cached reads go through a context that holds request state but read a table that doesn't depend on it, such as
+looking up an API key before the tenant is known, from a table without row-level security. The result depends only on
+the arguments, but the analyzer can't tell which tables a method reads, so it still reports the class. Suppress the
+warning there, with the reason, so it stays next to the code it is about:
+
+```cs
+[SuppressMessage("Security", "MC0026", Justification = "api_keys has no row-level security; the key is the argument")]
+public sealed class ApiKeys(TenantDb db) : IApiKeys
+{
+    public Task<ApiKey?> FindAsync(string keyHash)   // [Cache] on IApiKeys.FindAsync
+        => db.ApiKeys.SingleOrDefaultAsync(k => k.Hash == keyHash);
+}
+```
+
+Suppress it on the class, not for the project, so a new cached method in another class is still checked. A context
+of its own for such reads, without the request state, avoids the warning as well.
 
 ## MC0027
 
@@ -6007,7 +6122,7 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.12 (2026-11-07)
 
 ### Upgrading from 1.0.0-rc.11
 
@@ -6032,6 +6147,18 @@ release.
   in the log when the host starts for each method whose sliding window and duration, from any place such as a method's
   `WithSlidingExpiration` and `Defaults`, combine that way
   ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
+
+### Documentation
+
+- Getting started: a recommended project setup (`MethodCacheAnalysisLevel` in `Directory.Build.props`, the
+  `MethodCache.Testing` checks, and evictions and hit ratio to watch).
+- Monitoring: the prometheus-net example filters to MethodCache's meter, the hit-ratio query for prometheus-net's
+  series names, `label_replace` and relabeling for a short method name, and why an adapter started from a hosted
+  service exports nothing in some test hosts.
+- Expiration: what `DurationFor` gets for a null result, and how to keep "nothing yet" until a known time.
+- MC0026: suppress it on the class for cached reads of a table that the request doesn't filter.
+- Distributed cache: the worker and API recipe links to the PostgreSQL tables and grants, and says the API's test
+  project references the worker for `TagCoverage`.
 
 ## 1.0.0-rc.11 (2026-11-07)
 
