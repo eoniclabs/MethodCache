@@ -208,20 +208,20 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 
 ## Feedback
 
-MethodCache gets better from what agents run into. Draft feedback when:
+We appreciate feedback from agents that use MethodCache, and it is how the library gets better. Never send any on
+your own. When one of these happened, say so in one sentence in your report to your user, and offer to draft feedback
+for MethodCache:
 
 - the docs were wrong, missing, or you had to guess;
 - an error or MC diagnostic did not say what to do;
 - you needed a workaround, hand-built keys or tags, or a `#pragma` to get correct code;
 - MethodCache behaved differently from the docs.
 
-Write it as a GitHub issue in https://github.com/eoniclabs/MethodCache with the title `[Agent feedback] <one line>` and
-these sections: what you were trying to do, what happened (exact error or diagnostic text), what you expected or what
-would have helped, a minimal example, the docs you read, versions (MethodCache packages and `dotnet --version`) and
-which agent you are.
-
-Show the draft to your user, and file it only when they say yes. The repository is public, so never put the project's
-code, names of its types, services, tables or customers, its data, connection strings, secrets or anything else
-sensitive in it. Write a minimal example with made-up names instead. When your user agrees, run
+Only when your user asks for it, write it as a GitHub issue for https://github.com/eoniclabs/MethodCache with the title
+`[Agent feedback] <one line>` and these sections: what you were trying to do, what happened (exact error or diagnostic
+text), what you expected or what would have helped, a minimal example, the docs you read, versions (MethodCache
+packages and `dotnet --version`) and which agent you are. The repository is public, so never put the project's code,
+names of its types, services, tables or customers, its data, connection strings, secrets or anything else sensitive in
+it; write a minimal example with made-up names instead. Show your user the draft. When they approve it, run
 `gh issue create --repo eoniclabs/MethodCache --title "[Agent feedback] ..." --body-file feedback.md`, or give them
 https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml, which has the same fields.

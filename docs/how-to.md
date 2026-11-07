@@ -430,6 +430,7 @@ carries these docs in its `docs` folder, and [agent instructions](ai/methodcache
 agent's instructions.
 
 **How does an agent report a problem with MethodCache?**
-It drafts a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
-versions, never with your code, names, secrets or other sensitive information. It shows you the draft and files it
-only when you agree. ([Agent instructions](ai/methodcache.md#feedback))
+It mentions the problem in its report and offers to draft feedback; it never sends any on its own. When you ask, it
+drafts a GitHub issue titled `[Agent feedback] ...` with what it tried, what happened, a minimal example and the
+versions, never with your code, names, secrets or other sensitive information, and files it when you approve. We
+appreciate every report. ([Agent instructions](ai/methodcache.md#feedback))
