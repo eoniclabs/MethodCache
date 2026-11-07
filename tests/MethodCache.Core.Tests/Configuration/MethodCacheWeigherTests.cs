@@ -4,8 +4,9 @@ using Xunit;
 namespace MethodCache.Core.Tests.Configuration;
 
 /// <summary>
-/// <see cref="MethodCacheWeigher.Bytes"/> weighs an entry in approximate bytes: its key and a string or an array of
-/// numbers by size, any other value as <see cref="MethodCacheWeigher.OtherValue"/>.
+/// <see cref="MethodCacheWeigher.Bytes(string, object)"/> weighs an entry in approximate bytes: its key and a string or an array of
+/// numbers by size, any other value as <see cref="MethodCacheWeigher.OtherValue"/>, or as the weight given to
+/// <see cref="MethodCacheWeigher.Bytes(long)"/>.
 /// </summary>
 public class MethodCacheWeigherTests
 {
@@ -35,6 +36,52 @@ public class MethodCacheWeigherTests
         { 42, MethodCacheWeigher.OtherValue },
         { new Product("p"), MethodCacheWeigher.OtherValue },
     };
+
+    [Fact]
+    public void Bytes_WithAWeightForOtherValues_GivesItToValuesItCantMeasure()
+    {
+        var weigh = MethodCacheWeigher.Bytes(otherValue: 1024);
+
+        Assert.Equal(6 + 1024, weigh("abc", new Product("p")));
+        Assert.Equal(6 + 1024, weigh("abc", 42));
+    }
+
+    [Fact]
+    public void Bytes_WithAWeightForOtherValues_StillMeasuresStringsAndArrays()
+    {
+        var weigh = MethodCacheWeigher.Bytes(otherValue: 1024);
+
+        Assert.Equal(6 + 10, weigh("abc", "hello"));
+        Assert.Equal(6 + 384 * 4, weigh("abc", new float[384]));
+        Assert.Equal(6, weigh("abc", null));
+    }
+
+    [Fact]
+    public void Bytes_WithANegativeWeightForOtherValues_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => MethodCacheWeigher.Bytes(otherValue: -1));
+    }
+
+    [Fact]
+    public async Task Bytes_WithAWeightForOtherValues_BoundsACacheOfRecords()
+    {
+        await using var provider = new ServiceCollection()
+            .AddMethodCache(mc => mc.Memory(o =>
+            {
+                o.WeightLimit = 10_000;
+                o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);
+            }))
+            .BuildServiceProvider();
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var administrator = provider.GetRequiredService<ICacheAdministrator>();
+
+        for (var i = 0; i < 20; i++) await cache.SetAsync($"product:{i}", new Product("p"), o => o.WithDuration(TimeSpan.FromMinutes(1)));
+        var stats = await administrator.GetStatsAsync();
+
+        // 64 per record would keep all 20 within 10 000; about 1 KB each keeps fewer than 10
+        Assert.True(stats.LocalMethodEntries < 10, $"{stats.LocalMethodEntries} entries");
+        Assert.True(stats.Evictions > 0);
+    }
 
     [Fact]
     public async Task Bytes_BoundsTheCacheBySize()

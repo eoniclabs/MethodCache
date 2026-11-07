@@ -205,7 +205,8 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 **What does the `Weigher` look like?**
 `Func<string, object?, long>`: `(key, value) => weight`, called once when an entry is stored. Set it with
 `WeightLimit` to bound the memory cache by size. `o.Weigher = MethodCacheWeigher.Bytes` weighs strings and arrays such
-as `float[]` embeddings in bytes, and any other value as 64. ([Bounding by size](features/memory-cache.md#bounding-by-size))
+as `float[]` embeddings in bytes, and any other value as 64; `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs other
+values as 1024. ([Bounding by size](features/memory-cache.md#bounding-by-size))
 
 **Can callers change a cached object?**
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
@@ -359,7 +360,9 @@ or a context that isn't connected to MethodCache. ([Proving that a result is cac
 **How do I check in a test that every cached service is registered right?**
 `Assert.Empty(await CachedServices.ProblemsAsync(provider))` from `MethodCache.Testing`. It resolves each registered service with
 cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
-isn't wrapped by its caching decorator. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
+isn't wrapped by its caching decorator. When the services need a database or a key vault to resolve,
+`CachedServices.RegistrationProblems(provider)` checks the registrations only. Both throw when the provider has no
+cached service. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,

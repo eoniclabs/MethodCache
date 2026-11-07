@@ -132,6 +132,26 @@ Each problem names the service, its key for a keyed registration, and what is wr
 `AddMethodCache`, an exception when it is resolved, or an instance that isn't the decorator, so its calls aren't
 cached. Build the provider as the application does, with its own registrations, so the test resolves what the
 application resolves. A service registered with an open generic type, such as `typeof(IRepository<>)`, is skipped.
+When the provider has no service with cached methods, such as the wrong provider, it throws
+`InvalidOperationException` instead of returning an empty list, so the test can't pass without checking anything.
+
+When resolving the services needs a database, a key vault or other infrastructure the test doesn't have,
+`CachedServices.RegistrationProblems` checks the registrations only and resolves nothing:
+
+<!-- snippet: testing-cached-service-registrations -->
+```cs
+// Every service with cached methods is registered before AddMethodCache; resolves none of them
+Assert.Empty(CachedServices.RegistrationProblems(provider));
+```
+<!-- endSnippet -->
+
+It finds a service registered after `AddMethodCache`, the most common mistake, but not a dependency the container
+lacks.
+
+What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
+`AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
+mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
+service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host.
 
 ## Every tag has an invalidation
 

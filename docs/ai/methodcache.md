@@ -124,7 +124,9 @@ builder.Services.AddMethodCache();                               // after your r
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
   a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
   solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
-  cached methods resolves to its caching decorator.
+  cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
+  registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
+  service.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:

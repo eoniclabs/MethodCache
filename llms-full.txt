@@ -129,7 +129,9 @@ builder.Services.AddMethodCache();                               // after your r
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
   a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
   solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
-  cached methods resolves to its caching decorator.
+  cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
+  registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
+  service.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -606,7 +608,8 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 **What does the `Weigher` look like?**
 `Func<string, object?, long>`: `(key, value) => weight`, called once when an entry is stored. Set it with
 `WeightLimit` to bound the memory cache by size. `o.Weigher = MethodCacheWeigher.Bytes` weighs strings and arrays such
-as `float[]` embeddings in bytes, and any other value as 64. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
+as `float[]` embeddings in bytes, and any other value as 64; `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs other
+values as 1024. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
 
 **Can callers change a cached object?**
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
@@ -760,7 +763,9 @@ or a context that isn't connected to MethodCache. ([Proving that a result is cac
 **How do I check in a test that every cached service is registered right?**
 `Assert.Empty(await CachedServices.ProblemsAsync(provider))` from `MethodCache.Testing`. It resolves each registered service with
 cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
-isn't wrapped by its caching decorator. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
+isn't wrapped by its caching decorator. When the services need a database or a key vault to resolve,
+`CachedServices.RegistrationProblems(provider)` checks the registrations only. Both throw when the provider has no
+cached service. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
@@ -3242,8 +3247,19 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
 
 `MethodCacheWeigher.Bytes` gives an entry its approximate size in bytes: two per character of the key and of a string
 value, and the size of an array of numbers, `bool` or `char`, such as four bytes per `float` of a `float[]` embedding.
-Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are objects of your
-own, weigh them yourself and leave the rest to it:
+Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are mostly records
+of your own, give them about the size of a typical one:
+
+```cs
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
+{
+    o.WeightLimit = 256 * 1024 * 1024;
+    // Results are mostly records of about 1 KB: weigh each as 1024, strings and arrays by size
+    o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);
+}));
+```
+
+To weigh your own types more closely, weigh them yourself and leave the rest to it:
 
 ```cs
 builder.Services.AddMethodCache(cache => cache.Memory(o =>
@@ -3481,6 +3497,24 @@ Each problem names the service, its key for a keyed registration, and what is wr
 `AddMethodCache`, an exception when it is resolved, or an instance that isn't the decorator, so its calls aren't
 cached. Build the provider as the application does, with its own registrations, so the test resolves what the
 application resolves. A service registered with an open generic type, such as `typeof(IRepository<>)`, is skipped.
+When the provider has no service with cached methods, such as the wrong provider, it throws
+`InvalidOperationException` instead of returning an empty list, so the test can't pass without checking anything.
+
+When resolving the services needs a database, a key vault or other infrastructure the test doesn't have,
+`CachedServices.RegistrationProblems` checks the registrations only and resolves nothing:
+
+```cs
+// Every service with cached methods is registered before AddMethodCache; resolves none of them
+Assert.Empty(CachedServices.RegistrationProblems(provider));
+```
+
+It finds a service registered after `AddMethodCache`, the most common mistake, but not a dependency the container
+lacks.
+
+What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
+`AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
+mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
+service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host.
 
 ## Every tag has an invalidation
 
@@ -5845,6 +5879,17 @@ of the application's startup:
 Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 
+When resolving the services needs a database or a key vault the test doesn't have, `CachedServices.RegistrationProblems`
+checks the registrations only and resolves nothing:
+
+```cs
+// Every service with cached methods is registered before AddMethodCache; resolves none of them
+Assert.Empty(CachedServices.RegistrationProblems(provider));
+```
+
+Both throw `InvalidOperationException` when the provider has no service with cached methods, so a test with the wrong
+provider can't pass without checking anything.
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -5879,6 +5924,22 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## Unreleased
+
+### Upgrading from 1.0.0-rc.11
+
+- `CachedServices.ProblemsAsync` and `TagCoverage.Uninvalidated` throw `InvalidOperationException` when the provider
+  has no service with cached methods, instead of returning an empty list. Pass the application's provider.
+
+### Added
+
+- `CachedServices.RegistrationProblems(provider)` in `MethodCache.Testing` checks that every service with cached
+  methods is registered before `AddMethodCache`, without resolving any of them, for services that need a database or a
+  key vault to resolve. The testing guide says what `ProblemsAsync` adds beyond the check a host makes when it starts
+  ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
+- `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs values it can't measure, such as records of your own, as the
+  weight you give instead of 64 ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size)).
 
 ## 1.0.0-rc.11 (2026-11-07)
 

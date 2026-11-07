@@ -80,6 +80,14 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void CheckRegistrations(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-service-registrations
+            // Every service with cached methods is registered before AddMethodCache; resolves none of them
+            Assert.Empty(CachedServices.RegistrationProblems(provider));
+            // end-snippet
+        }
+
         public static void CheckTags(IServiceProvider provider)
         {
             // begin-snippet: testing-tag-coverage

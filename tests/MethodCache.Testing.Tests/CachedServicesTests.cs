@@ -106,6 +106,59 @@ public class CachedServicesTests
     }
 
     [Fact]
+    public async Task Problems_WithNoServiceWithCachedMethods_Throws()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CachedServices.ProblemsAsync(provider));
+
+        Assert.Contains("nothing was checked", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RegistrationProblems_EveryServiceRegisteredBeforeAddMethodCache_IsEmptyWithoutResolvingThem()
+    {
+        var services = new ServiceCollection();
+        // Resolving it needs an IPriceSource, as a service may need a database the test doesn't have
+        services.AddSingleton<IProducts, SourcedProducts>();
+        services.AddScoped<IProductWriter, ProductWriter>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(CachedServices.RegistrationProblems(provider));
+        Assert.Single(await CachedServices.ProblemsAsync(provider));
+    }
+
+    [Fact]
+    public async Task RegistrationProblems_AServiceRegisteredAfterAddMethodCache_IsReported()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProductWriter, ProductWriter>();
+        services.AddMethodCache();
+        services.AddSingleton<IProducts, SourcedProducts>();
+        await using var provider = services.BuildServiceProvider();
+
+        var problem = Assert.Single(CachedServices.RegistrationProblems(provider));
+
+        Assert.Equal(typeof(IProducts), problem.Service);
+        Assert.Contains("was registered after AddMethodCache", problem.Problem, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RegistrationProblems_WithNoServiceWithCachedMethods_Throws()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => CachedServices.RegistrationProblems(provider));
+
+        Assert.Contains("nothing was checked", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Problems_WithoutAddMethodCache_Throws()
     {
         await using var provider = new ServiceCollection().BuildServiceProvider();

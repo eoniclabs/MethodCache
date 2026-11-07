@@ -515,4 +515,5 @@ MethodCache.CacheEntryOptions.SlidingExpirationOf<T>(T value) -> System.TimeSpan
 MethodCache.IFluentMethodConfiguration<TResult>.SlidingFor(System.Func<TResult, System.TimeSpan>! sliding) -> MethodCache.IFluentMethodConfiguration<TResult>!
 MethodCache.MethodCacheWeigher
 const MethodCache.MethodCacheWeigher.OtherValue = 64 -> long
+static MethodCache.MethodCacheWeigher.Bytes(long otherValue) -> System.Func<string!, object?, long>!
 static MethodCache.MethodCacheWeigher.Bytes(string! key, object? value) -> long

@@ -4,11 +4,15 @@ namespace MethodCache
 {
     /// <summary>
     /// A ready-made <see cref="MethodCacheMemoryOptions.Weigher"/> that weighs entries in approximate bytes:
-    /// <c>o.Weigher = MethodCacheWeigher.Bytes;</c>.
+    /// <c>o.Weigher = MethodCacheWeigher.Bytes;</c>, or <c>o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);</c>
+    /// when your results are mostly objects of your own.
     /// </summary>
     public static class MethodCacheWeigher
     {
-        /// <summary>The weight <see cref="Bytes"/> gives a value it can't measure, such as an object of your own: 64.</summary>
+        /// <summary>
+        /// The weight <see cref="Bytes(string, object)"/> gives a value it can't measure, such as an object of your own:
+        /// 64. <see cref="Bytes(long)"/> sets another.
+        /// </summary>
         public const long OtherValue = 64;
 
         /// <summary>
@@ -21,7 +25,23 @@ namespace MethodCache
         /// <param name="key">The entry's stored key.</param>
         /// <param name="value">The cached value.</param>
         /// <returns>The entry's weight, never negative.</returns>
-        public static long Bytes(string key, object? value)
+        public static long Bytes(string key, object? value) => Weigh(key, value, OtherValue);
+
+        /// <summary>
+        /// A weigher like <see cref="Bytes(string, object)"/> that gives <paramref name="otherValue"/> to a value it can't
+        /// measure, such as a record of your own, in place of <see cref="OtherValue"/>. Pick about the size of a typical
+        /// result: <c>o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);</c> for records of around 1 KB.
+        /// </summary>
+        /// <param name="otherValue">The weight of a value other than <c>null</c>, a string or an array of numbers.</param>
+        /// <returns>The weigher, for <see cref="MethodCacheMemoryOptions.Weigher"/>.</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="otherValue"/> is negative.</exception>
+        public static Func<string, object?, long> Bytes(long otherValue)
+        {
+            if (otherValue < 0) throw new ArgumentOutOfRangeException(nameof(otherValue), otherValue, "A weight can't be negative.");
+            return (key, value) => Weigh(key, value, otherValue);
+        }
+
+        private static long Weigh(string key, object? value, long otherValue)
         {
             var keyBytes = (key?.Length ?? 0) * 2L;
             return keyBytes + value switch
@@ -29,7 +49,7 @@ namespace MethodCache
                 null => 0,
                 string text => text.Length * 2L,
                 Array array when ElementSize(array.GetType().GetElementType()) is > 0 and var size => array.LongLength * size,
-                _ => OtherValue,
+                _ => otherValue,
             };
         }
 
