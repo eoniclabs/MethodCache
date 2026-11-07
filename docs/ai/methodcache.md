@@ -120,8 +120,9 @@ builder.Services.AddMethodCache();                               // after your r
   `FakeTimeProvider` and a `CacheRecorder`. `recorder.Loads<IService>(s => s.GetAsync(42))` counts the runs of that
   call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
   invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
-  counts `[CacheInvalidate]`, `InvalidatedElsewhere` and the EF Core mapping; pass tags invalidated with
-  `InvalidateTagAsync` in `alsoInvalidatedBy`.
+  counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
+  a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
+  solution in `alsoInvalidatedBy`.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:

@@ -51,17 +51,22 @@ The recorder sees the built-in cache manager: with `NoOpCacheManager` or your ow
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
-that nothing invalidates. It counts the `[CacheInvalidate]` methods of the registered services, the tags marked
-`InvalidatedElsewhere` on `[Cache]` and the entity mapping of MethodCache.EntityFrameworkCore:
+that nothing invalidates. It counts the `[CacheInvalidate]` methods of the registered services, the entity mapping of
+MethodCache.EntityFrameworkCore, and the invalidations in the projects the test project references:
 
 <!-- snippet: testing-tag-coverage -->
 ```cs
-// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or InvalidatedElsewhere
+// Every tag of a cached method has a [CacheInvalidate] method, an EF Core mapping or an invalidation in a referenced project
 Assert.Empty(TagCoverage.Uninvalidated(provider));
 ```
 <!-- endSnippet -->
 
-Name the tags your code invalidates in ways a container can't see, such as with `InvalidateTagAsync`:
+MethodCache writes the tags each project invalidates into its assembly, and `TagCoverage` reads them from the
+assemblies next to the tests, so reference the projects that invalidate, such as a worker, from the test project. A tag
+marked `InvalidatedElsewhere` is covered only when one of them invalidates it; otherwise it is reported with
+`MarkedInvalidatedElsewhere` set.
+
+Name the tags invalidated where no referenced project shows it, such as by another application:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
 value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 

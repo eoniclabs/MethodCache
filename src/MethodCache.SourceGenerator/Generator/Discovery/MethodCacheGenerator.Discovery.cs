@@ -178,6 +178,8 @@ namespace MethodCache.SourceGenerator
                         if (!validation.canProceed) continue;
                     }
 
+                    if (RuntimeKeyArgument(method) is { } runtimeKey) diagnostics.Add(runtimeKey);
+
                     // A typo in a {parameter} placeholder would otherwise stay literal text in every entry's tag
                     diagnostics.AddRange(ValidateDynamicTags(ExtractTags(cacheAttr), method));
 

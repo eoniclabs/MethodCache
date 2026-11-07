@@ -19,6 +19,7 @@ MC0017 | Usage | Warning | Reports a tag placeholder matching multiple parameter
 MC0018 | Usage | Warning | Reports [Cache] or [CacheInvalidate] on a static, non-public or sealed interface member, which the decorator can't intercept.
 MC0019 | Design | Error | Reports a cache key argument, element or member whose framework type has no key form, such as StringBuilder.
 MC0034 | Design | Error | Reports a cache key argument, element or member of a type whose state is all non-public, so every value would get the same key.
+MC0037 | Performance | Info | Reports a [Cache] method whose key the decorator can't write at build time, such as one with an object, interface or collection-of-collections argument, so the key generator writes and hashes it when the call runs.
 MC0020 | Performance | Warning | Reports a cached result type of object, an interface or an abstract class, which a distributed cache can't restore.
 MC0004 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
 MC0021 | Usage | Error | Reports a negative explicit cache version.

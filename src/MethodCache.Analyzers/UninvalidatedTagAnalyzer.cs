@@ -44,9 +44,6 @@ namespace MethodCache.Analyzers
             description: "InvalidatedElsewhere lists which of the method's tags another application or process invalidates. A tag that matches none of them, such as a misspelled one, leaves the real tag unmarked. A placeholder matches any value. Not reported when the attribute has no Tags, because the tags then come from configuration.",
             helpLinkUri: HelpLink("MC0029"));
 
-        /// <summary>Stands for a placeholder or an interpolated value: any text.</summary>
-        private const char Any = TagPattern.Any;
-
         /// <inheritdoc />
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule, UnknownElsewhereRule);
 
@@ -144,45 +141,7 @@ namespace MethodCache.Analyzers
 
         private static void AnalyzeInvocation(IInvocationOperation invocation, Found found)
         {
-            var method = invocation.TargetMethod;
-            if (method.Name is "InvalidateTagAsync" or "InvalidateTagsAsync" or "InvalidateAfterCommit")
-            {
-                if (HandBuiltTagAnalyzer.IsMethodCacheInvalidation(method)) found.Invalidation(Tags(invocation, template: false));
-                return;
-            }
-            if (IsEntityMapping(method))
-            {
-                found.Invalidation(Tags(invocation, template: true));
-                return;
-            }
-
-            // A call to a [CacheInvalidate] method invalidates its tags, also one of an interface in another project
-            if (method.ContainingType?.TypeKind == TypeKind.Interface)
-            {
-                var invalidate = method.GetAttributes().FirstOrDefault(a => a.AttributeClass is
-                    { Name: "CacheInvalidateAttribute", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } });
-                var tags = invalidate?.NamedArguments.FirstOrDefault(a => a.Key == "Tags").Value;
-                if (tags is { Kind: TypedConstantKind.Array, IsNull: false } array)
-                {
-                    found.Invalidation(array.Values.Select(v => v.Value as string).Where(v => v != null).Select(v => TagPattern.Of(v!)));
-                    return;
-                }
-            }
-
-            // A call to a helper of the app's own that invalidates the tags it is given. Its attribute is looked up only
-            // for calls that pass a tag the analyzer can read.
-            var given = Tags(invocation, template: false).ToList();
-            if (given.Count > 0 && ChangeTrackerBypassAnalyzer.HasInvalidatesCache(method)) found.Invalidation(given);
-        }
-
-        /// <summary>ef.Entity&lt;T&gt;("...") and the builder's Tags("...") and WhenDeleted("...").</summary>
-        private static bool IsEntityMapping(IMethodSymbol method)
-        {
-            var type = method.ContainingType?.OriginalDefinition;
-            if (type?.ContainingNamespace is not { Name: "EntityFrameworkCore", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } })
-                return false;
-            return (type.Name == "EntityFrameworkCoreOptions" && method.Name == "Entity")
-                || (type.Name == "EntityTagsBuilder" && method.Name is "Tags" or "WhenDeleted");
+            if (InvalidationTags.Of(invocation) is { } patterns) found.Invalidation(patterns);
         }
 
         private static void Report(CompilationAnalysisContext context, Found found)
@@ -199,7 +158,6 @@ namespace MethodCache.Analyzers
             }
         }
 
-        /// <summary>The tags an invocation passes as constants, interpolated strings or <c>IMethodCacheKeys.Tag</c> calls.</summary>
         /// <summary>
         /// The tags of <c>[CacheInvalidate]</c> methods on the interfaces of referenced projects, such as a shared
         /// invalidation interface that another project calls. A declared invalidation counts as it does in the project.
@@ -215,11 +173,7 @@ namespace MethodCache.Analyzers
                     if (type.TypeKind != TypeKind.Interface) continue;
                     foreach (var method in type.GetMembers().OfType<IMethodSymbol>())
                     {
-                        var invalidate = method.GetAttributes().FirstOrDefault(a => a.AttributeClass is
-                            { Name: "CacheInvalidateAttribute", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } });
-                        var tags = invalidate?.NamedArguments.FirstOrDefault(a => a.Key == "Tags").Value;
-                        if (tags is not { Kind: TypedConstantKind.Array, IsNull: false } array) continue;
-                        foreach (var tag in array.Values.Select(v => v.Value as string).Where(v => v != null)) yield return TagPattern.Of(tag!);
+                        foreach (var pattern in InvalidationTags.CacheInvalidateTags(method) ?? []) yield return pattern;
                     }
                 }
             }
@@ -232,72 +186,6 @@ namespace MethodCache.Analyzers
                 foreach (var type in Types(child))
                     yield return type;
         }
-
-        private static IEnumerable<string> Tags(IInvocationOperation invocation, bool template)
-        {
-            var tags = new List<string>();
-            foreach (var argument in invocation.Arguments) Collect(argument.Value, template, tags);
-            return tags;
-        }
-
-        private static void Collect(IOperation? value, bool template, List<string> tags)
-        {
-            while (value is IConversionOperation conversion) value = conversion.Operand;
-            switch (value)
-            {
-                case null:
-                    return;
-                case { ConstantValue: { HasValue: true, Value: string text } }:
-                    tags.Add(template ? TagPattern.Of(text) : text.Replace(Any, ' '));
-                    return;
-                case IInterpolatedStringOperation interpolated:
-                    var pattern = new StringBuilder();
-                    foreach (var part in interpolated.Parts)
-                    {
-                        if (LiteralText(part) is { } piece) pattern.Append(piece);
-                        else pattern.Append(Any);
-                    }
-                    tags.Add(pattern.ToString());
-                    return;
-                case IInterpolatedStringHandlerCreationOperation handler:
-                    // MethodCacheKeys.Tag($"..."): the interpolated string goes to a handler instead of a string
-                    Collect(handler.Content, template, tags);
-                    return;
-                case IInvocationOperation { TargetMethod.Name: "Tag" } call when IsMethodCacheType(call.TargetMethod.ContainingType, "MethodCacheKeys"):
-                    foreach (var argument in call.Arguments) Collect(argument.Value, template, tags);
-                    return;
-                case IInvocationOperation { TargetMethod.Name: "Tag" } call when IsKeys(call.TargetMethod.ContainingType):
-                    var templateArgument = call.Arguments.FirstOrDefault(a => a.Parameter?.Name == "template")?.Value;
-                    if (templateArgument?.ConstantValue is { HasValue: true, Value: string tagTemplate }) tags.Add(TagPattern.Of(tagTemplate));
-                    return;
-                case IArrayCreationOperation array when array.Initializer != null:
-                    foreach (var element in array.Initializer.ElementValues) Collect(element, template, tags);
-                    return;
-                case { Syntax: CollectionExpressionSyntax }:
-                    // Roslyn 4.8, which the analyzer is built against, has no operation type for a collection expression
-                    foreach (var element in value.ChildOperations) Collect(element, template, tags);
-                    return;
-            }
-        }
-
-        // Constant text of an interpolated string: a text part, or the AppendLiteral call of a handler
-        private static string? LiteralText(IInterpolatedStringContentOperation part) => part switch
-        {
-            IInterpolatedStringTextOperation { Text.ConstantValue: { HasValue: true, Value: string text } } => text,
-            IInterpolatedStringAppendOperation { Kind: OperationKind.InterpolatedStringAppendLiteral, AppendCall: IInvocationOperation literal }
-                when literal.Arguments.Length == 1 && literal.Arguments[0].Value.ConstantValue is { HasValue: true, Value: string text } => text,
-            _ => null,
-        };
-
-        private static bool IsKeys(INamedTypeSymbol? type)
-        {
-            if (type == null) return false;
-            if (IsMethodCacheType(type, "IMethodCacheKeys")) return true;
-            return type.AllInterfaces.Any(i => IsMethodCacheType(i, "IMethodCacheKeys"));
-        }
-
-        private static bool IsMethodCacheType(INamedTypeSymbol type, string name)
-            => type.Name == name && type.ContainingNamespace is { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true };
 
         /// <summary>The tag expressions in <c>Tags = [...]</c> or another named array, in the order of the attribute's values.</summary>
         private static IReadOnlyList<SyntaxNode> TagElements(AttributeData attribute, string name, CancellationToken cancellationToken)

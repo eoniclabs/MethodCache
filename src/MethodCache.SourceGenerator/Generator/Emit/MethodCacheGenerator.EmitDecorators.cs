@@ -505,7 +505,7 @@ namespace MethodCache.SourceGenerator
             /// simple values. <paramref name="exactTypeChecks"/> lists the conditions under which the expression is
             /// valid; when one fails at runtime, the caller uses the key generator instead.
             /// </summary>
-            private static bool TryBuildInlineParts(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks, string? parameterName = null)
+            internal static bool TryBuildInlineParts(List<IParameterSymbol> keyParams, out string expression, out List<string> exactTypeChecks, string? parameterName = null)
             {
                 expression = "string.Empty";
                 exactTypeChecks = new List<string>();
@@ -788,7 +788,7 @@ namespace MethodCache.SourceGenerator
                 return members.Count > 0;
             }
 
-            private static bool IsSimpleType(ITypeSymbol type)
+            internal static bool IsSimpleType(ITypeSymbol type)
             {
                 if (type.TypeKind == TypeKind.Enum)
                 {

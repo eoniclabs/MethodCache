@@ -219,7 +219,7 @@ namespace MethodCache.Internal
             => assembly.GetTypeByMetadataName(metadataName) ?? compilation.GetTypeByMetadataName(metadataName);
 
         /// <summary><c>Namespace.Outer+Inner`1</c>, or null for a type that isn't a named, non-constructed type.</summary>
-        private static string? MetadataName(ITypeSymbol type)
+        internal static string? MetadataName(ITypeSymbol type)
         {
             if (type is not INamedTypeSymbol named || type.TypeKind == TypeKind.Error) return null;
             if (named.IsGenericType && !SymbolEqualityComparer.Default.Equals(named, named.OriginalDefinition)) return null;

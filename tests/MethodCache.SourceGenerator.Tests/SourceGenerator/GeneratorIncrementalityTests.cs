@@ -46,7 +46,7 @@ namespace App
     }
 }";
 
-        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries", "EntityMapping", "HostMarkers" };
+        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries", "EntityMapping", "HostMarkers", "RequestState", "InvalidatedTags" };
 
         [Fact]
         public void EditingAMethodBody_RegeneratesNothing()

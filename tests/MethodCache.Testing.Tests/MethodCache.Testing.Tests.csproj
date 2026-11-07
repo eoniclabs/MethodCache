@@ -26,6 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MethodCache.Core\MethodCache.Core.csproj" />
     <ProjectReference Include="..\..\src\MethodCache.Testing\MethodCache.Testing.csproj" />
+    <!-- Not used in code: its assembly sits next to the tests, where TagCoverage reads the tags it invalidates -->
+    <ProjectReference Include="..\MethodCache.Testing.Tests.PriceImport\MethodCache.Testing.Tests.PriceImport.csproj" />
     <ProjectReference Include="../../src/MethodCache.SourceGenerator/MethodCache.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
