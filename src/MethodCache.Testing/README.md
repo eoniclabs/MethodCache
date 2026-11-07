@@ -62,6 +62,19 @@ Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 <!-- endSnippet -->
 
+When resolving the services needs a database or a key vault the test doesn't have, `CachedServices.RegistrationProblems`
+checks the registrations only and resolves nothing:
+
+<!-- snippet: testing-cached-service-registrations -->
+```cs
+// Every service with cached methods is registered before AddMethodCache; resolves none of them
+Assert.Empty(CachedServices.RegistrationProblems(provider));
+```
+<!-- endSnippet -->
+
+Both throw `InvalidOperationException` when the provider has no service with cached methods, so a test with the wrong
+provider can't pass without checking anything.
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,

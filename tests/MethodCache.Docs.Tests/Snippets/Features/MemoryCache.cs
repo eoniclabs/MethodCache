@@ -31,6 +31,18 @@ namespace Docs.MemoryCache
             // end-snippet
         }
 
+        public static void WeigherForRecords(WebApplicationBuilder builder)
+        {
+            // begin-snippet: memory-weigher-records
+            builder.Services.AddMethodCache(cache => cache.Memory(o =>
+            {
+                o.WeightLimit = 256 * 1024 * 1024;
+                // Results are mostly records of about 1 KB: weigh each as 1024, strings and arrays by size
+                o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);
+            }));
+            // end-snippet
+        }
+
         public sealed record Report(IReadOnlyList<string> Rows);
 
         public static void OwnWeigher(WebApplicationBuilder builder)

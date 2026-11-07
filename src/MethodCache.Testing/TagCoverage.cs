@@ -37,6 +37,9 @@ public static class TagCoverage
     /// A placeholder matches any value, so <c>"product:{id}"</c> covers <c>"product:{Id}"</c> and <c>"product:42"</c>.
     /// </param>
     /// <returns>Each tag that nothing invalidates, with the method it is on.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <c>AddMethodCache</c> wasn't called on the provider's services, or the provider has no cached methods.
+    /// </exception>
     public static IReadOnlyList<UninvalidatedTag> Uninvalidated(IServiceProvider provider, IEnumerable<string>? alsoInvalidatedBy = null)
     {
         ArgumentNullException.ThrowIfNull(provider);
@@ -47,8 +50,12 @@ public static class TagCoverage
             .Concat(alsoInvalidatedBy ?? [])
             .Select(TagPattern.Of).Distinct(StringComparer.Ordinal).ToArray();
         var elsewhere = MarkedElsewhere(services).Select(TagPattern.Of).Distinct(StringComparer.Ordinal).ToArray();
+        // An empty list would read as "every tag is covered" although nothing was checked, such as with the wrong provider
+        var methods = provider.GetRequiredService<ICacheAdministrator>().GetMethods();
+        if (methods.Count == 0)
+            throw new InvalidOperationException("The provider has no cached methods, so no tag was checked. Pass the application's provider, built after its services are registered.");
         var uninvalidated = new List<UninvalidatedTag>();
-        foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods().OrderBy(static m => m.MethodId, StringComparer.Ordinal))
+        foreach (var method in methods.OrderBy(static m => m.MethodId, StringComparer.Ordinal))
         {
             foreach (var tag in method.Options.Tags)
             {

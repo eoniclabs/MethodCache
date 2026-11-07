@@ -12,10 +12,35 @@ namespace MethodCache.Testing;
 /// <example>
 /// <code>
 /// Assert.Empty(await CachedServices.ProblemsAsync(provider));
+/// // Or, when the services need a database or a key vault to resolve:
+/// Assert.Empty(CachedServices.RegistrationProblems(provider));
 /// </code>
 /// </example>
 public static class CachedServices
 {
+    private const string NoCachedServices =
+        "The provider has no services with cached methods, so nothing was checked. Pass the application's provider, built after its services are registered.";
+
+    /// <summary>
+    /// The registration problems of the services with cached methods registered in <paramref name="provider"/>,
+    /// found without resolving any service: a service registered after <c>AddMethodCache</c>, which has no decorator.
+    /// An empty list means every one of them is registered before <c>AddMethodCache</c>, so it gets its decorator.
+    /// </summary>
+    /// <remarks>
+    /// Use it when resolving the services needs infrastructure a test doesn't have, such as a database or a key vault.
+    /// <see cref="ProblemsAsync"/> also resolves each service, so it finds a dependency the container lacks too.
+    /// </remarks>
+    /// <param name="provider">The application's service provider, built as in the application.</param>
+    /// <returns>Each problem, with the service it is about.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <c>AddMethodCache</c> wasn't called on the provider's services, or no service with cached methods is registered.
+    /// </exception>
+    public static IReadOnlyList<CachedServiceProblem> RegistrationProblems(IServiceProvider provider)
+    {
+        var validation = Validation(provider);
+        return RegisteredAfter(validation, Registrations(validation));
+    }
+
     /// <summary>
     /// The problems of the services with cached methods registered in <paramref name="provider"/>: a service
     /// registered after <c>AddMethodCache</c>, which has no decorator; one that can't be resolved, such as one with a
@@ -32,17 +57,14 @@ public static class CachedServices
     /// </remarks>
     /// <param name="provider">The application's service provider, built as in the application.</param>
     /// <returns>Each problem, with the service it is about.</returns>
-    /// <exception cref="InvalidOperationException"><c>AddMethodCache</c> wasn't called on the provider's services.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <c>AddMethodCache</c> wasn't called on the provider's services, or no service with cached methods is registered.
+    /// </exception>
     public static async Task<IReadOnlyList<CachedServiceProblem>> ProblemsAsync(IServiceProvider provider)
     {
-        ArgumentNullException.ThrowIfNull(provider);
-        var validation = provider.GetService<Registration.RegistrationValidation>()
-            ?? throw new InvalidOperationException("The provider has no MethodCache services. Call services.AddMethodCache() before building it.");
-
-        var registrations = validation.CachedRegistrations().ToArray();
-        var registeredAfter = registrations.Where(descriptor => !validation.Accepted.Contains(descriptor))
-            .Select(static descriptor => new CachedServiceProblem(descriptor.ServiceType, descriptor.ServiceKey, Registration.RegistrationValidation.RegisteredAfter(descriptor.ServiceType)))
-            .ToList();
+        var validation = Validation(provider);
+        var registrations = Registrations(validation);
+        var registeredAfter = RegisteredAfter(validation, registrations);
         if (registeredAfter.Count > 0) return registeredAfter;
 
         var problems = new List<CachedServiceProblem>();
@@ -80,6 +102,25 @@ public static class CachedServices
 
         return problems;
     }
+
+    private static Registration.RegistrationValidation Validation(IServiceProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        return provider.GetService<Registration.RegistrationValidation>()
+            ?? throw new InvalidOperationException("The provider has no MethodCache services. Call services.AddMethodCache() before building it.");
+    }
+
+    // An empty list would read as "no problems" although nothing was checked, such as with the wrong provider
+    private static ServiceDescriptor[] Registrations(Registration.RegistrationValidation validation)
+    {
+        var registrations = validation.CachedRegistrations().ToArray();
+        return registrations.Length > 0 ? registrations : throw new InvalidOperationException(NoCachedServices);
+    }
+
+    private static List<CachedServiceProblem> RegisteredAfter(Registration.RegistrationValidation validation, ServiceDescriptor[] registrations)
+        => registrations.Where(descriptor => !validation.Accepted.Contains(descriptor))
+            .Select(static descriptor => new CachedServiceProblem(descriptor.ServiceType, descriptor.ServiceKey, Registration.RegistrationValidation.RegisteredAfter(descriptor.ServiceType)))
+            .ToList();
 
     private static bool IsDecorator(Type type)
         => type.GetCustomAttribute<GeneratedCodeAttribute>() is { Tool: "MethodCacheGenerator" };

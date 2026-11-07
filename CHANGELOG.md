@@ -4,6 +4,22 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Upgrading from 1.0.0-rc.11
+
+- `CachedServices.ProblemsAsync` and `TagCoverage.Uninvalidated` throw `InvalidOperationException` when the provider
+  has no service with cached methods, instead of returning an empty list. Pass the application's provider.
+
+### Added
+
+- `CachedServices.RegistrationProblems(provider)` in `MethodCache.Testing` checks that every service with cached
+  methods is registered before `AddMethodCache`, without resolving any of them, for services that need a database or a
+  key vault to resolve. The testing guide says what `ProblemsAsync` adds beyond the check a host makes when it starts
+  ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
+- `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs values it can't measure, such as records of your own, as the
+  weight you give instead of 64 ([Bounding by size](docs/features/memory-cache.md#bounding-by-size)).
+
 ## 1.0.0-rc.11 (2026-11-07)
 
 ### Upgrading from 1.0.0-rc.10

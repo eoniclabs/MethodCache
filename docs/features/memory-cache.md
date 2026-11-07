@@ -63,8 +63,21 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
 
 `MethodCacheWeigher.Bytes` gives an entry its approximate size in bytes: two per character of the key and of a string
 value, and the size of an array of numbers, `bool` or `char`, such as four bytes per `float` of a `float[]` embedding.
-Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are objects of your
-own, weigh them yourself and leave the rest to it:
+Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are mostly records
+of your own, give them about the size of a typical one:
+
+<!-- snippet: memory-weigher-records -->
+```cs
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
+{
+    o.WeightLimit = 256 * 1024 * 1024;
+    // Results are mostly records of about 1 KB: weigh each as 1024, strings and arrays by size
+    o.Weigher = MethodCacheWeigher.Bytes(otherValue: 1024);
+}));
+```
+<!-- endSnippet -->
+
+To weigh your own types more closely, weigh them yourself and leave the rest to it:
 
 <!-- snippet: memory-own-weigher -->
 ```cs

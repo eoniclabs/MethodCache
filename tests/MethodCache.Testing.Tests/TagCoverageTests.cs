@@ -101,6 +101,18 @@ public class TagCoverageTests
         Assert.Equal(["product:{id}", "products", "prices"], tags);
     }
 
+    [Fact]
+    public void Uninvalidated_WithNoCachedMethods_Throws()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => TagCoverage.Uninvalidated(provider));
+
+        Assert.Contains("no tag was checked", error.Message, StringComparison.Ordinal);
+    }
+
     private static ServiceProvider Build()
     {
         var services = new ServiceCollection();
