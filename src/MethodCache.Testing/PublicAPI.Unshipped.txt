@@ -18,3 +18,14 @@ Microsoft.Extensions.DependencyInjection.MethodCacheTestingServiceCollectionExte
 override MethodCache.Testing.UninvalidatedTag.ToString() -> string!
 static MethodCache.Testing.TagCoverage.Uninvalidated(System.IServiceProvider! provider, System.Collections.Generic.IEnumerable<string!>? alsoInvalidatedBy = null) -> System.Collections.Generic.IReadOnlyList<MethodCache.Testing.UninvalidatedTag!>!
 static Microsoft.Extensions.DependencyInjection.MethodCacheTestingServiceCollectionExtensions.AddMethodCacheTesting(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+MethodCache.Testing.CachedServiceProblem
+MethodCache.Testing.CachedServiceProblem.CachedServiceProblem(System.Type! Service, object? ServiceKey, string! Problem) -> void
+MethodCache.Testing.CachedServiceProblem.Problem.get -> string!
+MethodCache.Testing.CachedServiceProblem.Problem.init -> void
+MethodCache.Testing.CachedServiceProblem.Service.get -> System.Type!
+MethodCache.Testing.CachedServiceProblem.Service.init -> void
+MethodCache.Testing.CachedServiceProblem.ServiceKey.get -> object?
+MethodCache.Testing.CachedServiceProblem.ServiceKey.init -> void
+MethodCache.Testing.CachedServices
+override MethodCache.Testing.CachedServiceProblem.ToString() -> string!
+static MethodCache.Testing.CachedServices.Problems(System.IServiceProvider! provider) -> System.Collections.Generic.IReadOnlyList<MethodCache.Testing.CachedServiceProblem!>!

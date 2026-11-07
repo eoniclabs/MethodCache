@@ -72,6 +72,14 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void CheckServices(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services
+            // Every service with cached methods resolves, and to its generated caching decorator
+            Assert.Empty(CachedServices.Problems(provider));
+            // end-snippet
+        }
+
         public static void CheckTags(IServiceProvider provider)
         {
             // begin-snippet: testing-tag-coverage

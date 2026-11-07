@@ -115,6 +115,24 @@ the stale value itself, change the row past MethodCache: with SQL, or through a 
 MethodCache, over the same database. With EF Core's in-memory provider, give both contexts the same
 `InMemoryDatabaseRoot`.
 
+## Every cached service resolves
+
+A service registered after `AddMethodCache`, or one with a dependency the container lacks, fails when the application
+starts or on its first call. `CachedServices.Problems` finds it in a test: it resolves each registered service with
+cached methods, in a scope of its own, and checks that it is the generated caching decorator:
+
+<!-- snippet: testing-cached-services -->
+```cs
+// Every service with cached methods resolves, and to its generated caching decorator
+Assert.Empty(CachedServices.Problems(provider));
+```
+<!-- endSnippet -->
+
+Each problem names the service, its key for a keyed registration, and what is wrong: registered after
+`AddMethodCache`, an exception when it is resolved, or an instance that isn't the decorator, so its calls aren't
+cached. Build the provider as the application does, with its own registrations, so the test resolves what the
+application resolves. A service registered with an open generic type, such as `typeof(IRepository<>)`, is skipped.
+
 ## Every tag has an invalidation
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the

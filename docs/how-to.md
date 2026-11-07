@@ -32,8 +32,8 @@ was created with `new`, or the service was registered after `AddMethodCache()`.
 ([Troubleshooting](troubleshooting.md#the-method-runs-on-every-call))
 
 **Can several applications share startup code or `appsettings.json` that configures cached methods?**
-Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there; only an id
-that matches no `[Cache]` method fails. ([Configuration](features/configuration.md))
+Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there, and logged at
+Information at startup; only an id that matches no `[Cache]` method fails. ([Configuration](features/configuration.md))
 
 **My cached service lives in another project of the solution. Does it need its own MethodCache reference?**
 No. The project gets the generator through the project it references. If the generator doesn't run there,
@@ -186,6 +186,11 @@ Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off fo
 .DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
 the result. ([A duration from the result](features/expiration.md#a-duration-from-the-result))
 
+**How do I let successful results slide and keep failed ones for a fixed time?**
+Add `SlidingFor` next to `DurationFor`: `.DurationFor(r => r.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
+.SlidingFor(r => r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)`. Zero turns sliding off for that result.
+([A sliding window from the result](features/expiration.md#a-sliding-window-from-the-result))
+
 **How do I cache only some results?**
 `CacheWhen` decides per method from the result whether to store it. ([Conditional caching](features/conditional-caching.md))
 
@@ -199,7 +204,8 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 
 **What does the `Weigher` look like?**
 `Func<string, object?, long>`: `(key, value) => weight`, called once when an entry is stored. Set it with
-`WeightLimit` to bound the memory cache by size. ([Bounding by size](features/memory-cache.md#bounding-by-size))
+`WeightLimit` to bound the memory cache by size. `o.Weigher = MethodCacheWeigher.Bytes` weighs strings and arrays such
+as `float[]` embeddings in bytes, and any other value as 64. ([Bounding by size](features/memory-cache.md#bounding-by-size))
 
 **Can callers change a cached object?**
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
@@ -306,6 +312,11 @@ Each instance logs one `Information` line when its cache starts, naming `MaxItem
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
 show the same. ([Monitoring](features/monitoring.md))
 
+**How do I log who cleared or invalidated the cache through the admin endpoints?**
+Pass `audit` to `MapMethodCacheAdmin`: `app.MapMethodCacheAdmin("CacheAdmins", audit: (action, ct) => ...)`. It runs
+before each change with `action.User`, `action.Kind`, `action.Targets` and `action.Time`; when it throws, the request
+fails and nothing changes. ([ASP.NET Core](../src/MethodCache.AspNetCore/README.md#audit))
+
 **Why does `POST clear` need a `{}` body?**
 The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
 them. Send `-H "Content-Type: application/json" -d "{}"`.
@@ -337,6 +348,11 @@ one call and `InvalidatedTags` lists the invalidated tags. ([Counting loads and 
 **My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
 The save invalidates, so the read is fresh either way. Count the runs with `recorder.Loads`, or change the row with SQL
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
+
+**How do I check in a test that every cached service is registered right?**
+`Assert.Empty(CachedServices.Problems(provider))` from `MethodCache.Testing`. It resolves each registered service with
+cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
+isn't wrapped by its caching decorator. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,

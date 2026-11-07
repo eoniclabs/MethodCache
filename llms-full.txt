@@ -110,7 +110,8 @@ builder.Services.AddMethodCache();                               // after your r
   unknown method id and a method listed twice fail startup.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
-  gives each result its own duration (zero or less doesn't cache it), and `TagsFor`, which adds tags read from the
+  gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own
+  sliding window (zero turns sliding off for it), and `TagsFor`, which adds tags read from the
   result, such as `TagsFor(order => [MethodCacheKeys.Tag($"customer:{order.CustomerId}")])`.
 - A `Duration` may be at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default, at most 365); a longer one
   fails startup. Raise it with `mc.Memory(o => o.MaxExpiration = ...)`.
@@ -127,7 +128,8 @@ builder.Services.AddMethodCache();                               // after your r
   invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
   a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
-  solution in `alsoInvalidatedBy`.
+  solution in `alsoInvalidatedBy`. `Assert.Empty(CachedServices.Problems(provider))` checks that every service with
+  cached methods resolves to its caching decorator.
 - To invalidate a `GetOrCreateAsync` entry that has a version, pass the key and the version:
   `InvalidateKeyAsync(key, 2)`. Never pass a stored key (`MethodCacheKeys.StoredKey`) to `ICacheManager`.
 - To invalidate one call of a `[Cache]` method, get its key from `IMethodCacheKeys`:
@@ -182,7 +184,8 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `third-party.md`: caching clients you don't own, `[assembly: CacheInterface]`.
 - `http-caching.md`: caching `HttpClient` responses.
 - `monitoring.md`: metrics, activities, the admin endpoints.
-- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `TagCoverage`), time.
+- `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `CachedServices`,
+  `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
 - `source-generator.md`: what the generated decorator does.
 
@@ -430,8 +433,8 @@ was created with `new`, or the service was registered after `AddMethodCache()`.
 ([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#the-method-runs-on-every-call))
 
 **Can several applications share startup code or `appsettings.json` that configures cached methods?**
-Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there; only an id
-that matches no `[Cache]` method fails. ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md))
+Yes. A setting for a `[Cache]` method whose service an application doesn't register is skipped there, and logged at
+Information at startup; only an id that matches no `[Cache]` method fails. ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md))
 
 **My cached service lives in another project of the solution. Does it need its own MethodCache reference?**
 No. The project gets the generator through the project it references. If the generator doesn't run there,
@@ -584,6 +587,11 @@ Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off fo
 .DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
 the result. ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result))
 
+**How do I let successful results slide and keep failed ones for a fixed time?**
+Add `SlidingFor` next to `DurationFor`: `.DurationFor(r => r.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
+.SlidingFor(r => r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)`. Zero turns sliding off for that result.
+([A sliding window from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-sliding-window-from-the-result))
+
 **How do I cache only some results?**
 `CacheWhen` decides per method from the result whether to store it. ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md))
 
@@ -597,7 +605,8 @@ With manual caching, `WithEnabled(false)` for that call. For a `[Cache]` method,
 
 **What does the `Weigher` look like?**
 `Func<string, object?, long>`: `(key, value) => weight`, called once when an entry is stored. Set it with
-`WeightLimit` to bound the memory cache by size. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
+`WeightLimit` to bound the memory cache by size. `o.Weigher = MethodCacheWeigher.Bytes` weighs strings and arrays such
+as `float[]` embeddings in bytes, and any other value as 64. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
 
 **Can callers change a cached object?**
 They share the same instance, so a change is seen by every caller. Return immutable types such as records.
@@ -704,6 +713,11 @@ Each instance logs one `Information` line when its cache starts, naming `MaxItem
 `ICacheAdministrator`: `GetStatsAsync`, `GetMethods`, `ListEntries`. The admin endpoints in `MethodCache.AspNetCore`
 show the same. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md))
 
+**How do I log who cleared or invalidated the cache through the admin endpoints?**
+Pass `audit` to `MapMethodCacheAdmin`: `app.MapMethodCacheAdmin("CacheAdmins", audit: (action, ct) => ...)`. It runs
+before each change with `action.User`, `action.Kind`, `action.Targets` and `action.Time`; when it throws, the request
+fails and nothing changes. ([ASP.NET Core](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit))
+
 **Why does `POST clear` need a `{}` body?**
 The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
 them. Send `-H "Content-Type: application/json" -d "{}"`.
@@ -735,6 +749,11 @@ one call and `InvalidatedTags` lists the invalidated tags. ([Counting loads and 
 **My test changes a row through EF Core and reads it again. How do I prove the read was cached?**
 The save invalidates, so the read is fresh either way. Count the runs with `recorder.Loads`, or change the row with SQL
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#proving-that-a-result-is-cached))
+
+**How do I check in a test that every cached service is registered right?**
+`Assert.Empty(CachedServices.Problems(provider))` from `MethodCache.Testing`. It resolves each registered service with
+cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
+isn't wrapped by its caching decorator. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
@@ -1149,7 +1168,8 @@ builder.Services.AddMethodCache(mc =>
   result gives on every instance. It never runs on a hit in memory.
 - No jitter is added ([Spreading out expiry](#spreading-out-expiry)), and `MaxExpiration` still caps it.
   `SlidingExpiration` and `RefreshAhead` count from the duration the result gives, so keep `RefreshAhead` shorter
-  than the shortest one.
+  than the shortest one. To slide some results and not others, add
+  [`SlidingFor`](#a-sliding-window-from-the-result).
 - `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
   method in `appsettings.json` or a runtime override replaces `DurationFor`.
 - In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
@@ -1165,6 +1185,29 @@ past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 A method that inherits a sliding window from the defaults, a group or configuration turns it off with
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.
+
+### A sliding window from the result
+
+`SlidingFor` gives each result its own sliding window, in place of `SlidingExpiration`. Zero turns sliding off for that
+result, so it lives its duration whether it is read or not. Together with `DurationFor`, a result that loaded can stay
+while it is read and one that failed can be tried again after a fixed time:
+
+```cs
+builder.Services.AddMethodCache(mc =>
+    // A preview that loaded is kept while it is read at least every 30 minutes, for at most a day.
+    // One that failed is kept for two hours, read or not, and then the page is tried again.
+    mc.Method((ILinkPreviews p) => p.GetAsync(Any<string>.Value))
+        .DurationFor(preview => preview.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
+        .SlidingFor(preview => preview.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero));
+```
+
+- It never keeps a result past its duration, the one `DurationFor` gives or the method's `Duration`.
+- A function that throws doesn't cache the result. It runs once per load and on each value read from the distributed
+  cache, never on a hit in memory.
+- `WithSlidingExpiration` and `SlidingFor` replace each other in code: whichever is called last wins. A
+  `SlidingExpiration` for the method in `appsettings.json` or a runtime override replaces `SlidingFor`.
+- Like `DurationFor`, it is set for one method, in startup code or in the options of a manual call:
+  `o => o.SlidingFor<LinkPreview>(preview => ...)`.
 
 ## Refresh-ahead
 
@@ -1999,8 +2042,10 @@ builder.Services.AddMethodCache(config =>
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
   `appsettings.json`, which wins where both set a value; a method's own settings win over both.
-- `CacheWhen`, `DurationFor` and `TagsFor` are set for one method only. In `Defaults` or a group they fail at startup
-  ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md), [A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result),
+- `CacheWhen`, `DurationFor`, `SlidingFor` and `TagsFor` are set for one method only. In `Defaults` or a group they
+  fail at startup ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md),
+  [A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result),
+  [A sliding window from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-sliding-window-from-the-result),
   [Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result)).
 - `Any<T>.Value` stands for any argument when you point at a method.
 
@@ -2093,7 +2138,8 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   name or an id without its `[Assembly]` prefix, fails at startup and suggests the closest cached id. `*` and
   `group:<name>` are not method ids; use `Defaults` and `Groups`.
 - A setting for a `[Cache]` method whose service this application doesn't register is skipped, in the file and in
-  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them.
+  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them. Each
+  skipped method is logged once at startup, at Information, so a service you forgot to register shows up in the log.
 - An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
   `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
   reloaded file has one, the reload is logged as an error naming the setting's path, never its value, and the
@@ -2180,7 +2226,7 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
 `With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
-`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
+`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
 method can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException`
 at startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.
@@ -2253,8 +2299,9 @@ var list = await cache.GetOrCreateAsync(
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
-  ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)). `TagsFor<T>` adds tags read from the
-  result ([Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result)).
+  ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)), and `SlidingFor<T>` its own sliding window
+  in place of `WithSlidingExpiration` ([A sliding window from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-sliding-window-from-the-result)).
+  `TagsFor<T>` adds tags read from the result ([Tags from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#tags-from-the-result)).
 - On a hot path, build the options once and reuse them: `static readonly CacheEntryOptions Options = new CacheEntryOptions.Builder().WithDuration(...).Build();`
   and pass `Options` instead of a builder action, so a call doesn't build options again.
 - To avoid a closure, `ICacheManager.GetOrCreateAsync(key, state, (state, ct) => ..., options)` passes your state to a
@@ -2963,6 +3010,20 @@ app.MapHealthChecks("/health");
 The [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
 use [runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides) to change them.
 
+To record who removes entries, pass `audit`. It gets the user, what the request removes (`Kind` and `Targets`) and the
+time, before the change; when it throws, nothing changes
+([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)):
+
+```cs
+var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
+app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
+{
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    return ValueTask.CompletedTask;
+});
+```
+
 Configure your application's authentication scheme as well as the authorization policy. The
 [web demo](https://github.com/eoniclabs/MethodCache/blob/main/samples/MethodCache.WebDemo) uses cookies and returns 401 for anonymous admin requests and
 403 for signed-in callers without the `Admin` role outside Development. It has no sign-in page; its
@@ -3014,7 +3075,8 @@ actually runs, background refreshes included; callers that join a running load a
 cache record none. A bulk call has one outcome and measures its one batch factory call.
 
 Histograms use seconds, with bucket boundaries from 5 ms to 10 s. Local entry/HTTP byte instruments are observable
-up-down counters. Invalidation counters count
+up-down counters. `methodcache.evictions` counts the entries an instance removed because its memory cache was full
+(`MaxItems` or `WeightLimit`), by `methodcache.kind`; expired and invalidated entries aren't in it. Invalidation counters count
 distinct targets at each stage, not operation totals; do not add stages together. See the
 [full instrument table](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.OpenTelemetry/README.md#metrics).
 
@@ -3022,6 +3084,23 @@ Spans cover runs of your method, individual distributed operations and invalidat
 and tags require explicit Core options; keys are hashed by default when enabled. Metrics never include keys, tags,
 URLs, user ids or tenant ids. MethodCache adds no baggage and copies no HTTP or URL attributes; your application's
 own activity context and baggage flow as usual.
+
+### Hit ratio per method
+
+`methodcache.requests` carries the method and the outcome, so a dashboard computes the hit ratio of each method. With
+OpenTelemetry's Prometheus exporter, which writes the names with underscores:
+
+```promql
+sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method", methodcache_result="hit"}[5m]))
+/
+sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m]))
+```
+
+A `bypass` (caching turned off for the call) counts as a request that wasn't a hit; leave it out with
+`methodcache_result!="bypass"` in the second sum to see the ratio of the calls the cache could answer. A `stale` result
+is an old value fail-safe returned because the method failed or took longer than `FailSafeTimeout`. A method whose ratio is low while `methodcache.evictions` rises
+needs a larger memory cache; one whose ratio is low without evictions is called with different arguments each time, or
+its entries expire before they are read again.
 
 ## Standard .NET listeners
 
@@ -3132,7 +3211,23 @@ Object sizes can't be measured reliably at runtime, so to bound the cache by mem
 builder.Services.AddMethodCache(cache => cache.Memory(o =>
 {
     o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
-    o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
+    o.Weigher = MethodCacheWeigher.Bytes; // strings and arrays such as float[] by size, other values 64
+}));
+```
+
+`MethodCacheWeigher.Bytes` gives an entry its approximate size in bytes: two per character of the key and of a string
+value, and the size of an array of numbers, `bool` or `char`, such as four bytes per `float` of a `float[]` embedding.
+Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are objects of your
+own, weigh them yourself and leave the rest to it:
+
+```cs
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
+{
+    o.WeightLimit = 256 * 1024 * 1024;
+    // Weigh your own types, and let MethodCacheWeigher weigh the rest
+    o.Weigher = (key, value) => value is Report report
+        ? report.Rows.Sum(row => row.Length * 2L)
+        : MethodCacheWeigher.Bytes(key, value);
 }));
 ```
 
@@ -3142,7 +3237,8 @@ as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when m
 
 The first time the cache is full and removes an entry to make room, MethodCache logs one warning that names the limit
 it reached. A full cache is normal when the limit is what you want; when entries are removed before they expire, and
-the hit ratio in `GetStatsAsync` drops, raise `MaxItems` (or `WeightLimit`).
+the hit ratio in `GetStatsAsync` drops, raise `MaxItems` (or `WeightLimit`). The `methodcache.evictions` counter shows
+how many entries were removed to make room ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#opentelemetry)).
 
 ## Memory statistics
 
@@ -3345,6 +3441,22 @@ the stale value itself, change the row past MethodCache: with SQL, or through a 
 MethodCache, over the same database. With EF Core's in-memory provider, give both contexts the same
 `InMemoryDatabaseRoot`.
 
+## Every cached service resolves
+
+A service registered after `AddMethodCache`, or one with a dependency the container lacks, fails when the application
+starts or on its first call. `CachedServices.Problems` finds it in a test: it resolves each registered service with
+cached methods, in a scope of its own, and checks that it is the generated caching decorator:
+
+```cs
+// Every service with cached methods resolves, and to its generated caching decorator
+Assert.Empty(CachedServices.Problems(provider));
+```
+
+Each problem names the service, its key for a keyed registration, and what is wrong: registered after
+`AddMethodCache`, an exception when it is resolved, or an instance that isn't the decorator, so its calls aren't
+cached. Build the provider as the application does, with its own registrations, so the test resolves what the
+application resolves. A service registered with an open generic type, such as `typeof(IRepository<>)`, is skipped.
+
 ## Every tag has an invalidation
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the
@@ -3452,6 +3564,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 | A cross-site form or `fetch` without preflight calls `invalidate`, `invalidate-method` or `clear` with the admin's cookie | The `POST` endpoints only accept an `application/json` body, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415, and a request without a body 400. `DELETE entry` needs a preflight too. Don't add a CORS policy that allows these routes from other origins. |
 | A filter in the wrong place empties the whole cache | Emptying everything is its own endpoint, `POST clear`, which takes only `{}`: a body with any property, such as `{ "tags": [...] }`, is 400. `invalidate` takes only `tags` and `invalidate-method` only `methodId`, and an unknown query parameter is 400 on every endpoint, so a misplaced filter is rejected instead of ignored. |
 | `invalidate-method` removes another method's entries | The `methodId` must be exactly the id of a cached method, as `methods` lists it; anything else is 400 and removes nothing. Entries are matched by the method they belong to, not by a key prefix, so `GetUser` never reaches `GetUsers`. |
+| An admin removes entries without a trace | Pass `audit` to `MapMethodCacheAdmin`: it gets the user, the action, its targets and the time for every change, before the change, and a throwing audit fails the request without changing anything. Reads and rejected requests aren't audited. Store the records where admins can't edit them. |
 | Cached values leak through the admin API | Entries are listed with stored key, method id, value type, age, time to live, tags and size, never the value. Keys contain argument values (see above), so the policy should admit only operators. |
 | Bad input | A missing `storedKey` or `methodId`, a `methodId` no cached method has, or an out-of-range `limit` is 400, an empty or blank tag list is 400, and keys, tags and method ids are matched literally, never as patterns. |
 
@@ -3792,7 +3905,7 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
   [MC0019](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0019): its key would not follow its value. Pass a string or an id instead
   ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)).
 - **The result is not stored on purpose:** a `CacheWhen` predicate rejected it, `DurationFor` gave it zero or less,
-  `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
+  `SlidingFor` threw, `TagsFor` threw or gave an empty tag, the result is `null` with `CacheNullValues = false`, or the call threw.
   Exceptions are never cached.
 - **A test registered `NoOpCacheManager`**, which never caches ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md)).
 - **The memory cache is full**, so new entries remove less used ones before they expire. MethodCache logs a warning
@@ -3916,7 +4029,7 @@ never stops a build.
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
-| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
+| [MC0033](#mc0033) | Error | `CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` or `TagsFor<T>` for a type the call's result can never be | |
 | [MC0034](#mc0034) | Error | A key argument, or a value inside one, of a type whose state is all private | |
 | [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
@@ -4471,7 +4584,7 @@ there with `#pragma warning disable MC0032`.
 
 ## MC0033
 
-`CacheWhen<T>`, `DurationFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
+`CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` or `TagsFor<T>` on `CacheEntryOptions.Builder` is for a `T` that the call's result can
 never be, such as `string` for a method that returns `int`. It would get no result to check, so MethodCache rejects it when the
 application starts or the call runs; this error finds it while building.
 
@@ -4480,8 +4593,8 @@ mc.Method((IPrices p) => p.CountAsync(0)).Configure(o => o.CacheWhen<string>(s =
 await cache.GetOrCreateAsync<int>("count", LoadCountAsync, o => o.CacheWhen<string>(s => s != null)); // MC0033
 ```
 
-Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)` and
-`Method(...).TagsFor(...)`, which take the result type from the method:
+Use the call's result type, or for one method the typed `Method(...).CacheWhen(...)`, `Method(...).DurationFor(...)`,
+`Method(...).SlidingFor(...)` and `Method(...).TagsFor(...)`, which take the result type from the method:
 
 ```cs
 mc.Method((IPrices p) => p.CountAsync(0)).CacheWhen(count => count > 0);
@@ -5163,6 +5276,36 @@ Answers other than 200, 204 and 404:
   cache retries on its own; don't repeat the call.
 - **401** and **403**: the caller isn't signed in, or doesn't satisfy the policy.
 
+## Audit
+
+Pass `audit` to record who changes the cache. It runs for `DELETE entry`, `invalidate`, `invalidate-method` and
+`clear`, after authorization and validation and before the change:
+
+```cs
+var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
+app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
+{
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    return ValueTask.CompletedTask;
+});
+```
+
+`MethodCacheAdminAction` has:
+
+| Property | Value |
+|---|---|
+| `Kind` | `RemoveEntry`, `InvalidateTags`, `InvalidateMethod` or `Clear` |
+| `Targets` | The stored key, the tags or the method id; empty for `Clear` |
+| `User` | The signed-in user, `HttpContext.User` |
+| `Time` | When the request arrived, from the app's `TimeProvider` |
+| `HttpContext` | The request, for anything else you record, such as the client's address or the trace id |
+
+When the function throws, the request fails and nothing changes, so no change goes unrecorded. Reads and rejected
+requests (400, 401, 403, 415) aren't passed to it. A change answered with 503 is recorded, since it has removed the
+entries from this instance's memory. Write the record somewhere the admins can't edit, such as your log pipeline or an
+append-only table.
+
 The same operations are available in code through `ICacheAdministrator` in the `MethodCache` namespace (see
 [Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
@@ -5292,6 +5435,7 @@ A manual call has no attribute naming what was cached, so it adds no series per 
 | `methodcache.requests` | Counter / `{request}` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result` |
 | `methodcache.load.duration` | Histogram / `s` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `error.type` on failure |
 | `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; entries in this instance's memory |
+| `methodcache.evictions` | ObservableCounter / `{entry}` | `methodcache.kind=method/http`; entries this instance removed to make room since it started |
 | `methodcache.http.size` | ObservableUpDownCounter / `By` | Bytes of HTTP responses in this instance's memory; 0 when they are stored in the distributed cache |
 | `methodcache.invalidations` | Counter / `{invalidation}` | `methodcache.invalidation.type`, `methodcache.invalidation.stage` |
 | `methodcache.distributed.duration` | Histogram / `s` | `methodcache.operation`, `error.type` on failure |
@@ -5306,8 +5450,11 @@ can replace them.
 - `methodcache.method` is the method id (generic methods once, not per type argument); arguments never create series.
 - Invalidation stages count the same targets at each stage; don't add them together.
 - Entry gauges count this instance's memory only, not the distributed cache.
-- There is no hit-ratio instrument: compute it from `methodcache.requests` in your dashboard. Memory weight is
-  `TotalWeight` on `ICacheAdministrator`.
+- `methodcache.evictions` counts entries removed because the memory cache reached `MaxItems` or `WeightLimit`, not
+  entries that expired or were invalidated. A rising rate while the hit ratio drops says the cache is too small.
+- There is no hit-ratio instrument: compute it from `methodcache.requests`, per method with `methodcache.method`
+  ([Hit ratio per method](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#hit-ratio-per-method)). Memory weight is `TotalWeight` on
+  `ICacheAdministrator`.
 
 ## Troubleshooting
 
@@ -5586,7 +5733,8 @@ With row-level security, cached reads need a context of their own: see
 # MethodCache.Testing
 
 Helpers for tests of the caching itself: a fake clock, a recorder that counts how often your implementation ran and
-what was invalidated, and a check that every cache tag has something that invalidates it.
+what was invalidated, a check that every cached service resolves to its caching decorator, and a check that every
+cache tag has something that invalidates it.
 
 Install it in the test project, at the same version as `MethodCache`.
 
@@ -5630,6 +5778,17 @@ invalidated, in order. `Clear()` forgets what a test's setup recorded. The clock
 when the test advances it, so nothing expires on its own.
 
 The recorder sees the built-in cache manager: with `NoOpCacheManager` or your own `ICacheManager` it records nothing.
+
+## Every cached service resolves
+
+`CachedServices.Problems` resolves each registered service with cached methods and checks that it is the generated
+caching decorator, so a service registered after `AddMethodCache` or one with a missing dependency fails a test instead
+of the application's startup:
+
+```cs
+// Every service with cached methods resolves, and to its generated caching decorator
+Assert.Empty(CachedServices.Problems(provider));
+```
 
 ## Every tag has an invalidation
 
@@ -5701,6 +5860,21 @@ release.
   an API with PostgreSQL in "invalidations only" mode, prometheus-net with a registry of your own, `DurationFor` for
   future-dated rows, what changed keys mean during a rolling deploy, and where MC0027 and MC0030 read what they know
   about referenced projects.
+- `SlidingFor` sets the sliding window from the result, like `DurationFor` sets the duration: a long window for a
+  finished value and none for one still being processed
+  ([A sliding window from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-sliding-window-from-the-result)). Your own
+  `ICacheManager` reads it with `CacheEntryOptions.SlidingExpirationOf(value)`. MC0033 checks its type like
+  `DurationFor`'s.
+- The counter `methodcache.evictions` counts the entries each instance removed to make room since it started, per
+  `methodcache.kind`. The monitoring guide shows the hit ratio per method in PromQL
+  ([Hit ratio per method](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#hit-ratio-per-method)).
+- `MethodCacheWeigher.Bytes`, a ready-made weigher that counts approximate bytes of strings and arrays of numbers:
+  `o.Weigher = MethodCacheWeigher.Bytes`.
+- `CachedServices.Problems(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
+  to its caching decorator, so a registration mistake fails a test
+  ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
+- `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
+  action, its targets and the time ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)).
 
 ### Changed
 
@@ -5710,6 +5884,8 @@ release.
   fake avoids it: call `AddMethodCache` again after the fake.
 - MC0031 suggests a private method that does the work when the call doesn't need the cache, such as a recursive call.
 - The MC0026 message points to `[ChecksRequestState]` for a tenant or user that the method takes as a parameter.
+- A policy in code or appsettings for a cached service that the application doesn't register is logged at
+  `Information` instead of `Debug`, so a misspelt or moved service shows in the startup log.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

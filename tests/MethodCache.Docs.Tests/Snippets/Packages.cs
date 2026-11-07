@@ -4,6 +4,7 @@ using MethodCache.HttpCaching;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using StackExchange.Redis;
@@ -197,6 +198,19 @@ namespace Docs.Packages
 
             app.MapMethodCacheAdmin("CacheAdmins");
             app.MapHealthChecks("/health");
+            // end-snippet
+        }
+
+        public static void Audit(WebApplication app)
+        {
+            // begin-snippet: aspnetcore-audit
+            var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
+            app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
+            {
+                audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
+                    action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+                return ValueTask.CompletedTask;
+            });
             // end-snippet
         }
     }

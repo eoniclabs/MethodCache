@@ -35,6 +35,15 @@ namespace Docs.Expiration
         Task<SearchResult> FindAsync(string text);
     }
 
+    // A page's title and image for a link, or Succeeded false when the page couldn't be read
+    public sealed record LinkPreview(bool Succeeded, string? Title);
+
+    public interface ILinkPreviews
+    {
+        [Cache]
+        Task<LinkPreview> GetAsync(string url);
+    }
+
     // begin-snippet: expiration-attributes
     public interface IReportService
     {
@@ -86,6 +95,18 @@ namespace Docs.Expiration
                 mc.Method((IPriceSchedule s) => s.GetCurrentAsync(Any<string>.Value))
                     .DurationFor(price => price.NextChangeAt is { } next ? next - DateTimeOffset.UtcNow : TimeSpan.FromHours(1));
             });
+            // end-snippet
+        }
+
+        public static void RegisterSliding(WebApplicationBuilder builder)
+        {
+            // begin-snippet: expiration-sliding-for
+            builder.Services.AddMethodCache(mc =>
+                // A preview that loaded is kept while it is read at least every 30 minutes, for at most a day.
+                // One that failed is kept for two hours, read or not, and then the page is tried again.
+                mc.Method((ILinkPreviews p) => p.GetAsync(Any<string>.Value))
+                    .DurationFor(preview => preview.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
+                    .SlidingFor(preview => preview.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero));
             // end-snippet
         }
     }

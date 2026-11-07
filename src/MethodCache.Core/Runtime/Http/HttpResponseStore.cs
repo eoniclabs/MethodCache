@@ -400,7 +400,7 @@ internal sealed class HttpResponseStore : IDisposable, IAsyncDisposable
         if (Volatile.Read(ref _disposed) != 0) return default;
         _local?.Maintain(); _observations.Maintain();
         var localCount = _local?.ObservedEntries ?? 0;
-        return new CacheObservation(0, localCount, _local?.TotalWeight ?? 0, _observations.Count, 0);
+        return new CacheObservation(0, localCount, _local?.TotalWeight ?? 0, _observations.Count, 0, HttpEvictions: _local?.EvictionsSinceStart ?? 0);
     }
 
     internal IReadOnlyList<HttpStorageInfo> List()

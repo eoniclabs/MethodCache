@@ -34,6 +34,7 @@ internal partial class InMemoryCacheManager
         CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.DurationFor, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.TagsFor, typeof(T), key);
+        CachePredicateCheck.EnsureMatches(options.SlidingFor, typeof(T), key);
         EnsureWithinMaxExpiration(options, nameof(options));
         var policy = options.Runtime;
         if (policy == null)
@@ -48,7 +49,7 @@ internal partial class InMemoryCacheManager
     /// <summary>
     /// Stores <paramref name="value"/> under an application key in memory and the distributed cache, and removes the copies
     /// other instances hold, so the next read anywhere gets it. A load already running for the key doesn't overwrite it.
-    /// A value the options reject (<c>CacheWhen</c>, <c>DurationFor</c>, <c>TagsFor</c> or a null without <c>CacheNullValues</c>) isn't
+    /// A value the options reject (<c>CacheWhen</c>, <c>DurationFor</c>, <c>SlidingFor</c>, <c>TagsFor</c> or a null without <c>CacheNullValues</c>) isn't
     /// stored, and the key's old value is removed everywhere.
     /// </summary>
     internal ValueTask SetUserAsync<T>(string key, T value, CacheEntryOptions options, CancellationToken cancellationToken)
@@ -59,6 +60,7 @@ internal partial class InMemoryCacheManager
         CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.DurationFor, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.TagsFor, typeof(T), key);
+        CachePredicateCheck.EnsureMatches(options.SlidingFor, typeof(T), key);
         EnsureWithinMaxExpiration(options, nameof(options));
         var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
         var policy = GetEntryPolicy(CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields));

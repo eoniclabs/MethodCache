@@ -510,3 +510,9 @@ static MethodCache.CacheManagerExtensions.SetAsync<T>(this MethodCache.ICacheMan
 MethodCache.CacheEntryOptions.Builder.TagsFor<T>(System.Func<T, System.Collections.Generic.IEnumerable<string!>!>! tags) -> MethodCache.CacheEntryOptions.Builder!
 MethodCache.CacheEntryOptions.TagsOf<T>(T value) -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.IFluentMethodConfiguration<TResult>.TagsFor(System.Func<TResult, System.Collections.Generic.IEnumerable<string!>!>! tags) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.CacheEntryOptions.Builder.SlidingFor<T>(System.Func<T, System.TimeSpan>! sliding) -> MethodCache.CacheEntryOptions.Builder!
+MethodCache.CacheEntryOptions.SlidingExpirationOf<T>(T value) -> System.TimeSpan?
+MethodCache.IFluentMethodConfiguration<TResult>.SlidingFor(System.Func<TResult, System.TimeSpan>! sliding) -> MethodCache.IFluentMethodConfiguration<TResult>!
+MethodCache.MethodCacheWeigher
+const MethodCache.MethodCacheWeigher.OtherValue = 64 -> long
+static MethodCache.MethodCacheWeigher.Bytes(string! key, object? value) -> long

@@ -70,5 +70,11 @@ internal enum CachePolicyFields
     /// The <see cref="CachePolicy.TagsFor"/> field. The highest layer that sets it decides the function; a higher
     /// layer that clears tags drops it.
     /// </summary>
-    TagsFor = 1 << 14
+    TagsFor = 1 << 14,
+    /// <summary>
+    /// The <see cref="CachePolicy.SlidingFor"/> field. A layer that sets it or <see cref="SlidingExpiration"/> decides
+    /// the sliding window, so a higher layer's <see cref="SlidingExpiration"/> replaces a lower layer's
+    /// <see cref="CachePolicy.SlidingFor"/>.
+    /// </summary>
+    SlidingFor = 1 << 15
 }

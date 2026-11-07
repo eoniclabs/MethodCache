@@ -56,7 +56,25 @@ Object sizes can't be measured reliably at runtime, so to bound the cache by mem
 builder.Services.AddMethodCache(cache => cache.Memory(o =>
 {
     o.WeightLimit = 256 * 1024 * 1024;   // bound the cache by total size as well as by count
-    o.Weigher = (key, value) => value is string s ? s.Length * 2 : 64;
+    o.Weigher = MethodCacheWeigher.Bytes; // strings and arrays such as float[] by size, other values 64
+}));
+```
+<!-- endSnippet -->
+
+`MethodCacheWeigher.Bytes` gives an entry its approximate size in bytes: two per character of the key and of a string
+value, and the size of an array of numbers, `bool` or `char`, such as four bytes per `float` of a `float[]` embedding.
+Any other value weighs 64 (`MethodCacheWeigher.OtherValue`), and `null` nothing. When your results are objects of your
+own, weigh them yourself and leave the rest to it:
+
+<!-- snippet: memory-own-weigher -->
+```cs
+builder.Services.AddMethodCache(cache => cache.Memory(o =>
+{
+    o.WeightLimit = 256 * 1024 * 1024;
+    // Weigh your own types, and let MethodCacheWeigher weigh the rest
+    o.Weigher = (key, value) => value is Report report
+        ? report.Rows.Sum(row => row.Length * 2L)
+        : MethodCacheWeigher.Bytes(key, value);
 }));
 ```
 <!-- endSnippet -->
@@ -67,7 +85,8 @@ as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when m
 
 The first time the cache is full and removes an entry to make room, MethodCache logs one warning that names the limit
 it reached. A full cache is normal when the limit is what you want; when entries are removed before they expire, and
-the hit ratio in `GetStatsAsync` drops, raise `MaxItems` (or `WeightLimit`).
+the hit ratio in `GetStatsAsync` drops, raise `MaxItems` (or `WeightLimit`). The `methodcache.evictions` counter shows
+how many entries were removed to make room ([Monitoring](monitoring.md#opentelemetry)).
 
 ## Memory statistics
 

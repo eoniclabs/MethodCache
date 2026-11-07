@@ -95,6 +95,7 @@ namespace MethodCache
             CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
             CachePredicateCheck.EnsureMatches(options.DurationFor, typeof(T), key);
             CachePredicateCheck.EnsureMatches(options.TagsFor, typeof(T), key);
+            CachePredicateCheck.EnsureMatches(options.SlidingFor, typeof(T), key);
             await manager.InvalidateKeysAsync([key], options.Version, cancellationToken).ConfigureAwait(false);
             await manager.GetOrCreateAsync(key, value, static (item, _) => new ValueTask<T>(item), options, cancellationToken).ConfigureAwait(false);
         }

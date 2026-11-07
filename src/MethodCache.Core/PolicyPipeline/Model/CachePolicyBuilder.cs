@@ -34,6 +34,9 @@ internal sealed class CachePolicyBuilder
     private Func<object?, string[]>? _tagsFor;
     private bool _tagsForSet;
 
+    private Func<object?, TimeSpan>? _slidingFor;
+    private bool _slidingForSet;
+
     private TimeSpan? _failSafe;
     private bool _failSafeSet;
 
@@ -55,6 +58,7 @@ internal sealed class CachePolicyBuilder
         _cacheWhenSet ||
         _durationForSet ||
         _tagsForSet ||
+        _slidingForSet ||
         _failSafeSet ||
         _failSafeTimeoutSet ||
         _failSafeRetryAfterSet ||
@@ -148,6 +152,13 @@ internal sealed class CachePolicyBuilder
     {
         _tagsFor = tagsFor;
         _tagsForSet = true;
+        return this;
+    }
+
+    public CachePolicyBuilder WithSlidingFor(Func<object?, TimeSpan>? slidingFor)
+    {
+        _slidingFor = slidingFor;
+        _slidingForSet = true;
         return this;
     }
 
@@ -255,6 +266,12 @@ internal sealed class CachePolicyBuilder
             _tagsForSet = true;
         }
 
+        if (source._slidingForSet && (overwriteExisting || !_slidingForSet))
+        {
+            _slidingFor = source._slidingFor;
+            _slidingForSet = true;
+        }
+
         if (source._failSafeSet && (overwriteExisting || !_failSafeSet))
         {
             _failSafe = source._failSafe;
@@ -309,6 +326,8 @@ internal sealed class CachePolicyBuilder
             _durationForSet = _durationForSet,
             _tagsFor = _tagsFor,
             _tagsForSet = _tagsForSet,
+            _slidingFor = _slidingFor,
+            _slidingForSet = _slidingForSet,
             _failSafe = _failSafe,
             _failSafeSet = _failSafeSet,
             _failSafeTimeout = _failSafeTimeout,
@@ -404,6 +423,12 @@ internal sealed class CachePolicyBuilder
         {
             policy = policy with { TagsFor = _tagsFor };
             fields |= CachePolicyFields.TagsFor;
+        }
+
+        if (_slidingForSet)
+        {
+            policy = policy with { SlidingFor = _slidingFor };
+            fields |= CachePolicyFields.SlidingFor;
         }
 
         if (_failSafeSet)

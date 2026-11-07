@@ -1,5 +1,16 @@
 #nullable enable
 Microsoft.AspNetCore.Builder.MethodCacheEndpointRouteBuilderExtensions
 Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions
-static Microsoft.AspNetCore.Builder.MethodCacheEndpointRouteBuilderExtensions.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.AspNetCore.Builder.MethodCacheEndpointRouteBuilderExtensions.MapMethodCacheAdmin(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! policyName, string! prefix = "/methodcache", System.Func<MethodCache.MethodCacheAdminAction!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask>? audit = null) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderExtensions.AddMethodCache(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, string! name = "methodcache", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!
+MethodCache.MethodCacheAdminAction
+MethodCache.MethodCacheAdminAction.HttpContext.get -> Microsoft.AspNetCore.Http.HttpContext!
+MethodCache.MethodCacheAdminAction.Kind.get -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminAction.Targets.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.MethodCacheAdminAction.Time.get -> System.DateTimeOffset
+MethodCache.MethodCacheAdminAction.User.get -> System.Security.Claims.ClaimsPrincipal!
+MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.Clear = 3 -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.InvalidateMethod = 2 -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.InvalidateTags = 1 -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.RemoveEntry = 0 -> MethodCache.MethodCacheAdminActionKind

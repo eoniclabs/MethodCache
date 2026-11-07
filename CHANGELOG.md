@@ -39,6 +39,21 @@ release.
   an API with PostgreSQL in "invalidations only" mode, prometheus-net with a registry of your own, `DurationFor` for
   future-dated rows, what changed keys mean during a rolling deploy, and where MC0027 and MC0030 read what they know
   about referenced projects.
+- `SlidingFor` sets the sliding window from the result, like `DurationFor` sets the duration: a long window for a
+  finished value and none for one still being processed
+  ([A sliding window from the result](docs/features/expiration.md#a-sliding-window-from-the-result)). Your own
+  `ICacheManager` reads it with `CacheEntryOptions.SlidingExpirationOf(value)`. MC0033 checks its type like
+  `DurationFor`'s.
+- The counter `methodcache.evictions` counts the entries each instance removed to make room since it started, per
+  `methodcache.kind`. The monitoring guide shows the hit ratio per method in PromQL
+  ([Hit ratio per method](docs/features/monitoring.md#hit-ratio-per-method)).
+- `MethodCacheWeigher.Bytes`, a ready-made weigher that counts approximate bytes of strings and arrays of numbers:
+  `o.Weigher = MethodCacheWeigher.Bytes`.
+- `CachedServices.Problems(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
+  to its caching decorator, so a registration mistake fails a test
+  ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
+- `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
+  action, its targets and the time ([Audit](src/MethodCache.AspNetCore/README.md#audit)).
 
 ### Changed
 
@@ -48,6 +63,8 @@ release.
   fake avoids it: call `AddMethodCache` again after the fake.
 - MC0031 suggests a private method that does the work when the call doesn't need the cache, such as a recursive call.
 - The MC0026 message points to `[ChecksRequestState]` for a tenant or user that the method takes as a parameter.
+- A policy in code or appsettings for a cached service that the application doesn't register is logged at
+  `Information` instead of `Debug`, so a misspelt or moved service shows in the startup log.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

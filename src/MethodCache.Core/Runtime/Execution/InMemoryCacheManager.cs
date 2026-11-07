@@ -103,7 +103,7 @@ namespace MethodCache.Extensibility
 
             _distributed = distributed;
             if (logger != null) LogLayers(logger, _options, distributed);
-            _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight));
+            _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight, MethodEvictions: _engine.EvictionsSinceStart));
             _onMethodInvalidated = onMethodInvalidated;
             _syncDiagnostics = new GeneratedDiagnostics(logger);
             _distributed?.Attach(
@@ -986,9 +986,10 @@ namespace MethodCache.Extensibility
                 }
 
                 var stored = await ReadDistributedAsync<T>(key, entryPolicy, cancellationToken).ConfigureAwait(false);
-                if (stored.Found && ShouldStore(stored.Value, entryPolicy, methodName, out var storedLifetime) && Remaining(stored, entryPolicy, storedLifetime) is > 0 and var remaining)
+                if (stored.Found && ShouldStore(stored.Value, entryPolicy, methodName, out var storedLifetime)
+                    && TrySlidingFor(stored.Value, entryPolicy, methodName, out var storedSliding) && Remaining(stored, entryPolicy, storedLifetime) is > 0 and var remaining)
                 {
-                    entryPolicy = EntryPolicy.From(policy with { Tags = stored.Tags ?? [] });
+                    entryPolicy = EntryPolicy.From(policy with { Tags = stored.Tags ?? [] }).ForResult(null, storedSliding);
                     StoreLoaded(key, stored.Value, entryPolicy, flight, duration: remaining);
                     flight.Complete(stored.Value);
                     completed = true;
@@ -1180,19 +1181,45 @@ namespace MethodCache.Extensibility
 
         /// <summary>
         /// Asks the method's <c>CacheWhen</c> predicate whether a factory result may be stored, its
-        /// <c>DurationFor</c> how long (<paramref name="lifetime"/>, null without one), and its <c>TagsFor</c> which
-        /// tags it adds (<paramref name="entry"/>, the policy to store it with). A predicate or function that throws, and
-        /// a duration of zero or less, is treated as "don't store", so a successful call never fails because of it.
+        /// <c>DurationFor</c> how long (<paramref name="lifetime"/>, null without one), and its <c>SlidingFor</c> and
+        /// <c>TagsFor</c> which sliding window and tags it gets (<paramref name="entry"/>, the policy to store it with). A
+        /// predicate or function that throws, and a duration of zero or less, is treated as "don't store", so a successful
+        /// call never fails because of it.
         /// </summary>
         private bool ShouldStore<T>(T result, EntryPolicy policy, string methodName, out long? lifetime, out EntryPolicy entry)
         {
             entry = policy;
-            if (!ShouldStore(result, policy, methodName, out lifetime)) return false;
-            if (policy.TagsFor is not { } tagsFor) return true;
-            CachePredicateCheck.EnsureMatches(tagsFor, typeof(T), methodName);
+            if (!ShouldStore(result, policy, methodName, out lifetime) || !TrySlidingFor(result, policy, methodName, out var sliding)) return false;
+            string[]? resultTags = null;
+            if (policy.TagsFor is { } tagsFor)
+            {
+                CachePredicateCheck.EnsureMatches(tagsFor, typeof(T), methodName);
+                try
+                {
+                    resultTags = tagsFor(result);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+
+            entry = policy.ForResult(resultTags, sliding);
+            return true;
+        }
+
+        /// <summary>
+        /// The sliding window the method's <c>SlidingFor</c> gives a result, in nanoseconds: zero for zero or less, which
+        /// turns sliding off for it, and null without a function. False when the function throws.
+        /// </summary>
+        private static bool TrySlidingFor<T>(T result, EntryPolicy policy, string methodName, out long? sliding)
+        {
+            sliding = null;
+            if (policy.SlidingFor is not { } slidingFor) return true;
+            CachePredicateCheck.EnsureMatches(slidingFor, typeof(T), methodName);
             try
             {
-                entry = policy.WithResultTags(tagsFor(result));
+                sliding = slidingFor(result) is var window && window > TimeSpan.Zero ? ToNanos(window) : 0;
                 return true;
             }
             catch (Exception)
@@ -1610,6 +1637,8 @@ namespace MethodCache.Extensibility
 
             public Func<object?, string[]>? TagsFor { get; init; }
 
+            public Func<object?, TimeSpan>? SlidingFor { get; init; }
+
             /// <summary>How long an expired value is kept as a fail-safe fallback; zero when fail-safe is off.</summary>
             public long FailSafe { get; init; }
 
@@ -1644,6 +1673,7 @@ namespace MethodCache.Extensibility
                     CacheWhen = policy.CacheWhen,
                     DurationFor = policy.DurationFor,
                     TagsFor = policy.TagsFor,
+                    SlidingFor = policy.SlidingFor,
                     FailSafe = Positive(policy.FailSafe),
                     FailSafeTimeout = Positive(policy.FailSafeTimeout),
                     FailSafeRetryAfter = Positive(policy.FailSafeRetryAfter) is > 0 and var retryAfter ? retryAfter : DefaultFailSafeRetryAfter,
@@ -1651,24 +1681,30 @@ namespace MethodCache.Extensibility
                 };
             }
 
-            /// <summary>This policy for one result, with the tags its <see cref="TagsFor"/> gave it added.</summary>
-            public EntryPolicy WithResultTags(string[] resultTags)
+            /// <summary>
+            /// This policy for one result: with the tags its <see cref="TagsFor"/> gave it added, and the sliding window
+            /// its <see cref="SlidingFor"/> gave it in place of <see cref="Sliding"/>. The policy itself when neither
+            /// changes anything, so a result without them allocates nothing.
+            /// </summary>
+            public EntryPolicy ForResult(string[]? resultTags, long? sliding)
             {
-                if (resultTags.Length == 0) return this;
+                var addsTags = resultTags is { Length: > 0 };
+                if (!addsTags && (sliding == null || sliding == Sliding)) return this;
                 return new EntryPolicy
                 {
                     Source = Source,
                     Generation = Generation,
                     Duration = Duration,
-                    Sliding = Sliding,
+                    Sliding = sliding ?? Sliding,
                     RefreshWindow = RefreshWindow,
                     CacheWhen = CacheWhen,
                     DurationFor = DurationFor,
                     TagsFor = TagsFor,
+                    SlidingFor = SlidingFor,
                     FailSafe = FailSafe,
                     FailSafeTimeout = FailSafeTimeout,
                     FailSafeRetryAfter = FailSafeRetryAfter,
-                    Tags = Tags == null ? resultTags : Tags.Concat(resultTags).Distinct(StringComparer.Ordinal).ToArray()
+                    Tags = !addsTags ? Tags : Tags == null ? resultTags : Tags.Concat(resultTags!).Distinct(StringComparer.Ordinal).ToArray()
                 };
             }
         }

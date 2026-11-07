@@ -94,6 +94,7 @@ A manual call has no attribute naming what was cached, so it adds no series per 
 | `methodcache.requests` | Counter / `{request}` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `methodcache.result` |
 | `methodcache.load.duration` | Histogram / `s` | `methodcache.kind`, `methodcache.method` or `methodcache.http.client`, `methodcache.bulk`, `error.type` on failure |
 | `methodcache.entries` | ObservableUpDownCounter / `{entry}` | `methodcache.kind=method/http`; entries in this instance's memory |
+| `methodcache.evictions` | ObservableCounter / `{entry}` | `methodcache.kind=method/http`; entries this instance removed to make room since it started |
 | `methodcache.http.size` | ObservableUpDownCounter / `By` | Bytes of HTTP responses in this instance's memory; 0 when they are stored in the distributed cache |
 | `methodcache.invalidations` | Counter / `{invalidation}` | `methodcache.invalidation.type`, `methodcache.invalidation.stage` |
 | `methodcache.distributed.duration` | Histogram / `s` | `methodcache.operation`, `error.type` on failure |
@@ -108,8 +109,11 @@ can replace them.
 - `methodcache.method` is the method id (generic methods once, not per type argument); arguments never create series.
 - Invalidation stages count the same targets at each stage; don't add them together.
 - Entry gauges count this instance's memory only, not the distributed cache.
-- There is no hit-ratio instrument: compute it from `methodcache.requests` in your dashboard. Memory weight is
-  `TotalWeight` on `ICacheAdministrator`.
+- `methodcache.evictions` counts entries removed because the memory cache reached `MaxItems` or `WeightLimit`, not
+  entries that expired or were invalidated. A rising rate while the hit ratio drops says the cache is too small.
+- There is no hit-ratio instrument: compute it from `methodcache.requests`, per method with `methodcache.method`
+  ([Hit ratio per method](../../docs/features/monitoring.md#hit-ratio-per-method)). Memory weight is `TotalWeight` on
+  `ICacheAdministrator`.
 
 ## Troubleshooting
 

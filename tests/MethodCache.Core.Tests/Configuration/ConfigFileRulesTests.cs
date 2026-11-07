@@ -2,6 +2,7 @@ using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace MethodCache.Core.Tests.Configuration;
@@ -395,17 +396,22 @@ public class ConfigFileRulesTests
     }
 
     [Fact]
-    public void CodePolicyForACachedServiceThisHostDoesNotRegister_IsSkipped()
+    public void CodePolicyForACachedServiceThisHostDoesNotRegister_IsSkipped_AndLoggedAtInformation()
     {
-        using var provider = Services(mc =>
+        var logs = new InformationLog();
+        var services = Services(mc =>
         {
             mc.Method((IOtherHostRules r) => r.FindAsync(0)).CacheWhen(value => value > 0);
             mc.Method((IRules r) => r.GetAsync(0)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(3)));
-        }).BuildServiceProvider();
+        });
+        services.AddLogging(b => b.AddProvider(logs));
+        using var provider = services.BuildServiceProvider();
 
         var registry = provider.GetRequiredService<IPolicyRegistry>();
 
         Assert.Equal(TimeSpan.FromMinutes(3), registry.GetPolicy(GetId).Policy.Duration);
+        var otherId = MethodIds.For(typeof(IOtherHostRules), nameof(IOtherHostRules.FindAsync));
+        Assert.Contains(logs.Lines, line => line.Contains($"'{otherId}', whose service isn't registered in this application", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -463,5 +469,25 @@ public class ConfigFileRulesTests
         services.AddSingleton<IRules, Rules>();
         services.AddMethodCache(mc => configure?.Invoke(mc));
         return services;
+    }
+
+    private sealed class InformationLog : ILoggerProvider, ILogger
+    {
+        private readonly List<string> _lines = [];
+
+        public IReadOnlyList<string> Lines { get { lock (_lines) return _lines.ToArray(); } }
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Information) lock (_lines) _lines.Add(formatter(state, exception));
+        }
+
+        public void Dispose() { }
     }
 }

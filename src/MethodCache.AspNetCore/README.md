@@ -61,6 +61,38 @@ Answers other than 200, 204 and 404:
   cache retries on its own; don't repeat the call.
 - **401** and **403**: the caller isn't signed in, or doesn't satisfy the policy.
 
+## Audit
+
+Pass `audit` to record who changes the cache. It runs for `DELETE entry`, `invalidate`, `invalidate-method` and
+`clear`, after authorization and validation and before the change:
+
+<!-- snippet: aspnetcore-audit -->
+```cs
+var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
+app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
+{
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    return ValueTask.CompletedTask;
+});
+```
+<!-- endSnippet -->
+
+`MethodCacheAdminAction` has:
+
+| Property | Value |
+|---|---|
+| `Kind` | `RemoveEntry`, `InvalidateTags`, `InvalidateMethod` or `Clear` |
+| `Targets` | The stored key, the tags or the method id; empty for `Clear` |
+| `User` | The signed-in user, `HttpContext.User` |
+| `Time` | When the request arrived, from the app's `TimeProvider` |
+| `HttpContext` | The request, for anything else you record, such as the client's address or the trace id |
+
+When the function throws, the request fails and nothing changes, so no change goes unrecorded. Reads and rejected
+requests (400, 401, 403, 415) aren't passed to it. A change answered with 503 is recorded, since it has removed the
+entries from this instance's memory. Write the record somewhere the admins can't edit, such as your log pipeline or an
+append-only table.
+
 The same operations are available in code through `ICacheAdministrator` in the `MethodCache` namespace (see
 [Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 

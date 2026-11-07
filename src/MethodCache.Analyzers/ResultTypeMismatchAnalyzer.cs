@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace MethodCache.Analyzers
 {
     /// <summary>
-    /// Reports MC0033: <c>CacheWhen&lt;T&gt;</c>, <c>DurationFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> on the options of a call whose result can
+    /// Reports MC0033: <c>CacheWhen&lt;T&gt;</c>, <c>DurationFor&lt;T&gt;</c>, <c>SlidingFor&lt;T&gt;</c> or <c>TagsFor&lt;T&gt;</c> on the options of a call whose result can
     /// never be a <c>T</c>, such as <c>CacheWhen&lt;string&gt;</c> for a method that returns <c>int</c>. MethodCache
     /// rejects it when the call runs or the host starts; this finds it while building.
     /// </summary>
@@ -19,12 +19,12 @@ namespace MethodCache.Analyzers
 
         internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             "MC0033",
-            "CacheWhen<T>, DurationFor<T> or TagsFor<T> is for another result type",
+            "CacheWhen<T>, DurationFor<T>, SlidingFor<T> or TagsFor<T> is for another result type",
             "{0}<{1}> can't check the {2} result of this call, so the call fails when it runs. Use {0}<{2}>.",
             "Usage",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true,
-            description: "CacheWhen<T>, DurationFor<T> and TagsFor<T> on CacheEntryOptions.Builder get each result as a T. Set inside Method(...).Configure(...) or passed to GetOrCreateAsync, GetOrCreateManyAsync or SetAsync, a T that the call's result can never be fails at startup or on the first call. Reported when neither type converts to the other.",
+            description: "CacheWhen<T>, DurationFor<T>, SlidingFor<T> and TagsFor<T> on CacheEntryOptions.Builder get each result as a T. Set inside Method(...).Configure(...) or passed to GetOrCreateAsync, GetOrCreateManyAsync or SetAsync, a T that the call's result can never be fails at startup or on the first call. Reported when neither type converts to the other.",
             helpLinkUri: HelpLink("MC0033"));
 
         /// <inheritdoc />
@@ -46,7 +46,7 @@ namespace MethodCache.Analyzers
         {
             var invocation = (IInvocationOperation)context.Operation;
             var method = invocation.TargetMethod;
-            if (method.Name is not ("CacheWhen" or "DurationFor" or "TagsFor") || method.TypeArguments.Length != 1
+            if (method.Name is not ("CacheWhen" or "DurationFor" or "SlidingFor" or "TagsFor") || method.TypeArguments.Length != 1
                 || !SymbolEqualityComparer.Default.Equals(method.ContainingType, builder)) return;
 
             // The options lambda the builder is the parameter of, as in o => o.WithDuration(...).CacheWhen<T>(...)

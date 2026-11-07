@@ -83,6 +83,16 @@ namespace MethodCache
         /// </summary>
         IFluentMethodConfiguration<TResult> DurationFor(Func<TResult, TimeSpan> duration);
         /// <summary>
+        /// Gives each result its own sliding window in place of the method's <c>SlidingExpiration</c>, such as one for a
+        /// successful result and none for a failed one:
+        /// <c>SlidingFor(r =&gt; r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)</c>. Zero or less turns sliding
+        /// off for that result, so it lives its duration whether it is read or not. A function that throws doesn't
+        /// cache the result, which is still returned to the caller. The function runs once per load and on each value
+        /// read from the distributed cache; it never runs on a hit in memory. A <c>SlidingExpiration</c> set for the
+        /// method in <c>appsettings.json</c> or a runtime override replaces it.
+        /// </summary>
+        IFluentMethodConfiguration<TResult> SlidingFor(Func<TResult, TimeSpan> sliding);
+        /// <summary>
         /// Adds tags read from each result to its entry, next to the method's own tags, such as the customer of an
         /// order the method found by its id: <c>TagsFor(order =&gt; [$"customer:{order.CustomerId}"])</c>.
         /// Invalidating one of them removes the entry. A function that throws, or gives a null, empty or whitespace

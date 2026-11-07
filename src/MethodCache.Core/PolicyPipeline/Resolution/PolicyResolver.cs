@@ -468,7 +468,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
                 if (_describedMethods?.Contains(methodId) == true)
                 {
-                    _logger.LogDebug("A policy configures '{MethodId}', whose service isn't registered in this container, so it doesn't apply here.", methodId);
+                    _logger.LogInformation("A policy configures '{MethodId}', whose service isn't registered in this application, so it doesn't apply here.", methodId);
                     continue;
                 }
 
@@ -792,7 +792,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         [
             (CachePolicyFields.Duration | CachePolicyFields.DurationFor, nameof(CacheEntryOptions.Duration)),
             (CachePolicyFields.Tags | CachePolicyFields.ClearTags | CachePolicyFields.TagsFor, nameof(CacheEntryOptions.Tags)),
-            (CachePolicyFields.SlidingExpiration, nameof(CacheEntryOptions.SlidingExpiration)),
+            (CachePolicyFields.SlidingExpiration | CachePolicyFields.SlidingFor, nameof(CacheEntryOptions.SlidingExpiration)),
             (CachePolicyFields.RefreshAhead, nameof(CacheEntryOptions.RefreshAhead)),
             (CachePolicyFields.Version, nameof(CacheEntryOptions.Version)),
             (CachePolicyFields.FailSafe, nameof(CacheEntryOptions.FailSafe)),
@@ -823,6 +823,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             Func<object?, string[]>? tagsFor = null;
             var tagsForSet = false;
             TimeSpan? slidingExpiration = null;
+            Func<object?, TimeSpan>? slidingFor = null;
             TimeSpan? refreshAhead = null;
             Func<object?, bool>? cacheWhen = null;
             var cacheWhenSet = false;
@@ -875,9 +876,11 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     tagsCleared = fields.HasFlag(CachePolicyFields.ClearTags);
                 }
 
-                if (slidingExpiration == null && fields.HasFlag(CachePolicyFields.SlidingExpiration))
+                // SlidingExpiration and SlidingFor are one setting too
+                if (slidingExpiration == null && slidingFor == null)
                 {
-                    slidingExpiration = policy.SlidingExpiration;
+                    if (fields.HasFlag(CachePolicyFields.SlidingFor) && policy.SlidingFor != null) slidingFor = policy.SlidingFor;
+                    else if (fields.HasFlag(CachePolicyFields.SlidingExpiration)) slidingExpiration = policy.SlidingExpiration;
                 }
 
                 if (refreshAhead == null && fields.HasFlag(CachePolicyFields.RefreshAhead))
@@ -933,6 +936,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 CacheWhen = cacheWhen,
                 DurationFor = durationFor,
                 TagsFor = tagsFor,
+                SlidingFor = slidingFor,
                 FailSafe = failSafe,
                 FailSafeTimeout = failSafeTimeout,
                 FailSafeRetryAfter = failSafeRetryAfter,

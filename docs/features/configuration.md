@@ -49,8 +49,10 @@ builder.Services.AddMethodCache(config =>
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
   `appsettings.json`, which wins where both set a value; a method's own settings win over both.
-- `CacheWhen`, `DurationFor` and `TagsFor` are set for one method only. In `Defaults` or a group they fail at startup
-  ([Conditional caching](conditional-caching.md), [A duration from the result](expiration.md#a-duration-from-the-result),
+- `CacheWhen`, `DurationFor`, `SlidingFor` and `TagsFor` are set for one method only. In `Defaults` or a group they
+  fail at startup ([Conditional caching](conditional-caching.md),
+  [A duration from the result](expiration.md#a-duration-from-the-result),
+  [A sliding window from the result](expiration.md#a-sliding-window-from-the-result),
   [Tags from the result](invalidation.md#tags-from-the-result)).
 - `Any<T>.Value` stands for any argument when you point at a method.
 
@@ -145,7 +147,8 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
   name or an id without its `[Assembly]` prefix, fails at startup and suggests the closest cached id. `*` and
   `group:<name>` are not method ids; use `Defaults` and `Groups`.
 - A setting for a `[Cache]` method whose service this application doesn't register is skipped, in the file and in
-  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them.
+  `mc.Method(...)`, so configuration and startup code shared by several applications works in each of them. Each
+  skipped method is logged once at startup, at Information, so a service you forgot to register shows up in the log.
 - An invalid value, such as a `Duration` that isn't a positive time span, makes the host fail to start with an
   `InvalidOperationException` naming the setting (without a generic host, the first cached call throws). If a
   reloaded file has one, the reload is logged as an error naming the setting's path, never its value, and the
@@ -236,7 +239,7 @@ is left out. The admin endpoint `GET /methodcache/methods` shows the same, with 
 
 `CacheEntryOptions.Builder` applies to startup, configuration, runtime overrides and manual calls. Each setting has one
 `With` method named like the attribute setting, such as `WithFailSafe`, `WithFailSafeTimeout` and
-`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
+`WithFailSafeRetryAfter`. `CacheWhen<T>`, `DurationFor<T>`, `SlidingFor<T>` and `TagsFor<T>` are configured in code for one method; one for a type the
 method can't return, such as `CacheWhen<string>` on a method that returns `int`, throws an `InvalidOperationException`
 at startup (an `ArgumentException` from a runtime override) instead of silently caching nothing. Cache callbacks and
 context predicates are not supported.
