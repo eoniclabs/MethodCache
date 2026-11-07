@@ -197,6 +197,12 @@ Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off fo
 .DurationFor(token => token.ExpiresAt - DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1))`. Zero or less doesn't cache
 the result. ([A duration from the result](features/expiration.md#a-duration-from-the-result))
 
+**My method returns null when there is no row yet, but one takes effect at a known time. How long is null kept?**
+`DurationFor` gets the null too, and null can't say when the row starts. Return a type that can, such as
+`record CurrentPrice(Price? Price, DateTimeOffset? NextChangeAt)`, and keep it until `NextChangeAt`; or give null a
+fixed duration with `price => price is null ? TimeSpan.FromMinutes(5) : ...`.
+([A duration from the result](features/expiration.md#a-duration-from-the-result))
+
 **How do I let successful results slide and keep failed ones for a fixed time?**
 Add `SlidingFor` next to `DurationFor`: `.DurationFor(r => r.Succeeded ? TimeSpan.FromDays(1) : TimeSpan.FromHours(2))
 .SlidingFor(r => r.Succeeded ? TimeSpan.FromMinutes(30) : TimeSpan.Zero)`. Zero turns sliding off for that result.
@@ -242,6 +248,11 @@ the interface method. The check runs only when a value is loaded, so the caller 
 **I renamed my `ICurrentUser`. Does MC0026 still find it?**
 Not until you update `methodcache.request_state_types` in `.editorconfig`. Warning MC0036 reports a name there that
 matches no type. ([MC0036](user-guide/DIAGNOSTICS.md#mc0036))
+
+**My cached read uses a table without row-level security, through a context that has the request's tenant. Why MC0026?**
+The analyzer can't tell which tables a method reads. When the result depends only on the arguments, such as an API key
+looked up by its hash, suppress MC0026 on that class with the reason.
+([A table the request doesn't filter](user-guide/DIAGNOSTICS.md#a-table-the-request-doesnt-filter))
 
 **My database uses row-level security on the connection. How do I cache reads?**
 Give the cached reads a context of their own from `IDbContextFactory<T>`, not the one set up for the signed-in user,
@@ -346,7 +357,13 @@ Use OpenTelemetry's Prometheus exporter with `AddMethodCacheInstrumentation()` o
 `MethodCache`, so `dotnet-counters monitor --counters MethodCache` shows it too. An app that already serves
 prometheus-net's `/metrics` gets the instruments with no setup, named like `methodcache_methodcache_requests`. With a
 `CollectorRegistry` of your own, set both `Registry` and `MetricFactory = Metrics.WithCustomRegistry(registry)` on the
-meter adapter, or no series appear. ([Monitoring](features/monitoring.md#standard-net-listeners))
+meter adapter, or no series appear, and `InstrumentFilterPredicate = i => i.Meter.Name == MethodCacheTelemetry.Name`
+to leave out the process's other meters. ([Monitoring](features/monitoring.md#standard-net-listeners))
+
+**The `methodcache_method` label is too long for my dashboard. Can I shorten it?**
+It is the full method id, so methods with the same name in different assemblies never share a series. Copy the
+interface and method into a label of their own with `label_replace` in the query, or with `metric_relabel_configs`
+when Prometheus scrapes. ([Hit ratio per method](features/monitoring.md#hit-ratio-per-method))
 
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](features/native-aot.md))

@@ -30,6 +30,18 @@ release.
   `WithSlidingExpiration` and `Defaults`, combine that way
   ([Sliding expiration](docs/features/expiration.md#sliding-expiration)).
 
+### Documentation
+
+- Getting started: a recommended project setup (`MethodCacheAnalysisLevel` in `Directory.Build.props`, the
+  `MethodCache.Testing` checks, and evictions and hit ratio to watch).
+- Monitoring: the prometheus-net example filters to MethodCache's meter, the hit-ratio query for prometheus-net's
+  series names, `label_replace` and relabeling for a short method name, and why an adapter started from a hosted
+  service exports nothing in some test hosts.
+- Expiration: what `DurationFor` gets for a null result, and how to keep "nothing yet" until a known time.
+- MC0026: suppress it on the class for cached reads of a table that the request doesn't filter.
+- Distributed cache: the worker and API recipe links to the PostgreSQL tables and grants, and says the API's test
+  project references the worker for `TagCoverage`.
+
 ## 1.0.0-rc.11 (2026-11-07)
 
 ### Upgrading from 1.0.0-rc.10

@@ -172,6 +172,34 @@ anything else the result depends on must be an argument too:
   ([Refresh-ahead](features/expiration.md#refresh-ahead)). A service that sets up its connection per request must do
   the same from the method's arguments.
 
+## Recommended project setup
+
+Three things catch most mistakes before they reach production.
+
+**Pin the analysis level.** A new version of MethodCache can bring new analyzer warnings, and with warnings treated as
+errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` once for the solution, in
+`Directory.Build.props`, and raise it when you want a later version's rules
+([Rules of a later version](user-guide/DIAGNOSTICS.md#rules-of-a-later-version)):
+
+```xml
+<Project>
+  <PropertyGroup>
+    <MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>
+  </PropertyGroup>
+</Project>
+```
+
+**Test the setup.** Add the `MethodCache.Testing` package to a test project that references the application, and
+every project that invalidates its tags, such as a worker. With the application's service provider,
+`Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every cached service resolves to its caching
+decorator, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` that every tag has an invalidation
+([Testing](features/testing.md)).
+
+**Watch evictions and the hit ratio.** With `AddMethodCacheInstrumentation()`, chart `methodcache.evictions` and the
+hit ratio of each method ([Hit ratio per method](features/monitoring.md#hit-ratio-per-method)). Rising evictions mean
+the memory cache is too small. A low ratio without evictions means the method is called with different arguments each
+time, or its entries expire before they are read again.
+
 ## Next steps
 
 - Choose how long entries live: [Expiration](features/expiration.md).

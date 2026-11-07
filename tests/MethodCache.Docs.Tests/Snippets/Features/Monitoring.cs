@@ -59,6 +59,8 @@ public static class Setup
         {
             Registry = registry,
             MetricFactory = Metrics.WithCustomRegistry(registry),
+            // Without a filter the adapter exports every meter in the process, ASP.NET Core's and the runtime's too
+            InstrumentFilterPredicate = instrument => instrument.Meter.Name == MethodCacheTelemetry.Name,
         });
         // end-snippet
         return adapter;

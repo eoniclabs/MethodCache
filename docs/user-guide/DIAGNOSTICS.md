@@ -378,6 +378,25 @@ The analyzer reads the attribute on the method the cached method calls. When you
 such as `ITenantContext.EnsureActsFor(tenantId)`, mark the interface method; the attribute on the class that implements
 it isn't seen through the interface.
 
+### A table the request doesn't filter
+
+Some cached reads go through a context that holds request state but read a table that doesn't depend on it, such as
+looking up an API key before the tenant is known, from a table without row-level security. The result depends only on
+the arguments, but the analyzer can't tell which tables a method reads, so it still reports the class. Suppress the
+warning there, with the reason, so it stays next to the code it is about:
+
+```cs
+[SuppressMessage("Security", "MC0026", Justification = "api_keys has no row-level security; the key is the argument")]
+public sealed class ApiKeys(TenantDb db) : IApiKeys
+{
+    public Task<ApiKey?> FindAsync(string keyHash)   // [Cache] on IApiKeys.FindAsync
+        => db.ApiKeys.SingleOrDefaultAsync(k => k.Hash == keyHash);
+}
+```
+
+Suppress it on the class, not for the project, so a new cached method in another class is still checked. A context
+of its own for such reads, without the request state, avoids the warning as well.
+
 ## MC0027
 
 Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUpdate`, `ExecuteDelete`,

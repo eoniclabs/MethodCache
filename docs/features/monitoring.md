@@ -190,6 +190,36 @@ sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="m
 sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m]))
 ```
 
+With prometheus-net ([Standard .NET listeners](#standard-net-listeners)), the series is
+`methodcache_methodcache_requests`, without `_total`. It is a gauge that holds the running total, so `rate` works on it
+as on a counter:
+
+```promql
+sum by (methodcache_method) (rate(methodcache_methodcache_requests{methodcache_kind="method", methodcache_result="hit"}[5m]))
+/
+sum by (methodcache_method) (rate(methodcache_methodcache_requests{methodcache_kind="method"}[5m]))
+```
+
+`methodcache_method` is the full method id, such as `[MyApp.Api]MyApp.Api.Services.IPriceSource.GetRateAsync`, so
+that two methods with the same name in different assemblies never share a series. For a shorter name on a dashboard,
+copy the interface and method into a label of their own with `label_replace`:
+
+```promql
+label_replace(
+  sum by (methodcache_method) (rate(methodcache_requests_total{methodcache_kind="method"}[5m])),
+  "method", "$1", "methodcache_method", `.*\.([^.]+\.[^.]+)`)
+```
+
+Or do it once when Prometheus scrapes, in the job's `metric_relabel_configs`:
+
+```yaml
+metric_relabel_configs:
+  - source_labels: [methodcache_method]
+    regex: '.*\.([^.]+\.[^.]+)'
+    target_label: method
+    replacement: '$1'
+```
+
 A `bypass` (caching turned off for the call) counts as a request that wasn't a hit; leave it out with
 `methodcache_result!="bypass"` in the second sum to see the ratio of the calls the cache could answer. A `stale` result
 is an old value fail-safe returned because the method failed or took longer than `FailSafeTimeout`. A method whose ratio is low while `methodcache.evictions` rises
@@ -207,7 +237,8 @@ prometheus-net 8 exports them too, with no MethodCache setup: its meter adapter 
 as gauges and uses its own histogram buckets instead of the ones above; OpenTelemetry's exporter keeps both.
 
 With a `CollectorRegistry` of your own, start the meter adapter with the registry and a metric factory for it. With only
-`Registry` set, no MethodCache series appear:
+`Registry` set, no MethodCache series appear. The adapter exports every meter in the process unless you filter it, so
+pass `InstrumentFilterPredicate` to export MethodCache's alone:
 
 <!-- snippet: monitoring-prometheus-net-registry -->
 ```cs
@@ -216,9 +247,16 @@ var adapter = MeterAdapter.StartListening(new MeterAdapterOptions
 {
     Registry = registry,
     MetricFactory = Metrics.WithCustomRegistry(registry),
+    // Without a filter the adapter exports every meter in the process, ASP.NET Core's and the runtime's too
+    InstrumentFilterPredicate = instrument => instrument.Meter.Name == MethodCacheTelemetry.Name,
 });
 ```
 <!-- endSnippet -->
+
+With prometheus-net's default registry, set the same filter at startup with `Metrics.ConfigureMeterAdapter(o =>
+o.InstrumentFilterPredicate = ...)`. Start the adapter in `Program.cs` and keep what it returns.
+Started from a hosted service of your own instead, it exports nothing in a test host that removes hosted services,
+as some `WebApplicationFactory` setups do.
 
 A `MeterListener` subscribes like this; keep it alive for as long as you want measurements:
 
