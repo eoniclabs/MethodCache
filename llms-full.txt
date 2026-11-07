@@ -689,6 +689,13 @@ Set `<MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>` (the version whos
 `AddMethodCache(mc => mc.UseRedis("..."))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)`.
 ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
 
+**Does a runtime override reach every instance and survive a restart?**
+Yes, with Redis, SQL Server or PostgreSQL and their backplane: `IRuntimeCacheConfigurator.UpsertAsync` stores it in the
+distributed cache, the other instances apply it within moments, and an instance that starts applies the active ones.
+Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`. Without a distributed cache, or with
+`EnableBackplane = false`, it stays on its own instance until a restart.
+([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
+
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
 Return records with public properties, or register a serializer with `UseJson(options)`.
@@ -2183,9 +2190,20 @@ anything is stored. A tag template that doesn't fit the method throws too.
   `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
 - An override that changes how the method caches drops the entries cached under the old settings at once; calls
   already running may still return their earlier result. An override that only changes its audit metadata keeps them.
-- Overrides live in this instance's memory: they are lost on restart and don't reach other instances. While an override
-  changes how a method caches, that method's entries in the distributed cache are this instance's own; removing the
-  override invalidates the method and shares entries again
+- With a [distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md) and its backplane (the default with `UseRedis`, `UseSqlServer` and
+  `UsePostgreSql`), an override applies on every instance. It is stored in the distributed cache before `UpsertAsync`
+  returns, the other instances apply it when the backplane tells them the method changed, and an instance that starts
+  applies the active ones before it serves. So overrides outlive restarts and slot swaps, and `GetOverrides()` lists
+  the same ones everywhere. Instances with the same override share its entries.
+- An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`: they are
+  functions, which another instance can't run. `UpsertAsync` throws an `ArgumentException`; set them in `AddMethodCache`.
+- When the distributed cache doesn't answer within `OperationTimeout`, `UpsertAsync`, `RemoveAsync` and `ClearAsync`
+  throw an `InvalidOperationException` and the override stays as it was. An instance that can't read them when it starts logs a warning, starts
+  without them and reads them again after `CircuitBreakerDuration`.
+- Without a distributed cache, or with `EnableBackplane = false`, overrides live in this instance's memory: they are
+  lost on restart and don't reach other instances, and they may set functions. While such an override changes how a
+  method caches, that method's entries in the distributed cache are this instance's own; removing the override
+  invalidates the method and shares entries again
   ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#policies-and-shared-entries)).
 - `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
   when it passes.
@@ -2899,8 +2917,8 @@ Entries written in the other format read as misses and are replaced, so switchin
 ## Limits
 
 - Invalidation matches exact keys and tags; common tags provide group invalidation.
-- [Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md) values and [runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides) live in each instance's
-  memory.
+- [Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md) values live in each instance's memory. [Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides)
+  apply on every instance with a backplane, and only on their own instance without one.
 
 ## Package guides
 
@@ -3551,6 +3569,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 | Stored data names a type to create (deserialization gadgets) | `JsonCacheSerializer` reads the method's declared type and ignores `$type`. `MessagePackCacheSerializer` uses the contractless resolver with `MessagePackSecurity.UntrustedData` and refuses typeless payloads. Keep it that way if you pass your own options. |
 | Someone who can write to Redis, SQL Server or PostgreSQL | **Not prevented.** They can store any well-formed value, which every instance will serve. The distributed cache is trusted: protect it like your database (authentication, TLS, network rules), and give each application its own `KeyPrefix`. Different keys never share an entry: Redis escapes characters UTF-8 can't hold, and SQL Server hashes each exact key, so collation can't make two keys equal (casing, NULs, trailing spaces). SQL Server keeps each prefix's invalidations apart independently of collation too. PostgreSQL stores every key, and each prefix's backplane scope, as the SHA-256 of its exact UTF-16 code units, so NULs and lone surrogates (which PostgreSQL text can't hold) stay distinct. Its notifications carry only the sender's id; the invalidations themselves are read from the table. |
 | Invalidations evicted from the store | A store that evicts a tag or removal stamp under memory pressure makes the entries it invalidated valid again (for example data cached before a permission change). Run Redis with `maxmemory-policy noeviction` or a Redis of its own; see [Keep invalidations from being evicted](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#keep-invalidations-from-being-evicted). |
+| Runtime overrides stored in the distributed cache | With a backplane, runtime overrides are records in the distributed cache that every instance applies, so someone who can write to it can also change any cached method's duration, tags or settings on every instance, or turn its caching off. An override never holds code: records carry only settings, the functions (`CacheWhen`, `DurationFor`, `TagsFor`, `SlidingFor`) are refused, and a record an instance can't read or apply is skipped with a warning. `SharedRuntimeOverridesTests` checks both. |
 | Backplane messages | Carry keys and tags in lossless UTF-16 frames, so lone surrogates cannot change invalidation identity and newlines cannot forge another message type. Messages from another MethodCache version are rejected with one warning, without logging their contents. Anyone who can publish on the channel can invalidate entries, so the same trust applies. |
 
 ## MethodCache.AspNetCore (admin endpoints)
@@ -3622,8 +3641,8 @@ context; MethodCache neither adds identity baggage nor strips the application's 
 ## The tests
 
 Each row above is pinned by a test: `AdminEndpointSecurityTests` (ASP.NET Core), `HttpCacheIsolationTests`,
-`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests` and
-`DistributedCacheSecurityTests` (keys, tags and the distributed cache). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
+`HttpCacheEdgeCaseTests` and `UntrustedEntryTests` (HTTP caching), `CoreInstrumentationTests` (OpenTelemetry SDK) and `TelemetryPrivacyTests` (Core), `KeyInjectionPropertyTests`,
+`DistributedCacheSecurityTests` and `SharedRuntimeOverridesTests` (keys, tags and the distributed cache). The implementation-level guarantees behind these rows, and the CI and release boundaries, are in
 [security internals](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/security-internals.md).
 
 
@@ -3731,10 +3750,24 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 
 ## Policies and shared entries
 
-- Instances share a method's entries when they run it with the same settings from the attribute, startup code and
-  `appsettings.json`. A runtime override that changes how a method caches (`IRuntimeCacheConfigurator`) gives that
-  method entries of its own on that instance, which no other instance reads, even one with an equal override.
-  Removing the override invalidates the method before the instance reads shared entries again.
+- Instances share a method's entries when they run it with the same settings from the attribute, startup code,
+  `appsettings.json` and runtime overrides.
+- With a backplane, a runtime override (`IRuntimeCacheConfigurator`) applies on every instance. It is stored in the
+  distributed cache, one record per method, before `UpsertAsync` returns, and expires with its `ExpiresAt`. Applying
+  it invalidates the method, as any change of settings does, and an instance that hears of the invalidation reads the
+  method's record again. An instance that starts reads the records of all its cached methods: a generic host waits for
+  them in `StartAsync`, at most `OperationTimeout` per eight methods, and without a host the first cached call starts
+  reading them without waiting. An instance that may have missed messages (when its backplane clears its memory cache)
+  reads them all again.
+- An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
+  (`ArgumentException`). A record an instance can't apply, because it contradicts that instance's own settings or was
+  written by a later format, is skipped with a warning. When the distributed cache doesn't answer, `UpsertAsync` and
+  `RemoveAsync` throw before anything changes on the instance, and an instance keeps the overrides it has and reads
+  them all again after `CircuitBreakerDuration`. A write that timed out can still land; reading them again applies it
+  on every instance.
+- Without a backplane, a runtime override that changes how a method caches gives that method entries of its own on
+  that instance, which no other instance reads, even one with an equal override. Removing the override invalidates the
+  method before the instance reads shared entries again.
 - A key from `IMethodCacheKeys.For` or a manual key invalidates the entry under every policy.
 - Invalidating a method (`ICacheAdministrator.InvalidateMethodAsync`) on one instance removes it on the others for
   every keyed registration and every closed generic type, without changing their settings.
@@ -5837,6 +5870,11 @@ release.
   this version, so it can report a cached implementation it didn't report before.
 - New warning MC0036 fails a build that treats warnings as errors when a name in `methodcache.request_state_types`
   matches no type.
+- With a distributed cache and its backplane, runtime overrides apply on every instance and outlive restarts. Such an
+  override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor` (`ArgumentException`); set them in
+  `AddMethodCache`. `UpsertAsync`, `RemoveAsync` and `ClearAsync` throw an `InvalidOperationException` when the
+  distributed cache doesn't store the change, and `GetOverrides()` lists the overrides of every instance. During a
+  rolling upgrade, instances on rc.10 ignore stored overrides.
 
 ### Added
 
@@ -5875,6 +5913,9 @@ release.
   ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
 - `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
   action, its targets and the time ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)).
+- Runtime overrides apply on every instance with Redis, SQL Server or PostgreSQL and their backplane: they are stored in
+  the distributed cache, the other instances apply them within moments, and an instance that starts applies the active
+  ones, so they survive restarts and slot swaps ([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides)).
 
 ### Changed
 

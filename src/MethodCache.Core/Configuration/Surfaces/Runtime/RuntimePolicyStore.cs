@@ -111,7 +111,14 @@ internal sealed class RuntimePolicyStore : IDisposable
             metadata: stored.Policy.Metadata);
     }
 
-    public Task UpsertAsync(string methodId, CachePolicy policy, CachePolicyFields fields, RuntimeOverrideMetadata? metadata = null)
+    /// <summary>Whether <paramref name="methodId"/> has an override on this instance.</summary>
+    internal bool Contains(string methodId) => _policies.ContainsKey(methodId);
+
+    /// <summary>
+    /// Applies or replaces the override of <paramref name="methodId"/>. <paramref name="updatedAt"/> is when it was made,
+    /// on another instance for an override that every instance applies; it defaults to now.
+    /// </summary>
+    public Task UpsertAsync(string methodId, CachePolicy policy, CachePolicyFields fields, RuntimeOverrideMetadata? metadata = null, DateTimeOffset? updatedAt = null)
     {
         if (string.IsNullOrWhiteSpace(methodId))
         {
@@ -130,7 +137,7 @@ internal sealed class RuntimePolicyStore : IDisposable
 
         RemoveExpiredPolicies();
 
-        var timestamp = _time.GetUtcNow();
+        var timestamp = updatedAt ?? _time.GetUtcNow();
         var policyWithMetadata = ApplyRuntimeMetadata(policy, metadata);
         if (policyWithMetadata.Metadata.Count > 0) fields |= CachePolicyFields.Metadata;
         var contributionMetadata = BuildContributionMetadata(metadata);

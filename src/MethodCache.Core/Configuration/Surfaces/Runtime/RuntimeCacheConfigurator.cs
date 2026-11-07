@@ -7,11 +7,13 @@ internal sealed partial class RuntimeCacheConfigurator : IRuntimeConfiguration
 {
     private readonly RuntimePolicyStore _store;
     private readonly IPolicyRegistry? _registry;
+    private readonly SharedRuntimeOverrides? _shared;
 
-    public RuntimeCacheConfigurator(RuntimePolicyStore store, IPolicyRegistry? registry = null)
+    public RuntimeCacheConfigurator(RuntimePolicyStore store, IPolicyRegistry? registry = null, SharedRuntimeOverrides? shared = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _registry = registry;
+        _shared = shared;
     }
 
     public Task UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure, RuntimeOverrideMetadata? metadata = null)

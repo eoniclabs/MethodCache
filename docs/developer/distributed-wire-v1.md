@@ -41,6 +41,30 @@ A scope's permanent retention contract is established on first use. A shorter no
 Longer requests retain the existing common minimum, which caps all value deadlines; establishing a different
 common bound requires a new KeyPrefix. Atomic maximum writes never shorten existing stamp lifetimes.
 
+## Runtime override records
+
+With a backplane, each method's runtime override is one record at `KeyPrefix + "override:v1:" + methodId`
+(`SharedRuntimeOverrides`). It is written with an absolute expiration: the override's `ExpiresAt`, or ten years
+without one, because SQL Server's `IDistributedCache` otherwise applies a 20-minute sliding expiration. Removing an
+override removes the record. The value is UTF-8 JSON:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `v` | number | Record format, 1. Any other value is skipped with a warning, so a later format needs a new key version |
+| `revision` | string | A new GUID per write; an instance applies a record whose revision it hasn't applied |
+| `updatedAt` | string | ISO 8601 round-trip time of the write, kept as the override's `UpdatedAt` on every instance |
+| `fields` | number | The `CachePolicyFields` the override sets, masked to the stored ones (never `CacheWhen`, `DurationFor`, `TagsFor`, `SlidingFor`) |
+| `duration`, `slidingExpiration`, `refreshAhead`, `failSafe`, `failSafeTimeout`, `failSafeRetryAfter` | number | Ticks, present when set |
+| `version` | number | The method's `Version`, when set |
+| `enabled`, `distributed` | boolean | When set |
+| `tags` | string array | Tag templates |
+| `metadata` | object | `owner`, `reason`, `ticket` strings and `expiresAt` (ISO 8601), each when set |
+
+Nothing in the backplane envelope changes: an instance that applies an override invalidates the method as for any
+policy change, and the method message makes the other instances read its record. A clear (including the synthetic one
+a backplane delivers after it may have lost messages) makes them read every cached method's record. Instances on a
+version without records ignore them.
+
 ## Value format 6
 
 Physical value namespace is `KeyPrefix + e6:s{SerializerVersion}:`, followed by the framed policy/logical key.

@@ -15,7 +15,7 @@ public class PolicyTransitionTests
     private readonly FakeTimeProvider _time = new(DateTimeOffset.UtcNow);
     private readonly MethodCache.TestSupport.AtomicTestCache _store = new();
 
-    private ServiceProvider Node(Reader origin, Action<MethodCacheBuilder>? configure = null, IBackplane? backplane = null)
+    private ServiceProvider Node(Reader origin, Action<MethodCacheBuilder>? configure = null, IBackplane? backplane = null, bool host = false)
     {
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(_time);
@@ -23,7 +23,10 @@ public class PolicyTransitionTests
         if (backplane != null) services.AddKeyedSingleton<MethodCache.Extensibility.IBackplane>(global::MethodCache.Infrastructure.OwnedServices.Key, backplane);
         services.AddMethodCache(builder => { builder.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5))); configure?.Invoke(builder); });
         services.AddMethodCacheDistributedCache(_ => _store, o => { o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+        // What a generic host runs in StartAsync, which reads the stored runtime overrides before the first call
+        if (host) provider.GetRequiredService<Microsoft.Extensions.Options.IStartupValidator>().Validate();
+        return provider;
     }
 
     [Fact]
@@ -49,11 +52,11 @@ public class PolicyTransitionTests
     }
 
     [Fact]
-    public async Task RuntimeOverrides_ArePrivate_RemoveReturnsToInvalidatedSharedNamespace()
+    public async Task RuntimeOverridesWithoutABackplane_ArePrivate_RemoveReturnsToInvalidatedSharedNamespace()
     {
-        var hub = new ChaosBackplaneHub(_time);
-        await using var first = Node(new Reader(100), backplane: hub.Join());
-        await using var second = Node(new Reader(200), backplane: hub.Join());
+        // Without a backplane an override stays on its instance (with one, SharedRuntimeOverridesTests applies it everywhere)
+        await using var first = Node(new Reader(100));
+        await using var second = Node(new Reader(200));
         Assert.Equal(101, await first.GetRequiredService<IReader>().ReadAsync(1));
         Assert.Equal(101, await second.GetRequiredService<IReader>().ReadAsync(1));
         var runtime = first.GetRequiredService<IRuntimeCacheConfigurator>();
@@ -61,7 +64,7 @@ public class PolicyTransitionTests
         await runtime.UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(10)));
         _time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(102, await first.GetRequiredService<IReader>().ReadAsync(1));
-        Assert.Equal(201, await second.GetRequiredService<IReader>().ReadAsync(1));
+        Assert.Empty(second.GetRequiredService<IRuntimeCacheConfigurator>().GetOverrides());
         Assert.Equal(TimeSpan.FromMinutes(5), second.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == MethodId).Options.Duration);
         await using var third = Node(new Reader(300));
         await third.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(10)));
@@ -69,12 +72,14 @@ public class PolicyTransitionTests
         Assert.Equal(301, await third.GetRequiredService<IReader>().ReadAsync(1));
         var a = PolicyHandle.For(first.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), MethodId).Current;
         var b = PolicyHandle.For(third.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), MethodId).Current;
+        Assert.True(a.PrivateIdentity);
         Assert.NotEqual(a.Identity, b.Identity);
         _time.Advance(TimeSpan.FromMilliseconds(1));
         await runtime.RemoveAsync(MethodId);
         _time.Advance(TimeSpan.FromMilliseconds(1));
         Assert.Equal(103, await first.GetRequiredService<IReader>().ReadAsync(1));
-        Assert.Equal(103, await second.GetRequiredService<IReader>().ReadAsync(1));
+        await using var fourth = Node(new Reader(400));
+        Assert.Equal(103, await fourth.GetRequiredService<IReader>().ReadAsync(1));
         Assert.True(first.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == MethodId).IsDistributedNamespaceShared);
     }
 
@@ -222,8 +227,9 @@ public class PolicyTransitionTests
     public async Task LostMethodMessage_LeavesRemotePolicyAndL1UntilExpiry_WithoutCrossingPrivateNamespace()
     {
         var hub = new ChaosBackplaneHub(_time);
-        await using var first = Node(new Reader(100), backplane: hub.Join());
-        await using var second = Node(new Reader(200), backplane: hub.Join());
+        // Started as hosts, so the second instance read the stored overrides before the change and only the lost message could tell it
+        await using var first = Node(new Reader(100), backplane: hub.Join(), host: true);
+        await using var second = Node(new Reader(200), backplane: hub.Join(), host: true);
         var a = first.GetRequiredService<IReader>();
         var b = second.GetRequiredService<IReader>();
         Assert.Equal(101, await a.ReadAsync(1));

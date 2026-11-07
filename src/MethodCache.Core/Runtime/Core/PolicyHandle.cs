@@ -16,11 +16,12 @@ namespace MethodCache.Infrastructure
         private long _version;
         private Action<CacheRuntimePolicy>? _changed;
 
-        internal PolicyHandle(PolicyResolutionResult result)
+        // With sharedOverrides, runtime overrides apply on every instance, so their entries are shared like any others
+        internal PolicyHandle(PolicyResolutionResult result, bool sharedOverrides = false)
         {
             MethodId = result.MethodId;
             var policy = CacheRuntimePolicy.FromResolverResult(result);
-            var isPrivate = PolicyIdentity.IsRuntime(result);
+            var isPrivate = !sharedOverrides && PolicyIdentity.IsRuntime(result);
             _current = policy with { Generation = new PolicyGeneration(), Identity = isPrivate ? PolicyIdentity.Private() : PolicyIdentity.Shared(policy), PrivateIdentity = isPrivate };
             _version = result.Version;
         }
@@ -111,7 +112,7 @@ namespace MethodCache.Infrastructure
         /// <summary>
         /// Publishes a newly resolved policy unless the handle already holds the same or a newer version.
         /// </summary>
-        internal bool Update(PolicyResolutionResult result, bool awaitInvalidation = false)
+        internal bool Update(PolicyResolutionResult result, bool awaitInvalidation = false, bool sharedOverrides = false)
         {
             lock (_sync)
             {
@@ -122,14 +123,14 @@ namespace MethodCache.Infrastructure
 
                 _version = result.Version;
                 var resolved = CacheRuntimePolicy.FromResolverResult(result);
-                if (PolicyIdentity.SameBehavior(_current, resolved) && !(_current.PrivateIdentity && !PolicyIdentity.IsRuntime(result)))
+                var isPrivate = !sharedOverrides && PolicyIdentity.IsRuntime(result);
+                if (PolicyIdentity.SameBehavior(_current, resolved) && !(_current.PrivateIdentity && !isPrivate))
                 {
                     var audited = resolved with { Generation = _current.Generation, Identity = _current.Identity, PrivateIdentity = _current.PrivateIdentity };
                     Volatile.Write(ref _current, audited);
                     _changed?.Invoke(audited);
                     return false;
                 }
-                var isPrivate = PolicyIdentity.IsRuntime(result);
                 var next = resolved with
                 {
                     Generation = new PolicyGeneration { DistributedReady = !awaitInvalidation },

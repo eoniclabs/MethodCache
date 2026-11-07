@@ -288,6 +288,13 @@ Set `<MethodCacheAnalysisLevel>1.0</MethodCacheAnalysisLevel>` (the version whos
 `AddMethodCache(mc => mc.UseRedis("..."))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)`.
 ([Distributed cache](features/distributed-cache.md))
 
+**Does a runtime override reach every instance and survive a restart?**
+Yes, with Redis, SQL Server or PostgreSQL and their backplane: `IRuntimeCacheConfigurator.UpsertAsync` stores it in the
+distributed cache, the other instances apply it within moments, and an instance that starts applies the active ones.
+Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`. Without a distributed cache, or with
+`EnableBackplane = false`, it stays on its own instance until a restart.
+([Runtime overrides](features/configuration.md#runtime-overrides))
+
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
 Return records with public properties, or register a serializer with `UseJson(options)`.

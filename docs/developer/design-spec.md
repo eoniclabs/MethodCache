@@ -26,9 +26,9 @@ fanns i design-execution.md (borttagen, finns i git-historiken); publicering av 
 | Release | Alla ändringar landar före Unshipped → Shipped. En rc kan användas för att verifiera publiceringsvägen. |
 | Publikt API | Användar-API och ett litet, tekniskt publikt generator-kontrakt. Övrig implementation är intern. |
 | Registrering | AddMethodCache() dekorerar uttryckligen registrerade tjänster. AutoRegister kräver uttrycklig livstid och entydig kandidat. |
-| Konfiguration | En MethodCacheBuilder för startup. Runtime-overrides är lokala per container; de sprider ingen policy till andra noder. |
+| Konfiguration | En MethodCacheBuilder för startup. Med distribuerad cache och backplane lagras runtime-overrides i L2 och gäller på alla noder; utan backplane är de lokala per container. |
 | Policyändringar | Lokal ogiltigförklaring är omedelbar. L2 och andra noders L1 följer garantierna i §5; ingen kvittens från alla noder utlovas. |
-| L2-policyidentitet | Gemensam deklarativ konfiguration har en stabil identitet. Lokala runtime-overrides har en privat identitet. |
+| L2-policyidentitet | Gemensam deklarativ konfiguration och delade runtime-overrides har en stabil identitet. Lokala runtime-overrides har en privat identitet. |
 | Cookies | Cookies stängs av och det loggas. KeepCookies behåller transporten orörd och kringgår response-caching helt. |
 | HTTP | Samma interna motorimplementation, transport, administration och telemetri. HTTP äger freshness, revalidation och generationer. |
 | HTTP med L2 | Bara L2; inga lokala svarskopior eller lokalt cachade generationsvärden. |
@@ -206,8 +206,10 @@ UseMessagePack och UseJson. Bekvämlighetsöverlagringar är uttryckliga; de än
   method-expression-överlagringar. Alla tar token sist. Okänt method-id avvisas utan att lagras.
   Batch/mask/publik CachePolicy tas bort. Grupp/global-defaults vid startup och config finns kvar; runtime-
   konfiguratorn ändrar metoder (ingen dold gruppadministration via en felstavad metodsträng).
-- Runtime-overrides ändrar bara den lokala policyn. En invalidationssignal kan skickas till andra noder,
-  men betyder aldrig att deras policy ändrats. Appsettings måste distribueras och laddas om av applikationen
+- Med backplane lagras en runtime-override som en post per metod i L2 innan den gäller lokalt; en metodsignal får
+  andra noder att läsa om postens metod, en clear-signal att läsa om alla, och en nod som startar läser alla.
+  Sådana overrides får inte innehålla funktioner (CacheWhen, DurationFor, TagsFor, SlidingFor). Utan backplane
+  ändrar runtime-overrides bara den lokala policyn. Själva invalidationssignalen bär ingen policy. Appsettings måste distribueras och laddas om av applikationen
   på varje nod; biblioteket distribuerar inte konfigurationsfiler.
 - Policy-pipelinen är intern. GetMethods visar effektiv policy, källa per inställning och om L2-namespace är
   shared eller lokal. Enbart ändrad audit-metadata får inte invalidiera värden.
@@ -321,7 +323,7 @@ För metodcaching är spridning **best effort**: lokal ändring är omedelbar, L
 lagrats och andra noders L1 påverkas när backplanen levererar. Vid förlust/frånkoppling kan deras gamla L1
 leva till expiry enligt den egna policyn; provider-reconnect rensar lokal cache som i dag.
 L2-läsningar kan också fördröjas av den dokumenterade TagCheckInterval. Ingen global barrier utlovas.
-Köning och publikationskö syns i health check. En fjärrsignal ändrar aldrig mottagarens policy.
+Köning och publikationskö syns i health check. En fjärrsignal ändrar aldrig mottagarens policy i sig; med backplane läser mottagaren den lagrade override-posten.
 
 ### 5.2 Stabil shared-identitet och privata overrides
 
@@ -333,7 +335,8 @@ Användarens MethodCacheKeys och InvalidateKeys arbetar på logisk nyckel utan d
   Distributed, grupp och ordinalt sorterade distinkta taggmallar. Identiteten innehåller inga owner/ticket,
   timestamps, registration-order, delegate-adresser eller processlokala räknare.
   Samma effektiva deklarativa inställningar och samma tjänste-/service-key-identitet kan dela L2.
-- En beteendeändrande lokal runtime-override får en privat, slumpmässig 128-bit namespace-identitet per
+- En override som alla noder tillämpar (med backplane) får shared-identiteten för sina effektiva inställningar.
+- En beteendeändrande lokal runtime-override (utan backplane) får en privat, slumpmässig 128-bit namespace-identitet per
   berörd metod och container. Varje efterföljande beteendeändring får en ny identitet, inklusive av/på.
   Två noder med lika lokala overrides delar inte L2; restart återanvänder aldrig en privat identitet.
 - När override tas bort återgår metoden till shared-identiteten för sin dåvarande startup/config.
