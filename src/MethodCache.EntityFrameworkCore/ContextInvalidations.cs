@@ -1,4 +1,7 @@
 using System.Data.Common;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -135,7 +138,9 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         {
             if (row.NeedsRead) (toRead ??= []).Add(row);
         }
-        return toRead == null ? default : ReadStoredAsync(save, toRead, async, cancellationToken);
+        return toRead == null && save.PrincipalReadOrder.Count == 0
+            ? default
+            : ReadStoredAsync(context, save, toRead ?? [], async, cancellationToken);
     }
 
     /// <summary>The save succeeded: its tags are invalidated now, or with the transaction it ran in.</summary>
@@ -373,12 +378,22 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
                 deleting: principal.State == EntityState.Deleted);
             return;
         }
-        // The principal isn't tracked: its tags that use only its key come from the foreign key's values
+        // The principal isn't tracked: its tags that use only its key come from the foreign key's values, and the
+        // others from its stored row, read before the save, as a join row added without loading either side needs
         if (!_map!.TryGet(foreignKey.PrincipalEntityType, out var tags)) return;
         var keyProperties = foreignKey.PrincipalKey.Properties;
+        var needsRow = false;
         foreach (var template in tags.Templates)
         {
             if (template.Properties.All(keyProperties.Contains)) _save!.Tags.Add(template.Format(new KeyRow(keyProperties, key)));
+            else needsRow = true;
+        }
+        var save = _save!;
+        var principalType = foreignKey.PrincipalEntityType;
+        if (needsRow && save.Collecting && !principalType.IsOwned())
+        {
+            var read = new PrincipalRead(principalType, foreignKey.PrincipalKey, key, tags);
+            if ((save.PrincipalReads ??= []).Add(read)) save.PrincipalReadOrder.Add(read);
         }
     }
 
@@ -410,12 +425,24 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         return new KeyValues(key);
     }
 
-    /// <summary>Reads the stored rows of attached rows the save writes, for the old values of their tags.</summary>
-    private static async ValueTask ReadStoredAsync(SaveRun save, List<SavedRow> rows, bool async, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads the stored rows of attached rows the save writes, for the old values of their tags, and the stored rows
+    /// of untracked principals of join rows, for their tags.
+    /// </summary>
+    private static async ValueTask ReadStoredAsync(DbContext context, SaveRun save, List<SavedRow> rows, bool async, CancellationToken cancellationToken)
     {
         save.Reading = true;
         try
         {
+            foreach (var read in save.PrincipalReadOrder)
+            {
+                var tags = read.Tags;
+                var properties = tags.Templates.SelectMany(static t => t.Properties).Distinct().ToArray();
+                var stored = await ReadUntrackedAsync(context, read, properties, async, cancellationToken).ConfigureAwait(false);
+                // A principal that isn't stored has no rows its other tags could select
+                if (stored != null) AddTags(tags.Templates, new ArrayRow(properties, stored), save.Tags);
+            }
+
             foreach (var row in rows)
             {
                 var entry = row.Entry;
@@ -435,6 +462,48 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         }
     }
 
+    private static readonly MethodInfo SetOfType = typeof(DbContext).GetMethod(nameof(DbContext.Set), Type.EmptyTypes)!;
+    private static readonly MethodInfo SetOfName = typeof(DbContext).GetMethod(nameof(DbContext.Set), [typeof(string)])!;
+    private static readonly MethodInfo WhereMethod = typeof(Queryable).GetMethods()
+        .Single(static m => m.Name == nameof(Queryable.Where) && m.GetParameters()[1].ParameterType.GetGenericArguments()[0].GetGenericArguments().Length == 2);
+    private static readonly MethodInfo SelectMethod = typeof(Queryable).GetMethods()
+        .Single(static m => m.Name == nameof(Queryable.Select) && m.GetParameters()[1].ParameterType.GetGenericArguments()[0].GetGenericArguments().Length == 2);
+    private static readonly MethodInfo PropertyMethod = typeof(EF).GetMethod(nameof(EF.Property))!;
+
+    /// <summary>
+    /// The stored values of <paramref name="properties"/> of a row the context doesn't track, read by its key without
+    /// tracking it and past query filters; null when no row has the key. The key is a parameter of the query, so every
+    /// key shares one compiled query.
+    /// </summary>
+    private static async Task<object?[]?> ReadUntrackedAsync(DbContext context, PrincipalRead read, IProperty[] properties, bool async, CancellationToken cancellationToken)
+    {
+        var type = read.Type;
+        var set = (IQueryable)(type.HasSharedClrType
+            ? SetOfName.MakeGenericMethod(type.ClrType).Invoke(context, [type.Name])!
+            : SetOfType.MakeGenericMethod(type.ClrType).Invoke(context, null)!);
+        var row = Expression.Parameter(type.ClrType, "row");
+        Expression? match = null;
+        var keyProperties = read.Key.Properties;
+        for (var i = 0; i < keyProperties.Count; i++)
+        {
+            var property = keyProperties[i];
+            var box = Activator.CreateInstance(typeof(StrongBox<>).MakeGenericType(property.ClrType), read.Values[i])!;
+            var equal = Expression.Equal(Read(row, property), Expression.Field(Expression.Constant(box), nameof(StrongBox<object>.Value)));
+            match = match == null ? equal : Expression.AndAlso(match, equal);
+        }
+        var filtered = (IQueryable)WhereMethod.MakeGenericMethod(type.ClrType)
+            .Invoke(null, [set, Expression.Lambda(match!, row)])!;
+        var values = Expression.NewArrayInit(typeof(object), properties.Select(p => Expression.Convert(Read(row, p), typeof(object))));
+        var query = ((IQueryable<object?[]>)SelectMethod.MakeGenericMethod(type.ClrType, typeof(object?[]))
+            .Invoke(null, [filtered, Expression.Lambda(values, row)])!)
+            .AsNoTracking()
+            .IgnoreQueryFilters();
+        return async ? await query.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false) : query.FirstOrDefault();
+
+        static Expression Read(ParameterExpression row, IProperty property)
+            => Expression.Call(PropertyMethod.MakeGenericMethod(property.ClrType), row, Expression.Constant(property.Name));
+    }
+
     /// <summary>The tags of the rows' new values: saved values, with generated keys, for rows that still exist.</summary>
     private void AddNewTags(SaveRun save, HashSet<string> tags, bool succeeded)
     {
@@ -442,7 +511,7 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         {
             var entry = row.Entry;
             if (entry.State is EntityState.Detached or EntityState.Deleted) continue;
-            if (row.Stored != null) AddTags(row.Tags.Templates, new WrittenValues(row), tags);
+            if (row.Stored != null) AddTags(row.Tags.Templates, new WrittenValues(row, succeeded), tags);
             else AddTags(row.Tags.Templates, new Values(entry.CurrentValues), tags);
             // A new row's values are now the stored ones
             if (succeeded && row.WasAdded) _unloaded.Remove(entry.Entity);
@@ -593,7 +662,15 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         public Dictionary<object, SavedRow> Seen { get; } = new(ReferenceEqualityComparer.Instance);
 
         public Dictionary<IKey, Dictionary<KeyValues, EntityEntry>>? Principals { get; set; }
+
+        /// <summary>Untracked principals of join rows whose tags need their stored row, read before the save.</summary>
+        public HashSet<PrincipalRead>? PrincipalReads { get; set; }
+
+        public List<PrincipalRead> PrincipalReadOrder { get; } = [];
     }
+
+    /// <summary>A principal of a join row, by its key, that the context doesn't track, with its type's tags.</summary>
+    private readonly record struct PrincipalRead(IEntityType Type, IKey Key, KeyValues Values, EntityTags Tags);
 
     private sealed class SavedRow(EntityEntry entry, EntityTags tags, bool wasAdded)
     {
@@ -622,13 +699,29 @@ internal sealed class ContextInvalidations : IResettableService, IDisposable
         public object? this[IProperty property] => values[property];
     }
 
-    /// <summary>A row attached without loading, after the save: what it wrote, and the stored values of the rest.</summary>
-    private readonly struct WrittenValues(SavedRow row) : IRowValues
+    /// <summary>
+    /// A row attached without loading, after the save: what it wrote, what the database generated for it, such as a
+    /// computed column, and the stored values of the rest.
+    /// </summary>
+    private readonly struct WrittenValues(SavedRow row, bool succeeded) : IRowValues
     {
         public object? this[IProperty property]
             => row.Modified!.Contains(property) || row.Entry.Property(property).IsModified
+               || (succeeded && (property.ValueGenerated & ValueGenerated.OnUpdate) != 0)
                 ? row.Entry.CurrentValues[property]
                 : row.Stored![property];
+    }
+
+    private readonly struct ArrayRow(IProperty[] properties, object?[] values) : IRowValues
+    {
+        public object? this[IProperty property]
+        {
+            get
+            {
+                var index = Array.IndexOf(properties, property);
+                return index < 0 ? null : values[index];
+            }
+        }
     }
 
     private readonly struct KeyRow(IReadOnlyList<IProperty> properties, KeyValues key) : IRowValues

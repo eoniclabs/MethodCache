@@ -4,7 +4,7 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.11 (2026-11-07)
 
 ### Upgrading from 1.0.0-rc.10
 
@@ -54,7 +54,7 @@ release.
   ([Hit ratio per method](docs/features/monitoring.md#hit-ratio-per-method)).
 - `MethodCacheWeigher.Bytes`, a ready-made weigher that counts approximate bytes of strings and arrays of numbers:
   `o.Weigher = MethodCacheWeigher.Bytes`.
-- `CachedServices.Problems(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
+- `CachedServices.ProblemsAsync(provider)` in `MethodCache.Testing` checks that every service with cached methods resolves
   to its caching decorator, so a registration mistake fails a test
   ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
 - `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
@@ -73,6 +73,20 @@ release.
 - The MC0026 message points to `[ChecksRequestState]` for a tenant or user that the method takes as a parameter.
 - A policy in code or appsettings for a cached service that the application doesn't register is logged at
   `Information` instead of `Debug`, so a misspelt or moved service shows in the startup log.
+
+### Fixed
+
+- **`MethodCache.EntityFrameworkCore`**: a many-to-many link added or removed with only the two ids, without loading
+  either side, invalidates every mapped tag of both sides. The side the context hasn't loaded is read once before the
+  save when its tags use more than its key. Before, only tags that use the key alone, such as `product:{Id}`, were
+  invalidated, and a cached list by category kept the old links.
+- **`MethodCache.EntityFrameworkCore`**: a row changed without loading it invalidates the new value of a column the
+  database computes, such as `HasComputedColumnSql`. Before, only the old value was invalidated.
+- **`MethodCache.EntityFrameworkCore`**: the warning for an invalidation that can't be confirmed after a commit gives
+  the number of tags and the error's type. Before, it logged the tags, which can hold user or tenant ids, and the
+  exception with its message.
+- **`MethodCache.EntityFrameworkCore`**: `UseEntityFrameworkCore` works in a container without logging, such as a
+  `ServiceCollection` built without a generic host. Before, it threw because no `ILogger<T>` was registered.
 
 ## 1.0.0-rc.10 (2026-11-06)
 

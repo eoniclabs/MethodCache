@@ -51,14 +51,14 @@ The recorder sees the built-in cache manager: with `NoOpCacheManager` or your ow
 
 ## Every cached service resolves
 
-`CachedServices.Problems` resolves each registered service with cached methods and checks that it is the generated
+`CachedServices.ProblemsAsync` resolves each registered service with cached methods and checks that it is the generated
 caching decorator, so a service registered after `AddMethodCache` or one with a missing dependency fails a test instead
 of the application's startup:
 
 <!-- snippet: testing-cached-services -->
 ```cs
 // Every service with cached methods resolves, and to its generated caching decorator
-Assert.Empty(CachedServices.Problems(provider));
+Assert.Empty(await CachedServices.ProblemsAsync(provider));
 ```
 <!-- endSnippet -->
 

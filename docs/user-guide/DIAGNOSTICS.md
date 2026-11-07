@@ -373,6 +373,10 @@ id from the request, or authorize it, before the call, as for any cached method 
 Refresh-ahead runs without a request, so the check fails there and the entry is loaded on the next call instead;
 don't combine the pattern with `RefreshAhead`. The attribute changes nothing at run time.
 
+The analyzer reads the attribute on the method the cached method calls. When you call the check through an interface,
+such as `ITenantContext.EnsureActsFor(tenantId)`, mark the interface method; the attribute on the class that implements
+it isn't seen through the interface.
+
 ## MC0027
 
 Reported in a project that uses `MethodCache.EntityFrameworkCore`, on `ExecuteUpdate`, `ExecuteDelete`,
@@ -661,7 +665,7 @@ aren't reported.
 
 ## MC0036
 
-A name in the `.editorconfig` option `methodcache.request_state_types` matches no type, although its namespace exists.
+A name in the `.editorconfig` option `methodcache.request_state_types` matches no type, although its namespace has types.
 [MC0026](#mc0026) then doesn't look for that type, without a sign: this happens when the type is renamed or moved and
 the option isn't.
 
@@ -671,9 +675,10 @@ methodcache.request_state_types = MyApp.ICurrentUser   # MC0036 after ICurrentUs
 ```
 
 Write the type's full name as it is now, with its namespace, such as `MyApp.IUserContext`. A nested type is written
-`MyApp.Outer.Inner`, and a generic type `MyApp.IRepository<T>`. A name is checked only in a project that sees its
-namespace, so a solution-wide `.editorconfig` that names a type of the web project doesn't warn in a library that
-doesn't reference it. The warning has no location in a file; it names the option and the type.
+`MyApp.Outer.Inner`, and a generic type `MyApp.IRepository<T>`. A name is checked only in a project that sees types in
+its namespace, so a solution-wide `.editorconfig` that names a type of the web project doesn't warn in a library that
+doesn't reference it, even one whose own namespace, such as `MyApp.Data`, starts with the type's namespace. The warning
+has no location in a file; it names the option and the type.
 
 ## MC0037
 

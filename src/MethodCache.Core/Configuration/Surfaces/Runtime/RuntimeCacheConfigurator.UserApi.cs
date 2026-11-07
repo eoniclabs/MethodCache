@@ -65,8 +65,12 @@ internal sealed partial class RuntimeCacheConfigurator
         cancellationToken.ThrowIfCancellationRequested();
         if (Shared is { } shared)
         {
-            // One method at a time, so a failure leaves each override either removed everywhere or still in place
-            foreach (var method in _store.GetSnapshots().Select(static snapshot => snapshot.MethodId).Order(StringComparer.Ordinal))
+            // The overrides stored for the cached methods, also ones this instance hasn't read yet, and the ones it has.
+            // One method at a time, so a failure leaves each override either removed everywhere or still in place.
+            var stored = await shared.StoredMethodsAsync(cancellationToken).ConfigureAwait(false);
+            var overridden = stored.Concat(_store.GetSnapshots().Select(static snapshot => snapshot.MethodId))
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            foreach (var method in overridden)
             {
                 await shared.RemoveAsync(method, cancellationToken).ConfigureAwait(false);
                 await WaitForInvalidation(method, cancellationToken).ConfigureAwait(false);

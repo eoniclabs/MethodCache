@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -39,10 +41,11 @@ public static class EntityFrameworkCoreMethodCacheBuilderExtensions
         {
             options = new EntityFrameworkCoreRegistration<TContext>();
             services.AddSingleton(options);
+            // Logging is optional, as in the rest of MethodCache: a container without a generic host may have none
             services.TryAddSingleton(static sp => new EntityInvalidation<TContext>(
                 sp.GetRequiredService<EntityFrameworkCoreRegistration<TContext>>().Options,
                 sp.GetRequiredService<ICacheManager>(),
-                sp.GetRequiredService<Logging.ILogger<EntityInvalidation<TContext>>>()));
+                (ILogger?)sp.GetService<ILoggerFactory>()?.CreateLogger<EntityInvalidation<TContext>>() ?? NullLogger.Instance));
             services.ConfigureDbContext<TContext>(static (sp, db) =>
             {
                 db.AddInterceptors(sp.GetRequiredService<EntityInvalidation<TContext>>().Interceptor);

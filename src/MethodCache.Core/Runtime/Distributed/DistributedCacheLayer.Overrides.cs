@@ -35,6 +35,16 @@ internal sealed partial class DistributedCacheLayer
         await _cache.SetAsync(OverrideKey(methodId), record, options, timeout.Token).WaitAsync(_timeout, _time, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Tells the other instances that the method's override changed, so they read it again, for a change that
+    /// invalidated nothing here. A message the backplane doesn't take is published again later.
+    /// </summary>
+    internal async Task PublishOverrideChangedAsync(string methodId)
+    {
+        var target = (true, MethodTag(methodId));
+        if (!await PublishTargetAsync(target, report: false).ConfigureAwait(false)) QueuePublication(target, report: false);
+    }
+
     /// <summary>Removes the override record of <paramref name="methodId"/>.</summary>
     internal async Task RemoveOverrideAsync(string methodId, CancellationToken cancellationToken)
     {

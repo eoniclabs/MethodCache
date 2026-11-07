@@ -67,7 +67,8 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
   number, `:` and `\` escaped in strings. So `"product:{Id}"` on the entity matches `"product:{id}"` on a method, and
   `"sku:{Sku}"` matches `"sku:{sku}"` for a SKU such as `ham:mer`.
 - **A changed row invalidates the tags of its old and its new values.** Moving a product to another category
-  invalidates `category:1` and `category:2`.
+  invalidates `category:1` and `category:2`. The new values include columns the database computes, such as a
+  computed column, which EF Core reads back after the save.
 - **A row you change without loading it is read once before it is saved**, for its stored values. That covers
   `Update(product)` with values from a request, `Attach` with a few properties set, and `Remove(new Product { Id = id })`:
   the category it had in the database is invalidated, not the empty value of a new object. A row the context loaded
@@ -77,7 +78,9 @@ public static async Task ChangePriceAsync(int id, decimal price, ShopDb db, Canc
   A cached "not found" for that id is invalidated too.
 - **A derived type** invalidates the tags of every mapped type it derives from.
 - **A type mapped with `OwnsOne` or `OwnsMany`**, such as an address stored in the customer's row, invalidates the
-  tags of its owner. **A many-to-many link** added or removed invalidates the tags of both sides that are mapped.
+  tags of its owner. **A many-to-many link** added or removed invalidates the tags of both sides that are mapped. A
+  side the context hasn't loaded is read once before the save when its tags use more than its key, so a link added
+  with only the two ids still invalidates `category:{CategoryId}` of the product.
 - **A tag without braces**, such as `"top-sellers"`, is invalidated by any change to that entity type.
 - **Everything the save writes counts**: rows another `SaveChanges` interceptor changes, adds or deletes, and rows EF
   Core deletes by cascade during the save.
@@ -145,6 +148,8 @@ public static async Task MoveAsync(int id, int categoryId, ShopDb db, Cancellati
   PostgreSQL confirm in the background, so the call never waits on the network.
 - An invalidation after a commit never throws: the data is saved, and an exception would make the caller think the
   save failed. If the distributed cache is down, the invalidation is retried until it is back, and logged as a warning.
+  The warning names the context, the number of tags and the error's type, not the tags or the error's message, which
+  can hold user ids or connection details.
 - With several instances, the other instances drop their copies as with any invalidation
   ([With several instances](invalidation.md#with-several-instances)).
 - Commit through EF Core: `Commit()` on what `BeginTransaction` returned, or `Database.CommitTransaction()`. A
@@ -331,8 +336,9 @@ builder.Services.AddMethodCache(mc => mc.UseEntityFrameworkCore<AppDb>(ef => ef
 
 ### Saves of rows the context didn't load
 
-A row changed or deleted without loading it is read for its stored values before the save
-([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on the save's connection:
+A row changed or deleted without loading it is read for its stored values before the save, and so is the side of a
+many-to-many link the context hasn't loaded ([Mapping entities to tags](#mapping-entities-to-tags)). The read runs on
+the save's connection:
 
 - **EF Core query filters don't apply to it**, so a row that a tenant filter hides from queries is still read.
 - **Row-level security does.** When a policy hides the row from the user, the read finds nothing, and the values your

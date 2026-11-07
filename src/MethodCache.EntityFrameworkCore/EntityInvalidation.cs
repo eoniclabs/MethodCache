@@ -103,12 +103,14 @@ internal class EntityInvalidation
 
     private sealed record BuiltMap(EntityTagMap? Map, string? Error);
 
+    // Neither the tags nor the exception: tags can hold user or tenant ids, and a cache manager's exception text can
+    // hold credentials or request data. Spans record tags only when the application opts in.
     private void LogFailure(Exception error, string[] tags)
-        => _logger.LogWarning(error, "MethodCache could not confirm the invalidation of {Tags} after {Context} committed.",
-            string.Join(", ", tags), ContextType.Name);
+        => _logger.LogWarning("MethodCache could not confirm the invalidation of {TagCount} tags after {Context} committed. Error type: {ErrorType}.",
+            tags.Length, ContextType.Name, error.GetType().FullName);
 }
 
 /// <summary>The registration of <typeparamref name="TContext"/>, one per container.</summary>
-internal sealed class EntityInvalidation<TContext>(EntityFrameworkCoreOptions options, ICacheManager cache, ILogger<EntityInvalidation<TContext>> logger)
+internal sealed class EntityInvalidation<TContext>(EntityFrameworkCoreOptions options, ICacheManager cache, ILogger logger)
     : EntityInvalidation(typeof(TContext), options, cache, logger)
     where TContext : DbContext;

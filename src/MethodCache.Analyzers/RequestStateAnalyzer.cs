@@ -35,11 +35,11 @@ namespace MethodCache.Analyzers
         internal static readonly DiagnosticDescriptor UnknownTypeRule = new DiagnosticDescriptor(
             "MC0036",
             "A name in methodcache.request_state_types matches no type",
-            "\"{0}\" in methodcache.request_state_types matches no type, although namespace '{1}' exists, so MC0026 doesn't look for it. Write the type's full name with its namespace, as it is now, or remove the name.",
+            "\"{0}\" in methodcache.request_state_types matches no type, although namespace '{1}' has types, so MC0026 doesn't look for it. Write the type's full name with its namespace, as it is now, or remove the name.",
             "Usage",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "The .editorconfig option names the application's own request-state types for MC0026. A name that matches no type, such as one left behind when the type was renamed or moved, turns the check for that type off without a sign. A name is checked only in a project that sees its namespace, so a solution-wide .editorconfig doesn't warn in projects that don't reference the type.",
+            description: "The .editorconfig option names the application's own request-state types for MC0026. A name that matches no type, such as one left behind when the type was renamed or moved, turns the check for that type off without a sign. A name is checked only in a project that sees types in its namespace, so a solution-wide .editorconfig doesn't warn in projects that don't reference the type, even when their own namespaces start with it.",
             helpLinkUri: HelpLink("MC0036"),
             customTags: WellKnownDiagnosticTags.CompilationEnd);
 
@@ -159,9 +159,10 @@ namespace MethodCache.Analyzers
         }
 
         /// <summary>
-        /// Reports each configured name that matches no type in a namespace the project sees: a type that was renamed or
-        /// moved. A name whose namespace the project doesn't see, such as a type of the web project in a solution-wide
-        /// .editorconfig read by a library, isn't checked.
+        /// Reports each configured name that matches no type in a namespace whose types the project sees: a type that was
+        /// renamed or moved. A name whose namespace holds no type the project sees isn't checked: a solution-wide
+        /// .editorconfig read by a library names types of the web project, and the library's own namespace, such as
+        /// <c>App.Data</c>, can make the web project's <c>App</c> exist without any of its types.
         /// </summary>
         private static void ReportUnknownTypes(CompilationAnalysisContext context)
         {
@@ -177,7 +178,7 @@ namespace MethodCache.Analyzers
                 var simple = StripTypeArguments(name, out var arity);
                 var dot = simple.LastIndexOf('.');
                 var ns = dot < 0 ? "" : simple.Substring(0, dot);
-                if (TypeExists(context.Compilation, simple, arity) || !NamespaceExists(context.Compilation, ns)) continue;
+                if (TypeExists(context.Compilation, simple, arity) || !NamespaceHasTypes(context.Compilation, ns)) continue;
                 context.ReportDiagnostic(Diagnostic.Create(UnknownTypeRule, Location.None, name, ns.Length == 0 ? "<global>" : ns));
             }
         }
@@ -206,7 +207,8 @@ namespace MethodCache.Analyzers
             }
         }
 
-        private static bool NamespaceExists(Compilation compilation, string name)
+        /// <summary>Whether the namespace holds types of its own that the project sees, not only other namespaces.</summary>
+        private static bool NamespaceHasTypes(Compilation compilation, string name)
         {
             INamespaceSymbol? ns = compilation.GlobalNamespace;
             foreach (var part in name.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries))
@@ -214,7 +216,7 @@ namespace MethodCache.Analyzers
                 ns = ns.GetNamespaceMembers().FirstOrDefault(n => n.Name == part);
                 if (ns == null) return false;
             }
-            return true;
+            return !ns.GetTypeMembers().IsEmpty;
         }
 
         private sealed class Search(ImmutableHashSet<string> configured, Lazy<ILookup<ISymbol, INamedTypeSymbol>> implementations,

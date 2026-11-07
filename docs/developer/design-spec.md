@@ -208,6 +208,9 @@ UseMessagePack och UseJson. Bekvämlighetsöverlagringar är uttryckliga; de än
   konfiguratorn ändrar metoder (ingen dold gruppadministration via en felstavad metodsträng).
 - Med backplane lagras en runtime-override som en post per metod i L2 innan den gäller lokalt; en metodsignal får
   andra noder att läsa om postens metod, en clear-signal att läsa om alla, och en nod som startar läser alla.
+  Noden som gör ändringen skickar alltid metodsignalen, också när ändringen inte invaliderar något lokalt (bara
+  audit-fält, eller ingen handle än). En nod som läser en post efter en metodsignal rensar bara sina egna värden och
+  skickar ingen ny signal. ClearAsync tar bort de lagrade posterna för alla cachade metoder, inte bara de noden sett.
   Sådana overrides får inte innehålla funktioner (CacheWhen, DurationFor, TagsFor, SlidingFor). Utan backplane
   ändrar runtime-overrides bara den lokala policyn. Själva invalidationssignalen bär ingen policy. Appsettings måste distribueras och laddas om av applikationen
   på varje nod; biblioteket distribuerar inte konfigurationsfiler.

@@ -17,7 +17,7 @@ public class CachedServicesTests
     }
 
     [Fact]
-    public void Problems_EveryServiceResolvesToItsDecorator_IsEmpty()
+    public async Task Problems_EveryServiceResolvesToItsDecorator_IsEmpty()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IProducts, Products>();
@@ -26,11 +26,54 @@ public class CachedServicesTests
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
 
-        Assert.Empty(CachedServices.Problems(provider));
+        Assert.Empty(await CachedServices.ProblemsAsync(provider));
+    }
+
+    // Implements only IAsyncDisposable, which a scope disposed synchronously refuses
+    public sealed class AsyncOnlyConnection : IAsyncDisposable
+    {
+        public bool Disposed { get; private set; }
+        public ValueTask DisposeAsync() { Disposed = true; return ValueTask.CompletedTask; }
+    }
+
+    public sealed class ConnectedProducts(AsyncOnlyConnection connection) : IProducts
+    {
+        public Task<string> GetAsync(int id) => Task.FromResult($"product {id} {connection.Disposed}");
+        public Task<decimal> PriceAsync(int id) => Task.FromResult(1m);
+    }
+
+    public sealed class AsyncOnlyProducts : IProducts, IAsyncDisposable
+    {
+        public Task<string> GetAsync(int id) => Task.FromResult($"product {id}");
+        public Task<decimal> PriceAsync(int id) => Task.FromResult(1m);
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     [Fact]
-    public void Problems_AServiceRegisteredAfterAddMethodCache_IsReported()
+    public async Task Problems_AScopedDependencyThatOnlyDisposesAsynchronously_IsNoProblem()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<AsyncOnlyConnection>();
+        services.AddScoped<IProducts, ConnectedProducts>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(await CachedServices.ProblemsAsync(provider));
+    }
+
+    [Fact]
+    public async Task Problems_AScopedServiceThatOnlyDisposesAsynchronously_IsNoProblem()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IProducts, AsyncOnlyProducts>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(await CachedServices.ProblemsAsync(provider));
+    }
+
+    [Fact]
+    public async Task Problems_AServiceRegisteredAfterAddMethodCache_IsReported()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IProductWriter, ProductWriter>();
@@ -38,7 +81,7 @@ public class CachedServicesTests
         services.AddSingleton<IProducts, Products>();
         using var provider = services.BuildServiceProvider();
 
-        var problem = Assert.Single(CachedServices.Problems(provider));
+        var problem = Assert.Single(await CachedServices.ProblemsAsync(provider));
 
         Assert.Equal(typeof(IProducts), problem.Service);
         Assert.Null(problem.ServiceKey);
@@ -47,14 +90,14 @@ public class CachedServicesTests
     }
 
     [Fact]
-    public void Problems_AServiceThatCantBeResolved_IsReportedWithTheError()
+    public async Task Problems_AServiceThatCantBeResolved_IsReportedWithTheError()
     {
         var services = new ServiceCollection();
         services.AddKeyedSingleton<IProducts, SourcedProducts>("sourced");
         services.AddMethodCache();
         using var provider = services.BuildServiceProvider();
 
-        var problem = Assert.Single(CachedServices.Problems(provider));
+        var problem = Assert.Single(await CachedServices.ProblemsAsync(provider));
 
         Assert.Equal("sourced", problem.ServiceKey);
         Assert.StartsWith("Resolving it throws InvalidOperationException:", problem.Problem, StringComparison.Ordinal);
@@ -63,11 +106,11 @@ public class CachedServicesTests
     }
 
     [Fact]
-    public void Problems_WithoutAddMethodCache_Throws()
+    public async Task Problems_WithoutAddMethodCache_Throws()
     {
-        using var provider = new ServiceCollection().BuildServiceProvider();
+        await using var provider = new ServiceCollection().BuildServiceProvider();
 
-        var error = Assert.Throws<InvalidOperationException>(() => CachedServices.Problems(provider));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CachedServices.ProblemsAsync(provider));
 
         Assert.Contains("AddMethodCache", error.Message, StringComparison.Ordinal);
     }

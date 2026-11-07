@@ -183,6 +183,16 @@ internal partial class InMemoryCacheManager
     }
 
     /// <summary>
+    /// Drops the method's entries on this instance only, for a change another instance has already invalidated on
+    /// every instance.
+    /// </summary>
+    internal void InvalidateMethodHere(string methodId)
+    {
+        InvalidateMethodLocally(methodId);
+        _telemetry?.Invalidations("method", "local", 1);
+    }
+
+    /// <summary>
     /// The id of the cached method an entry belongs to, as <see cref="CachedMethodInfo.MethodId"/> gives it; null for a
     /// manual entry, which belongs to no method.
     /// </summary>

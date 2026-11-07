@@ -44,6 +44,14 @@ public sealed class Category
     public string Name { get; set; } = "";
 }
 
+/// <summary>A row with a column the database computes from another one.</summary>
+public sealed class Article
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string Slug { get; set; } = "";
+}
+
 /// <summary>A row without a CLR key property: its category is a shadow foreign key.</summary>
 public sealed class Review
 {
@@ -57,6 +65,7 @@ public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Label> Labels => Set<Label>();
+    public DbSet<Article> Articles => Set<Article>();
 
     /// <summary>Hides every product from queries, as a tenant filter hides another tenant's rows.</summary>
     public bool HideProducts { get; set; }
@@ -70,6 +79,7 @@ public sealed class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options
         modelBuilder.Entity<Product>().HasMany(p => p.Labels).WithMany(l => l.Products);
         modelBuilder.Entity<Review>().Property<int>("ProductId");
         modelBuilder.Entity<Review>().HasOne<Product>().WithMany().HasForeignKey("ProductId");
+        if (Database.IsRelational()) modelBuilder.Entity<Article>().Property(a => a.Slug).HasComputedColumnSql("upper(Title)", stored: true);
     }
 }
 
@@ -94,6 +104,9 @@ public interface IProductReads
 
     [Cache(Duration = "10m", Tags = ["reviews:{productId}"])]
     Task<int> ReviewCountAsync(int productId);
+
+    [Cache(Duration = "10m", Tags = ["slug:{slug}"])]
+    Task<int?> ArticleBySlugAsync(string slug);
 }
 
 /// <summary>Reads through a fresh context and counts how often the cache let a call through.</summary>
@@ -132,6 +145,13 @@ public sealed class ProductReads(IDbContextFactory<ShopDb> factory, ReadCounter 
         counter.Increment();
         await using var db = await factory.CreateDbContextAsync();
         return await db.Reviews.CountAsync(r => EF.Property<int>(r, "ProductId") == productId);
+    }
+
+    public async Task<int?> ArticleBySlugAsync(string slug)
+    {
+        counter.Increment();
+        await using var db = await factory.CreateDbContextAsync();
+        return await db.Articles.Where(a => a.Slug == slug).Select(a => (int?)a.Id).SingleOrDefaultAsync();
     }
 }
 
@@ -172,7 +192,8 @@ public sealed class Shop : IAsyncDisposable
 
     public static readonly Action<EntityFrameworkCoreOptions> DefaultTags = ef => ef
         .Entity<Product>("product:{Id}", "products", "category:{CategoryId}", "sku:{Sku}")
-        .Entity<Review>("reviews:{ProductId}");
+        .Entity<Review>("reviews:{ProductId}")
+        .Entity<Article>("slug:{Slug}");
 
     public static async Task<Shop> CreateAsync(Registration registration = Registration.Context,
         Action<EntityFrameworkCoreOptions>? tags = null, Action<IServiceCollection>? configure = null, bool start = true)

@@ -176,7 +176,6 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
         var b = Start();
         await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
         await Eventually(() => b.Duration == TimeSpan.FromMinutes(2));
-        // Applying the override on b invalidates the method once more; a value loaded before that isn't kept
         _time.Advance(TimeSpan.FromMilliseconds(1));
 
         var first = await a.Catalog.GetAsync(1);
@@ -277,6 +276,115 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOverride_IsAnnouncedOnce_HoweverManyInstancesApplyIt()
+    {
+        var a = Start();
+        var b = Start();
+        var c = Start();
+        // Each instance has served the method, so applying the override changes how each caches it
+        foreach (var node in new[] { a, b, c }) _ = await node.Catalog.GetAsync(1);
+        var published = _hub.Published;
+
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        await Eventually(() => b.Duration == TimeSpan.FromMinutes(2) && c.Duration == TimeSpan.FromMinutes(2));
+        await Task.Delay(200);
+
+        // a's invalidation told b and c; they drop their own entries without telling anyone again
+        Assert.Equal(1, _hub.Published - published);
+    }
+
+    [Fact]
+    public async Task AChangeToTheAuditFieldsOnly_ReachesEveryInstance()
+    {
+        var a = Start();
+        var b = Start();
+        _ = await a.Catalog.GetAsync(1);
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)), Incident);
+        await Eventually(() => b.Configurator.GetOverrides().SingleOrDefault()?.Metadata == Incident);
+
+        var resolved = Incident with { Reason = "Incident 4211 resolved" };
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)), resolved);
+
+        await Eventually(() => b.Configurator.GetOverrides().SingleOrDefault()?.Metadata == resolved);
+    }
+
+    [Fact]
+    public async Task AnOverrideThatKeepsTheMethodsSettings_ReachesEveryInstance()
+    {
+        var a = Start();
+        var b = Start();
+
+        // The attribute's own duration, so nothing changes how either instance caches
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(10)), Incident);
+
+        await Eventually(() => b.Configurator.GetOverrides().SingleOrDefault()?.Metadata == Incident);
+    }
+
+    [Fact]
+    public async Task ClearingOnAnInstanceThatServedNothing_ClearsTheOverridesOnTheOthers()
+    {
+        var a = Start();
+        _ = await a.Catalog.GetAsync(1);
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        var b = Start();
+
+        await b.Configurator.ClearAsync();
+
+        await Eventually(() => a.Duration == TimeSpan.FromMinutes(10));
+        Assert.Empty(a.Configurator.GetOverrides());
+    }
+
+    [Fact]
+    public async Task Clearing_RemovesTheStoredOverrides_ThisInstanceHasNotReadYet()
+    {
+        var a = Start();
+        var b = Start();
+        _hub.Mode = BackplaneChaos.Hold;
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        Assert.Empty(b.Configurator.GetOverrides());
+
+        await b.Configurator.ClearAsync();
+        _hub.Mode = BackplaneChaos.Deliver;
+        await _hub.DeliverHeld();
+
+        await Eventually(() => a.Duration == TimeSpan.FromMinutes(10));
+        Assert.Equal(TimeSpan.FromMinutes(10), b.Duration);
+        Assert.Equal(TimeSpan.FromMinutes(10), Start().Duration);
+    }
+
+    [Fact]
+    public async Task ClearingWhileTheCacheDoesNotAnswer_Throws()
+    {
+        var a = Start();
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        _store.FailOverrides = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => a.Configurator.ClearAsync().AsTask());
+
+        Assert.Single(a.Configurator.GetOverrides());
+    }
+
+    [Fact]
+    public async Task AHostThatStarts_WaitsForTheOverrides_AlsoWhenAServiceResolvedEarlierStartedReadingThem()
+    {
+        var a = Start();
+        await a.Configurator.UpsertAsync(GetId, o => o.WithDuration(TimeSpan.FromMinutes(2)));
+        _store.HoldOverrideReads = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // A hosted service's dependency resolves and is called before the host validates the cache
+        var started = Start(host: false);
+        _ = await started.Catalog.GetAsync(1);
+        var validated = Task.Run(() => started.Provider.GetRequiredService<IStartupValidator>().Validate());
+        await Task.Delay(200);
+        Assert.False(validated.IsCompleted);
+
+        _store.HoldOverrideReads.SetResult();
+        await validated.WaitAsync(RealTimeLimit);
+
+        Assert.Equal(TimeSpan.FromMinutes(2), started.Duration);
+    }
+
+    [Fact]
     public void TheStoredRecord_KeepsEverySettingAndTheAuditMetadata()
     {
         var policy = CachePolicy.Empty with
@@ -358,6 +466,8 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
     private sealed class FailingStore(MethodCache.TestSupport.AtomicTestCache inner) : IAtomicInvalidationStore
     {
         public volatile bool FailOverrides;
+        // While set, a read of an override record waits for it
+        public volatile TaskCompletionSource? HoldOverrideReads;
 
         private void Check(string key)
         {
@@ -368,7 +478,12 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
             => inner.SetAsync("methodcache:override:v1:" + methodId, value, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1) });
 
         public byte[]? Get(string key) { Check(key); return inner.Get(key); }
-        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) { Check(key); return inner.GetAsync(key, token); }
+        public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+        {
+            Check(key);
+            if (HoldOverrideReads is { } hold && key.Contains("override:v1:", StringComparison.Ordinal)) await hold.Task.WaitAsync(token);
+            return await inner.GetAsync(key, token);
+        }
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) { Check(key); inner.Set(key, value, options); }
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) { Check(key); return inner.SetAsync(key, value, options, token); }
         public void Refresh(string key) => inner.Refresh(key);

@@ -72,11 +72,11 @@ namespace Docs.Testing
             // end-snippet
         }
 
-        public static void CheckServices(IServiceProvider provider)
+        public static async Task CheckServicesAsync(IServiceProvider provider)
         {
             // begin-snippet: testing-cached-services
             // Every service with cached methods resolves, and to its generated caching decorator
-            Assert.Empty(CachedServices.Problems(provider));
+            Assert.Empty(await CachedServices.ProblemsAsync(provider));
             // end-snippet
         }
 

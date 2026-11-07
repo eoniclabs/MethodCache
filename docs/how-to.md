@@ -223,8 +223,8 @@ connection. ([Per-user data](getting-started.md#per-user-data))
 
 **My cached method takes the tenant id and checks it against the request's tenant. Why the warning MC0026?**
 The analyzer can't see the check. Mark your check method `[ChecksRequestState]`, such as `EnsureActsFor(tenantId)`, and
-call it with the parameter in each cached method; the class is then not reported. The check runs only when a value is
-loaded, so the caller must still take the id from the request.
+call it with the parameter in each cached method; the class is then not reported. Called through an interface, mark
+the interface method. The check runs only when a value is loaded, so the caller must still take the id from the request.
 ([A tenant parameter checked against the request](user-guide/DIAGNOSTICS.md#a-tenant-parameter-checked-against-the-request))
 
 **I renamed my `ICurrentUser`. Does MC0026 still find it?**
@@ -357,7 +357,7 @@ The save invalidates, so the read is fresh either way. Count the runs with `reco
 or a context that isn't connected to MethodCache. ([Proving that a result is cached](features/testing.md#proving-that-a-result-is-cached))
 
 **How do I check in a test that every cached service is registered right?**
-`Assert.Empty(CachedServices.Problems(provider))` from `MethodCache.Testing`. It resolves each registered service with
+`Assert.Empty(await CachedServices.ProblemsAsync(provider))` from `MethodCache.Testing`. It resolves each registered service with
 cached methods and reports one registered after `AddMethodCache`, one that throws when it is resolved, and one that
 isn't wrapped by its caching decorator. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 

@@ -60,10 +60,12 @@ override removes the record. The value is UTF-8 JSON:
 | `tags` | string array | Tag templates |
 | `metadata` | object | `owner`, `reason`, `ticket` strings and `expiresAt` (ISO 8601), each when set |
 
-Nothing in the backplane envelope changes: an instance that applies an override invalidates the method as for any
-policy change, and the method message makes the other instances read its record. A clear (including the synthetic one
-a backplane delivers after it may have lost messages) makes them read every cached method's record. Instances on a
-version without records ignore them.
+Nothing in the backplane envelope changes: the instance that makes an override change invalidates the method as for
+any policy change, or publishes the method message alone when the change invalidates nothing there (an audit-only
+change, or a method no call has used yet). The method message makes the other instances read its record; applying a
+record read that way drops only their own entries and publishes nothing, since the instance that wrote it already
+invalidated the method everywhere. A clear (including the synthetic one a backplane delivers after it may have lost
+messages) makes them read every cached method's record. Instances on a version without records ignore them.
 
 ## Value format 6
 
