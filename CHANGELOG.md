@@ -4,6 +4,26 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.13 (2026-11-07)
+
+### Added
+
+- `CachedServices.Registered(provider)` in `MethodCache.Testing` lists the registered services with cached methods,
+  so a test can compare it with the services the application should have and catch one that is never registered,
+  which `ProblemsAsync` and `RegistrationProblems` can't see
+  ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
+
+### Documentation
+
+- Expiration and manual caching: `Defaults` and groups apply to cached methods, not to manual calls. A manual call
+  without a `Duration` lives five minutes, and one with only a sliding window is limited by `MaxExpiration`.
+- Getting started: use one version of every MethodCache package (NuGet warns with NU1608 when they differ), and pin
+  `MethodCacheAnalysisLevel` only when warnings are errors. Every rule up to 1.0.0 counts as a rule of 1.0.
+- Memory cache: `MethodCacheWeigher.Bytes(otherValue)` weighs the key on top of `otherValue`.
+- Testing: `RegistrationProblems` runs the application's registration code, so infrastructure registered eagerly is
+  still needed, and a recipe for testing that a cached method refuses another tenant's id
+  ([A load for another tenant fails](docs/features/testing.md#a-load-for-another-tenant-fails)).
+
 ## 1.0.0-rc.12 (2026-11-07)
 
 ### Upgrading from 1.0.0-rc.11

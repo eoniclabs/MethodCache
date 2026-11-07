@@ -55,6 +55,9 @@ var list = await cache.GetOrCreateAsync(
 
 - Duration, sliding expiration, refresh-ahead, tags and version work as described in [Expiration](expiration.md) and
   [Invalidation](invalidation.md).
+- `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
+  its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
+  limits how long reads keep it.
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`

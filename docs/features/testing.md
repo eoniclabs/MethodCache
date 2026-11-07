@@ -146,7 +146,19 @@ Assert.Empty(CachedServices.RegistrationProblems(provider));
 <!-- endSnippet -->
 
 It finds a service registered after `AddMethodCache`, the most common mistake, but not a dependency the container
-lacks.
+lacks. Both methods take the provider the application builds, so whatever its registration code does still runs: a
+client that connects to its database while it is registered needs that database in the test too.
+
+Neither method can see a service that is never registered: it has no registration to check. `CachedServices.Registered`
+lists the services with cached methods that the provider registers, each once and ordered by full name, so a test
+can compare it with the services the application should have:
+
+<!-- snippet: testing-cached-services-registered -->
+```cs
+// The application registers exactly these services with cached methods, none forgotten
+Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
 
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
@@ -190,6 +202,27 @@ value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 
 Analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.
+
+## A load for another tenant fails
+
+A cached method that takes the tenant as a parameter and checks it against the request's tenant with a
+`[ChecksRequestState]` method ([MC0026](../user-guide/DIAGNOSTICS.md#mc0026)) should fail for another tenant's id.
+Test it with the request set to one tenant and a call for another:
+
+<!-- snippet: testing-other-tenant -->
+```cs
+await using var scope = provider.CreateAsyncScope();
+scope.ServiceProvider.GetRequiredService<RequestTenant>().Id = tenantA;   // the request is tenant A's
+var projects = scope.ServiceProvider.GetRequiredService<IProjects>();
+
+// A load for tenant B fails in the check, so nothing is cached under B's key
+await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(tenantB));
+```
+<!-- endSnippet -->
+
+The check runs when the method loads a value, not on a hit, so this test proves that nothing wrong is cached under
+another tenant's key. That a caller takes the id from the request is the caller's part; test it where the id is taken,
+such as in the endpoint.
 
 ## Turning method caching off
 

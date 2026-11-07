@@ -62,7 +62,9 @@ builder.Services.AddMethodCache(config =>
 ```
 <!-- endSnippet -->
 
-Without any default, entries live for five minutes. No entry lives longer than
+Without any default, entries live for five minutes. `Defaults` and groups are for cached methods; a manual call
+([Manual caching](manual-caching.md)) has only the options it passes, so without a `Duration` its entry lives five
+minutes. No entry lives longer than
 `MethodCacheMemoryOptions.MaxExpiration` (seven days), so a longer `Duration` fails where it is set instead of being
 cut short: at startup, in a runtime override or in a manual call. For longer entries, raise the limit, up to 365 days,
 with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
@@ -116,7 +118,9 @@ builder.Services.AddMethodCache(mc =>
 ## Sliding expiration
 
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
-past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
+past its `Duration`; without a `Duration`, only `MaxExpiration` limits it. A cached method can get its `Duration` from
+`Defaults` or a group; a manual call only from its own options, so a manual call with only a sliding window is kept as
+long as it is read, up to `MaxExpiration`.
 
 So the window must be shorter than the `Duration`, or reads never extend anything: `Duration = "5m"` with
 `SlidingExpiration = "1d"` expires each entry five minutes after it was loaded. On one `[Cache]` that is warning

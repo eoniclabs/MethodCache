@@ -77,6 +77,9 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
 ```
 <!-- endSnippet -->
 
+The key is weighed on top of `otherValue`, as for every value, so a record weighs 1024 bytes plus two per character of
+its key. Allow for that when you choose `WeightLimit`.
+
 To weigh your own types more closely, weigh them yourself and leave the rest to it:
 
 <!-- snippet: memory-own-weigher -->

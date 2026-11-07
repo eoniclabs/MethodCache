@@ -174,11 +174,16 @@ anything else the result depends on must be an argument too:
 
 ## Recommended project setup
 
-Three things catch most mistakes before they reach production.
+Four things catch most mistakes before they reach production.
 
-**Pin the analysis level.** A new version of MethodCache can bring new analyzer warnings, and with warnings treated as
-errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` once for the solution, in
-`Directory.Build.props`, and raise it when you want a later version's rules
+**Use one version of every MethodCache package.** The packages are built and tested together, and each add-on, such as
+`MethodCache.Testing`, requires the exact `MethodCache` version it was built with. NuGet warns with NU1608 when they
+differ. To make that an error, add `<WarningsAsErrors>$(WarningsAsErrors);NU1608</WarningsAsErrors>`; it then applies to
+every package's version constraint, not only MethodCache's.
+
+**Pin the analysis level when warnings are errors.** A new version of MethodCache can bring new analyzer warnings, and
+with warnings treated as errors one would stop your build on the upgrade. Then set `MethodCacheAnalysisLevel` once for
+the solution, in `Directory.Build.props`, and raise it when you want a later version's rules
 ([Rules of a later version](user-guide/DIAGNOSTICS.md#rules-of-a-later-version)):
 
 ```xml
@@ -188,6 +193,10 @@ errors one would stop your build on the upgrade. Set `MethodCacheAnalysisLevel` 
   </PropertyGroup>
 </Project>
 ```
+
+Without warnings as errors, leave it unset: each upgrade then shows its new warnings, which is where new rules find
+real problems. Every rule up to 1.0.0 counts as a rule of 1.0, so the level turns nothing off in the release
+candidates.
 
 **Test the setup.** Add the `MethodCache.Testing` package to a test project that references the application, and
 every project that invalidates its tags, such as a worker. With the application's service provider,
