@@ -267,6 +267,8 @@ public static partial class PolicyBackendContract
         await using var second = await create(new Origin(200), builder => builder.Method((IOrigin r) => r.ReadAsync(0)).Configure(o => o.WithDuration(TimeSpan.FromHours(1))));
         var a = first.GetRequiredService<IOrigin>(); var b = second.GetRequiredService<IOrigin>();
         var gate = second.GetRequiredService<PolicyMessageGate>();
+        // Read the stored overrides before the change, so only the dropped message could tell the second instance of it
+        StartAsHost(first); StartAsHost(second);
         await SilenceAsync(second);
         Assert.Equal(101, await a.ReadAsync(1)); Assert.Equal(101, await b.ReadAsync(1));
         await gate.Ready.Task.WaitAsync(TimeSpan.FromSeconds(20));

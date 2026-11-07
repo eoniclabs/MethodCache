@@ -2,6 +2,7 @@ using MethodCache.Extensibility;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -16,41 +17,43 @@ public static partial class PolicyBackendContract
     {
         await using var first = await create(new Origin(100), null);
         await using var second = await create(new Origin(200), null);
+        StartAsHost(first); StartAsHost(second);
         var a = first.GetRequiredService<IOrigin>();
         var b = second.GetRequiredService<IOrigin>();
         Assert.Equal(101, await a.ReadAsync(1));
         Assert.Equal(101, await b.ReadAsync(1));
         var receiverHandle = PolicyHandle.For(second.GetRequiredService<IPolicyRegistry>(), MethodId);
-        var before = receiverHandle.Current;
-        var delivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        receiverHandle.Subscribe(policy => { if (!ReferenceEquals(policy.Generation, before.Generation)) delivered.TrySetResult(); });
         time.Advance(TimeSpan.FromMilliseconds(1));
-        await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(1)));
-        time.Advance(TimeSpan.FromMilliseconds(100));
-        await delivered.Task.WaitAsync(TimeSpan.FromSeconds(20));
-        time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(TimeSpan.FromHours(1), receiverHandle.Current.Duration);
-        // The typed method message has retired the receiver. The following assertions isolate L2
-        // namespaces from the documented possibility of delayed messages evicting fresh local data.
+        await first.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(1)),
+            new RuntimeOverrideMetadata { Owner = "contract" });
+        time.Advance(TimeSpan.FromMilliseconds(100)); // triggers SQL's injected-clock polling without sleeping
+        // The other instance reads the stored override when the backplane says the method changed
+        await EventuallyAsync(() => receiverHandle.Current.Duration == TimeSpan.FromSeconds(1));
+        Assert.Equal("contract", Assert.Single(second.GetRequiredService<IRuntimeCacheConfigurator>().GetOverrides()).Metadata!.Owner);
+        // The following assertions isolate L2 entries from delayed messages evicting fresh local data
         await first.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
         await second.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
-        Assert.Equal(102, await a.ReadAsync(1));
-        Assert.Equal(201, await b.ReadAsync(1));
-        time.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(103, await a.ReadAsync(1));
-        Assert.Equal(201, await b.ReadAsync(1));
-        await using var third = await create(new Origin(300), null);
-        await third.GetRequiredService<IRuntimeCacheConfigurator>().UpsertAsync(MethodId, o => o.WithDuration(TimeSpan.FromSeconds(1)));
+        // An instance that starts reads it too, and every instance with the override shares its entries
+        await using var joined = await create(new Origin(300), null);
+        StartAsHost(joined);
+        await joined.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
+        Assert.Equal(TimeSpan.FromSeconds(1), PolicyHandle.For(joined.GetRequiredService<IPolicyRegistry>(), MethodId).Current.Duration);
         time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(301, await third.GetRequiredService<IOrigin>().ReadAsync(1));
-        Assert.NotEqual(PolicyHandle.For(first.GetRequiredService<IPolicyRegistry>(), MethodId).Current.Identity,
-            PolicyHandle.For(third.GetRequiredService<IPolicyRegistry>(), MethodId).Current.Identity);
+        var shared = await a.ReadAsync(1);
+        Assert.Equal(shared, await joined.GetRequiredService<IOrigin>().ReadAsync(1));
+        time.Advance(TimeSpan.FromSeconds(2));
+        var next = await a.ReadAsync(1);
+        Assert.NotEqual(shared, next);
+        Assert.Equal(next, await joined.GetRequiredService<IOrigin>().ReadAsync(1));
         time.Advance(TimeSpan.FromMilliseconds(1));
         await first.GetRequiredService<IRuntimeCacheConfigurator>().RemoveAsync(MethodId);
         time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(104, await a.ReadAsync(1));
+        var restored = await a.ReadAsync(1);
+        Assert.NotEqual(next, restored);
         await using var cold = await create(new Origin(400), null);
-        Assert.Equal(104, await cold.GetRequiredService<IOrigin>().ReadAsync(1));
+        StartAsHost(cold);
+        Assert.Equal(TimeSpan.FromHours(1), PolicyHandle.For(cold.GetRequiredService<IPolicyRegistry>(), MethodId).Current.Duration);
+        Assert.Equal(restored, await cold.GetRequiredService<IOrigin>().ReadAsync(1));
 
         var writer = first.GetRequiredService<ICacheManager>();
         var receiver = cold.GetRequiredService<ICacheManager>();
@@ -107,6 +110,19 @@ public static partial class PolicyBackendContract
         var result = await writer.InvalidateKeysAsync(["version", "version"], version: 2);
         Assert.Equal(1, result.Requested); Assert.Equal(1, result.Local); Assert.Equal(1, result.Distributed);
         Assert.Equal(0, result.Queued); Assert.Equal(1, result.Published); Assert.Equal(0, result.PublicationQueued);
+    }
+
+    /// <summary>What a generic host runs in StartAsync: among others, it reads the runtime overrides every instance applies.</summary>
+    public static void StartAsHost(ServiceProvider node) => node.GetRequiredService<IStartupValidator>().Validate();
+
+    private static async Task EventuallyAsync(Func<bool> condition)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition())
+        {
+            if (watch.Elapsed > TimeSpan.FromSeconds(20)) throw new TimeoutException("The condition did not become true.");
+            await Task.Delay(10);
+        }
     }
 
     public interface IOrigin

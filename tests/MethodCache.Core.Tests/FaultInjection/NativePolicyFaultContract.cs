@@ -169,9 +169,14 @@ internal sealed class GatedNativePolicyStore(IAtomicInvalidationStore inner, boo
     public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default)
         => inner.WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
     public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
-    { Interlocked.Increment(ref ValueWrites); inner.Set(key, value, options); }
+    { CountValueWrite(key); inner.Set(key, value, options); }
     public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
-    { Interlocked.Increment(ref ValueWrites); return inner.SetAsync(key, value, options, token); }
+    { CountValueWrite(key); return inner.SetAsync(key, value, options, token); }
+    // A runtime override that every instance applies is stored too; it isn't a cached value
+    private void CountValueWrite(string key)
+    {
+        if (!key.Contains("override:v1:", StringComparison.Ordinal)) Interlocked.Increment(ref ValueWrites);
+    }
     public void Refresh(string key) => inner.Refresh(key);
     public Task RefreshAsync(string key, CancellationToken token = default) => inner.RefreshAsync(key, token);
     public void Remove(string key) => inner.Remove(key);

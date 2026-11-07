@@ -19,10 +19,24 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 
 ## Policies and shared entries
 
-- Instances share a method's entries when they run it with the same settings from the attribute, startup code and
-  `appsettings.json`. A runtime override that changes how a method caches (`IRuntimeCacheConfigurator`) gives that
-  method entries of its own on that instance, which no other instance reads, even one with an equal override.
-  Removing the override invalidates the method before the instance reads shared entries again.
+- Instances share a method's entries when they run it with the same settings from the attribute, startup code,
+  `appsettings.json` and runtime overrides.
+- With a backplane, a runtime override (`IRuntimeCacheConfigurator`) applies on every instance. It is stored in the
+  distributed cache, one record per method, before `UpsertAsync` returns, and expires with its `ExpiresAt`. Applying
+  it invalidates the method, as any change of settings does, and an instance that hears of the invalidation reads the
+  method's record again. An instance that starts reads the records of all its cached methods: a generic host waits for
+  them in `StartAsync`, at most `OperationTimeout` per eight methods, and without a host the first cached call starts
+  reading them without waiting. An instance that may have missed messages (when its backplane clears its memory cache)
+  reads them all again.
+- An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
+  (`ArgumentException`). A record an instance can't apply, because it contradicts that instance's own settings or was
+  written by a later format, is skipped with a warning. When the distributed cache doesn't answer, `UpsertAsync` and
+  `RemoveAsync` throw before anything changes on the instance, and an instance keeps the overrides it has and reads
+  them all again after `CircuitBreakerDuration`. A write that timed out can still land; reading them again applies it
+  on every instance.
+- Without a backplane, a runtime override that changes how a method caches gives that method entries of its own on
+  that instance, which no other instance reads, even one with an equal override. Removing the override invalidates the
+  method before the instance reads shared entries again.
 - A key from `IMethodCacheKeys.For` or a manual key invalidates the entry under every policy.
 - Invalidating a method (`ICacheAdministrator.InvalidateMethodAsync`) on one instance removes it on the others for
   every keyed registration and every closed generic type, without changing their settings.

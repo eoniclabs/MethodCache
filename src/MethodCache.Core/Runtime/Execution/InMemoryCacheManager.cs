@@ -74,7 +74,8 @@ namespace MethodCache.Extensibility
         /// <summary>Creates a cache manager with container-owned instrumentation and optional distributed storage.</summary>
         internal InMemoryCacheManager(IOptions<MethodCacheMemoryOptions>? options = null, TimeProvider? timeProvider = null,
             DistributedCacheLayer? distributed = null, Action<string>? onMethodInvalidated = null,
-            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null, Func<string, CacheRuntimePolicy?>? lookupPolicy = null)
+            Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null, Func<string, CacheRuntimePolicy?>? lookupPolicy = null,
+            Action? onRemoteCleared = null)
         {
             _lookupPolicy = lookupPolicy;
             _telemetry = telemetry;
@@ -109,7 +110,7 @@ namespace MethodCache.Extensibility
             _distributed?.Attach(
                 onKeyInvalidated: key => RemoveLocal(key),
                 onTagInvalidated: RemoveLocalTag,
-                onCleared: ClearLocal,
+                onCleared: () => { ClearLocal(); onRemoteCleared?.Invoke(); },
                 onError: static _ => { },
                 onMethodInvalidated: methodId => { _onMethodInvalidated?.Invoke(methodId); InvalidateMethodLocally(methodId); });
         }

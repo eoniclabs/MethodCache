@@ -269,8 +269,8 @@ Entries written in the other format read as misses and are replaced, so switchin
 ## Limits
 
 - Invalidation matches exact keys and tags; common tags provide group invalidation.
-- [Fail-safe](fail-safe.md) values and [runtime overrides](configuration.md#runtime-overrides) live in each instance's
-  memory.
+- [Fail-safe](fail-safe.md) values live in each instance's memory. [Runtime overrides](configuration.md#runtime-overrides)
+  apply on every instance with a backplane, and only on their own instance without one.
 
 ## Package guides
 

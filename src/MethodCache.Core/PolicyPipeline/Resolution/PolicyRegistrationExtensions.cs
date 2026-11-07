@@ -31,7 +31,7 @@ internal static class PolicyRegistrationExtensions
             {
                 var memory = provider.GetService<MethodCache.Extensibility.InMemoryCacheManager>();
                 return memory?.InvalidateMethodAsync(id) ?? Task.CompletedTask;
-            });
+            }, () => MethodCache.Core.Configuration.Surfaces.Runtime.SharedRuntimeOverrides.From(provider));
         });
 
         services.TryAddSingleton<IPolicyRegistry>(provider => provider.GetRequiredService<PolicyRegistry>());

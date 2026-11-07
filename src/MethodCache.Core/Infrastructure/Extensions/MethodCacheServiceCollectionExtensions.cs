@@ -155,7 +155,8 @@ namespace Microsoft.Extensions.DependencyInjection
                         PolicySourcePriority.RuntimeOverrides));
             }
 
-            services.TryAddSingleton<IRuntimeCacheConfigurator, RuntimeCacheConfigurator>();
+            services.TryAddSingleton<IRuntimeCacheConfigurator>(static sp => new RuntimeCacheConfigurator(
+                sp.GetRequiredService<RuntimePolicyStore>(), sp.GetService<IPolicyRegistry>(), SharedRuntimeOverrides.From(sp)));
 
             // A generic host loads the policies when it starts, so misconfiguration fails startup instead of the
             // first call; without one, the first cached call loads them and fails the same way
@@ -180,10 +181,16 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<IOptions<MethodCacheMemoryOptions>>(),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<DistributedCacheLayer>(),
-                methodId => (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId),
+                methodId =>
+                {
+                    (sp.GetRequiredService<MethodCache.Policies.IPolicyRegistry>() as MethodCache.Core.PolicyPipeline.Resolution.PolicyRegistry)?.InvalidateGeneration(methodId);
+                    // Another instance may have changed the method's runtime override
+                    sp.GetService<SharedRuntimeOverrides>()?.OnRemoteMethodInvalidated(methodId);
+                },
                 sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
                 sp.GetService<HttpResponseStore>(),
-                sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>())));
+                sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>()),
+                onRemoteCleared: () => sp.GetService<SharedRuntimeOverrides>()?.OnRemoteCleared()));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);
@@ -274,6 +281,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetKeyedService<IBackplane>(OwnDistributedCacheKey),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<ILoggerFactory>()?.CreateLogger<DistributedCacheLayer>(), telemetry: sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>()));
+
+            // With a backplane, runtime overrides are stored in the distributed cache and apply on every instance
+            services.TryAddSingleton(static sp => new SharedRuntimeOverrides(
+                sp.GetRequiredService<DistributedCacheLayer>(),
+                sp.GetRequiredService<RuntimePolicyStore>(),
+                sp.GetService<TimeProvider>(),
+                sp.GetService<ILoggerFactory>()?.CreateLogger<SharedRuntimeOverrides>()));
 
             // A generic host checks the cache when it starts; without one, the layer above rejects it on first use
             services.AddOptions<DistributedCacheStoreValidation>().ValidateOnStart();

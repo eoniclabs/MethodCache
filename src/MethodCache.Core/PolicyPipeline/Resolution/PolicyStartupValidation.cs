@@ -18,7 +18,10 @@ internal sealed class PolicyStartupValidation
             services.GetService<MethodCacheServiceCollectionExtensions.RegistrationValidationState>()?.Validate();
             // Exceptions propagate unchanged, so startup fails with the same exception a first call would throw
             services.GetService<IOptions<MethodCacheMemoryOptions>>()?.Value.EnsureValid();
-            services.GetRequiredService<PolicyRegistry>().GetAllPolicies();
+            var registry = services.GetRequiredService<PolicyRegistry>();
+            // Runtime overrides that every instance applies are read before the host serves
+            registry.StartSharedOverrides();
+            registry.GetAllPolicies();
             return ValidateOptionsResult.Success;
         }
     }

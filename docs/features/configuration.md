@@ -194,9 +194,20 @@ anything is stored. A tag template that doesn't fit the method throws too.
   `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
 - An override that changes how the method caches drops the entries cached under the old settings at once; calls
   already running may still return their earlier result. An override that only changes its audit metadata keeps them.
-- Overrides live in this instance's memory: they are lost on restart and don't reach other instances. While an override
-  changes how a method caches, that method's entries in the distributed cache are this instance's own; removing the
-  override invalidates the method and shares entries again
+- With a [distributed cache](distributed-cache.md) and its backplane (the default with `UseRedis`, `UseSqlServer` and
+  `UsePostgreSql`), an override applies on every instance. It is stored in the distributed cache before `UpsertAsync`
+  returns, the other instances apply it when the backplane tells them the method changed, and an instance that starts
+  applies the active ones before it serves. So overrides outlive restarts and slot swaps, and `GetOverrides()` lists
+  the same ones everywhere. Instances with the same override share its entries.
+- An override that every instance applies can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`: they are
+  functions, which another instance can't run. `UpsertAsync` throws an `ArgumentException`; set them in `AddMethodCache`.
+- When the distributed cache doesn't answer within `OperationTimeout`, `UpsertAsync`, `RemoveAsync` and `ClearAsync`
+  throw an `InvalidOperationException` and the override stays as it was. An instance that can't read them when it starts logs a warning, starts
+  without them and reads them again after `CircuitBreakerDuration`.
+- Without a distributed cache, or with `EnableBackplane = false`, overrides live in this instance's memory: they are
+  lost on restart and don't reach other instances, and they may set functions. While such an override changes how a
+  method caches, that method's entries in the distributed cache are this instance's own; removing the override
+  invalidates the method and shares entries again
   ([Distributed cache reference](../reference/distributed.md#policies-and-shared-entries)).
 - `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
   when it passes.

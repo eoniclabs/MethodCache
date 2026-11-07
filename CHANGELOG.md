@@ -16,6 +16,11 @@ release.
   this version, so it can report a cached implementation it didn't report before.
 - New warning MC0036 fails a build that treats warnings as errors when a name in `methodcache.request_state_types`
   matches no type.
+- With a distributed cache and its backplane, runtime overrides apply on every instance and outlive restarts. Such an
+  override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor` (`ArgumentException`); set them in
+  `AddMethodCache`. `UpsertAsync`, `RemoveAsync` and `ClearAsync` throw an `InvalidOperationException` when the
+  distributed cache doesn't store the change, and `GetOverrides()` lists the overrides of every instance. During a
+  rolling upgrade, instances on rc.10 ignore stored overrides.
 
 ### Added
 
@@ -54,6 +59,9 @@ release.
   ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
 - `MapMethodCacheAdmin(..., audit: ...)` records who changes the cache through the admin endpoints: the user, the
   action, its targets and the time ([Audit](src/MethodCache.AspNetCore/README.md#audit)).
+- Runtime overrides apply on every instance with Redis, SQL Server or PostgreSQL and their backplane: they are stored in
+  the distributed cache, the other instances apply them within moments, and an instance that starts applies the active
+  ones, so they survive restarts and slot swaps ([Runtime overrides](docs/features/configuration.md#runtime-overrides)).
 
 ### Changed
 
