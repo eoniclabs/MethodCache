@@ -270,6 +270,58 @@ public interface IProducts
         }
 
         [Fact]
+        public async Task A_tag_invalidated_manually_is_covered_on_every_method_that_has_it()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    // An operator clears catalog by hand
+    [Cache(Duration = ""10m"", Tags = [""catalog"", ""product:{id}""], InvalidatedManually = [""catalog""])]
+    Task<Product> GetAsync(int id);
+
+    [Cache(Duration = ""10m"", Tags = [""catalog""])]
+    Task<Product[]> ListAsync();
+
+    [CacheInvalidate(Tags = [""product:{id}""])]
+    Task RenameAsync(int id, string name);
+}";
+
+            Assert.Empty(await AnalyzeAsync(source));
+        }
+
+        [Fact]
+        public async Task A_tag_invalidated_manually_covers_only_itself()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    [Cache(Duration = ""10m"", Tags = [""catalog"", ""prices""], InvalidatedManually = [""catalog""])]
+    Task<Product> GetAsync(int id);
+
+    [CacheInvalidate(Tags = [""orders""])]
+    Task OrderAsync(int id);
+}";
+
+            Assert.Contains("\"prices\"", Assert.Single(await AnalyzeAsync(source)).GetMessage());
+        }
+
+        [Fact]
+        public async Task An_invalidated_manually_tag_that_the_method_does_not_have_is_reported()
+        {
+            var source = Usings + @"
+public interface IProducts
+{
+    [Cache(Duration = ""10m"", Tags = [""catalog""], InvalidatedManually = [""catalogue""])]
+    Task<Product> GetAsync(int id);
+}";
+
+            var unknown = Assert.Single(await AnalyzeAsync(source));
+
+            Assert.Equal("MC0029", unknown.Id);
+            Assert.Equal("\"catalogue\" in InvalidatedManually of 'IProducts.GetAsync' matches none of its Tags. Write the tag as it is written in Tags.", unknown.GetMessage());
+        }
+
+        [Fact]
         public async Task Invalidated_elsewhere_without_tags_on_the_attribute_is_not_checked()
         {
             // The tags then come from configuration, which the analyzer can't read

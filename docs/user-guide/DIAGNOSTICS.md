@@ -37,7 +37,7 @@ never stops a build.
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
-| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
+| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` or `InvalidatedManually` that matches none of the method's `Tags` | |
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
@@ -46,6 +46,7 @@ never stops a build.
 | [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
 | [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
+| [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
 
 ## Rules of a later version
 
@@ -452,6 +453,7 @@ These invalidations count, wherever they are in the project:
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
   `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
 - A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
+- A tag in `InvalidatedManually` on any `[Cache]` in the project, for a tag that only an operator clears.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and other invalidations in other
@@ -469,12 +471,24 @@ process invalidates it, such as a worker that writes the data, list it in `Inval
 Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
+When no code invalidates it and an operator clears it by hand after a change, such as with `POST invalidate` of
+`MapMethodCacheAdmin`, list it in `InvalidatedManually` instead
+([Cleared by hand](../features/invalidation.md#cleared-by-hand)):
+
+```cs
+// An operator clears "catalog" after the yearly update
+[Cache(Duration = "1d", Tags = ["catalog"], InvalidatedManually = ["catalog"])]
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+Both replace a `SuppressMessage` on each method and keep the reason next to the tag.
+
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
 
 ## MC0029
 
-A tag in `InvalidatedElsewhere` on `[Cache]` that matches none of the method's `Tags`, such as a misspelled one. It
-marks nothing on the method, so the real tag still counts as never invalidated.
+A tag in `InvalidatedElsewhere` or `InvalidatedManually` on `[Cache]` that matches none of the method's `Tags`, such
+as a misspelled one. It marks nothing on the method, so the real tag still counts as never invalidated.
 
 ```cs
 [Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalogue"])]   // MC0029
@@ -701,6 +715,26 @@ public sealed record OrderFilter(string? Customer, OrderStatus? Status, int Page
 [Cache(Duration = "5m")]
 Task<Page<Order>> SearchAsync(OrderFilter filter);   // SearchAsync:(alice:Open:2)
 ```
+
+## MC0038
+
+`SlidingExpiration` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` next to it, or longer. An
+entry never lives past its `Duration`, so reads can never extend it, and it expires as if the sliding window weren't
+set:
+
+```cs
+[Cache(Duration = "5m", SlidingExpiration = "1d")]   // MC0038: each entry expires 5 minutes after it was loaded
+Task<Report> GetAsync(int id);
+```
+
+Use a window shorter than the `Duration`, such as `Duration = "1d", SlidingExpiration = "5m"` to keep an entry while it
+is read at least every five minutes, for at most a day. Or remove `SlidingExpiration`. It is a warning, not an error:
+the method is cached, only the window does nothing.
+
+The two settings often come from different places, such as a sliding window on the method and the duration of
+`Defaults`, which the build can't see together. The host logs the same warning when it starts, once for each such
+method, whether the settings come from `[Cache]`, startup code or `appsettings.json`
+([Sliding expiration](../features/expiration.md#sliding-expiration)).
 
 ## What the analyzers read from referenced projects
 

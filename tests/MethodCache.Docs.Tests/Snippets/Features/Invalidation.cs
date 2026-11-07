@@ -51,6 +51,17 @@ namespace Docs.Invalidation
     }
     // end-snippet
 
+    public sealed record Food(int Id, string Name);
+
+    // begin-snippet: invalidation-cleared-by-hand
+    public interface IFoodCatalog
+    {
+        // The catalog changes a few times a year, and an operator clears "food-catalog" after each update
+        [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]
+        Task<IReadOnlyList<Food>> SearchAsync(string text);
+    }
+    // end-snippet
+
     // begin-snippet: invalidation-elsewhere-interface
     public interface IPriceSource
     {

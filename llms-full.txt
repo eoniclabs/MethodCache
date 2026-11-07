@@ -98,7 +98,11 @@ builder.Services.AddMethodCache();                               // after your r
 - Invalidate after a transaction commits, with `CancellationToken.None`, never before or inside it.
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
   invalidates. When another application invalidates it, such as a worker, list it in
-  `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning.
+  `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning; when only an operator
+  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`.
+- Keep `SlidingExpiration` shorter than `Duration`: an entry never lives past its `Duration`, so a longer window never
+  extends anything (warning MC0038 on `[Cache]`, and a warning when the host starts for settings combined from
+  `Defaults`, code or `appsettings.json`).
 - For a type with only private state used as an argument or inside one (a property, a list element), implement
   `ICacheKeyProvider`.
 - For library modules and Native AOT, select the containing assembly with `MethodCacheBuilder.FromAssemblyOf<T>()`.
@@ -127,8 +131,8 @@ builder.Services.AddMethodCache();                               // after your r
   call (prove a read is cached with it, not with a write that invalidates), `recorder.InvalidatedTags` lists what was
   invalidated, and `Assert.Empty(TagCoverage.Uninvalidated(provider))` checks that every tag has an invalidation. It
   counts `[CacheInvalidate]`, the EF Core mapping and the invalidations in the projects the test project references;
-  a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it. Pass tags invalidated outside the
-  solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
+  a tag marked `InvalidatedElsewhere` counts only when one of them invalidates it, and one marked
+  `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. `Assert.Empty(await CachedServices.ProblemsAsync(provider))` checks that every service with
   cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
   service.
@@ -503,6 +507,17 @@ with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `Invalidate
 invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 then counts it,
 and `TagCoverage` counts it when the test project references the worker that invalidates it. ([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028), [In another application](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#in-another-application))
 
+**A tag is only cleared by an admin, or simply expires. How do I stop MC0028 without a suppression?**
+List it in `[Cache(Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]`. MC0028 and `TagCoverage` count
+it as invalidated without looking for an invalidation, so neither a `SuppressMessage` nor `alsoInvalidatedBy` is
+needed. ([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#cleared-by-hand))
+
+**My sliding window seems to do nothing. Why?**
+It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a
+day on a default `Duration` of five minutes expires each entry after five minutes. Make the window shorter than the
+`Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning that names
+the method when it starts. ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration), [MC0038](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0038))
+
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
 when one is changed. ([Rows the database deletes with a row](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
@@ -770,8 +785,8 @@ cached service. ([Every cached service resolves](https://github.com/eoniclabs/Me
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
 the EF Core mapping and the invalidations in the projects the test project references, such as a worker's
-`InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it.
-Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
+`InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it,
+and one marked `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
 ([Every tag has an invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**
@@ -1194,6 +1209,12 @@ builder.Services.AddMethodCache(mc =>
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
 past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 
+So the window must be shorter than the `Duration`, or reads never extend anything: `Duration = "5m"` with
+`SlidingExpiration = "1d"` expires each entry five minutes after it was loaded. On one `[Cache]` that is warning
+[MC0038](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0038). When the two come from different places, such as
+`WithSlidingExpiration` on a method and `WithDuration` in `Defaults`, the host logs a warning when it starts that
+names the method.
+
 A method that inherits a sliding window from the defaults, a group or configuration turns it off with
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.
@@ -1446,6 +1467,28 @@ public interface IRecipeCatalog
 Write each tag as it is written in `Tags`; one that matches none of them is warning
 [MC0029](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0029). The other application's invalidation reaches this one's memory cache
 only through a shared distributed cache ([With several instances](#with-several-instances)).
+
+### Cleared by hand
+
+Some data has no write in the application to invalidate after: a catalog loaded once a year, or settings an operator
+changes in another system. When an operator clears the tag by hand instead, such as with `POST invalidate` of
+`MapMethodCacheAdmin` ([Admin endpoints](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#admin-endpoints)), and the entries otherwise expire, list the tag in
+`InvalidatedManually`:
+
+```cs
+public interface IFoodCatalog
+{
+    // The catalog changes a few times a year, and an operator clears "food-catalog" after each update
+    [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]
+    Task<IReadOnlyList<Food>> SearchAsync(string text);
+}
+```
+
+Caching works the same. Analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) and `TagCoverage`
+([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation)) count the tag as invalidated, on every method that has it,
+without looking for an invalidation; unlike `InvalidatedElsewhere`, there is nothing in another project to check.
+Write each tag as it is written in `Tags`; one that matches none of them is warning
+[MC0029](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0029).
 
 ### After a database transaction
 
@@ -3541,6 +3584,10 @@ can't hide a tag that nothing invalidates any more. Reference the project that i
 invalidated outside the solution, such as by another team's application or a database trigger, name it in
 `alsoInvalidatedBy`.
 
+A tag marked `InvalidatedManually` ([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#cleared-by-hand)) is covered without a check:
+an operator clears it, so there is no invalidation to find. Mark it on `[Cache]` rather than listing it in
+`alsoInvalidatedBy`, so analyzer MC0028 and the test read the same mark.
+
 Name the tags your code invalidates in ways no project shows, such as a tag built in a variable:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
 value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
@@ -4109,7 +4156,7 @@ never stops a build.
 | [MC0026](#mc0026) | Warning | The implementation of a cached interface takes per-request state, such as `IHttpContextAccessor` or `ClaimsPrincipal`, or a class that does | |
 | [MC0027](#mc0027) | Warning | `ExecuteUpdate`, `ExecuteDelete` or raw SQL writes past EF Core's change tracker without an invalidation | |
 | [MC0028](#mc0028) | Warning | A tag on a cached method that nothing in the project invalidates | |
-| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` that matches none of the method's `Tags` | |
+| [MC0029](#mc0029) | Warning | A tag in `InvalidatedElsewhere` or `InvalidatedManually` that matches none of the method's `Tags` | |
 | [MC0030](#mc0030) | Warning | A program with cached services that never calls `AddMethodCache` | |
 | [MC0031](#mc0031) | Warning | A class calls its own cached method, which skips the cache | |
 | [MC0032](#mc0032) | Warning | A class that implements a cached interface is created with `new`, so its calls aren't cached | |
@@ -4118,6 +4165,7 @@ never stops a build.
 | [MC0035](#mc0035) | Warning | A cache factory uses a cancellation token from outside it that the call doesn't pass | Use the factory's token and pass yours as `cancellationToken` |
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
 | [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
+| [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
 
 ## Rules of a later version
 
@@ -4524,6 +4572,7 @@ These invalidations count, wherever they are in the project:
 - A call to `InvalidateTagAsync`, `InvalidateTagsAsync` or `InvalidateAfterCommit`, or to a method of your own marked
   `[InvalidatesCache]`, with the tag as a constant, an interpolated string or `IMethodCacheKeys.Tag(..., template)`.
 - A tag in `InvalidatedElsewhere` on any `[Cache]` in the project, for a tag that another application invalidates.
+- A tag in `InvalidatedManually` on any `[Cache]` in the project, for a tag that only an operator clears.
 
 A placeholder matches any value: `"product:{id}"` is covered by `InvalidateTagAsync($"product:{id}")` and by
 `"product:42"`, not by `"products"`. A tag built in a variable, tags in configuration and other invalidations in other
@@ -4541,12 +4590,24 @@ process invalidates it, such as a worker that writes the data, list it in `Inval
 Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
+When no code invalidates it and an operator clears it by hand after a change, such as with `POST invalidate` of
+`MapMethodCacheAdmin`, list it in `InvalidatedManually` instead
+([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#cleared-by-hand)):
+
+```cs
+// An operator clears "catalog" after the yearly update
+[Cache(Duration = "1d", Tags = ["catalog"], InvalidatedManually = ["catalog"])]
+Task<IReadOnlyList<Recipe>> ListAsync();
+```
+
+Both replace a `SuppressMessage` on each method and keep the reason next to the tag.
+
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
 
 ## MC0029
 
-A tag in `InvalidatedElsewhere` on `[Cache]` that matches none of the method's `Tags`, such as a misspelled one. It
-marks nothing on the method, so the real tag still counts as never invalidated.
+A tag in `InvalidatedElsewhere` or `InvalidatedManually` on `[Cache]` that matches none of the method's `Tags`, such
+as a misspelled one. It marks nothing on the method, so the real tag still counts as never invalidated.
 
 ```cs
 [Cache(Duration = "1h", Tags = ["catalog"], InvalidatedElsewhere = ["catalogue"])]   // MC0029
@@ -4773,6 +4834,26 @@ public sealed record OrderFilter(string? Customer, OrderStatus? Status, int Page
 [Cache(Duration = "5m")]
 Task<Page<Order>> SearchAsync(OrderFilter filter);   // SearchAsync:(alice:Open:2)
 ```
+
+## MC0038
+
+`SlidingExpiration` on `[Cache]` or `[assembly: CacheInterface]` is as long as the `Duration` next to it, or longer. An
+entry never lives past its `Duration`, so reads can never extend it, and it expires as if the sliding window weren't
+set:
+
+```cs
+[Cache(Duration = "5m", SlidingExpiration = "1d")]   // MC0038: each entry expires 5 minutes after it was loaded
+Task<Report> GetAsync(int id);
+```
+
+Use a window shorter than the `Duration`, such as `Duration = "1d", SlidingExpiration = "5m"` to keep an entry while it
+is read at least every five minutes, for at most a day. Or remove `SlidingExpiration`. It is a warning, not an error:
+the method is cached, only the window does nothing.
+
+The two settings often come from different places, such as a sliding window on the method and the duration of
+`Defaults`, which the build can't see together. The host logs the same warning when it starts, once for each such
+method, whether the settings come from `[Cache]`, startup code or `appsettings.json`
+([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
 
 ## What the analyzers read from referenced projects
 
@@ -5904,7 +5985,8 @@ Assert.Empty(TagCoverage.Uninvalidated(provider));
 MethodCache writes the tags each project invalidates into its assembly, and `TagCoverage` reads them from the
 assemblies next to the tests, so reference the projects that invalidate, such as a worker, from the test project. A tag
 marked `InvalidatedElsewhere` is covered only when one of them invalidates it; otherwise it is reported with
-`MarkedInvalidatedElsewhere` set.
+`MarkedInvalidatedElsewhere` set. A tag marked `InvalidatedManually`, which an operator clears by hand, is covered
+without a check.
 
 Name the tags invalidated where no referenced project shows it, such as by another application:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
@@ -5931,6 +6013,9 @@ release.
 
 - `CachedServices.ProblemsAsync` and `TagCoverage.Uninvalidated` throw `InvalidOperationException` when the provider
   has no service with cached methods, instead of returning an empty list. Pass the application's provider.
+- New warning MC0038 fails a build that treats warnings as errors when `SlidingExpiration` on `[Cache]` or
+  `[assembly: CacheInterface]` is not shorter than the `Duration` next to it. Such a window never extended anything;
+  shorten it or remove it.
 
 ### Added
 
@@ -5940,6 +6025,13 @@ release.
   ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
 - `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs values it can't measure, such as records of your own, as the
   weight you give instead of 64 ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size)).
+- `[Cache(InvalidatedManually = [...])]` marks tags that only an operator clears by hand, such as through
+  `MapMethodCacheAdmin`, and that otherwise expire. MC0028 and `TagCoverage` count them as invalidated, so they need
+  neither a `SuppressMessage` nor `alsoInvalidatedBy` ([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#cleared-by-hand)).
+- Warning MC0038 for a `SlidingExpiration` that is not shorter than the `Duration` on the same attribute, and a warning
+  in the log when the host starts for each method whose sliding window and duration, from any place such as a method's
+  `WithSlidingExpiration` and `Defaults`, combine that way
+  ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
 
 ## 1.0.0-rc.11 (2026-11-07)
 

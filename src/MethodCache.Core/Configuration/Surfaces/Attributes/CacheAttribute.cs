@@ -151,6 +151,26 @@ namespace MethodCache
         public string[]? InvalidatedElsewhere { get; set; }
 
         /// <summary>
+        /// The tags in <see cref="Tags"/> that no code invalidates when data changes: an operator clears them by hand,
+        /// such as with <c>POST invalidate</c> of <c>MapMethodCacheAdmin</c>, and otherwise their entries expire.
+        /// Analyzer MC0028 and <c>TagCoverage</c> in MethodCache.Testing count them as invalidated, on every method that
+        /// has the tag, without looking for an invalidation. Caching itself doesn't read this setting.
+        /// </summary>
+        /// <remarks>
+        /// Write each tag as it is written in <see cref="Tags"/>. One that matches none of them is warning MC0029. For a
+        /// tag that another application or process invalidates, use <see cref="InvalidatedElsewhere"/>, which
+        /// <c>TagCoverage</c> checks.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // The catalog changes a few times a year; an operator clears "food-catalog" after an update
+        /// [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]
+        /// Task&lt;IReadOnlyList&lt;Food&gt;&gt; SearchAsync(string text);
+        /// </code>
+        /// </example>
+        public string[]? InvalidatedManually { get; set; }
+
+        /// <summary>
         /// A version that is part of every key the method produces. Raise it when the cached result's shape changes,
         /// so values cached by the previous version are ignored. An omitted named argument leaves the version unset.
         /// </summary>

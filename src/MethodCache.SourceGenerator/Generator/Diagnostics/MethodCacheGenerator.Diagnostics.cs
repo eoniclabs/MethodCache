@@ -24,6 +24,11 @@ namespace MethodCache.SourceGenerator
                 "RefreshAhead = \"{0}\" is not shorter than {1} = \"{2}\", so every hit would reload the value; use a RefreshAhead window shorter than the {1}",
                 "Usage", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink("MC0023"));
 
+            internal static readonly DiagnosticDescriptor SlidingNotShorterThanDuration = new(
+                "MC0038", "SlidingExpiration is not shorter than Duration",
+                "SlidingExpiration = \"{0}\" is not shorter than Duration = \"{1}\", so reads never extend an entry: each one expires {1} after it was loaded. Use a sliding window shorter than the Duration, or remove SlidingExpiration.",
+                "Usage", DiagnosticSeverity.Warning, true, helpLinkUri: HelpLink("MC0038"));
+
             internal static readonly DiagnosticDescriptor UnsupportedVoidCache = new(
                 id: "MC0003",
                 title: "Caching not supported on void returns",

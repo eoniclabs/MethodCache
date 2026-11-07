@@ -113,6 +113,12 @@ builder.Services.AddMethodCache(mc =>
 `SlidingExpiration` keeps an entry while it is read: each read extends its life by the sliding window. It never lives
 past its `Duration`; without a `Duration`, only `MaxExpiration` limits it.
 
+So the window must be shorter than the `Duration`, or reads never extend anything: `Duration = "5m"` with
+`SlidingExpiration = "1d"` expires each entry five minutes after it was loaded. On one `[Cache]` that is warning
+[MC0038](../user-guide/DIAGNOSTICS.md#mc0038). When the two come from different places, such as
+`WithSlidingExpiration` on a method and `WithDuration` in `Defaults`, the host logs a warning when it starts that
+names the method.
+
 A method that inherits a sliding window from the defaults, a group or configuration turns it off with
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.

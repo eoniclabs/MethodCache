@@ -100,6 +100,17 @@ with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `Invalidate
 invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 then counts it,
 and `TagCoverage` counts it when the test project references the worker that invalidates it. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028), [In another application](features/invalidation.md#in-another-application))
 
+**A tag is only cleared by an admin, or simply expires. How do I stop MC0028 without a suppression?**
+List it in `[Cache(Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]`. MC0028 and `TagCoverage` count
+it as invalidated without looking for an invalidation, so neither a `SuppressMessage` nor `alsoInvalidatedBy` is
+needed. ([Cleared by hand](features/invalidation.md#cleared-by-hand))
+
+**My sliding window seems to do nothing. Why?**
+It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a
+day on a default `Duration` of five minutes expires each entry after five minutes. Make the window shorter than the
+`Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning that names
+the method when it starts. ([Sliding expiration](features/expiration.md#sliding-expiration), [MC0038](user-guide/DIAGNOSTICS.md#mc0038))
+
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
 when one is changed. ([Rows the database deletes with a row](features/entity-framework-core.md#rows-the-database-deletes-with-a-row))
@@ -367,8 +378,8 @@ cached service. ([Every cached service resolves](features/testing.md#every-cache
 **How do I check that every cache tag is invalidated somewhere?**
 `Assert.Empty(TagCoverage.Uninvalidated(provider))` from `MethodCache.Testing`. It counts `[CacheInvalidate]` methods,
 the EF Core mapping and the invalidations in the projects the test project references, such as a worker's
-`InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it.
-Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
+`InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it,
+and one marked `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
 ([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
 
 **How do I test expiration without waiting?**

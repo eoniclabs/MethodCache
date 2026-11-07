@@ -86,6 +86,7 @@ namespace MethodCache.SourceGenerator
 
             var attributeErrors = ValidateCacheAttribute(attribute, location);
             diagnostics.AddRange(attributeErrors);
+            if (attributeErrors.Count == 0 && SlidingNotShorterThanDuration(attribute, location) is { } sliding) diagnostics.Add(sliding);
             foreach (var name in methodNames.Where(_ => attributeErrors.Count == 0))
             {
                 var candidates = allMethods.Where(m => m.Name == name).ToList();
