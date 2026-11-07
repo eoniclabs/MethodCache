@@ -6206,6 +6206,13 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## Unreleased
+
+### Documentation
+
+- The agent instructions no longer ask a coding agent to draft feedback by itself: it mentions a problem in its
+  report and offers to draft feedback, and drafts and files it only when its user asks. They say we appreciate it.
+
 ## 1.0.0-rc.13 (2026-11-07)
 
 ### Added
