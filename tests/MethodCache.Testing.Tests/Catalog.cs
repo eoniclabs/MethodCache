@@ -46,3 +46,15 @@ public sealed class ImportedPrices : IImportedPrices
 {
     public Task<decimal> ImportedPriceAsync(int id) => Task.FromResult(9.5m);
 }
+
+// Nothing invalidates food-catalog when data changes; an operator clears it by hand after an update
+public interface IFoodCatalog
+{
+    [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]
+    Task<string> SearchAsync(string text);
+}
+
+public sealed class FoodCatalog : IFoodCatalog
+{
+    public Task<string> SearchAsync(string text) => Task.FromResult(text);
+}

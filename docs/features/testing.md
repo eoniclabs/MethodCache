@@ -180,6 +180,10 @@ can't hide a tag that nothing invalidates any more. Reference the project that i
 invalidated outside the solution, such as by another team's application or a database trigger, name it in
 `alsoInvalidatedBy`.
 
+A tag marked `InvalidatedManually` ([Cleared by hand](invalidation.md#cleared-by-hand)) is covered without a check:
+an operator clears it, so there is no invalidation to find. Mark it on `[Cache]` rather than listing it in
+`alsoInvalidatedBy`, so analyzer MC0028 and the test read the same mark.
+
 Name the tags your code invalidates in ways no project shows, such as a tag built in a variable:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any
 value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.

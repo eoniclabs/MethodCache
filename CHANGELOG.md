@@ -10,6 +10,9 @@ release.
 
 - `CachedServices.ProblemsAsync` and `TagCoverage.Uninvalidated` throw `InvalidOperationException` when the provider
   has no service with cached methods, instead of returning an empty list. Pass the application's provider.
+- New warning MC0038 fails a build that treats warnings as errors when `SlidingExpiration` on `[Cache]` or
+  `[assembly: CacheInterface]` is not shorter than the `Duration` next to it. Such a window never extended anything;
+  shorten it or remove it.
 
 ### Added
 
@@ -19,6 +22,13 @@ release.
   ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
 - `MethodCacheWeigher.Bytes(otherValue: 1024)` weighs values it can't measure, such as records of your own, as the
   weight you give instead of 64 ([Bounding by size](docs/features/memory-cache.md#bounding-by-size)).
+- `[Cache(InvalidatedManually = [...])]` marks tags that only an operator clears by hand, such as through
+  `MapMethodCacheAdmin`, and that otherwise expire. MC0028 and `TagCoverage` count them as invalidated, so they need
+  neither a `SuppressMessage` nor `alsoInvalidatedBy` ([Cleared by hand](docs/features/invalidation.md#cleared-by-hand)).
+- Warning MC0038 for a `SlidingExpiration` that is not shorter than the `Duration` on the same attribute, and a warning
+  in the log when the host starts for each method whose sliding window and duration, from any place such as a method's
+  `WithSlidingExpiration` and `Defaults`, combine that way
+  ([Sliding expiration](docs/features/expiration.md#sliding-expiration)).
 
 ## 1.0.0-rc.11 (2026-11-07)
 

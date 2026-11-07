@@ -54,6 +54,18 @@ namespace MethodCache.SourceGenerator
             return diagnostics;
         }
 
+        /// <summary>
+        /// MC0038, a warning that leaves the method cached: a sliding window as long as the duration next to it, or
+        /// longer. An entry never lives past its duration, so reads can never extend it.
+        /// </summary>
+        private static DiagnosticInfo? SlidingNotShorterThanDuration(AttributeData attribute, Location? fallback)
+        {
+            if (!TryGetDuration(attribute, "SlidingExpiration", out var slidingText, out var sliding) || sliding <= System.TimeSpan.Zero) return null;
+            if (!TryGetDuration(attribute, "Duration", out var durationText, out var duration) || sliding < duration) return null;
+            var location = attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? fallback;
+            return DiagnosticInfo.Create(Diagnostics.SlidingNotShorterThanDuration, location, slidingText, durationText);
+        }
+
         private static bool TryGetDuration(AttributeData attribute, string setting, out string text, out System.TimeSpan value)
         {
             foreach (var argument in attribute.NamedArguments)

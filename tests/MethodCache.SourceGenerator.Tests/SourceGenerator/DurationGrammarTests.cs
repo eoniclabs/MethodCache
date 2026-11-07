@@ -92,6 +92,35 @@ public class DurationGrammarTests
     public void RefreshAheadShorterThanDuration_OrWithoutBothValues_IsNotMC0023(string setting)
         => Assert.DoesNotContain(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == "MC0023");
 
+    [Fact]
+    public void SlidingNotShorterThanDuration_IsAWarning_AndTheMethodIsStillCached()
+    {
+        var result = Generate("using MethodCache; public interface IExample { [Cache(Duration = \"5m\", SlidingExpiration = \"1d\")] int Read(); }");
+
+        var diagnostic = Assert.Single(result.Diagnostics, d => d.Id == "MC0038");
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.StartsWith("SlidingExpiration = \"1d\" is not shorter than Duration = \"5m\", so reads never extend an entry", diagnostic.GetMessage(), StringComparison.Ordinal);
+        Assert.Contains(result.Results.SelectMany(r => r.GeneratedSources), source => source.HintName.Contains("IExample", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SlidingNotShorterThanDuration_OnCacheInterface_IsAGeneratorWarning()
+    {
+        const string code = """
+            using MethodCache;
+            [assembly: CacheInterface(typeof(System.IFormatProvider), "GetFormat", Duration = "1m", SlidingExpiration = "1m")]
+            """;
+
+        Assert.Contains(Generate(code).Diagnostics, d => d.Id == "MC0038");
+    }
+
+    [Theory]
+    [InlineData("Duration = \"1h\", SlidingExpiration = \"59m\"")]
+    [InlineData("Duration = \"1h\", SlidingExpiration = \"off\"")]
+    [InlineData("SlidingExpiration = \"1d\"")]
+    public void SlidingShorterThanDuration_OrWithoutADuration_IsNotMC0038(string setting)
+        => Assert.DoesNotContain(Generate("using MethodCache; public interface IExample { [Cache(" + setting + ")] int Read(); }").Diagnostics, d => d.Id == "MC0038");
+
     [Theory]
     [InlineData("[Cache(\"old-group\")] int Read();")]
     [InlineData("[Cache] int Read([CacheKey] int id);")]

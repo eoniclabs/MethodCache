@@ -91,7 +91,8 @@ Assert.Empty(TagCoverage.Uninvalidated(provider));
 MethodCache writes the tags each project invalidates into its assembly, and `TagCoverage` reads them from the
 assemblies next to the tests, so reference the projects that invalidate, such as a worker, from the test project. A tag
 marked `InvalidatedElsewhere` is covered only when one of them invalidates it; otherwise it is reported with
-`MarkedInvalidatedElsewhere` set.
+`MarkedInvalidatedElsewhere` set. A tag marked `InvalidatedManually`, which an operator clears by hand, is covered
+without a check.
 
 Name the tags invalidated where no referenced project shows it, such as by another application:
 `TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["price:{provider}:{model}"])`. A placeholder matches any

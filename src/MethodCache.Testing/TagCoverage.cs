@@ -19,8 +19,9 @@ public static class TagCoverage
     /// <summary>
     /// The tags of the cached methods in <paramref name="provider"/>, from attributes, startup code and configuration,
     /// that nothing invalidates. A tag is covered by a <c>[CacheInvalidate]</c> method of a registered service, by the
-    /// entity mapping of <c>mc.UseEntityFrameworkCore</c>, by an invalidation in a project the tests reference, or by
-    /// <paramref name="alsoInvalidatedBy"/>. An empty list means every tag is covered.
+    /// entity mapping of <c>mc.UseEntityFrameworkCore</c>, by an invalidation in a project the tests reference, by
+    /// <c>InvalidatedManually</c> on a <c>[Cache]</c>, or by <paramref name="alsoInvalidatedBy"/>. An empty list means
+    /// every tag is covered.
     /// </summary>
     /// <remarks>
     /// MethodCache's generator writes the tags each project invalidates into its assembly: <c>[CacheInvalidate]</c>
@@ -47,6 +48,7 @@ public static class TagCoverage
         var covered = InvalidatedBy(services)
             .Concat(provider.GetServices<IInvalidatedTagSource>().SelectMany(static source => source.InvalidatedTags))
             .Concat(ReferencedInvalidations.Read(AppContext.BaseDirectory))
+            .Concat(MarkedManually(services))
             .Concat(alsoInvalidatedBy ?? [])
             .Select(TagPattern.Of).Distinct(StringComparer.Ordinal).ToArray();
         var elsewhere = MarkedElsewhere(services).Select(TagPattern.Of).Distinct(StringComparer.Ordinal).ToArray();
@@ -83,6 +85,10 @@ public static class TagCoverage
     /// <summary>The <c>InvalidatedElsewhere</c> tags of the <c>[Cache]</c> methods.</summary>
     private static IEnumerable<string> MarkedElsewhere(IEnumerable<MethodInfo> methods)
         => methods.SelectMany(static method => method.GetCustomAttribute<CacheAttribute>()?.InvalidatedElsewhere ?? []);
+
+    /// <summary>The <c>InvalidatedManually</c> tags of the <c>[Cache]</c> methods, which an operator clears by hand.</summary>
+    private static IEnumerable<string> MarkedManually(IEnumerable<MethodInfo> methods)
+        => methods.SelectMany(static method => method.GetCustomAttribute<CacheAttribute>()?.InvalidatedManually ?? []);
 }
 
 /// <summary>A tag of a cached method that nothing invalidates, as <see cref="TagCoverage.Uninvalidated"/> reports it.</summary>

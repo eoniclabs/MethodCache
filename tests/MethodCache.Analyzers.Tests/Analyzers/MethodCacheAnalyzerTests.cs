@@ -15,7 +15,7 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         {
             var ids = new MethodCacheAnalyzer().SupportedDiagnostics.Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal);
 
-            Assert.Equal(new[] { "MC0001", "MC0004", "MC0021", "MC0023" }, ids);
+            Assert.Equal(new[] { "MC0001", "MC0004", "MC0021", "MC0023", "MC0038" }, ids);
         }
 
         [Theory]
@@ -69,6 +69,36 @@ namespace MethodCache.Analyzers.Tests.Analyzers
         [InlineData("Duration = \"1h\", SlidingExpiration = \"5m\", RefreshAhead = \"1m\"")]
         [InlineData("SlidingExpiration = \"off\", RefreshAhead = \"1h\"")]
         public async Task RefreshAheadShorterThanDuration_OrWithoutADuration_IsAccepted(string settings)
+            => Assert.Empty(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
+
+        [Theory]
+        [InlineData("Duration = \"5m\", SlidingExpiration = \"1d\"", "SlidingExpiration = \"1d\" is not shorter than Duration = \"5m\"")]
+        [InlineData("SlidingExpiration = \"10m\", Duration = \"10m\"", "SlidingExpiration = \"10m\" is not shorter than Duration = \"10m\"")]
+        public async Task SlidingNotShorterThanDuration_IsAWarning(string settings, string message)
+        {
+            var diagnostic = Assert.Single(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
+
+            Assert.Equal("MC0038", diagnostic.Id);
+            Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+            Assert.StartsWith(message + ", so reads never extend an entry", diagnostic.GetMessage(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public async Task SlidingNotShorterThanDuration_OnCacheInterface_IsAWarning()
+        {
+            var source = """
+                using MethodCache;
+                [assembly: CacheInterface(typeof(System.IFormatProvider), "GetFormat", Duration = "1m", SlidingExpiration = "1h")]
+                """;
+
+            Assert.Equal("MC0038", Assert.Single(await AnalyzeAsync(source)).Id);
+        }
+
+        [Theory]
+        [InlineData("Duration = \"1h\", SlidingExpiration = \"59m\"")]
+        [InlineData("Duration = \"1h\", SlidingExpiration = \"off\"")]
+        [InlineData("SlidingExpiration = \"1d\"")]
+        public async Task SlidingShorterThanDuration_OrWithoutADuration_IsAccepted(string settings)
             => Assert.Empty(await AnalyzeAsync("using MethodCache; public interface IReader { [Cache(" + settings + ")] int Read(); }"));
 
         [Fact]

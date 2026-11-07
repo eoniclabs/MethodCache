@@ -24,4 +24,5 @@ MC0020 | Performance | Warning | Reports a cached result type of object, an inte
 MC0004 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
 MC0021 | Usage | Error | Reports a negative explicit cache version.
 MC0023 | Usage | Error | Reports a RefreshAhead that is not shorter than the Duration or SlidingExpiration on the same attribute.
+MC0038 | Usage | Warning | Reports a SlidingExpiration that is not shorter than the Duration on the same attribute, so reads never extend an entry.
 MC0025 | Reliability | Warning | Reports a cached result type that isn't safe to share between callers, such as JsonNode, DataTable, Stream or StringBuilder, also as an element.

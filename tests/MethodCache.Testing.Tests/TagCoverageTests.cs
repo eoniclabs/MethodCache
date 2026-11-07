@@ -71,6 +71,21 @@ public class TagCoverageTests
     }
 
     [Fact]
+    public void Uninvalidated_InvalidatedManually_CoversATagNothingInvalidates()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddSingleton<IProductWriter, ProductWriter>();
+        services.AddSingleton<IFoodCatalog, FoodCatalog>();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        // No referenced project invalidates food-catalog, and unlike InvalidatedElsewhere the mark needs none
+        Assert.DoesNotContain(ReferencedInvalidations.Read(AppContext.BaseDirectory), tag => tag == "food-catalog");
+        Assert.Empty(TagCoverage.Uninvalidated(provider, alsoInvalidatedBy: ["prices"]));
+    }
+
+    [Fact]
     public void Uninvalidated_ConfiguredTag_IsChecked()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

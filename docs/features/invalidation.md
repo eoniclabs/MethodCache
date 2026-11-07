@@ -199,6 +199,30 @@ Write each tag as it is written in `Tags`; one that matches none of them is warn
 [MC0029](../user-guide/DIAGNOSTICS.md#mc0029). The other application's invalidation reaches this one's memory cache
 only through a shared distributed cache ([With several instances](#with-several-instances)).
 
+### Cleared by hand
+
+Some data has no write in the application to invalidate after: a catalog loaded once a year, or settings an operator
+changes in another system. When an operator clears the tag by hand instead, such as with `POST invalidate` of
+`MapMethodCacheAdmin` ([Admin endpoints](monitoring.md#admin-endpoints)), and the entries otherwise expire, list the tag in
+`InvalidatedManually`:
+
+<!-- snippet: invalidation-cleared-by-hand -->
+```cs
+public interface IFoodCatalog
+{
+    // The catalog changes a few times a year, and an operator clears "food-catalog" after each update
+    [Cache(Duration = "1d", Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]
+    Task<IReadOnlyList<Food>> SearchAsync(string text);
+}
+```
+<!-- endSnippet -->
+
+Caching works the same. Analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) and `TagCoverage`
+([Testing](testing.md#every-tag-has-an-invalidation)) count the tag as invalidated, on every method that has it,
+without looking for an invalidation; unlike `InvalidatedElsewhere`, there is nothing in another project to check.
+Write each tag as it is written in `Tags`; one that matches none of them is warning
+[MC0029](../user-guide/DIAGNOSTICS.md#mc0029).
+
 ### After a database transaction
 
 With Entity Framework Core, [`MethodCache.EntityFrameworkCore`](entity-framework-core.md) does this for you. With
