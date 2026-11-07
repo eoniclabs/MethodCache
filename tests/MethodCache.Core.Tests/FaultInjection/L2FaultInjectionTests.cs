@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentAssertions;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Extensibility;
@@ -23,8 +24,9 @@ public class L2FaultInjectionTests
     private static readonly TimeSpan OneMillisecond = TimeSpan.FromMilliseconds(1);
     private static readonly TimeSpan OneMinute = TimeSpan.FromMinutes(1);
 
-    // Only bounds the real time a test waits for work that the fake clock already released
-    private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
+    // Only bounds the real time a test waits for work that the fake clock already released. That work runs on the
+    // thread pool, which a loaded CI machine can keep waiting for seconds, so the bound is generous.
+    private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(30);
 
     private const string EntryKey = "methodcache:e6:s1:key";
 
@@ -66,12 +68,12 @@ public class L2FaultInjectionTests
     private static Task<string> Get(ICacheManager node, string key, Func<string> value, params string[] tags) =>
         node.GetOrCreateFastAsync(key, "M", () => Task.FromResult(value()), Policy(tags));
 
-    private static async Task WaitUntil(Func<bool> condition)
+    private static async Task WaitUntil(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string? what = null)
     {
         var deadline = DateTime.UtcNow + RealTimeLimit;
         while (!condition())
         {
-            DateTime.UtcNow.Should().BeBefore(deadline, "the work the fake clock released should have run");
+            DateTime.UtcNow.Should().BeBefore(deadline, "the work the fake clock released should have run ({0})", what);
             await Task.Delay(1);
         }
     }
