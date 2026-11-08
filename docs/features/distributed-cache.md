@@ -237,11 +237,11 @@ API's test project references the worker project, since the worker is where the 
 ## Serialization
 
 Values are written as JSON with System.Text.Json, public fields included, so records, value tuples and structs are
-shared as they are. Each value is read back once before it is shared. A value that doesn't come back the same, such as
-a class with private setters, a `Dog` where `Animal` is declared (as the result, in a list or in a property), or
-`object`, stays in that instance's memory only, with one warning that names the method and the type. Add
-`[JsonDerivedType(typeof(Dog), "dog")]` to `Animal` to share a `Dog` as a `Dog`, or register your own
-`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` (`[JsonInclude]` for private setters).
+shared as they are. A `Dog` where `Animal` is declared comes back as a `Dog` too ([Derived types](#derived-types)).
+Each value is read back once before it is shared. A value that doesn't come back the same, such as a class with private
+setters, `object`, or a dictionary made with its own comparer, stays in that instance's memory only, with one warning
+that names the method and the type. Register your own `JsonSerializerOptions` or `JsonSerializerContext` with `UseJson`
+to share it (`[JsonInclude]` for private setters).
 [Distributed cache reference](../reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
@@ -258,6 +258,47 @@ Entries written in the other format read as misses and are replaced, so switchin
 [MessagePack package guide](../../src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](native-aot.md)).
 
+## Derived types
+
+A cached result that declares a base type can hold a derived one: a `Dog` in a `List<Animal>`, in an `Animal`
+property, or returned by a method declared to return `Animal`. MethodCache's generator finds the classes that derive
+from such a type or implement such an interface, and names them to MethodCache's JSON and MessagePack serializers, so a
+`Dog` comes back from the distributed cache as a `Dog`. It finds them in the project with the cached interface, in the
+declared type's own assembly and the assemblies built on it, and in projects that reference the one with the cached
+interface. Your application's own JSON doesn't change: `JsonSerializer.Serialize<Animal>(dog)` still writes an
+`Animal`. The log at startup lists the derived types the distributed cache restores.
+
+- A base type with `[JsonDerivedType]` or `[JsonPolymorphic]`, or `[Union]` with MessagePack, keeps its own settings.
+- A derived type the generated code can't name, because it is private, file-local, generic or not public in another
+  assembly, gets [MC0039](../user-guide/DIAGNOSTICS.md#mc0039) at build time. A value holding one stays in memory only.
+- Under Native AOT, the `JsonSerializerContext` you pass to `UseJson` needs `[JsonSerializable(typeof(Dog))]` as well.
+  [MC0040](../user-guide/DIAGNOSTICS.md#mc0040) names a derived type it lacks, and its code fix adds it. At startup,
+  MethodCache also logs a warning naming the derived types the context has no contract for.
+- EF Core entities with lazy-loading proxies come back as plain entities without their navigations
+  ([MC0041](../user-guide/DIAGNOSTICS.md#mc0041)). Cache a projection such as a record instead.
+
+## Results that don't change
+
+The memory cache keeps the instance your method returned and hands that same instance to every later caller on the
+instance. The distributed cache keeps a serialized copy. Code that changes a result, such as `orders.Add(draft)` or
+`order.Status = Shown`, changes what later callers on this instance get, while the other instances still read the copy
+without the change. Instances then give different answers until the entry expires.
+
+- Return types that can't be changed, so the compiler stops such code: records with `init` properties, and
+  `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>` for collections.
+- When a caller needs to change a result, change a copy: `orders.ToList()`, `new List<Order>(orders)`, or
+  `order with { Status = OrderStatus.Shown }`. A list copy holds the same objects, so copy an object before setting
+  its properties.
+- [MC0043](../user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
+  methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
+  writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
+  per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
+  call is answered from memory.
+- Keep all state in what the serializer writes: data only in private fields is written as `{}`
+  ([MC0042](../user-guide/DIAGNOSTICS.md#mc0042)).
+- An object referenced twice in a result comes back as two copies, and a `DateTime` of kind `Local` shows another
+  clock time on a server in another time zone. Use `DateTimeOffset` or UTC times.
+
 ## Keep invalidations from being evicted
 
 > [!WARNING]
@@ -271,8 +312,13 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 ## Changing result types and upgrading
 
-- Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
-  so values the previous version wrote are not read.
+- When a cached result's shape changes, such as a renamed property, another property type or renumbered enum members,
+  the new build reads entries of its own. MethodCache's generator computes a fingerprint of what the serializer writes
+  for each cached method's result, including the derived types registered for it, and keeps entries of another shape
+  apart. During a rolling deploy each build reads its own entries, and invalidations by key and by tag reach both.
+- Raise the method's `Version` for a change the build can't see: what a value means changes while its shape doesn't,
+  a `JsonConverter` writes it differently, or a derived type in a project that references the cached interface's
+  project changes. Raise `SerializerVersion` when you change serializer settings.
 - Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works. When a release
   writes some keys differently, its CHANGELOG section says so under "Upgrading". During the rollout, instances on the
   old and the new version then miss each other's entries for those methods: each loads once and caches under its own

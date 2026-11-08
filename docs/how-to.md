@@ -329,10 +329,28 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 ([Runtime overrides](features/configuration.md#runtime-overrides))
 
 **A result type stays in memory only, with a warning. Why?**
-It doesn't read back from JSON unchanged: private setters, a derived type where its base type is declared (also in a
-list or property), or `object`. Return records with public properties, add `[JsonDerivedType]` to the base type, or
-register a serializer with `UseJson(options)`.
+It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
+derived type MethodCache can't name (MC0039). Return records with public properties, or register a serializer with
+`UseJson(options)`.
 ([Serialization](features/distributed-cache.md#serialization))
+
+**Does a `Dog` in a `List<Animal>` come back as a `Dog`?**
+Yes. MethodCache's generator names the classes that derive from a type a cached result declares to its JSON and
+MessagePack serializers, in your project and the projects around it. Under Native AOT, add `[JsonSerializable(typeof(Dog))]`
+to the context you pass to `UseJson`; MC0040 and its code fix point it out.
+([Derived types](features/distributed-cache.md#derived-types))
+
+**I renamed a property of a cached result. Do I need to raise `Version`?**
+No. The generator computes a fingerprint of the result's shape, so the new build reads entries of its own, and
+invalidations still reach both builds during a rolling deploy. Raise `Version` only for changes the build can't see,
+such as what a value means.
+([Changing result types](features/distributed-cache.md#changing-result-types-and-upgrading))
+
+**Can I change a list a cached method returned?**
+Change a copy (`result.ToList()`, or a record's `with`). The memory cache hands the same instance to later callers, so
+a change shows up there but not on other instances. MC0043 reports such code, and in Development a warning names the
+method when a cached value has changed.
+([Results that don't change](features/distributed-cache.md#results-that-dont-change))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
 Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values

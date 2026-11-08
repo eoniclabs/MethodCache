@@ -242,6 +242,10 @@ distributed cache is used, the default round-trip check finds that such a result
 in-memory cache only. Collection interfaces such as
 `IReadOnlyList<Product>` are fine; they are read back as a list.
 
+Not reported when the project, or a project it references, has classes that implement the
+interface or derive from the abstract class: MethodCache's generator then names them to its serializers, so they come
+back as themselves ([Derived types](../features/distributed-cache.md#derived-types)).
+
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
 cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
 abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with

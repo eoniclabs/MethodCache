@@ -134,4 +134,8 @@ Moments after the writes stop, the cache is back within the bound.
 > The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
 > object; return immutable types such as records, or copies.
 
+Build warning [MC0043](../user-guide/DIAGNOSTICS.md#mc0043) names code that changes a cached result, and with a
+distributed cache, a warning in the Development log names the method whose cached value changed
+([Results that don't change](distributed-cache.md#results-that-dont-change)).
+
 

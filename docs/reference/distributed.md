@@ -103,10 +103,22 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   value is checked, since one with default data (an `Id` of 0 behind a private setter) can come back unchanged where
   the next one doesn't.
 - That happens with properties that have a private or protected setter, public readonly fields of a type that also
-  has a parameterless constructor, a derived type where its base type is declared (an `Animal` method returning a
-  `Dog`, a `Dog` in a `List<Animal>` or in an `Animal` property), `object` anywhere in the value (it comes back as a
-  `JsonElement`, so a `Dictionary<string, object>` does too), and values the serializer throws on (a cycle, a
-  delegate), with JSON and MessagePack alike. `[JsonDerivedType]` on the base type shares a derived type as itself.
+  has a parameterless constructor, a derived type MethodCache can't name to the serializer (see below), `object`
+  anywhere in the value (it comes back as a `JsonElement`, so a `Dictionary<string, object>` does too), a dictionary or
+  set made with a comparer other than the default (it comes back with the default one), and values the serializer
+  throws on (a cycle, a delegate), with JSON and MessagePack alike.
+- Derived types: the generator registers the classes that derive from a class or implement an interface a cached result
+  declares (as the result, an element, or a property or field a serializer writes), found in the project with the
+  cached interface, in the declared type's assembly and the referenced assemblies built on it, and in projects that
+  reference the one with the cached interface. MethodCache's JSON writes such a value with a `$type` property holding
+  the type's full name, and MessagePack as a two-item array of the name and the value; both restore the derived type.
+  The application's own `JsonSerializerOptions` aren't changed, since MethodCache copies them. A base type with
+  `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]` keeps its own settings. With a `JsonSerializerContext`, a
+  derived type the context has no contract for isn't registered, and one warning at startup names it.
+- A dictionary's or set's comparer is compared when the declared type shows it (`Dictionary<,>`, `HashSet<T>`,
+  `SortedDictionary<,>`, `SortedSet<T>` and others with a public `Comparer`): `StringComparer.Ordinal` counts as the
+  default for `string` keys. A collection declared as `IDictionary<,>`, `IReadOnlyDictionary<,>`, `ISet<T>` or
+  `IReadOnlySet<T>` is compared the same way.
 - The types are compared through collections (a dictionary by key) and the public properties and fields a serializer
   writes: properties with a setter and auto-properties, not computed ones, and nothing marked `[JsonIgnore]`,
   `[IgnoreDataMember]`, `[IgnoreMember]` or `[NonSerialized]`, whose getters aren't called. A member that is null on
@@ -128,6 +140,11 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   shorter; a shorter setting fails at startup. Use a new prefix to lower it.
 - Entries are stored per value format and `SerializerVersion`, so switching between JSON and MessagePack, or raising
   `SerializerVersion`, makes old entries misses. Invalidations apply to every format.
+- A cached method's entries are also stored per result shape: a fingerprint the generator computes from the result
+  type, the types in it, the names, types and serializer attributes (`[JsonPropertyName]`, `[JsonIgnore]`,
+  `[JsonInclude]`, `[Key]` and others) of the members a serializer writes, the names and values of enum members, and the
+  derived types registered for it. Framework types count by name. Reordering members, changing method bodies or
+  adding computed properties keeps the fingerprint. Invalidations by key and tag reach entries of every shape.
 - An entry's expiry is fixed from when its load started, so a slow write can't extend it.
 - SQL Server and PostgreSQL create their tables on first use (`CreateTablesIfMissing`), and refuse a schema they don't
   know instead of changing it. SQL Server ships `migrations/0001-version-existing-schema.sql` for an invalidations

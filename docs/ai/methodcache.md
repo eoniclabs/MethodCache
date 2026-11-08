@@ -162,8 +162,11 @@ builder.Services.AddMethodCache();                               // after your r
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
   data an API caches, or several API instances), add `.Distributed(o => o.StoreValues = false)` in every process (not
   `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): no value is stored, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
-  warning: return records with public properties.
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
+  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
+  (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
+  member needs no `Version` bump: entries are kept apart by the result's shape.
 - `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
   send cookies as a `Cookie` header, or set `KeepCookies = true`, which turns response caching off.
 - Generated keys and method ids start with the service assembly's name in brackets. Never write a key or method id by

@@ -48,16 +48,24 @@
 
 ## Results stay out of the distributed cache
 
-A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
-warning [MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
-such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
-only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`, or
-name the implementations with `[JsonDerivedType]` on the interface.
+A method whose result type is `object`, an interface or an abstract class with no implementations in the project or
+the projects it references (`Task<IShape>`, `Task<List<object>>`) has warning
+[MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads such a
+result back, so when a distributed cache is used the default round-trip check keeps these results in memory only, and
+each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`, or name the
+implementations with `[JsonDerivedType]` on the interface.
 
-The same happens, with a warning in the log when the first such value is written, for a derived type where its base
-type is declared deeper in the value: a `Dog` in a `List<Animal>` or in an `Animal` property, or `object` values such
-as those of a `Dictionary<string, object>`, which come back as `JsonElement`. `[JsonDerivedType(typeof(Dog), "dog")]`
-on `Animal` shares a `Dog` as a `Dog` ([Serialization](reference/distributed.md#serialization)).
+The same happens, with a warning in the log when the first such value is written, for `object` values such as those of
+a `Dictionary<string, object>`, which come back as `JsonElement`, for a dictionary made with its own comparer, and for
+a derived type MethodCache can't name to the serializer ([MC0039](user-guide/DIAGNOSTICS.md#mc0039)) or that the
+`JsonSerializerContext` passed to `UseJson` lacks ([MC0040](user-guide/DIAGNOSTICS.md#mc0040)). Other derived types,
+such as a `Dog` in a `List<Animal>`, come back as themselves ([Derived types](features/distributed-cache.md#derived-types)).
+
+## Instances return different values for the same call
+
+- Code changed a cached result in place ([A caller changed a cached object](#a-caller-changed-a-cached-object-and-others-see-the-change)).
+- An invalidation hasn't reached the other instances yet, or an instance has no backplane
+  ([What other instances see](features/distributed-cache.md#what-other-instances-see)).
 
 Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
 when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
@@ -102,6 +110,11 @@ key.
 > [!WARNING]
 > The cache hands the same instance to every caller. Return immutable types such as records, or copies
 > ([Memory cache](features/memory-cache.md#cached-objects-are-shared)).
+
+Code such as `orders.Add(...)` on a list a cached method returned changes it for every later caller on that instance,
+while the other instances read the stored copy. Build warnings [MC0043](user-guide/DIAGNOSTICS.md#mc0043) name such
+code, and in Development a warning in the log names the method whose cached value changed
+([Results that don't change](features/distributed-cache.md#results-that-dont-change)).
 
 ## Build errors and warnings
 
