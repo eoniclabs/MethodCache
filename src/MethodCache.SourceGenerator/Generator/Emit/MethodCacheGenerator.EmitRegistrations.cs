@@ -18,7 +18,7 @@ namespace MethodCache.SourceGenerator
         /// </summary>
         private static class DecoratorRegistrationsEmitter
         {
-            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes)
+            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes, EquatableArray<DerivedTypeRegistration> derivedTypes)
             {
                 // A partial class is declared, and so found, more than once
                 var allClasses = classes
@@ -90,6 +90,11 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine($"                    new string[] {{ {string.Join(", ", info.Policies.Select(p => Utils.Literal(p.KeyMethod)))} }});");
                     foreach (var candidate in candidates.Where(c => c.HasPublicConstructor && c.Interfaces.Any(i => i.AssemblyIdentity == info.AssemblyIdentity && i.Fqn == interfaceFqn)))
                         sb.AppendLine($"                builder.ImplementationCandidate(typeof({interfaceFqn}), typeof({candidate.Fqn}));");
+                }
+
+                foreach (var registration in derivedTypes)
+                {
+                    sb.AppendLine($"                builder.DerivedTypes(typeof({registration.DeclaredFqn}), {string.Join(", ", registration.DerivedFqns.Select(static t => $"typeof({t})"))});");
                 }
 
                 sb.AppendLine("            }");

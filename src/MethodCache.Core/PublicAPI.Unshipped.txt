@@ -216,6 +216,7 @@ MethodCache.Generated.GeneratedModule
 MethodCache.Generated.GeneratedModule.GeneratedModule() -> void
 MethodCache.Generated.GeneratedModuleBuilder
 MethodCache.Generated.GeneratedModuleBuilder.DeclareService(System.Type! serviceType) -> void
+MethodCache.Generated.GeneratedModuleBuilder.DerivedTypes(System.Type! declaredType, params System.Type![]! derivedTypes) -> void
 MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds, string![]? keyMethods = null) -> void
 MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void
 MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void

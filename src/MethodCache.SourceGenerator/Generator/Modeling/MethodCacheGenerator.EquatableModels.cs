@@ -65,6 +65,12 @@ namespace MethodCache.SourceGenerator
         /// <summary>A diagnostic to report, kept as values until the output step creates it.</summary>
         internal sealed record DiagnosticInfo(DiagnosticDescriptor Descriptor, LocationInfo? Location, EquatableArray<string?> Arguments, string? ParameterProperty)
         {
+            /// <summary>
+            /// A type whose derived types, when the project has any, make the diagnostic moot (MC0020 for an interface
+            /// that classes of the project implement); it is reported only when none is found.
+            /// </summary>
+            public string? UnlessDerivedTypesOf { get; init; }
+
             public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location? location, params string?[] arguments)
                 => new(descriptor, LocationInfo.From(location), new EquatableArray<string?>(arguments), null);
 
@@ -100,7 +106,9 @@ namespace MethodCache.SourceGenerator
             bool IsGeneric,
             bool HasCachedMethods,
             bool HasInvalidateMethods,
-            EquatableArray<PolicyEntry> Policies)
+            EquatableArray<PolicyEntry> Policies,
+            EquatableArray<string> DerivedTypeCandidates,
+            EquatableArray<DerivedTypeRegistration> ReferencedDerivedTypes)
         {
             /// <summary>Whether the interface gets a decorator; one whose every method was rejected only reports diagnostics.</summary>
             public bool Generates => HasCachedMethods || HasInvalidateMethods;

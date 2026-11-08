@@ -109,12 +109,14 @@ public sealed class MethodCacheBuilder
     { Services.AddMethodCacheFromConfiguration(configuration, sectionName); return this; }
     /// <summary>Selects JSON value serialization with the serializer's defaults.</summary>
     public MethodCacheBuilder UseJson()
-    { Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, new JsonCacheSerializer())); return this; }
+    { Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, static (sp, _) => new JsonCacheSerializer(null, sp.GetService<DerivedTypeRegistry>()))); return this; }
     /// <summary>Selects JSON value serialization with explicit options, including an AOT resolver when needed.</summary>
     public MethodCacheBuilder UseJson(JsonSerializerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, new JsonCacheSerializer(options)));
+        // Copied now, so later changes to the options don't apply
+        var copy = new JsonSerializerOptions(options);
+        Services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(OwnedServices.Key, (sp, _) => new JsonCacheSerializer(copy, sp.GetService<DerivedTypeRegistry>())));
         return this;
     }
     /// <summary>Selects JSON value serialization using a source-generated context, including under Native AOT.</summary>

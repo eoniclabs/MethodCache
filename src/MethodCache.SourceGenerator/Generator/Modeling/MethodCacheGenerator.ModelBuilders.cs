@@ -83,9 +83,13 @@ namespace MethodCache.SourceGenerator
 
             if (FindUnrestorableResultType(result) is { } unrestorable)
             {
+                // An interface or abstract class that classes of the project derive from is restored as them
                 return (DiagnosticInfo.Create(Diagnostics.UnrestorableResultType, location, methodName,
                     result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
-                    unrestorable.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+                    unrestorable.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)) with
+                {
+                    UnlessDerivedTypesOf = unrestorable is INamedTypeSymbol { SpecialType: not SpecialType.System_Object } named ? Utils.GetFullyQualifiedName(named) : null,
+                }, true);
             }
 
             return (null, true);

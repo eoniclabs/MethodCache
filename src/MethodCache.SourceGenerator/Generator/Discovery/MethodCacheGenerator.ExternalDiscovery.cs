@@ -128,7 +128,7 @@ namespace MethodCache.SourceGenerator
 
             var generated = cachedMethods.Count == 0
                 ? null
-                : ToGeneratedInterface(new InterfaceInfo(type, cachedMethods.ToImmutableArray(), ImmutableArray<MethodModel>.Empty, ImmutableArray<DiagnosticInfo>.Empty));
+                : ToGeneratedInterface(new InterfaceInfo(type, cachedMethods.ToImmutableArray(), ImmutableArray<MethodModel>.Empty, ImmutableArray<DiagnosticInfo>.Empty), compilation.Assembly);
             return new ExternalInterface(
                 Utils.GetFullyQualifiedName(type), typeName, LocationInfo.From(location), generated, new EquatableArray<DiagnosticInfo>(diagnostics));
         }

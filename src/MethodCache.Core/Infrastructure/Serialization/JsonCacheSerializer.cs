@@ -25,11 +25,25 @@ internal sealed class JsonCacheSerializer : ISerializer
 
     /// <summary>
     /// Creates a serializer with the given <paramref name="options"/>, or System.Text.Json's defaults with
-    /// <see cref="JsonSerializerOptions.IncludeFields"/> on.
+    /// <see cref="JsonSerializerOptions.IncludeFields"/> on, that also writes and restores the derived types in
+    /// <paramref name="derived"/> as themselves.
     /// </summary>
-    public JsonCacheSerializer(JsonSerializerOptions? options = null)
+    public JsonCacheSerializer(JsonSerializerOptions? options = null, MethodCache.Infrastructure.DerivedTypeRegistry? derived = null)
     {
-        _options = options == null ? Defaults.Options : new JsonSerializerOptions(options);
+        if (derived is not { Count: > 0 })
+        {
+            _options = options == null ? Defaults.Options : new JsonSerializerOptions(options);
+        }
+        else
+        {
+            _options = new JsonSerializerOptions(options ?? Defaults.Options);
+
+            // Options without a resolver read the types by reflection, as MakeReadOnly would set up; under Native AOT
+            // with reflection off there is no contract to add them to, and the check before sharing decides
+            if (_options.TypeInfoResolver == null && JsonSerializer.IsReflectionEnabledByDefault) _options.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
+            if (_options.TypeInfoResolver is { } resolver) _options.TypeInfoResolver = resolver.WithAddedModifier(derived.Modifier());
+        }
+
         if (!_options.IsReadOnly) _options.MakeReadOnly(populateMissingResolver: true);
     }
 
