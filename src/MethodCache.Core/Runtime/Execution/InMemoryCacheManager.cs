@@ -107,6 +107,7 @@ namespace MethodCache.Extensibility
             _distributed = distributed;
             _sharesValues = distributed?.StoresValues == true;
             if (logger != null) LogLayers(logger, _options, distributed);
+            if (logger != null && distributed is { StoresValues: true, DerivedTypes: { } derivedTypes }) LogDerivedTypes(logger, derivedTypes);
             _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight, MethodEvictions: _engine.EvictionsSinceStart));
             _onMethodInvalidated = onMethodInvalidated;
             _syncDiagnostics = new GeneratedDiagnostics(logger);
@@ -159,6 +160,32 @@ namespace MethodCache.Extensibility
                 "MethodCache caches in memory, up to {Memory} per instance, and in the distributed cache {Store} under the " +
                 "key prefix '{KeyPrefix}', with the {Backplane} backplane telling other instances to drop their copy.",
                 memory, store, keyPrefix, backplane);
+        }
+
+        /// <summary>
+        /// Names the derived types the distributed cache restores as themselves, and warns about those it can't, such as
+        /// a derived type missing from the <c>JsonSerializerContext</c> passed to <c>UseJson</c>.
+        /// </summary>
+        private static void LogDerivedTypes(Microsoft.Extensions.Logging.ILogger logger, MethodCache.Infrastructure.IRestoresDerivedTypes derived)
+        {
+            static string Display(Type type) => MethodCache.Infrastructure.DerivedTypeRegistry.Display(type);
+            if (derived.Restored.Count > 0 && logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache's distributed cache writes and restores these derived types as themselves where cached results " +
+                    "declare their base type: {DerivedTypes}.",
+                    string.Join("; ", derived.Restored.OrderBy(static pair => Display(pair.Key), StringComparer.Ordinal)
+                        .Select(static pair => $"{Display(pair.Key)}: {string.Join(", ", pair.Value.Select(Display))}")));
+            }
+
+            if (derived.Missing.Count > 0)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(logger,
+                    "MethodCache's distributed cache can't restore {DerivedTypes} as themselves, as the serializer's JsonSerializerContext " +
+                    "has no contract for them, so a value holding one stays in each instance's memory. Add " +
+                    "[JsonSerializable(typeof(...))] for each to the context passed to UseJson.",
+                    string.Join(", ", derived.Missing.Select(static m => $"{Display(m.Derived)} (for {Display(m.Declared)})")));
+            }
         }
 
         /// <summary>

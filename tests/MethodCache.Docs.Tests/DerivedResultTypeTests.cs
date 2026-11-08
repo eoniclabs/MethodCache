@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -69,7 +70,7 @@ public class DerivedResultTypeTests
 
     public DerivedResultTypeTests() => _shared = new(_time);
 
-    private (ServiceProvider Provider, Zoos Zoos, WarningLog Log) Instance(bool messagePack = false)
+    private (ServiceProvider Provider, Zoos Zoos, WarningLog Log) Instance(bool messagePack = false, JsonSerializerContext? context = null)
     {
         var zoos = new Zoos();
         var log = new WarningLog();
@@ -80,6 +81,7 @@ public class DerivedResultTypeTests
         services.AddMethodCache(mc =>
         {
             if (messagePack) mc.UseMessagePack();
+            if (context != null) mc.UseJson(context);
         });
         services.AddMethodCacheDistributedCache(_ => _shared);
         return (services.BuildServiceProvider(), zoos, log);
@@ -126,19 +128,56 @@ public class DerivedResultTypeTests
         Assert.Equal("""{"Name":"rex"}""", json);
     }
 
+    [Fact]
+    public void TheStartupLog_NamesTheDerivedTypesTheDistributedCacheRestores()
+    {
+        var (provider, _, log) = Instance();
+        using (provider)
+        {
+            provider.GetRequiredService<ICacheManager>();
+
+            Assert.Contains(log.Information, line => line.StartsWith("MethodCache's distributed cache writes and restores these derived types as themselves", StringComparison.Ordinal) &&
+                                                      line.Contains("MethodCache.Docs.Tests.DerivedResultTypeTests.Animal: MethodCache.Docs.Tests.DerivedResultTypeTests.Dog", StringComparison.Ordinal));
+            Assert.Empty(log.Warnings);
+        }
+    }
+
+    [Fact]
+    public async Task ADerivedTypeMissingFromTheJsonSerializerContext_IsNamedInAWarning_AndValuesHoldingOneStayInMemory()
+    {
+        var (firstProvider, _, log) = Instance(context: AnimalsWithoutDogContext.Default);
+        var (secondProvider, second, _) = Instance(context: AnimalsWithoutDogContext.Default);
+        using (firstProvider)
+        using (secondProvider)
+        {
+            await firstProvider.GetRequiredService<IZoos>().ZooAsync(2);
+
+            Assert.Contains(log.Warnings, line => line.Contains(
+                "can't restore MethodCache.Docs.Tests.DerivedResultTypeTests.Dog (for MethodCache.Docs.Tests.DerivedResultTypeTests.Animal) as themselves",
+                StringComparison.Ordinal));
+
+            // Without a contract for Dog, a zoo holding one stays in each instance's memory
+            await secondProvider.GetRequiredService<IZoos>().ZooAsync(2);
+            Assert.Equal(1, second.Calls);
+        }
+    }
+
     private sealed class WarningLog : ILoggerProvider, ILogger
     {
         public ConcurrentQueue<string> Warnings { get; } = new();
+
+        public ConcurrentQueue<string> Information { get; } = new();
 
         public ILogger CreateLogger(string categoryName) => this;
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Warning;
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (logLevel == LogLevel.Warning) Warnings.Enqueue(formatter(state, exception));
+            if (logLevel == LogLevel.Information) Information.Enqueue(formatter(state, exception));
         }
 
         public void Dispose()
@@ -146,3 +185,9 @@ public class DerivedResultTypeTests
         }
     }
 }
+
+/// <summary>A context with the zoo's types but not <c>Dog</c>, as an application under Native AOT might pass to <c>UseJson</c>.</summary>
+[JsonSerializable(typeof(List<DerivedResultTypeTests.Animal>))]
+[JsonSerializable(typeof(DerivedResultTypeTests.Zoo))]
+[JsonSerializable(typeof(DerivedResultTypeTests.Animal))]
+internal sealed partial class AnimalsWithoutDogContext : JsonSerializerContext;

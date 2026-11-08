@@ -54,6 +54,19 @@ public class DerivedTypeRegistryTests
     }
 
     [Fact]
+    public void WithAJsonSerializerContext_TheDerivedTypesItListsComeBackAsThemselves_AndTheOthersAreReported()
+    {
+        var serializer = new JsonCacheSerializer(DerivedTypeTestContext.Default.Options, Registry((typeof(Animal), [typeof(Dog), typeof(Cat)])));
+
+        var (_, read) = RoundTrip<List<Animal>>(serializer, [new Dog { Name = "rex", Breed = "collie" }, new Animal { Name = "x" }]);
+
+        Assert.Equal("collie", Assert.IsType<Dog>(read[0]).Breed);
+        Assert.IsType<Animal>(read[1]);
+        Assert.Equal([typeof(Dog)], serializer.Restored[typeof(Animal)]);
+        Assert.Equal([(typeof(Animal), typeof(Cat))], serializer.Missing);
+    }
+
+    [Fact]
     public void ATypeThatNamesItsDerivedTypes_KeepsItsOwnNames()
     {
         var serializer = new JsonCacheSerializer(null, Registry((typeof(Pet), [typeof(Poodle)])));
@@ -162,3 +175,7 @@ public class DerivedTypeRegistryTests
     public class Pet { public string Name { get; set; } = ""; }
     public sealed class Poodle : Pet;
 }
+
+[JsonSerializable(typeof(List<DerivedTypeRegistryTests.Animal>))]
+[JsonSerializable(typeof(DerivedTypeRegistryTests.Dog))]
+internal sealed partial class DerivedTypeTestContext : JsonSerializerContext;

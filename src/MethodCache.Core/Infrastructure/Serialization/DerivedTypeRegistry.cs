@@ -37,15 +37,28 @@ internal sealed class DerivedTypeRegistry
     /// <c>[JsonDerivedType]</c>, which then wins. A derived type that isn't named, such as a proxy made at run time, is
     /// written as the nearest named type, so the check before sharing keeps it in memory.
     /// </summary>
-    internal Action<JsonTypeInfo> Modifier()
-    {
-        var derived = Snapshot();
-        return info =>
+    internal static Action<JsonTypeInfo> Modifier(IReadOnlyDictionary<Type, Type[]> derived)
+        => info =>
         {
             if (info.Kind != JsonTypeInfoKind.Object || info.PolymorphismOptions != null || !derived.TryGetValue(info.Type, out var types)) return;
             var polymorphism = new JsonPolymorphismOptions { UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor };
             foreach (var type in types) polymorphism.DerivedTypes.Add(new JsonDerivedType(type, NameOf(type)));
             info.PolymorphismOptions = polymorphism;
         };
-    }
+
+    /// <summary>A type's name as the startup log writes it: its full name, with a dot before a nested type.</summary>
+    internal static string Display(Type type) => (type.FullName ?? type.Name).Replace('+', '.');
+}
+
+/// <summary>
+/// A serializer of MethodCache's that writes the registered derived types with their name, so the startup log can say
+/// which it restores as themselves and which it can't, such as one missing from a <c>JsonSerializerContext</c>.
+/// </summary>
+internal interface IRestoresDerivedTypes
+{
+    /// <summary>Each declared type with the derived types the serializer restores as themselves.</summary>
+    IReadOnlyDictionary<Type, Type[]> Restored { get; }
+
+    /// <summary>The registered derived types it can't write, with the declared type each was registered for.</summary>
+    IReadOnlyList<(Type Declared, Type Derived)> Missing { get; }
 }
