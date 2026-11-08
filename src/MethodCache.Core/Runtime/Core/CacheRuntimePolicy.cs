@@ -14,6 +14,8 @@ namespace MethodCache.Infrastructure
     internal sealed record CacheRuntimePolicy
     {
         internal bool CanonicalTagParts { get; init; } = true;
+        /// <summary>The fingerprint of the method's result type, which the distributed cache keeps entries apart by.</summary>
+        internal string? ResultShape { get; init; }
         internal PolicyGeneration? Generation { get; init; }
         internal string? Identity { get; init; }
         internal bool PrivateIdentity { get; init; }
@@ -150,6 +152,7 @@ namespace MethodCache.Infrastructure
                 Enabled = result.Policy.Enabled,
                 Distributed = result.Policy.Distributed,
                 CanonicalTagParts = result.Policy.CanonicalTagParts,
+                ResultShape = result.Policy.ResultShape,
                 Tags = result.Policy.Tags,
                 Version = result.Policy.Version,
                 SlidingExpiration = result.Policy.SlidingExpiration,
@@ -200,6 +203,7 @@ namespace MethodCache.Infrastructure
                 Enabled = policy.Enabled,
                 Distributed = policy.Distributed,
                 CanonicalTagParts = policy.CanonicalTagParts,
+                ResultShape = policy.ResultShape,
                 Tags = policy.Tags,
                 Version = policy.Version,
                 SlidingExpiration = policy.SlidingExpiration,

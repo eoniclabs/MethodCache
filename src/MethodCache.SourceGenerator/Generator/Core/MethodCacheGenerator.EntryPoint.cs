@@ -128,7 +128,7 @@ namespace MethodCache.SourceGenerator
             var summaries = interfaces
                 .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary).Where(s => s.Generates)))
                 .WithTrackingName(TrackingNames.Summaries);
-            context.RegisterSourceOutput(summaries, static (ctx, items) => EmitSharedSources(ctx, items));
+            context.RegisterSourceOutput(summaries.Combine(registrations), static (ctx, input) => EmitSharedSources(ctx, input.Left, input.Right));
             context.RegisterSourceOutput(summaries.Combine(classProvider).Combine(registrations), static (ctx, input) => EmitRegistrations(ctx, input.Left.Left, input.Left.Right, input.Right.Registrations));
 
             RegisterEntityMapping(context);
@@ -137,11 +137,11 @@ namespace MethodCache.SourceGenerator
             RegisterHostMarkers(context, summaries.Select(static (items, _) => items.Count > 0));
         }
 
-        private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces)
+        private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, DerivedTypesModel derivedTypes)
         {
             if (interfaces.Count == 0) return;
 
-            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(interfaces);
+            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(interfaces, derivedTypes);
             if (!string.IsNullOrEmpty(policyRegistrationsCode))
             {
                 context.AddSource("GeneratedPolicyRegistrations.g.cs", policyRegistrationsCode);

@@ -11,6 +11,9 @@ internal sealed record CachePolicy
 {
     internal bool CanonicalTagParts { get; init; } = true;
 
+    /// <summary>The fingerprint of the method's result type the generator computed, from the attributes source.</summary>
+    internal string? ResultShape { get; init; }
+
     private readonly IReadOnlyList<string> _tags = Array.Empty<string>();
     private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(StringComparer.Ordinal);
 

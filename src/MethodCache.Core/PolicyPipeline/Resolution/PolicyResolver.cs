@@ -814,6 +814,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         private static (CachePolicy Policy, Dictionary<string, CacheSettingSource> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
         {
             var canonicalTagParts = true;
+            string? resultShape = null;
             bool? enabled = null;
             bool? distributed = null;
             TimeSpan? duration = null;
@@ -839,7 +840,11 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 var fields = layer.Fields;
                 var policy = layer.Policy;
                 var sourceId = policy.Provenance.LastOrDefault()?.SourceId;
-                if (sourceId == PolicySourceIds.Attributes) canonicalTagParts = policy.CanonicalTagParts;
+                if (sourceId == PolicySourceIds.Attributes)
+                {
+                    canonicalTagParts = policy.CanonicalTagParts;
+                    resultShape = policy.ResultShape;
+                }
                 // Layers come highest first, so the first that sets a setting is the one it comes from
                 if (SettingSourceOf(sourceId) is { } settingSource)
                 {
@@ -929,6 +934,7 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 Duration = duration,
                 Enabled = enabled,
                 CanonicalTagParts = canonicalTagParts,
+                ResultShape = resultShape,
                 Distributed = distributed,
                 Tags = tags is { Count: > 0 } ? tags.ToArray() : Array.Empty<string>(),
                 SlidingExpiration = slidingExpiration,

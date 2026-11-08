@@ -20,11 +20,13 @@ namespace MethodCache.Generated
                 {
                     CanonicalTagParts = true,
                     ResultType = typeof(global::System.Decimal),
+                    ResultShape = "d812eb477c2e62d6",
                 });
                 builder.Method("[SnapshotApp]App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
                     ResultType = typeof(global::System.String),
+                    ResultShape = "e4e103082b0fef4a",
                 });
             }
         }

@@ -103,6 +103,12 @@ public sealed class GeneratedMethodOptions
     /// type parameters, and omitted by earlier contract-1 generators.
     /// </summary>
     public Type? ResultType { get; init; }
+    /// <summary>
+    /// A fingerprint of what a serializer writes for the method's result type, which the distributed cache keeps the
+    /// method's entries apart by, so a build whose result type has another shape doesn't read them; omitted by earlier
+    /// contract-1 generators.
+    /// </summary>
+    public string? ResultShape { get; init; }
 }
 
 /// <summary>Builds descriptor data without exposing the policy pipeline or DI implementation.</summary>
@@ -196,7 +202,7 @@ public sealed class GeneratedModuleBuilder
             policy = policy with { Metadata = new Dictionary<string, string?> { ["group"] = group } };
             fields |= CachePolicyFields.Metadata;
         }
-        policy = policy with { CanonicalTagParts = options.CanonicalTagParts };
+        policy = policy with { CanonicalTagParts = options.CanonicalTagParts, ResultShape = options.ResultShape };
         var timestamp = DateTimeOffset.UtcNow;
         policy = CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
         Policies.Add(new PolicySnapshot("attributes", methodId, policy, timestamp, metadata));
