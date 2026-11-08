@@ -890,9 +890,11 @@ For an array, such as a `float[]` embedding, copy it before you change it: `(flo
 It's reported for the result of a cached method, and of `GetOrCreateAsync`, `GetOrCreateManyAsync` and `TryGetAsync` on
 `ICacheManager`, kept in a local or read in a `foreach`. It follows objects reached from it through properties, fields,
 indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, through LINQ copies such as `ToList`, `ToArray` and
-`Where`, and through spans over its arrays. Your own methods that change an object, such as `order.Close()`, and a value
-you change after passing it to `SetAsync` aren't seen; in Development, MethodCache also compares cached values with what
-it stored now and then, and logs a warning naming the method when one has changed. Not reported in test projects.
+`Where`, and through spans over its arrays. It looks only at the method that holds the result, so a method of yours that
+changes an object isn't seen: neither one on the object, such as `order.Close()`, nor a helper you pass it to, such as
+`AddDraft(orders)` with `static void AddDraft(List<Order> list) => list.Add(Draft)`. A value you change after passing it
+to `SetAsync` isn't seen either. For those, in Development, MethodCache also compares cached values with what it stored
+now and then, and logs a warning naming the method when one has changed. Not reported in test projects.
 
 ## What the analyzers read from referenced projects
 

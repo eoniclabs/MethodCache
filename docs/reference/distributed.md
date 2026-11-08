@@ -20,8 +20,9 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   `ICacheManager` call whose `Distributed` is unset is neither read from nor written to the distributed cache, and
   invalidations still go through it. `Distributed = true` (attribute, group, `Defaults`, `appsettings.json` or
   `WithDistributed(true)`) still shares a value, and `false` keeps it in memory whatever the option says. `SetAsync`
-  without `WithDistributed(true)` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching
-  are still stored there.
+  without `WithDistributed(true)` then removes the key's copies on other instances and in the distributed cache, where it
+  writes a removal stamp `<KeyPrefix>r:<key>` with no value that expires after `TagRetention`, as invalidating the key
+  does. Responses of MethodCache.HttpCaching are still stored there.
 - `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
   values kept in memory and shared again every two seconds and warns about one that code changed.
 

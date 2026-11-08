@@ -183,6 +183,10 @@ return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.Reque
 A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
 `appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
+A `SetAsync` that keeps its value in memory still removes the key's old copy from the distributed cache, so other
+instances load the value again instead of reading the old one. Like invalidating the key, it writes a removal stamp there:
+`methodcache:r:<key>` with the default `KeyPrefix`, which holds no value and expires after `TagRetention` (1 day).
+
 ### A worker and an API
 
 A common case: a worker writes data with EF Core, and an API caches reads of it. The API caches in its own memory and
@@ -317,9 +321,9 @@ without the change. Instances then give different answers until the entry expire
   its properties. Copy an array, such as a `float[]` embedding, before you normalize it in place: `vector.ToArray()`,
   then write to the copy or a `Span<float>` over it.
 - [MC0043](../user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
-  methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
-  writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
-  per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
+  methods that change an object, such as `order.Close()` or a helper you pass the result to, aren't seen by the build.
+  In Development, MethodCache also writes the values it keeps in memory again every two seconds, compares them with
+  what it stored, and logs one warning per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
   call is answered from memory. When values are so large that writing them again slows down development, turn it off
   with `Distributed(o => o.VerifyUnchangedInDevelopment = false)`.
 - Keep all state in what the serializer writes: data only in private fields is written as `{}`
