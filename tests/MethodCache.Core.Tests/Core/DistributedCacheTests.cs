@@ -341,11 +341,11 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public async Task StoreValuesFalse_KeepsMethodAndManualValuesInMemory()
+    public async Task StoreValuesByDefaultFalse_KeepsMethodAndManualValuesInMemory()
     {
         var store = new RecordingStore(_shared);
-        var first = CreateNode(cache: store, configure: o => o.StoreValues = false);
-        var second = CreateNode(cache: store, configure: o => o.StoreValues = false);
+        var first = CreateNode(cache: store, configure: o => o.StoreValuesByDefault = false);
+        var second = CreateNode(cache: store, configure: o => o.StoreValuesByDefault = false);
 
         await Get(first, "method", () => "first");
         await first.GetOrCreateAsync("manual", _ => ValueTask.FromResult("first"));
@@ -358,7 +358,7 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public async Task StoreValuesTrue_SharesManualValues()
+    public async Task StoreValuesByDefaultTrue_SharesManualValues()
     {
         var store = new RecordingStore(_shared);
         var node = CreateNode(cache: store);
@@ -369,22 +369,42 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public async Task StoreValuesFalse_WinsOverAPolicyThatSharesValues()
+    public async Task StoreValuesByDefaultFalse_AMethodOrCallThatSetsDistributedTrue_StillSharesItsValue()
     {
         var store = new RecordingStore(_shared);
-        var node = CreateNode(cache: store, configure: o => o.StoreValues = false);
+        var first = CreateNode(cache: store, configure: o => o.StoreValuesByDefault = false);
+        var second = CreateNode(cache: store, configure: o => o.StoreValuesByDefault = false);
 
-        await node.GetOrCreateFastAsync("key", "M", () => Task.FromResult("v"), Policy() with { Distributed = true });
-        await node.GetOrCreateAsync("manual", _ => ValueTask.FromResult("v"), o => o.WithDistributed(true));
+        await first.GetOrCreateFastAsync("method", "M", () => Task.FromResult("first"), Policy() with { Distributed = true });
+        await first.GetOrCreateAsync("manual", _ => ValueTask.FromResult("first"), o => o.WithDistributed(true));
+        await first.SetAsync("set", "first", o => o.WithDistributed(true));
+        await first.GetOrCreateAsync("memory", _ => ValueTask.FromResult("first"));
+
+        // Memory by default, shared where the method or call says so
+        (await second.GetOrCreateFastAsync("method", "M", () => Task.FromResult("second"), Policy() with { Distributed = true })).Should().Be("first");
+        (await second.GetOrCreateAsync("manual", _ => ValueTask.FromResult("second"), o => o.WithDistributed(true))).Should().Be("first");
+        (await second.GetOrCreateAsync("set", _ => ValueTask.FromResult("second"), o => o.WithDistributed(true))).Should().Be("first");
+        (await second.GetOrCreateAsync("memory", _ => ValueTask.FromResult("second"))).Should().Be("second");
+        store.WrittenKeys.Should().NotContain(key => key.EndsWith("memory", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task StoreValuesByDefaultTrue_AMethodOrCallThatSetsDistributedFalse_StaysInMemory()
+    {
+        var store = new RecordingStore(_shared);
+        var node = CreateNode(cache: store);
+
+        await node.GetOrCreateFastAsync("method", "M", () => Task.FromResult("v"), Policy() with { Distributed = false });
+        await node.GetOrCreateAsync("manual", _ => ValueTask.FromResult("v"), o => o.WithDistributed(false));
 
         store.WrittenKeys.Should().NotContain(key => key.StartsWith("methodcache:e", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task StoreValuesFalse_InvalidationsStillReachEveryInstance()
+    public async Task StoreValuesByDefaultFalse_InvalidationsStillReachEveryInstance()
     {
-        var first = CreateNode(configure: o => o.StoreValues = false);
-        var second = CreateNode(configure: o => o.StoreValues = false);
+        var first = CreateNode(configure: o => o.StoreValuesByDefault = false);
+        var second = CreateNode(configure: o => o.StoreValuesByDefault = false);
         await Get(first, "key", () => "first", "users");
         await Get(second, "key", () => "second", "users");
 
@@ -394,10 +414,10 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public async Task StoreValuesFalse_SetAsync_DropsOtherInstancesCopies()
+    public async Task StoreValuesByDefaultFalse_SetAsync_DropsOtherInstancesCopies()
     {
-        var first = CreateNode(configure: o => o.StoreValues = false);
-        var second = CreateNode(configure: o => o.StoreValues = false);
+        var first = CreateNode(configure: o => o.StoreValuesByDefault = false);
+        var second = CreateNode(configure: o => o.StoreValuesByDefault = false);
         await first.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"));
         await second.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"));
 

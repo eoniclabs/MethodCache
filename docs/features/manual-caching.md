@@ -57,8 +57,9 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](invalidation.md).
 - `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
   its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
-  limits how long reads keep it. To keep every value out of the distributed cache, manual calls included, set
-  `StoreValues = false` ([Invalidations only](distributed-cache.md#invalidations-only)).
+  limits how long reads keep it. To keep values out of the distributed cache, manual calls included, set
+  `StoreValuesByDefault = false`; a call with `WithDistributed(true)` then still shares its value
+  ([Invalidations only](distributed-cache.md#invalidations-only)).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
@@ -108,8 +109,9 @@ await cache.SetAsync($"order:{saved.Id}", saved,
 <!-- endSnippet -->
 
 - It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
-  gets the new value from the distributed cache. With `WithDistributed(false)` or `StoreValues = false` it stays in this
-  instance's memory, and the copies in the distributed cache and on other instances are removed.
+  gets the new value from the distributed cache. With `WithDistributed(false)`, or with `StoreValuesByDefault = false`
+  and no `WithDistributed(true)`, it stays in this instance's memory, and the copies in the distributed cache and on
+  other instances are removed.
 - It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
   since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
 - A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,

@@ -52,14 +52,14 @@ MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
-manual calls alike, none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+API caches, set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, only those that set `Distributed` to `true` are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
 
 <!-- snippet: distributed-invalidations-only -->
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 <!-- endSnippet -->
 

@@ -184,7 +184,8 @@ namespace MethodCache.Core.Runtime.Distributed
             if (entryVersion == 0) throw new ArgumentOutOfRangeException(nameof(entryVersion));
             _entryVersion = entryVersion;
             _verifyRoundTrip = options.VerifyRoundTrip;
-            StoresValues = options.StoreValues;
+            StoresValuesByDefault = options.StoreValuesByDefault;
+            VerifiesUnchangedInDevelopment = options.VerifyUnchangedInDevelopment;
             _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             _keyPrefix = options.KeyPrefix;
@@ -201,10 +202,13 @@ namespace MethodCache.Core.Runtime.Distributed
         }
 
         /// <summary>
-        /// Whether cached values are stored here (<see cref="DistributedCacheOptions.StoreValues"/>). When false, the
-        /// layer only carries invalidations.
+        /// Whether a method or call that doesn't set Distributed stores its value here
+        /// (<see cref="DistributedCacheOptions.StoreValuesByDefault"/>). When false, only those that set it to true do.
         /// </summary>
-        internal bool StoresValues { get; }
+        internal bool StoresValuesByDefault { get; }
+
+        /// <summary>Whether the check in Development of values changed after they were cached runs (<see cref="DistributedCacheOptions.VerifyUnchangedInDevelopment"/>).</summary>
+        internal bool VerifiesUnchangedInDevelopment { get; }
 
         /// <summary>The derived types the serializer restores as themselves and those it can't, when it is MethodCache's own.</summary>
         internal MethodCache.Infrastructure.IRestoresDerivedTypes? DerivedTypes => _serializer as MethodCache.Infrastructure.IRestoresDerivedTypes;

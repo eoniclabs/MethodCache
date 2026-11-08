@@ -77,7 +77,7 @@ internal partial class InMemoryCacheManager
         Store(cacheKey, value, entry, lifetime: lifetime);
         if (_distributed == null) return default;
         // Memory only: the distributed copy and the other instances' copies are old, so they are removed
-        if (options.Distributed == false || !_sharesValues) return new ValueTask(_distributed.RemoveAsync([cacheKey]));
+        if (!Shares(options.Distributed)) return new ValueTask(_distributed.RemoveAsync([cacheKey]));
         var written = TimeSpan.FromTicks(Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
         return new ValueTask(_distributed.WriteAsync(cacheKey, value, entry.Tags, startedAt, written, replaces: true,
             methodName: CacheKeyLookup.MethodName));

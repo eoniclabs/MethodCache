@@ -35,7 +35,7 @@ public class ChangedResultTests
 
     private readonly FakeTimeProvider _time = new();
 
-    private (ServiceProvider Provider, WarningLog Log) Instance(string environment)
+    private (ServiceProvider Provider, WarningLog Log) Instance(string environment, Action<DistributedCacheOptions>? configure = null)
     {
         var log = new WarningLog();
         var services = new ServiceCollection();
@@ -44,7 +44,7 @@ public class ChangedResultTests
         services.AddLogging(logging => logging.AddProvider(log));
         services.AddSingleton<IOrders, Orders>();
         services.AddMethodCache();
-        services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache(_time));
+        services.AddMethodCacheDistributedCache(_ => new MethodCache.TestSupport.AtomicTestCache(_time), configure);
         return (services.BuildServiceProvider(), log);
     }
 
@@ -97,6 +97,38 @@ public class ChangedResultTests
             _time.Advance(TimeSpan.FromSeconds(2));
 
             Assert.Null(provider.GetRequiredService<InMemoryCacheManager>().ChangeCheck);
+            Assert.Empty(log.Warnings);
+        }
+    }
+
+    [Fact]
+    public async Task InDevelopment_WithTheCheckTurnedOff_NothingIsChecked()
+    {
+        var (provider, log) = Instance(Environments.Development, o => o.VerifyUnchangedInDevelopment = false);
+        using (provider)
+        {
+            var orders = await provider.GetRequiredService<IOrders>().ForCustomerAsync(7);
+            orders.Add(new Order { Id = 3 });
+
+            _time.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.Null(provider.GetRequiredService<InMemoryCacheManager>().ChangeCheck);
+            Assert.Empty(log.Warnings);
+        }
+    }
+
+    [Fact]
+    public async Task InDevelopment_AValueKeptInMemoryOnly_IsNotChecked()
+    {
+        var (provider, log) = Instance(Environments.Development, o => o.StoreValuesByDefault = false);
+        using (provider)
+        {
+            var orders = await provider.GetRequiredService<IOrders>().ForCustomerAsync(7);
+            orders.Add(new Order { Id = 3 });
+
+            _time.Advance(TimeSpan.FromSeconds(2));
+
+            // Every caller on this instance gets the same changed list, and no other instance reads a stored copy
             Assert.Empty(log.Warnings);
         }
     }

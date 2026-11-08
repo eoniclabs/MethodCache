@@ -8,20 +8,34 @@ namespace MethodCache
     public sealed class DistributedCacheOptions
     {
         private bool _verifyRoundTrip = true;
-        private bool _storeValues = true;
+        private bool _storeValuesByDefault = true;
+        private bool _verifyUnchangedInDevelopment = true;
         private int _serializerVersion = 1;
 
         /// <summary>
-        /// Whether cached values are stored in the distributed cache. Default true. False keeps every value in each
-        /// instance's memory, for cached methods and <see cref="ICacheManager"/> calls alike, whatever their options say,
-        /// and uses the distributed cache for invalidations only: an invalidation still reaches every instance.
+        /// Whether a cached method or <see cref="ICacheManager"/> call that doesn't set <c>Distributed</c> stores its value
+        /// in the distributed cache. Default true. False keeps those values in each instance's memory and uses the
+        /// distributed cache for invalidations, which still reach every instance; a method with
+        /// <c>[Cache(Distributed = true)]</c> or a call with <c>WithDistributed(true)</c> still stores its value there.
         /// HTTP responses cached by MethodCache.HttpCaching are still stored there.
         /// </summary>
-        /// <example><code>builder.Services.AddMethodCache(mc => mc.UseRedis(connection).Distributed(o => o.StoreValues = false));</code></example>
-        public bool StoreValues
+        /// <example><code>builder.Services.AddMethodCache(mc => mc.UseRedis(connection).Distributed(o => o.StoreValuesByDefault = false));</code></example>
+        public bool StoreValuesByDefault
         {
-            get => _storeValues;
-            set { CheckMutable(); _storeValues = value; }
+            get => _storeValuesByDefault;
+            set { CheckMutable(); _storeValuesByDefault = value; }
+        }
+
+        /// <summary>
+        /// Whether, in Development, MethodCache writes the values it keeps in memory and stores in the distributed cache
+        /// again every two seconds, and logs a warning naming the method whose value code changed after it was cached.
+        /// Default true. It never runs outside Development, nor when a call is answered from memory; turn it off when
+        /// values are so large that writing them again slows down development.
+        /// </summary>
+        public bool VerifyUnchangedInDevelopment
+        {
+            get => _verifyUnchangedInDevelopment;
+            set { CheckMutable(); _verifyUnchangedInDevelopment = value; }
         }
         /// <summary>Checks newly serialized values can be restored before sharing them. Default true; this is not a semantic equality check.</summary>
         public bool VerifyRoundTrip

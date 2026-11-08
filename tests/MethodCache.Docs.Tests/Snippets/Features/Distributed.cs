@@ -38,7 +38,30 @@ namespace Docs.Distributed
             // begin-snippet: distributed-invalidations-only
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+                .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
+            // end-snippet
+        }
+
+        public static void MemoryByDefault(WebApplicationBuilder builder)
+        {
+            // begin-snippet: distributed-memory-by-default
+            builder.Services.AddMethodCache(mc => mc
+                .UseRedis("localhost:6379")
+                .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory unless a method or call says otherwise
+            // end-snippet
+        }
+
+        public interface ITokenClient
+        {
+            Task<string> RequestTokenAsync(CancellationToken cancellationToken);
+        }
+
+        public static ValueTask<string> SharedToken(ICacheManager cache, ITokenClient tokens)
+        {
+            // begin-snippet: distributed-shared-call
+            // Every instance reuses one access token instead of asking the provider for its own
+            return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.RequestTokenAsync(ct),
+                o => o.WithDuration(TimeSpan.FromMinutes(50)).WithDistributed(true));
             // end-snippet
         }
 
@@ -96,7 +119,7 @@ namespace Docs.Distributed.WorkerAndApi
             builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Distributed(o => o.StoreValues = false));
+                .Distributed(o => o.StoreValuesByDefault = false));
             // end-snippet
         }
 
@@ -107,7 +130,7 @@ namespace Docs.Distributed.WorkerAndApi
             builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Distributed(o => o.StoreValues = false)
+                .Distributed(o => o.StoreValuesByDefault = false)
                 .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
             // end-snippet
         }

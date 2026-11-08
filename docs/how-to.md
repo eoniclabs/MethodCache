@@ -353,7 +353,7 @@ method when a cached value has changed.
 ([Results that don't change](features/distributed-cache.md#results-that-dont-change))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValuesByDefault = false)` in every process. Values
 stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
