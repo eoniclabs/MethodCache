@@ -209,6 +209,9 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>The derived types the serializer restores as themselves and those it can't, when it is MethodCache's own.</summary>
         internal MethodCache.Infrastructure.IRestoresDerivedTypes? DerivedTypes => _serializer as MethodCache.Infrastructure.IRestoresDerivedTypes;
 
+        /// <summary>The serializer values are written with, which the check in Development writes them again with.</summary>
+        internal ISerializer Serializer => _serializer;
+
         /// <summary>The store, the key prefix and the backplane (null without one), as the startup log names them.</summary>
         internal (string Store, string KeyPrefix, string? Backplane) Describe()
             => (ShortName(_cache.GetType(), "DistributedCache"), _keyPrefix, _backplane == null ? null : ShortName(_backplane.GetType(), "Backplane"));

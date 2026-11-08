@@ -51,6 +51,7 @@ never stops a build.
 | [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
 | [MC0041](#mc0041) | Warning | A cached result holds EF Core entities with virtual navigation properties in a project that uses lazy-loading proxies | |
 | [MC0042](#mc0042) | Warning | A cached result type, or a type in it, whose state is all non-public, so serializers write it as an empty object | |
+| [MC0043](#mc0043) | Warning | Code changes a result a cached method returned | |
 
 ## Rules of a later version
 
@@ -855,6 +856,32 @@ Give the type public properties, such as `public decimal Amount { get; }` set by
 `public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
 with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
 suppress the warning then.
+
+## MC0043
+
+Code changes a result that a cached method returned: it sets a property or field of the result or of an object in it,
+or adds to, removes from or sorts a collection in it. The memory cache keeps the instance the method returned and hands
+that same instance to every later caller on this instance, so they all see the change. The other instances read the copy
+in the distributed cache, which doesn't have it, so instances give different answers until the entry expires:
+
+```cs
+var orders = await _orders.GetForCustomerAsync(customerId);
+orders.Add(draft);                        // MC0043: every later caller on this instance gets the draft too
+foreach (var order in orders)
+    order.Status = OrderStatus.Shown;     // MC0043
+```
+
+Change a copy instead: `new List<Order>(orders)` or `orders.ToList()` for the collection, and a record's `with`
+expression, such as `order with { Status = OrderStatus.Shown }`, for an object in it. A list copy still holds the same
+objects, so setting a property of one of its elements is reported too. Better still, return types that can't be changed,
+such as records with `init` properties and `IReadOnlyList<T>`, so the compiler stops such code. See
+[results that don't change](../features/distributed-cache.md#results-that-dont-change).
+
+It's reported for a result kept in a local or read in a `foreach`, and for objects reached from it through properties,
+fields, indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, and through LINQ copies such as `ToList`, `ToArray`
+and `Where`. Your own methods that change an object, such as `order.Close()`, aren't seen; in Development, MethodCache
+also compares cached values with what it stored now and then, and logs a warning naming the method when one has
+changed. Not reported in test projects.
 
 ## What the analyzers read from referenced projects
 

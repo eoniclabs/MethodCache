@@ -196,7 +196,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
                 sp.GetService<HttpResponseStore>(),
                 sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>()),
-                onRemoteCleared: () => sp.GetService<SharedRuntimeOverrides>()?.OnRemoteCleared()));
+                onRemoteCleared: () => sp.GetService<SharedRuntimeOverrides>()?.OnRemoteCleared(),
+                development: sp.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>() is { } environment &&
+                             Microsoft.Extensions.Hosting.HostEnvironmentEnvExtensions.IsDevelopment(environment)));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);

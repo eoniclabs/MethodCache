@@ -5,6 +5,7 @@ using MethodCache.Core.Telemetry;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using MethodCache.Core.Runtime.Distributed;
+using MethodCache.Core.Runtime.Execution;
 using MethodCache.Core.Runtime.Memory;
 using MethodCache.Core.Storage.Abstractions;
 using MethodCache.Infrastructure;
@@ -63,6 +64,10 @@ namespace MethodCache.Extensibility
         private readonly Action<string>? _onMethodInvalidated;
         private readonly GeneratedDiagnostics _syncDiagnostics;
         private readonly Func<string, CacheRuntimePolicy?>? _lookupPolicy;
+        private readonly ResultChangeCheck? _changes;
+
+        /// <summary>The check of cached values against what was stored, which runs in Development only; else null.</summary>
+        internal ResultChangeCheck? ChangeCheck => _changes;
 
         /// <summary>Whether removals also go to a distributed cache and, through it, to the other instances.</summary>
         internal bool HasDistributedCache => _distributed != null;
@@ -77,7 +82,7 @@ namespace MethodCache.Extensibility
         internal InMemoryCacheManager(IOptions<MethodCacheMemoryOptions>? options = null, TimeProvider? timeProvider = null,
             DistributedCacheLayer? distributed = null, Action<string>? onMethodInvalidated = null,
             Microsoft.Extensions.Logging.ILogger? logger = null, CoreTelemetry? telemetry = null, HttpResponseStore? http = null, Func<string, CacheRuntimePolicy?>? lookupPolicy = null,
-            Action? onRemoteCleared = null)
+            Action? onRemoteCleared = null, bool development = false)
         {
             _lookupPolicy = lookupPolicy;
             _telemetry = telemetry;
@@ -106,6 +111,8 @@ namespace MethodCache.Extensibility
 
             _distributed = distributed;
             _sharesValues = distributed?.StoresValues == true;
+            // In Development, values that code changes after they were cached are found and named
+            if (development && _sharesValues && logger != null) _changes = new ResultChangeCheck(distributed!.Serializer, logger, _timeProvider);
             if (logger != null) LogLayers(logger, _options, distributed);
             if (logger != null && distributed is { StoresValues: true, DerivedTypes: { } derivedTypes }) LogDerivedTypes(logger, derivedTypes);
             _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight, MethodEvictions: _engine.EvictionsSinceStart));
@@ -725,6 +732,7 @@ namespace MethodCache.Extensibility
             }
 
             _maintenanceTimer?.Dispose();
+            _changes?.Dispose();
             _distributed?.Dispose();
             _engine.Clear();
             GC.SuppressFinalize(this);
@@ -1381,14 +1389,25 @@ namespace MethodCache.Extensibility
             };
 
             // The application weigher and clock run above, outside the lock: they may re-enter the cache.
-            if (flight == null) return Publish(node, replacing);
-            lock (flight.Gate)
+            Node? stored;
+            if (flight == null)
             {
-                if (policy.Source?.Generation is { } generation)
-                    lock (generation.Gate)
-                        return PublishLoaded(node, replacing, flight);
-                return PublishLoaded(node, replacing, flight);
+                stored = Publish(node, replacing);
             }
+            else
+            {
+                lock (flight.Gate)
+                {
+                    if (policy.Source?.Generation is { } generation)
+                        lock (generation.Gate)
+                            stored = PublishLoaded(node, replacing, flight);
+                    else
+                        stored = PublishLoaded(node, replacing, flight);
+                }
+            }
+
+            if (_changes != null && stored != null && policy.Source is { Distributed: not false } source) _changes.Stored(stored, source.MethodId, value);
+            return stored;
         }
 
         private Node? Publish(Node node, Node? replacing)
