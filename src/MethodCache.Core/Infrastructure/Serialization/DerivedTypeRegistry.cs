@@ -23,6 +23,15 @@ internal sealed class DerivedTypeRegistry
         }
     }
 
+    /// <summary>Each declared type and its derived types, ordered by full name, the name a serializer stores for each.</summary>
+    internal Dictionary<Type, Type[]> Snapshot()
+        => _derived.ToDictionary(
+            static pair => pair.Key,
+            static pair => pair.Value.OrderBy(static type => type.FullName, StringComparer.Ordinal).ToArray());
+
+    /// <summary>The name a serializer stores for a derived type: its full name, unique in the application.</summary>
+    internal static string NameOf(Type type) => type.FullName ?? type.Name;
+
     /// <summary>
     /// Adds the derived types to the contract of each declared type that has no polymorphism of its own, such as
     /// <c>[JsonDerivedType]</c>, which then wins. A derived type that isn't named, such as a proxy made at run time, is
@@ -30,14 +39,12 @@ internal sealed class DerivedTypeRegistry
     /// </summary>
     internal Action<JsonTypeInfo> Modifier()
     {
-        var derived = _derived.ToDictionary(
-            static pair => pair.Key,
-            static pair => pair.Value.OrderBy(static type => type.FullName, StringComparer.Ordinal).ToArray());
+        var derived = Snapshot();
         return info =>
         {
             if (info.Kind != JsonTypeInfoKind.Object || info.PolymorphismOptions != null || !derived.TryGetValue(info.Type, out var types)) return;
             var polymorphism = new JsonPolymorphismOptions { UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor };
-            foreach (var type in types) polymorphism.DerivedTypes.Add(new JsonDerivedType(type, type.FullName ?? type.Name));
+            foreach (var type in types) polymorphism.DerivedTypes.Add(new JsonDerivedType(type, NameOf(type)));
             info.PolymorphismOptions = polymorphism;
         };
     }

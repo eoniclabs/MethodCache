@@ -61,5 +61,6 @@ public static class MessagePackMethodCacheBuilderExtensions
     }
 
     private static void AddMessagePack(IServiceCollection services, global::MessagePack.MessagePackSerializerOptions? options)
-        => services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(MethodCache.Infrastructure.OwnedServices.Key, new MessagePackCacheSerializer(options)));
+        => services.Replace(ServiceDescriptor.KeyedSingleton<ISerializer>(MethodCache.Infrastructure.OwnedServices.Key,
+            (provider, _) => new MessagePackCacheSerializer(options, provider.GetService<MethodCache.Infrastructure.DerivedTypeRegistry>())));
 }

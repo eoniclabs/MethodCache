@@ -76,6 +76,49 @@ public class DerivedTypeRegistryTests
     }
 
     [Fact]
+    public void WithMessagePack_ADerivedTypeInAList_ComesBackAsItself()
+    {
+        var serializer = new MethodCache.Serialization.MessagePack.MessagePackCacheSerializer(null, Registry((typeof(Animal), [typeof(Dog), typeof(Cat)])));
+
+        var (_, read) = RoundTrip<List<Animal>>(serializer, [new Dog { Name = "rex", Breed = "collie" }, new Cat { Name = "tom", Lives = 9 }, new Animal { Name = "x" }, null!]);
+
+        Assert.Equal("collie", Assert.IsType<Dog>(read[0]).Breed);
+        Assert.Equal(9, Assert.IsType<Cat>(read[1]).Lives);
+        Assert.Equal("x", Assert.IsType<Animal>(read[2]).Name);
+        Assert.Null(read[3]);
+    }
+
+    [Fact]
+    public void WithMessagePack_AnUnregisteredDerivedType_IsWrittenAsItsNearestRegisteredBase_AndAnUnknownNameIsNeverRead()
+    {
+        var serializer = new MethodCache.Serialization.MessagePack.MessagePackCacheSerializer(null, Registry((typeof(Animal), [typeof(Dog)])));
+        var (_, read) = RoundTrip<Animal>(serializer, new Puppy { Name = "rex", Breed = "collie", Age = 1 });
+        Assert.Equal("collie", Assert.IsType<Dog>(read).Breed);
+
+        // An entry naming a type that isn't registered for Animal, such as one written by someone else
+        var crafted = new System.Buffers.ArrayBufferWriter<byte>();
+        var writer = new MessagePack.MessagePackWriter(crafted);
+        writer.WriteArrayHeader(2);
+        writer.Write(typeof(Cat).FullName);
+        writer.WriteMapHeader(0);
+        writer.Flush();
+        var plain = new MethodCache.Serialization.MessagePack.MessagePackCacheSerializer(
+            MessagePack.MessagePackSerializerOptions.Standard.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance),
+            Registry((typeof(Animal), [typeof(Dog)])));
+        Assert.Throws<MessagePack.MessagePackSerializationException>(() => plain.Deserialize<Animal>(new ReadOnlySequence<byte>(crafted.WrittenMemory)));
+    }
+
+    [Fact]
+    public void WithMessagePack_ATypeThatNamesItsDerivedTypesWithUnion_KeepsItsOwnFormat()
+    {
+        var serializer = new MethodCache.Serialization.MessagePack.MessagePackCacheSerializer(null, Registry((typeof(Shape), [typeof(Square)])));
+
+        var (_, read) = RoundTrip<Shape>(serializer, new Square { Side = 3 });
+
+        Assert.Equal(3, Assert.IsType<Square>(read).Side);
+    }
+
+    [Fact]
     public void ATypeThatIsNotDerived_IsNotRegistered()
     {
         var module = new MethodCache.Generated.GeneratedModuleBuilder(new EmptyModule());
@@ -109,6 +152,11 @@ public class DerivedTypeRegistryTests
     public sealed class Cat : Animal { public int Lives { get; set; } }
     public interface IShape;
     public sealed record Circle(double Radius) : IShape;
+
+    [MessagePack.Union(0, typeof(Square))]
+    public abstract class Shape;
+    [MessagePack.MessagePackObject(AllowPrivate = true)]
+    public sealed class Square : Shape { [MessagePack.Key(0)] public int Side { get; set; } }
 
     [JsonDerivedType(typeof(Poodle), "poodle")]
     public class Pet { public string Name { get; set; } = ""; }

@@ -30,11 +30,13 @@ internal sealed class MessagePackCacheSerializer : ISerializer
         .WithSecurity(MessagePackSecurity.UntrustedData);
 
     /// <summary>
-    /// Creates a serializer with the given <paramref name="options"/>, or the defaults described above.
+    /// Creates a serializer with the given <paramref name="options"/>, or the defaults described above, that also
+    /// writes and restores the derived types in <paramref name="derived"/> as themselves.
     /// </summary>
-    public MessagePackCacheSerializer(MessagePackSerializerOptions? options = null)
+    public MessagePackCacheSerializer(MessagePackSerializerOptions? options = null, MethodCache.Infrastructure.DerivedTypeRegistry? derived = null)
     {
         _options = options ?? DefaultOptions;
+        if (derived is { Count: > 0 }) _options = _options.WithResolver(new DerivedTypeResolver(_options.Resolver, derived.Snapshot()));
     }
 
     internal MessagePackSerializerOptions Options => _options;

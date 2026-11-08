@@ -10,7 +10,8 @@ namespace MethodCache.Docs.Tests;
 /// <summary>
 /// docs/features/distributed-cache.md#serialization: a derived type where a cached result declares its base type, such
 /// as a <c>Dog</c> in a <c>List&lt;Animal&gt;</c>, comes back from the distributed cache as itself, since MethodCache's
-/// generator names the project's derived types to its JSON serializer. The application's own JSON is unchanged.
+/// generator names the project's derived types to its JSON and MessagePack serializers. The application's own JSON is
+/// unchanged.
 /// </summary>
 public class DerivedResultTypeTests
 {
@@ -68,7 +69,7 @@ public class DerivedResultTypeTests
 
     public DerivedResultTypeTests() => _shared = new(_time);
 
-    private (ServiceProvider Provider, Zoos Zoos, WarningLog Log) Instance()
+    private (ServiceProvider Provider, Zoos Zoos, WarningLog Log) Instance(bool messagePack = false)
     {
         var zoos = new Zoos();
         var log = new WarningLog();
@@ -76,16 +77,21 @@ public class DerivedResultTypeTests
         services.AddSingleton<TimeProvider>(_time);
         services.AddLogging(logging => logging.AddProvider(log));
         services.AddSingleton<IZoos>(zoos);
-        services.AddMethodCache();
+        services.AddMethodCache(mc =>
+        {
+            if (messagePack) mc.UseMessagePack();
+        });
         services.AddMethodCacheDistributedCache(_ => _shared);
         return (services.BuildServiceProvider(), zoos, log);
     }
 
-    [Fact]
-    public async Task DerivedTypes_ComeBackFromTheDistributedCacheAsThemselves()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DerivedTypes_ComeBackFromTheDistributedCacheAsThemselves(bool messagePack)
     {
-        var (firstProvider, first, firstLog) = Instance();
-        var (secondProvider, second, secondLog) = Instance();
+        var (firstProvider, first, firstLog) = Instance(messagePack);
+        var (secondProvider, second, secondLog) = Instance(messagePack);
         using (firstProvider)
         using (secondProvider)
         {
