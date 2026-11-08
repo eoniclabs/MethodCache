@@ -75,7 +75,7 @@ internal sealed class ResultChangeCheck : IDisposable
                 if (_warned.TryAdd(recorded.Method, 0))
                 {
                     _logger.LogWarning(
-                        "A cached result of {Method} was changed after it was cached: it no longer writes what MethodCache stored. The memory cache hands that same instance to every later caller on this instance, while other instances read the stored copy, so they give different answers. Find the code that changes it (MC0043 names most such code) and change a copy instead, or return a type that can't be changed. Checked in Development only; shown once per method.",
+                        "A cached result of {Method} was changed after it was cached: it no longer writes what MethodCache stored. The memory cache hands that same instance to every later caller on this instance, while other instances read the stored copy, so they give different answers. Find the code that changes it (MC0043 names most such code) and change a copy instead, or return a type that can't be changed. Checked in Development only, and turned off with Distributed(o => o.VerifyUnchangedInDevelopment = false); shown once per method.",
                         recorded.Method);
                 }
             }

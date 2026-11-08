@@ -104,6 +104,33 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public sealed class TenancyModule;
+
+        public sealed class BillingModule;
+
+        public interface ICurrencyRates;
+
+        public static void CheckModuleServices(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services-modules
+            // The cached interfaces are in the modules the application is built from: pass each module's assembly
+            Assert.Equal(
+                CachedServices.Declared(typeof(TenancyModule).Assembly, typeof(BillingModule).Assembly),
+                CachedServices.Registered(provider));
+            // end-snippet
+        }
+
+        public static void CheckSharedLibraryServices(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services-shared
+            // The application's own cached interfaces, and the one it uses from a shared library that declares others
+            var expected = CachedServices.Declared(typeof(IProductService).Assembly)
+                .Append(typeof(ICurrencyRates))
+                .OrderBy(type => type.FullName, StringComparer.Ordinal);
+            Assert.Equal(expected, CachedServices.Registered(provider));
+            // end-snippet
+        }
+
         public static async Task OtherTenantAsync(IServiceProvider provider, Guid tenantA, Guid tenantB)
         {
             // begin-snippet: testing-other-tenant

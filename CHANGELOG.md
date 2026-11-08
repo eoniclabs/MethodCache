@@ -4,6 +4,36 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.15 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.14
+
+- `DistributedCacheOptions.StoreValues` is now `StoreValuesByDefault`: replace `o.StoreValues = false` with
+  `o.StoreValuesByDefault = false`. A method with `[Cache(Distributed = true)]`, or `Distributed = true` from its group,
+  `Defaults` or `appsettings.json`, and a call with `WithDistributed(true)` now store their values in the distributed
+  cache with it, where rc.14 kept every value in memory. One that sets nothing still stays in memory.
+- MC0043 now also reports code that changes the result of `GetOrCreateAsync`, `GetOrCreateManyAsync` or `TryGetAsync`
+  on `ICacheManager`, writes through a `Span<T>` over a cached array, or copies into one with `Array.Copy`,
+  `Buffer.BlockCopy` or `CopyTo`. It may fail a build that treats warnings as errors.
+
+### Added
+
+- `StoreValuesByDefault = false` keeps values in memory by default, and a method or call that sets `Distributed` to
+  `true` still shares its value through the distributed cache: values that are expensive or rate-limited to load, such
+  as an access token, are shared and the rest stay in each instance's memory
+  ([Memory by default, shared where you say so](docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
+- `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
+  values kept in memory again every two seconds, for applications whose values are so large that it slows down
+  development.
+- MC0043 covers the results of manual calls on `ICacheManager`, writes through a `Span<T>` or `Memory<T>` over a cached
+  array (`vector.AsSpan()`, `Span<float> span = vector`, `CollectionsMarshal.AsSpan(list)`), and `Array.Copy`,
+  `Buffer.BlockCopy` and `CopyTo` with a cached array as the destination.
+
+### Documentation
+
+- Testing: `CachedServices.Declared` with the cached interfaces in several projects, and with a shared library that
+  declares interfaces other applications register.
+
 ## 1.0.0-rc.14 (2026-11-08)
 
 ### Upgrading from 1.0.0-rc.13

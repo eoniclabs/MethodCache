@@ -165,8 +165,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
-  data an API caches, or several API instances), add `.Distributed(o => o.StoreValues = false)` in every process (not
-  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): no value is stored, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
+  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
   JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
   warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
@@ -805,7 +805,7 @@ method when a cached value has changed.
 ([Results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValuesByDefault = false)` in every process. Values
 stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
@@ -877,7 +877,9 @@ cached service. ([Every cached service resolves](https://github.com/eoniclabs/Me
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
 To keep that list up to date by itself, compare with the interfaces the project declares:
-`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`. Pass the
+assembly of each project with cached interfaces the application registers; for a shared library that declares
+interfaces other applications register, add the ones this application uses by hand.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**
@@ -2483,8 +2485,9 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 - `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
   its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
-  limits how long reads keep it. To keep every value out of the distributed cache, manual calls included, set
-  `StoreValues = false` ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
+  limits how long reads keep it. To keep values out of the distributed cache, manual calls included, set
+  `StoreValuesByDefault = false`; a call with `WithDistributed(true)` then still shares its value
+  ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
@@ -2530,8 +2533,9 @@ await cache.SetAsync($"order:{saved.Id}", saved,
 ```
 
 - It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
-  gets the new value from the distributed cache. With `WithDistributed(false)` or `StoreValues = false` it stays in this
-  instance's memory, and the copies in the distributed cache and on other instances are removed.
+  gets the new value from the distributed cache. With `WithDistributed(false)`, or with `StoreValuesByDefault = false`
+  and no `WithDistributed(true)`, it stays in this instance's memory, and the copies in the distributed cache and on
+  other instances are removed.
 - It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
   since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
 - A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
@@ -2944,7 +2948,8 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
-| `StoreValues` | `true` | Store values in the distributed cache. `false` keeps every value in memory and uses the distributed cache for invalidations only ([Invalidations only](#invalidations-only)) |
+| `StoreValuesByDefault` | `true` | Store values in the distributed cache. `false` keeps values in memory, except those of methods and calls that set `Distributed` to `true`, and uses the distributed cache for invalidations ([Invalidations only](#invalidations-only)) |
+| `VerifyUnchangedInDevelopment` | `true` | In Development, write the values kept in memory again every two seconds and warn when code changed one ([Results that don't change](#results-that-dont-change)) |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
@@ -2966,23 +2971,44 @@ or start it with the application's name, such as `billing:order:42` ([Manual cac
 ## Invalidations only
 
 When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
-an API caches, say), set `StoreValues = false` in every process. Values stay in each process's memory, those of cached
-methods and of [manual calls](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) alike, and every invalidation still reaches the other processes:
+an API caches, say), set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, those of
+cached methods and of [manual calls](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) alike, and every invalidation still reaches the other processes:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
-values are written there, whatever a method or call sets. Each process then loads its own values, so with ten
-instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
+values are written there unless a method or call asks for it (below). Each process then loads its own values, so with
+ten instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
 [HTTP caching](http-caching.md) are still stored in the distributed cache.
 
 To keep only some methods in memory, use `[Cache(Distributed = false)]`, a group or `WithDistributed(false)` instead
 ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). `Defaults(o => o.WithDistributed(false))` applies to cached methods only, so a
 manual call would still store its value.
+
+### Memory by default, shared where you say so
+
+With `StoreValuesByDefault = false`, a method with `[Cache(Distributed = true)]` or a call with `WithDistributed(true)`
+still stores its value in the distributed cache, so every instance reads it. Share values that are expensive or
+rate-limited to load, such as an access token or a supplier's response, and keep the rest in each instance's memory:
+
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory unless a method or call says otherwise
+```
+
+```cs
+// Every instance reuses one access token instead of asking the provider for its own
+return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.RequestTokenAsync(ct),
+    o => o.WithDuration(TimeSpan.FromMinutes(50)).WithDistributed(true));
+```
+
+A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
+`appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
 ### A worker and an API
 
@@ -3004,7 +3030,7 @@ builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));
+    .Distributed(o => o.StoreValuesByDefault = false));
 ```
 
 The worker caches nothing. With [MethodCache.EntityFrameworkCore](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md), its `SaveChanges`
@@ -3015,7 +3041,7 @@ invalidates the tags its mapping names, and the invalidation reaches the API thr
 builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false)
+    .Distributed(o => o.StoreValuesByDefault = false)
     .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
 ```
 
@@ -3107,12 +3133,14 @@ without the change. Instances then give different answers until the entry expire
   `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>` for collections.
 - When a caller needs to change a result, change a copy: `orders.ToList()`, `new List<Order>(orders)`, or
   `order with { Status = OrderStatus.Shown }`. A list copy holds the same objects, so copy an object before setting
-  its properties.
+  its properties. Copy an array, such as a `float[]` embedding, before you normalize it in place: `vector.ToArray()`,
+  then write to the copy or a `Span<float>` over it.
 - [MC0043](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
   methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
   writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
   per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
-  call is answered from memory.
+  call is answered from memory. When values are so large that writing them again slows down development, turn it off
+  with `Distributed(o => o.VerifyUnchangedInDevelopment = false)`.
 - Keep all state in what the serializer writes: data only in private fields is written as `{}`
   ([MC0042](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0042)).
 - An object referenced twice in a result comes back as two copies, and a `DateTime` of kind `Local` shows another
@@ -3797,6 +3825,28 @@ pass, in the same order, so the test covers a new interface without a change:
 Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
 ```
 
+When the cached interfaces are in several projects, such as the modules of a modular monolith, pass the assembly of each
+project the application is built from:
+
+```cs
+// The cached interfaces are in the modules the application is built from: pass each module's assembly
+Assert.Equal(
+    CachedServices.Declared(typeof(TenancyModule).Assembly, typeof(BillingModule).Assembly),
+    CachedServices.Registered(provider));
+```
+
+`Declared` lists every interface with cached methods in an assembly, also those another application registers. When
+the application uses a few interfaces from a shared library that declares others, pass its own assemblies and add the
+interfaces it uses from the library:
+
+```cs
+// The application's own cached interfaces, and the one it uses from a shared library that declares others
+var expected = CachedServices.Declared(typeof(IProductService).Assembly)
+    .Append(typeof(ICurrencyRates))
+    .OrderBy(type => type.FullName, StringComparer.Ordinal);
+Assert.Equal(expected, CachedServices.Registered(provider));
+```
+
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
 mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
@@ -4102,10 +4152,14 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   wait for that.
 - `[Cache(Distributed = false)]`, `"Distributed": false` in `appsettings.json` and `WithDistributed(false)` keep a
   method or call in memory only.
-- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, whatever a method or call sets: no value of
-  a cached method or an `ICacheManager` call is read from or written to the distributed cache, and invalidations still
-  go through it. `SetAsync` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching are
-  still stored there.
+- `DistributedCacheOptions.StoreValuesByDefault = false` keeps values in memory: the value of a cached method or an
+  `ICacheManager` call whose `Distributed` is unset is neither read from nor written to the distributed cache, and
+  invalidations still go through it. `Distributed = true` (attribute, group, `Defaults`, `appsettings.json` or
+  `WithDistributed(true)`) still shares a value, and `false` keeps it in memory whatever the option says. `SetAsync`
+  without `WithDistributed(true)` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching
+  are still stored there.
+- `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
+  values kept in memory and shared again every two seconds and warns about one that code changed.
 
 ## Policies and shared entries
 
@@ -4481,7 +4535,7 @@ never stops a build.
 | [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
 | [MC0041](#mc0041) | Warning | A cached result holds EF Core entities with virtual navigation properties in a project that uses lazy-loading proxies | |
 | [MC0042](#mc0042) | Warning | A cached result type, or a type in it, whose state is all non-public, so serializers write it as an empty object | |
-| [MC0043](#mc0043) | Warning | Code changes a result a cached method returned | |
+| [MC0043](#mc0043) | Warning | Code changes a cached result | |
 
 ## Rules of a later version
 
@@ -5293,9 +5347,10 @@ suppress the warning then.
 
 ## MC0043
 
-Code changes a result that a cached method returned: it sets a property or field of the result or of an object in it,
-or adds to, removes from or sorts a collection in it. The memory cache keeps the instance the method returned and hands
-that same instance to every later caller on this instance, so they all see the change. The other instances read the copy
+Code changes a result that a cached method or `ICacheManager.GetOrCreateAsync` returned: it sets a property or field of
+the result or of an object in it, adds to, removes from or sorts a collection in it, or writes to an array in it. The
+memory cache keeps the instance the method or call returned and hands that same instance to every later caller on this
+instance, so they all see the change. The other instances read the copy
 in the distributed cache, which doesn't have it, so instances give different answers until the entry expires:
 
 ```cs
@@ -5311,11 +5366,17 @@ objects, so setting a property of one of its elements is reported too. Better st
 such as records with `init` properties and `IReadOnlyList<T>`, so the compiler stops such code. See
 [results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change).
 
-It's reported for a result kept in a local or read in a `foreach`, and for objects reached from it through properties,
-fields, indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, and through LINQ copies such as `ToList`, `ToArray`
-and `Where`. Your own methods that change an object, such as `order.Close()`, aren't seen; in Development, MethodCache
-also compares cached values with what it stored now and then, and logs a warning naming the method when one has
-changed. Not reported in test projects.
+For an array, such as a `float[]` embedding, copy it before you change it: `(float[])vector.Clone()` or
+`vector.ToArray()`. Writing through a `Span<T>` over the cached array, such as `vector.AsSpan()` or
+`Span<float> span = vector`, or copying into it with `Array.Copy`, `Buffer.BlockCopy` or `CopyTo`, is reported too. A
+`ReadOnlySpan<T>` only reads, so it isn't.
+
+It's reported for the result of a cached method, and of `GetOrCreateAsync`, `GetOrCreateManyAsync` and `TryGetAsync` on
+`ICacheManager`, kept in a local or read in a `foreach`. It follows objects reached from it through properties, fields,
+indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, through LINQ copies such as `ToList`, `ToArray` and
+`Where`, and through spans over its arrays. Your own methods that change an object, such as `order.Close()`, and a value
+you change after passing it to `SetAsync` aren't seen; in Development, MethodCache also compares cached values with what
+it stored now and then, and logs a warning naming the method when one has changed. Not reported in test projects.
 
 ## What the analyzers read from referenced projects
 
@@ -5462,13 +5523,13 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
-manual calls alike, none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
+API caches, set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, only those that set `Distributed` to `true` are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseRedis("localhost:6379")
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 
 See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5572,13 +5633,13 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
-manual calls alike, none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+API caches, set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, only those that set `Distributed` to `true` are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5723,13 +5784,13 @@ MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
-manual calls alike, none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+API caches, set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, only those that set `Distributed` to `true` are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -6488,6 +6549,36 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.15 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.14
+
+- `DistributedCacheOptions.StoreValues` is now `StoreValuesByDefault`: replace `o.StoreValues = false` with
+  `o.StoreValuesByDefault = false`. A method with `[Cache(Distributed = true)]`, or `Distributed = true` from its group,
+  `Defaults` or `appsettings.json`, and a call with `WithDistributed(true)` now store their values in the distributed
+  cache with it, where rc.14 kept every value in memory. One that sets nothing still stays in memory.
+- MC0043 now also reports code that changes the result of `GetOrCreateAsync`, `GetOrCreateManyAsync` or `TryGetAsync`
+  on `ICacheManager`, writes through a `Span<T>` over a cached array, or copies into one with `Array.Copy`,
+  `Buffer.BlockCopy` or `CopyTo`. It may fail a build that treats warnings as errors.
+
+### Added
+
+- `StoreValuesByDefault = false` keeps values in memory by default, and a method or call that sets `Distributed` to
+  `true` still shares its value through the distributed cache: values that are expensive or rate-limited to load, such
+  as an access token, are shared and the rest stay in each instance's memory
+  ([Memory by default, shared where you say so](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
+- `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
+  values kept in memory again every two seconds, for applications whose values are so large that it slows down
+  development.
+- MC0043 covers the results of manual calls on `ICacheManager`, writes through a `Span<T>` or `Memory<T>` over a cached
+  array (`vector.AsSpan()`, `Span<float> span = vector`, `CollectionsMarshal.AsSpan(list)`), and `Array.Copy`,
+  `Buffer.BlockCopy` and `CopyTo` with a cached array as the destination.
+
+### Documentation
+
+- Testing: `CachedServices.Declared` with the cached interfaces in several projects, and with a shared library that
+  declares interfaces other applications register.
 
 ## 1.0.0-rc.14 (2026-11-08)
 

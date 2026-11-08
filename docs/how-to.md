@@ -425,7 +425,9 @@ cached service. ([Every cached service resolves](features/testing.md#every-cache
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
 To keep that list up to date by itself, compare with the interfaces the project declares:
-`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`. Pass the
+assembly of each project with cached interfaces the application registers; for a shared library that declares
+interfaces other applications register, add the ones this application uses by hand.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**

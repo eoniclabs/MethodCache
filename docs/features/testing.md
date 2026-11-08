@@ -171,6 +171,32 @@ Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedSe
 ```
 <!-- endSnippet -->
 
+When the cached interfaces are in several projects, such as the modules of a modular monolith, pass the assembly of each
+project the application is built from:
+
+<!-- snippet: testing-cached-services-modules -->
+```cs
+// The cached interfaces are in the modules the application is built from: pass each module's assembly
+Assert.Equal(
+    CachedServices.Declared(typeof(TenancyModule).Assembly, typeof(BillingModule).Assembly),
+    CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
+
+`Declared` lists every interface with cached methods in an assembly, also those another application registers. When
+the application uses a few interfaces from a shared library that declares others, pass its own assemblies and add the
+interfaces it uses from the library:
+
+<!-- snippet: testing-cached-services-shared -->
+```cs
+// The application's own cached interfaces, and the one it uses from a shared library that declares others
+var expected = CachedServices.Declared(typeof(IProductService).Assembly)
+    .Append(typeof(ICurrencyRates))
+    .OrderBy(type => type.FullName, StringComparer.Ordinal);
+Assert.Equal(expected, CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
+
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
 mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
