@@ -314,7 +314,8 @@ without the change. Instances then give different answers until the entry expire
   `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>` for collections.
 - When a caller needs to change a result, change a copy: `orders.ToList()`, `new List<Order>(orders)`, or
   `order with { Status = OrderStatus.Shown }`. A list copy holds the same objects, so copy an object before setting
-  its properties.
+  its properties. Copy an array, such as a `float[]` embedding, before you normalize it in place: `vector.ToArray()`,
+  then write to the copy or a `Span<float>` over it.
 - [MC0043](../user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
   methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
   writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning

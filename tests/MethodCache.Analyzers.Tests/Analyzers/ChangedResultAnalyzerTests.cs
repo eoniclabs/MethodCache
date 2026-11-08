@@ -8,7 +8,8 @@ namespace MethodCache.Analyzers.Tests.Analyzers
 {
     public class ChangedResultAnalyzerTests
     {
-        private const string Header = @"using System.Collections.Generic;
+        private const string Header = @"using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MethodCache;
@@ -29,6 +30,7 @@ public interface IOrders
     [Cache] Task<Order[]> RecentAsync();
     [Cache] Task<Summary> SummaryAsync(int id);
     [Cache] Task<Money> TotalAsync(int id);
+    [Cache] Task<float[]> EmbeddingAsync(string text);
     Task<List<Order>> UncachedAsync();
 }
 
@@ -53,12 +55,27 @@ public interface IExternal { Task<List<Order>> AllAsync(); Task<List<Order>> Fre
         [InlineData("var recent = await _orders.RecentAsync(); System.Array.Reverse(recent);", "IOrders.RecentAsync")]
         [InlineData("(await _orders.ForCustomerAsync(1)).Add(new Order());", "IOrders.ForCustomerAsync")]
         [InlineData("var all = await _external.AllAsync(); all.Clear();", "IExternal.AllAsync")]
+        [InlineData("var list = await _cache.GetOrCreateAsync(\"k\", _ => ValueTask.FromResult(new List<Order>())); list.Add(new Order());", "ICacheManager.GetOrCreateAsync")]
+        [InlineData("var order = await _cache.GetOrCreateAsync(\"k\", _ => ValueTask.FromResult(new Order())); order.Status = Status.Closed;", "ICacheManager.GetOrCreateAsync")]
+        [InlineData("var many = await _cache.GetOrCreateManyAsync(new[] { \"a\" }, (keys, _) => ValueTask.FromResult<IReadOnlyDictionary<string, Order>>(new Dictionary<string, Order>())); many[\"a\"].Status = Status.Closed;", "ICacheManager.GetOrCreateManyAsync")]
+        [InlineData("var found = await _cache.TryGetAsync<List<Order>>(\"k\"); found.Value.Clear();", "ICacheManager.TryGetAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); v.AsSpan().Clear();", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); Span<float> s = v; s[0] = 0;", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); Span<float> s = v; for (var i = 0; i < s.Length; i++) s[i] /= 2;", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); var s = new Span<float>(v); s.Fill(1);", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); v.AsSpan(1).Slice(1)[0] = 2;", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); v.AsSpan().Sort();", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); Array.Copy(new float[3], v, 3);", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); Buffer.BlockCopy(new float[3], 0, v, 0, 12);", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); new float[3].CopyTo(v, 0);", "IOrders.EmbeddingAsync")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); new float[3].AsSpan().CopyTo(v);", "IOrders.EmbeddingAsync")]
+        [InlineData("var orders = await _orders.ForCustomerAsync(1); System.Runtime.InteropServices.CollectionsMarshal.AsSpan(orders)[0] = new Order();", "IOrders.ForCustomerAsync")]
         public async Task AChangeToACachedResult_IsReported(string body, string method)
         {
             var diagnostic = Assert.Single(await AnalyzeAsync(Header + Consumer(body)));
 
             Assert.Equal("MC0043", diagnostic.Id);
-            Assert.StartsWith($"This changes the result of cached method '{method}'.", diagnostic.GetMessage());
+            Assert.StartsWith($"This changes a cached result of '{method}'.", diagnostic.GetMessage());
         }
 
         [Theory]
@@ -71,6 +88,14 @@ public interface IExternal { Task<List<Order>> AllAsync(); Task<List<Order>> Fre
         [InlineData("var fresh = await _external.FreshAsync(); fresh.Clear();")]
         [InlineData("var count = (await _orders.ForCustomerAsync(1)).Count; count++;")]
         [InlineData("var orders = await _orders.ForCustomerAsync(1); var names = orders.Select(o => new Order { Status = o.Status }).ToList(); names[0].Status = Status.Closed;")]
+        [InlineData("var copy = new List<Order>(await _cache.GetOrCreateAsync(\"k\", _ => ValueTask.FromResult(new List<Order>()))); copy.Add(new Order());")]
+        [InlineData("var many = await _cache.GetOrCreateManyAsync(new[] { \"a\" }, (keys, _) => ValueTask.FromResult<IReadOnlyDictionary<string, Order>>(new Dictionary<string, Order>())); var own = new Dictionary<string, Order>(many); own.Remove(\"a\");")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); var dest = new float[3]; Array.Copy(v, dest, 3);")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); v.CopyTo(new float[3], 0);")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); v.AsSpan().CopyTo(new float[3]);")]
+        [InlineData("var v = await _orders.EmbeddingAsync(\"\"); ReadOnlySpan<float> r = v; var first = r[0];")]
+        [InlineData("var v = (await _orders.EmbeddingAsync(\"\")).ToArray(); v.AsSpan().Clear();")]
+        [InlineData("var v = (float[])(await _orders.EmbeddingAsync(\"\")).Clone(); Span<float> s = v; s[0] = 0;")]
         public async Task ACopyOrAnotherValue_IsNotReported(string body)
         {
             Assert.Empty(await AnalyzeAsync(Header + Consumer(body)));
@@ -85,7 +110,7 @@ public interface IExternal { Task<List<Order>> AllAsync(); Task<List<Order>> Fre
         }
 
         private static string Consumer(string body) => @"
-public sealed class Consumer(IOrders _orders, IExternal _external)
+public sealed class Consumer(IOrders _orders, IExternal _external, ICacheManager _cache)
 {
     public async Task RunAsync()
     {
