@@ -51,7 +51,13 @@
 A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
 warning [MC0020](user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
-only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`, or
+name the implementations with `[JsonDerivedType]` on the interface.
+
+The same happens, with a warning in the log when the first such value is written, for a derived type where its base
+type is declared deeper in the value: a `Dog` in a `List<Animal>` or in an `Animal` property, or `object` values such
+as those of a `Dictionary<string, object>`, which come back as `JsonElement`. `[JsonDerivedType(typeof(Dog), "dog")]`
+on `Animal` shares a `Dog` as a `Dog` ([Serialization](reference/distributed.md#serialization)).
 
 Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
 when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane

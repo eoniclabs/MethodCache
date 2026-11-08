@@ -4266,7 +4266,13 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
 A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
 warning [MC0020](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
 such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
-only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`, or
+name the implementations with `[JsonDerivedType]` on the interface.
+
+The same happens, with a warning in the log when the first such value is written, for a derived type where its base
+type is declared deeper in the value: a `Dog` in a `List<Animal>` or in an `Animal` property, or `object` values such
+as those of a `Dictionary<string, object>`, which come back as `JsonElement`. `[JsonDerivedType(typeof(Dog), "dog")]`
+on `Animal` shares a `Dog` as a `Dog` ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization)).
 
 Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
 when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
@@ -4561,7 +4567,8 @@ in-memory cache only. Collection interfaces such as
 `IReadOnlyList<Product>` are fine; they are read back as a list.
 
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
-cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
+abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
 `#pragma warning disable MC0020` or `<NoWarn>` in the project.
 
 ## MC0021
@@ -6278,6 +6285,8 @@ release.
   collections, properties and fields. A `Dog` in a `List<Animal>` came back as a plain `Animal` on the other
   instances, and an `int` in a `Dictionary<string, object>` as a `JsonElement`; such a value now stays in memory with
   the warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization)).
+- MC0020 no longer reports an interface or abstract class with `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]`,
+  whose results the serializer restores.
 - Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation

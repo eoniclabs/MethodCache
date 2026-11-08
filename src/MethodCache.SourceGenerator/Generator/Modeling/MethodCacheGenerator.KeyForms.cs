@@ -309,7 +309,18 @@ namespace MethodCache.SourceGenerator
                 return FindUnrestorableResultType(element);
             }
 
-            return named.TypeKind == TypeKind.Interface || (named.TypeKind == TypeKind.Class && named.IsAbstract) ? named : null;
+            return (named.TypeKind == TypeKind.Interface || (named.TypeKind == TypeKind.Class && named.IsAbstract)) && !NamesItsDerivedTypes(named) ? named : null;
         }
+
+        /// <summary>
+        /// Whether the serializer is told which types derive from <paramref name="type"/>, with System.Text.Json's
+        /// <c>[JsonDerivedType]</c> or <c>[JsonPolymorphic]</c> or MessagePack's <c>[Union]</c>, so it writes and
+        /// restores them as themselves.
+        /// </summary>
+        private static bool NamesItsDerivedTypes(INamedTypeSymbol type)
+            => type.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() is
+                "System.Text.Json.Serialization.JsonDerivedTypeAttribute" or
+                "System.Text.Json.Serialization.JsonPolymorphicAttribute" or
+                "MessagePack.UnionAttribute");
     }
 }

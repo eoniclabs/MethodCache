@@ -31,6 +31,8 @@ release.
   collections, properties and fields. A `Dog` in a `List<Animal>` came back as a plain `Animal` on the other
   instances, and an `int` in a `Dictionary<string, object>` as a `JsonElement`; such a value now stays in memory with
   the warning ([Serialization](docs/reference/distributed.md#serialization)).
+- MC0020 no longer reports an interface or abstract class with `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]`,
+  whose results the serializer restores.
 - Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
