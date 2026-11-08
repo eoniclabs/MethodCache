@@ -47,6 +47,8 @@ never stops a build.
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
 | [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
 | [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
+| [MC0039](#mc0039) | Warning | A class that derives from a type a cached result holds, but that MethodCache can't name to the distributed cache, such as a generic or private one | |
+| [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
 
 ## Rules of a later version
 
@@ -61,7 +63,7 @@ want, in the project file or in `Directory.Build.props`:
 ```
 
 The rules that came after that version are then off. Turn one of them on in `.editorconfig`, such as
-`dotnet_diagnostic.MC0040.severity = warning`, and raise the level when you have looked at the rest. Every rule of
+`dotnet_diagnostic.MC0060.severity = warning`, and raise the level when you have looked at the rest. Every rule of
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
@@ -758,6 +760,46 @@ The two settings often come from different places, such as a sliding window on t
 `Defaults`, which the build can't see together. The host logs the same warning when it starts, once for each such
 method, whether the settings come from `[Cache]`, startup code or `appsettings.json`
 ([Sliding expiration](../features/expiration.md#sliding-expiration)).
+
+## MC0039
+
+A class derives from a type that a cached result holds, such as a `Dog` where a method returns `List<Animal>`, but
+MethodCache can't name it to the distributed cache's serializer: the class is generic, private or nested in a private
+type, `file`-local, or not public in a referenced assembly. A value that holds one can't be restored as a `Dog` from the
+distributed cache, so the check before sharing keeps it in each instance's memory, with a warning in the log:
+
+```cs
+public class Animal { public string Name { get; set; } = ""; }
+public class Box<T> : Animal { public T Value { get; set; } = default!; }   // MC0039: it is generic
+
+public interface IZoo
+{
+    [Cache] Task<List<Animal>> AnimalsAsync();
+}
+```
+
+Make the class public or internal, not generic and not nested in a private type, and MethodCache registers it, so it
+comes back from the distributed cache as itself. Or name it with `[JsonDerivedType(typeof(Box<int>), "box-int")]` on
+the base type (`[Union]` with MessagePack). When such values only need the in-memory cache, suppress the warning. A test
+project gets no MC0039, since its private test doubles don't reach a shared cache
+([Derived types](../features/distributed-cache.md#derived-types)).
+
+## MC0040
+
+Under Native AOT the distributed cache's JSON can only write the types the `JsonSerializerContext` passed to `UseJson`
+has contracts for. The context has one for a type a cached result holds, such as `Animal`, but not for a class that
+derives from it, such as `Dog`, so a value holding a `Dog` stays in each instance's memory:
+
+```cs
+[JsonSerializable(typeof(List<Animal>))]
+internal partial class AppJsonContext : JsonSerializerContext { }
+
+builder.Services.AddMethodCache(mc => mc.UseJson(AppJsonContext.Default));   // MC0040: no contract for Dog
+```
+
+Add `[JsonSerializable(typeof(Dog))]` to the context; the code fix does it for you. The derived types that classes in
+referenced projects register count too. The host also logs the derived types the context lacks when it starts, for a
+context the build can't see, such as one built at run time.
 
 ## What the analyzers read from referenced projects
 

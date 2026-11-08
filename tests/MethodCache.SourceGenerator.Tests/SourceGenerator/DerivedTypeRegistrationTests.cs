@@ -113,16 +113,66 @@ namespace Contracts { public interface IZoo { [Cache] Task<List<Domain.Animal>> 
             Assert.DoesNotContain(run.Diagnostics, d => d.Id == "MC0039");
         }
 
+        private const string Setup = @"
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+namespace App
+{
+    // What System.Text.Json's source generator adds, which this test doesn't run
+    internal partial class AppJsonContext { public static AppJsonContext Default => null!; }
+
+    LISTED
+    internal partial class AppJsonContext : JsonSerializerContext { }
+
+    public static class Setup
+    {
+        public static void Configure(MethodCache.MethodCacheBuilder mc) => mc.UseJson(AppJsonContext.Default);
+    }
+}";
+
+        [Theory]
+        [InlineData("[JsonSerializable(typeof(List<Contracts.Animal>))]", true)]
+        [InlineData("[JsonSerializable(typeof(List<Contracts.Animal>))] [JsonSerializable(typeof(Contracts.Dog))]", false)]
+        [InlineData("[JsonSerializable(typeof(Contracts.Animal))] [JsonSerializable(typeof(List<Contracts.Dog>))]", false)]
+        [InlineData("[JsonSerializable(typeof(string))]", false)]
+        public void ADerivedTypeTheContextPassedToUseJsonLacks_GetsMC0040(string listed, bool reported)
+        {
+            var run = Run(Compilation("Contracts", new[] { Zoo, "namespace Contracts { public class Dog : Animal { } }", Setup.Replace("LISTED", listed) }, []), allowErrors: true);
+
+            var warnings = run.Diagnostics.Where(d => d.Id == "MC0040").ToList();
+            if (!reported)
+            {
+                Assert.Empty(warnings);
+                return;
+            }
+
+            var warning = Assert.Single(warnings);
+            Assert.StartsWith("'App.AppJsonContext' has no contract for 'Contracts.Dog', which derives from 'Contracts.Animal'", warning.GetMessage());
+            Assert.Equal("AppJsonContext.Default", warning.Location.SourceTree!.ToString().Substring(warning.Location.SourceSpan.Start, warning.Location.SourceSpan.Length));
+            Assert.Equal("T:App.AppJsonContext", warning.Properties["Context"]);
+            Assert.Equal("global::Contracts.Dog", warning.Properties["DerivedType"]);
+        }
+
+        [Fact]
+        public void ADerivedTypeAReferencedProjectRegisters_IsCheckedAgainstTheContext()
+        {
+            var contracts = Image(Run(Compilation("Contracts", Zoo, "namespace Contracts { public class Dog : Animal { } }")).Output);
+
+            var run = Run(Compilation("App", Setup.Replace("LISTED", "[JsonSerializable(typeof(List<Contracts.Animal>))]"), contracts), allowErrors: true);
+
+            Assert.Contains(run.Diagnostics, d => d.Id == "MC0040" && d.GetMessage().Contains("'Contracts.Dog'", StringComparison.Ordinal));
+        }
+
         private sealed record RunResult(Compilation Output, IReadOnlyList<Diagnostic> Diagnostics)
         {
             public string Source(string fileName) => Output.SyntaxTrees.Single(t => t.FilePath.EndsWith(fileName, StringComparison.Ordinal)).ToString();
         }
 
-        private static RunResult Run(CSharpCompilation compilation)
+        private static RunResult Run(CSharpCompilation compilation, bool allowErrors = false)
         {
             CSharpGeneratorDriver.Create(new MethodCacheGenerator()).RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
             var errors = output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-            Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
+            Assert.True(allowErrors || errors.Count == 0, string.Join(Environment.NewLine, errors));
             return new RunResult(output, diagnostics);
         }
 

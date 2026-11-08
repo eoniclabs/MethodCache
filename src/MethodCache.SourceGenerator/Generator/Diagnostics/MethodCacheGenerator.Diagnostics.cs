@@ -200,6 +200,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0039"));
 
+            internal static readonly DiagnosticDescriptor UnlistedDerivedType = new(
+                id: "MC0040",
+                title: "Derived type missing from the JsonSerializerContext passed to UseJson",
+                messageFormat: "'{0}' has no contract for '{1}', which derives from '{2}' that a cached result holds, so the distributed cache can't restore it as itself, and a value holding one stays in each instance's memory. Add [JsonSerializable(typeof({1}))] to '{0}'.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0040"));
+
             internal static readonly DiagnosticDescriptor RuntimeKeyArgument = new(
                 id: "MC0037",
                 title: "Cache key is written when the call runs",

@@ -94,7 +94,7 @@ namespace MethodCache.SourceGenerator
                 .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary)));
             // The types the referenced projects' cached results declare, so this project registers its derived types of them
             var referencedBases = context.CompilationProvider
-                .Select(static (compilation, _) => ReferencedDerivedTypeBases(compilation))
+                .Select(static (compilation, _) => ReferencedMetadata(compilation, DerivedTypeBaseMetadataKey))
                 .WithTrackingName(TrackingNames.ReferencedDerivedTypeBases);
             var isTestProject = context.CompilationProvider.Select(static (compilation, _) => InvalidationTags.IsTestProject(compilation));
             var registrations = allSummaries.Combine(derivedTypes).Combine(referencedBases).Combine(isTestProject)
@@ -104,6 +104,7 @@ namespace MethodCache.SourceGenerator
                 allSummaries.Select(static (items, _) => new EquatableArray<string>(items.SelectMany(static i => i.DerivedTypeCandidates)
                     .Distinct().OrderBy(static t => t, System.StringComparer.Ordinal))),
                 static (ctx, declared) => EmitDerivedTypeBases(ctx, declared));
+            RegisterJsonContextCheck(context, registrations);
             context.RegisterSourceOutput(diagnostics.Combine(registrations), static (ctx, input) =>
             {
                 var (items, derived) = input;
@@ -175,6 +176,7 @@ namespace MethodCache.SourceGenerator
             public const string DerivedTypes = nameof(DerivedTypes);
             public const string DerivedTypeRegistrations = nameof(DerivedTypeRegistrations);
             public const string ReferencedDerivedTypeBases = nameof(ReferencedDerivedTypeBases);
+            public const string JsonContexts = nameof(JsonContexts);
         }
     }
 }

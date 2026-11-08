@@ -15,7 +15,7 @@
     dotnet_diagnostic.<id>.severity = warning. Every rule of 1.0 stays on at any level.
   -->
   <ItemGroup>
-    <!-- A rule added after 1.0: <MethodCacheRule Include="MC0040" Since="1.1" /> -->
+    <!-- A rule added after 1.0: <MethodCacheRule Include="MC0060" Since="1.1" /> -->
   </ItemGroup>
 
   <Target Name="_MethodCacheAnalysisLevel" BeforeTargets="CoreCompile" Condition="'$(MethodCacheAnalysisLevel)' != ''">

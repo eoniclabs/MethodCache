@@ -71,6 +71,9 @@ namespace MethodCache.SourceGenerator
             /// </summary>
             public string? UnlessDerivedTypesOf { get; init; }
 
+            /// <summary>More properties a code fix reads, as <c>name=value</c>.</summary>
+            public EquatableArray<string> Properties { get; init; } = EquatableArray<string>.Empty;
+
             public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location? location, params string?[] arguments)
                 => new(descriptor, LocationInfo.From(location), new EquatableArray<string?>(arguments), null);
 
@@ -85,6 +88,12 @@ namespace MethodCache.SourceGenerator
                 var properties = ParameterProperty is null
                     ? null
                     : System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("Parameter", ParameterProperty);
+                foreach (var property in Properties)
+                {
+                    var separator = property.IndexOf('=');
+                    properties = (properties ?? System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty)
+                        .SetItem(property.Substring(0, separator), property.Substring(separator + 1));
+                }
                 return Diagnostic.Create(Descriptor, Location?.ToLocation(), properties, Arguments.Cast<object?>().ToArray());
             }
         }

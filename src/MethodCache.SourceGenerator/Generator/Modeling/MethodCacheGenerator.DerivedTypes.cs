@@ -330,27 +330,6 @@ namespace MethodCache.SourceGenerator
             return new DerivedTypesModel(new EquatableArray<DerivedTypeRegistration>(registrations), new EquatableArray<DiagnosticInfo>(diagnostics));
         }
 
-        /// <summary>The types the projects this one references list as declared by their cached results.</summary>
-        private static EquatableArray<string> ReferencedDerivedTypeBases(Compilation compilation)
-        {
-            var bases = new SortedSet<string>(System.StringComparer.Ordinal);
-            foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
-            {
-                foreach (var attribute in assembly.GetAttributes())
-                {
-                    if (attribute.AttributeClass is { Name: "AssemblyMetadataAttribute" } &&
-                        attribute.ConstructorArguments.Length == 2 &&
-                        attribute.ConstructorArguments[0].Value is DerivedTypeBaseMetadataKey &&
-                        attribute.ConstructorArguments[1].Value is string name)
-                    {
-                        bases.Add(name);
-                    }
-                }
-            }
-
-            return new EquatableArray<string>(bases);
-        }
-
         /// <summary>Lists the types the project's cached results declare, for the projects that reference it.</summary>
         private static void EmitDerivedTypeBases(SourceProductionContext context, EquatableArray<string> declared)
         {

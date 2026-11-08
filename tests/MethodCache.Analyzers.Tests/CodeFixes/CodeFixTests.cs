@@ -176,6 +176,42 @@ public interface IUserService
         }
 
         [Fact]
+        public async Task MC0040_AddsTheDerivedTypeToTheJsonSerializerContext()
+        {
+            const string model = @"
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MethodCache;
+namespace App
+{
+    public class Animal { public string Name { get; set; } = """"; }
+    public class Dog : Animal { public string Breed { get; set; } = """"; }
+    public interface IZoo { [Cache] Task<List<Animal>> AnimalsAsync(); }
+}";
+            const string context = @"
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+namespace App
+{
+    // What System.Text.Json's source generator adds, which this test doesn't run
+    internal partial class AppJsonContext { public static AppJsonContext Default => null!; }
+
+    [JsonSerializable(typeof(List<Animal>))]
+    internal partial class AppJsonContext : JsonSerializerContext { }
+
+    public static class Setup
+    {
+        public static void Configure(MethodCache.MethodCacheBuilder mc) => mc.UseJson(AppJsonContext.Default);
+    }
+}";
+
+            var (title, fixedSources) = await FixAsync(new AddJsonSerializableCodeFixProvider(), "MC0040", model, context);
+
+            Assert.Equal("Add [JsonSerializable(typeof(Dog))] to AppJsonContext", title);
+            Assert.True(fixedSources[1].Replace("\r\n", "\n").Contains("[JsonSerializable(typeof(List<Animal>))]\n    [JsonSerializable(typeof(Dog))]\n    internal partial class AppJsonContext", StringComparison.Ordinal), fixedSources[1]);
+        }
+
+        [Fact]
         public void EveryDiagnostic_LinksToItsSectionInTheGuide()
         {
             var guide = File.ReadAllText(Path.Combine(RepositoryRoot(), "docs", "user-guide", "DIAGNOSTICS.md"));

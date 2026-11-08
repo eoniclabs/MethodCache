@@ -22,6 +22,7 @@ MC0034 | Design | Error | Reports a cache key argument, element or member of a t
 MC0037 | Performance | Info | Reports a [Cache] method whose key the decorator can't write at build time, such as one with an object, interface or collection-of-collections argument, so the key generator writes and hashes it when the call runs.
 MC0020 | Performance | Warning | Reports a cached result type of object, an interface or an abstract class, which a distributed cache can't restore.
 MC0039 | Performance | Warning | Reports a class that derives from a type a cached result holds but that generated code can't name (generic, private, file-local, or not public in a referenced assembly), so the distributed cache can't restore it as itself.
+MC0040 | Performance | Warning | Reports a derived type MethodCache registers for a type a cached result holds that the JsonSerializerContext passed to UseJson has no contract for, while it has one for the base type.
 MC0004 | Usage | Error | Reports an invalid explicit duration independently of the analyzer.
 MC0021 | Usage | Error | Reports a negative explicit cache version.
 MC0023 | Usage | Error | Reports a RefreshAhead that is not shorter than the Duration or SlidingExpiration on the same attribute.
