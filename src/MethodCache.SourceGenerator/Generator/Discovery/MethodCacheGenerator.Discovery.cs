@@ -57,7 +57,7 @@ namespace MethodCache.SourceGenerator
         private static GeneratedInterface ToGeneratedInterface(InterfaceInfo info, IAssemblySymbol generating)
         {
             var symbol = info.Symbol;
-            var (derivedTypeCandidates, referencedDerivedTypes) = FindDerivedTypeCandidates(info.CachedMethods.Select(static m => m.Method), generating);
+            var (derivedTypeCandidates, referencedDerivedTypes, derivedTypeDiagnostics) = FindDerivedTypeCandidates(info.CachedMethods.Select(static m => m.Method), generating);
             var summary = new InterfaceSummary(
                 symbol.Name,
                 GetAssemblyIdentity(symbol),
@@ -77,7 +77,7 @@ namespace MethodCache.SourceGenerator
                 summary,
                 Utils.GetDecoratorHintName(symbol),
                 summary.Generates ? DecoratorEmitter.Emit(info) : string.Empty,
-                new EquatableArray<DiagnosticInfo>(info.Diagnostics));
+                new EquatableArray<DiagnosticInfo>(info.Diagnostics.Concat(derivedTypeDiagnostics)));
         }
 
         private static string GetAssemblyIdentity(INamedTypeSymbol type) => type.ContainingAssembly?.Identity.ToString() ?? string.Empty;

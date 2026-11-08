@@ -191,6 +191,15 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0020"));
 
+            internal static readonly DiagnosticDescriptor UnregistrableDerivedType = new(
+                id: "MC0039",
+                title: "Derived type can't be restored from a distributed cache",
+                messageFormat: "'{0}' derives from '{1}', which a cached result holds, but {2}, so MethodCache can't name it to the distributed cache's serializer, and a result holding one stays in each instance's memory. Make it a public or internal class that isn't generic or nested in a private type, or name it with [JsonDerivedType] on '{1}'.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0039"));
+
             internal static readonly DiagnosticDescriptor RuntimeKeyArgument = new(
                 id: "MC0037",
                 title: "Cache key is written when the call runs",

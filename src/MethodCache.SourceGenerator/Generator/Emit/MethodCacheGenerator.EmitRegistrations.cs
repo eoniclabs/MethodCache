@@ -51,7 +51,7 @@ namespace MethodCache.SourceGenerator
                     }
                 }
 
-                if (interfaces.Count == 0)
+                if (interfaces.Count == 0 && derivedTypes.Count == 0)
                 {
                     return string.Empty;
                 }

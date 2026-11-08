@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.Linq;
+using MethodCache.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -91,14 +92,23 @@ namespace MethodCache.SourceGenerator
                     input.Right.Diagnostics.Concat(input.Left.SelectMany(i => i.Diagnostics))));
             var allSummaries = interfaces
                 .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary)));
-            var registrations = allSummaries.Combine(derivedTypes)
-                .Select(static (input, _) => DerivedTypeRegistrations(input.Left, input.Right))
+            // The types the referenced projects' cached results declare, so this project registers its derived types of them
+            var referencedBases = context.CompilationProvider
+                .Select(static (compilation, _) => ReferencedDerivedTypeBases(compilation))
+                .WithTrackingName(TrackingNames.ReferencedDerivedTypeBases);
+            var isTestProject = context.CompilationProvider.Select(static (compilation, _) => InvalidationTags.IsTestProject(compilation));
+            var registrations = allSummaries.Combine(derivedTypes).Combine(referencedBases).Combine(isTestProject)
+                .Select(static (input, _) => DerivedTypeRegistrations(input.Left.Left.Left, input.Left.Left.Right, input.Left.Right, input.Right))
                 .WithTrackingName(TrackingNames.DerivedTypeRegistrations);
+            context.RegisterSourceOutput(
+                allSummaries.Select(static (items, _) => new EquatableArray<string>(items.SelectMany(static i => i.DerivedTypeCandidates)
+                    .Distinct().OrderBy(static t => t, System.StringComparer.Ordinal))),
+                static (ctx, declared) => EmitDerivedTypeBases(ctx, declared));
             context.RegisterSourceOutput(diagnostics.Combine(registrations), static (ctx, input) =>
             {
                 var (items, derived) = input;
-                var registered = new System.Collections.Generic.HashSet<string>(derived.Select(static r => r.DeclaredFqn), System.StringComparer.Ordinal);
-                items = new EquatableArray<DiagnosticInfo>(items.Where(d => d.UnlessDerivedTypesOf is not { } type || !registered.Contains(type)));
+                var registered = new System.Collections.Generic.HashSet<string>(derived.Registrations.Select(static r => r.DeclaredFqn), System.StringComparer.Ordinal);
+                items = new EquatableArray<DiagnosticInfo>(items.Where(d => d.UnlessDerivedTypesOf is not { } type || !registered.Contains(type)).Concat(derived.Diagnostics));
                 // Shared attribute errors have one owner when generator and analyzer run together.
                 if (items.Any(static diagnostic => diagnostic.Id is "MC0004" or "MC0021" or "MC0023" or "MC0038"))
                     ctx.AddSource("MethodCacheAttributeValidation.g.cs",
@@ -118,7 +128,7 @@ namespace MethodCache.SourceGenerator
                 .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary).Where(s => s.Generates)))
                 .WithTrackingName(TrackingNames.Summaries);
             context.RegisterSourceOutput(summaries, static (ctx, items) => EmitSharedSources(ctx, items));
-            context.RegisterSourceOutput(summaries.Combine(classProvider).Combine(registrations), static (ctx, input) => EmitRegistrations(ctx, input.Left.Left, input.Left.Right, input.Right));
+            context.RegisterSourceOutput(summaries.Combine(classProvider).Combine(registrations), static (ctx, input) => EmitRegistrations(ctx, input.Left.Left, input.Left.Right, input.Right.Registrations));
 
             RegisterEntityMapping(context);
             RegisterRequestState(context);
@@ -140,7 +150,8 @@ namespace MethodCache.SourceGenerator
         private static void EmitRegistrations(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes,
             EquatableArray<DerivedTypeRegistration> derivedTypes)
         {
-            if (interfaces.Count == 0) return;
+            // A project without cached interfaces of its own still registers its derived types of a referenced project's
+            if (interfaces.Count == 0 && derivedTypes.Count == 0) return;
 
             var registrationsCode = DecoratorRegistrationsEmitter.Emit(interfaces, classes, derivedTypes);
             if (!string.IsNullOrEmpty(registrationsCode))
@@ -163,6 +174,7 @@ namespace MethodCache.SourceGenerator
             public const string InvalidatedTags = nameof(InvalidatedTags);
             public const string DerivedTypes = nameof(DerivedTypes);
             public const string DerivedTypeRegistrations = nameof(DerivedTypeRegistrations);
+            public const string ReferencedDerivedTypeBases = nameof(ReferencedDerivedTypeBases);
         }
     }
 }
