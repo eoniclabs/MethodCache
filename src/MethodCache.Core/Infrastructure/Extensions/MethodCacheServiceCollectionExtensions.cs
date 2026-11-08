@@ -46,6 +46,12 @@ namespace Microsoft.Extensions.DependencyInjection
             var parameters = services.FirstOrDefault(d => d.ServiceType == typeof(GeneratedParameters))?.ImplementationInstance as GeneratedParameters;
             if (parameters == null) services.AddSingleton(parameters = new GeneratedParameters());
             foreach (var module in modules) parameters.DescribedMethods.UnionWith(module.ParameterNames.Keys);
+            if (modules.Any(static m => m.Derived.Count > 0))
+            {
+                var derived = services.FirstOrDefault(static d => d.ServiceType == typeof(DerivedTypeRegistry))?.ImplementationInstance as DerivedTypeRegistry;
+                if (derived == null) services.AddSingleton(derived = new DerivedTypeRegistry());
+                foreach (var module in modules) derived.Add(module.Derived);
+            }
             EnsureCoreServices(services);
             if (builder.AutoLifetime is { } lifetime) RegisterUnregisteredServices(services, catalog, lifetime);
             DecorateExistingRegistrations(services, catalog);
@@ -190,7 +196,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetService<ILoggerFactory>()?.CreateLogger<InMemoryCacheManager>(), sp.GetRequiredService<MethodCache.Core.Telemetry.CoreTelemetry>(),
                 sp.GetService<HttpResponseStore>(),
                 sp.GetRequiredService<GeneratedParameters>().CreateLookup(() => sp.GetRequiredService<IPolicyRegistry>()),
-                onRemoteCleared: () => sp.GetService<SharedRuntimeOverrides>()?.OnRemoteCleared()));
+                onRemoteCleared: () => sp.GetService<SharedRuntimeOverrides>()?.OnRemoteCleared(),
+                development: sp.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>() is { } environment &&
+                             Microsoft.Extensions.Hosting.HostEnvironmentEnvExtensions.IsDevelopment(environment)));
             services.AddSingleton<ICacheManager>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<IMemoryCache>(static sp => sp.GetRequiredService<InMemoryCacheManager>());
             services.TryAddSingleton<ICacheAdministrator>(CreateAdministrator);
@@ -273,7 +281,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Configure(configure);
             }
 
-            services.TryAddKeyedSingleton<ISerializer>(OwnDistributedCacheKey, static (_, _) => new JsonCacheSerializer());
+            services.TryAddKeyedSingleton<ISerializer>(OwnDistributedCacheKey, static (sp, _) => new JsonCacheSerializer(null, sp.GetService<DerivedTypeRegistry>()));
             services.TryAddSingleton(static sp => new DistributedCacheLayer(
                 sp.GetRequiredKeyedService<IDistributedCache>(OwnDistributedCacheKey),
                 sp.GetRequiredKeyedService<ISerializer>(OwnDistributedCacheKey),

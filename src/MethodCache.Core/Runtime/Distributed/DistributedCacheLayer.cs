@@ -184,6 +184,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (entryVersion == 0) throw new ArgumentOutOfRangeException(nameof(entryVersion));
             _entryVersion = entryVersion;
             _verifyRoundTrip = options.VerifyRoundTrip;
+            StoresValues = options.StoreValues;
             _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             _keyPrefix = options.KeyPrefix;
@@ -198,6 +199,18 @@ namespace MethodCache.Core.Runtime.Distributed
             _breakDuration = options.CircuitBreakerDuration;
             _telemetry?.ObserveRecovery(GetInvalidationQueues);
         }
+
+        /// <summary>
+        /// Whether cached values are stored here (<see cref="DistributedCacheOptions.StoreValues"/>). When false, the
+        /// layer only carries invalidations.
+        /// </summary>
+        internal bool StoresValues { get; }
+
+        /// <summary>The derived types the serializer restores as themselves and those it can't, when it is MethodCache's own.</summary>
+        internal MethodCache.Infrastructure.IRestoresDerivedTypes? DerivedTypes => _serializer as MethodCache.Infrastructure.IRestoresDerivedTypes;
+
+        /// <summary>The serializer values are written with, which the check in Development writes them again with.</summary>
+        internal ISerializer Serializer => _serializer;
 
         /// <summary>The store, the key prefix and the backplane (null without one), as the startup log names them.</summary>
         internal (string Store, string KeyPrefix, string? Backplane) Describe()
@@ -541,13 +554,15 @@ namespace MethodCache.Core.Runtime.Distributed
         /// <summary>
         /// Whether this value from <paramref name="methodName"/> comes back from the serializer as it was written: it
         /// is read back and written again, both writes must match (unless the serializer never writes the same bytes
-        /// twice), and so must the value's type. Every value is
+        /// twice), and so must the types in it, from the value's own down to its elements and properties
+        /// (<see cref="RoundTripGraph"/>): a <c>Dog</c> in a <c>List&lt;Animal&gt;</c> writes the same bytes as the
+        /// <c>Animal</c> it comes back as. Every value is
         /// checked, since one with default data (an <c>Id</c> of 0 behind a private setter) can pass where the next
         /// one loses data; once one fails, every value of that method and runtime type stays in memory only. A collection declared
         /// as an interface or abstract type may come back as another implementation of it (an array as a
         /// <c>List&lt;T&gt;</c>, say), since only its elements are written. A value that doesn't come back (private
-        /// setters, a derived type returned as its base type, <c>object</c>) is kept in memory only, with one warning
-        /// per method and runtime type.
+        /// setters, a derived type the serializer can't name, <c>object</c>, a dictionary's comparer) is kept in memory
+        /// only, with one warning per method and runtime type.
         /// </summary>
         private bool RoundTrips<T>(string? methodName, T value, ReadOnlyMemory<byte> payload)
         {
@@ -568,8 +583,9 @@ namespace MethodCache.Core.Runtime.Distributed
                     _serializer.Serialize(read, again);
                 }
 
-                roundTrips = read is not null && SameType(typeof(T), written, read.GetType()) &&
-                    (again.WrittenSpan.SequenceEqual(payload.Span) || !Deterministic(value, payload));
+                roundTrips = read is not null &&
+                    (again.WrittenSpan.SequenceEqual(payload.Span) || !Deterministic(value, payload)) &&
+                    RoundTripGraph.Same(value, read, payload.Length);
             }
             catch (Exception)
             {
@@ -584,7 +600,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (_roundTrips.TryAdd(method, false))
             {
                 _logger.LogWarning(
-                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type returned as its base type, or object. To share them between instances, configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or select UseMessagePack.",
+                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of a private setter, a derived type MethodCache can't name to it (see MC0039), object, an EF Core lazy-loading proxy, or a dictionary or set made with its own comparer. To share them between instances, return a type the serializer writes in full, such as a record with public properties, or configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter).",
                     methodName ?? "SetAsync", written, typeof(T), _serializer.GetType().Name);
             }
 
@@ -611,16 +627,6 @@ namespace MethodCache.Core.Runtime.Distributed
 
         private static (string Method, Type Declared, Type Written) RoundTripKey<T>(string? methodName, T value)
             => (methodName ?? string.Empty, typeof(T), value!.GetType());
-
-        /// <summary>
-        /// Whether a value read back as <paramref name="read"/> is the value written as <paramref name="written"/>: the
-        /// same type, or, for a collection declared as an interface or abstract type, any implementation of it, since
-        /// only its elements are written and identical bytes mean identical elements.
-        /// </summary>
-        private static bool SameType(Type declared, Type written, Type read)
-            => read == written ||
-               ((declared.IsInterface || declared.IsAbstract) && declared != typeof(object) &&
-                typeof(System.Collections.IEnumerable).IsAssignableFrom(declared) && declared.IsAssignableFrom(read));
 
         /// <summary>
         /// Removes a key whose write timed out once that write had time to land. Another timed-out write of the key

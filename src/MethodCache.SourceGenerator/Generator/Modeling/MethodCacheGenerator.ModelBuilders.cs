@@ -81,11 +81,30 @@ namespace MethodCache.SourceGenerator
                     unsafeType.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
             }
 
+            if (FindHiddenStateResultType(result, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is { } hidden)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.HiddenStateResultType, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    hidden.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
+            if (UsesLazyLoadingProxies(method.ContainingAssembly) &&
+                FindLazyLoadedEntity(result, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is { } entity)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.LazyLoadedEntityResult, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    entity.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
             if (FindUnrestorableResultType(result) is { } unrestorable)
             {
+                // An interface or abstract class that classes of the project derive from is restored as them
                 return (DiagnosticInfo.Create(Diagnostics.UnrestorableResultType, location, methodName,
                     result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
-                    unrestorable.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+                    unrestorable.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)) with
+                {
+                    UnlessDerivedTypesOf = unrestorable is INamedTypeSymbol { SpecialType: not SpecialType.System_Object } named ? Utils.GetFullyQualifiedName(named) : null,
+                }, true);
             }
 
             return (null, true);

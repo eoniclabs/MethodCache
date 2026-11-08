@@ -48,15 +48,16 @@ namespace MethodCache.SourceGenerator
                 : null;
 
         private static GeneratedInterface? GetGeneratedInterface(INamedTypeSymbol interfaceSymbol)
-            => GetInterfaceInfo(interfaceSymbol) is { } info ? ToGeneratedInterface(info) : null;
+            => GetInterfaceInfo(interfaceSymbol) is { } info ? ToGeneratedInterface(info, interfaceSymbol.ContainingAssembly) : null;
 
         /// <summary>
         /// Generates the interface's decorator and keeps only values from its symbols, so the pipeline can tell
         /// when nothing changed.
         /// </summary>
-        private static GeneratedInterface ToGeneratedInterface(InterfaceInfo info)
+        private static GeneratedInterface ToGeneratedInterface(InterfaceInfo info, IAssemblySymbol generating)
         {
             var symbol = info.Symbol;
+            var (derivedTypeCandidates, referencedDerivedTypes, derivedTypeDiagnostics) = FindDerivedTypeCandidates(info.CachedMethods.Select(static m => m.Method), generating);
             var summary = new InterfaceSummary(
                 symbol.Name,
                 GetAssemblyIdentity(symbol),
@@ -67,14 +68,16 @@ namespace MethodCache.SourceGenerator
                 symbol.IsGenericType,
                 info.CachedMethods.Length > 0,
                 info.InvalidateMethods.Length > 0,
-                PolicyRegistrationsEmitter.BuildEntries(info));
+                PolicyRegistrationsEmitter.BuildEntries(info),
+                derivedTypeCandidates,
+                referencedDerivedTypes);
 
             return new GeneratedInterface(
                 symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 summary,
                 Utils.GetDecoratorHintName(symbol),
                 summary.Generates ? DecoratorEmitter.Emit(info) : string.Empty,
-                new EquatableArray<DiagnosticInfo>(info.Diagnostics));
+                new EquatableArray<DiagnosticInfo>(info.Diagnostics.Concat(derivedTypeDiagnostics)));
         }
 
         private static string GetAssemblyIdentity(INamedTypeSymbol type) => type.ContainingAssembly?.Identity.ToString() ?? string.Empty;

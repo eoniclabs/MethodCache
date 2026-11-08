@@ -309,7 +309,97 @@ namespace MethodCache.SourceGenerator
                 return FindUnrestorableResultType(element);
             }
 
-            return named.TypeKind == TypeKind.Interface || (named.TypeKind == TypeKind.Class && named.IsAbstract) ? named : null;
+            return (named.TypeKind == TypeKind.Interface || (named.TypeKind == TypeKind.Class && named.IsAbstract)) && !NamesItsDerivedTypes(named) ? named : null;
         }
+
+        /// <summary>
+        /// The first of your own types in a result (the result, an element, a tuple item, or a public member of one of
+        /// your own types) that holds state but writes no member, so a serializer writes it as an empty object (MC0042).
+        /// </summary>
+        private static INamedTypeSymbol? FindHiddenStateResultType(ITypeSymbol type, HashSet<ITypeSymbol> visited)
+            => FindInResult(type, visited, static named =>
+                named.TypeKind is TypeKind.Class or TypeKind.Struct && !named.IsAbstract && !HasJsonConverter(named) && !WritesAnyMember(named) && HoldsState(named));
+
+        /// <summary>
+        /// The first of your own classes in a result with a public virtual navigation property, a property of one of
+        /// your own classes or a collection of them, as EF Core's lazy-loading proxies override (MC0041).
+        /// </summary>
+        private static INamedTypeSymbol? FindLazyLoadedEntity(ITypeSymbol type, HashSet<ITypeSymbol> visited)
+            => FindInResult(type, visited, static named =>
+                named is { TypeKind: TypeKind.Class, IsSealed: false } &&
+                named.GetMembers().OfType<IPropertySymbol>().Any(static property =>
+                    property is { IsStatic: false, IsIndexer: false, DeclaredAccessibility: Accessibility.Public, GetMethod: not null } &&
+                    (property.IsVirtual || property.IsOverride && !property.IsSealed) &&
+                    IsOwnClass(property.Type is INamedTypeSymbol named && DecoratorEmitter.GetSequenceElementType(named) is { } element ? element : property.Type)));
+
+        private static bool IsOwnClass(ITypeSymbol type)
+            => type is INamedTypeSymbol { TypeKind: TypeKind.Class, SpecialType: SpecialType.None } named && !IsFrameworkType(named);
+
+        /// <summary>Whether the project references Microsoft.EntityFrameworkCore.Proxies, which creates lazy-loading proxies.</summary>
+        private static bool UsesLazyLoadingProxies(IAssemblySymbol? assembly)
+            => assembly != null && assembly.Modules.Any(static m => m.ReferencedAssemblySymbols.Any(static a => a.Name == "Microsoft.EntityFrameworkCore.Proxies"));
+
+        /// <summary>
+        /// The first of your own types in a result that <paramref name="matches"/>: the result, an element, a tuple item,
+        /// or a type of a public property or field of one of your own types.
+        /// </summary>
+        private static INamedTypeSymbol? FindInResult(ITypeSymbol type, HashSet<ITypeSymbol> visited, System.Func<INamedTypeSymbol, bool> matches)
+        {
+            switch (type)
+            {
+                case IArrayTypeSymbol array:
+                    return FindInResult(array.ElementType, visited, matches);
+                case INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable:
+                    return FindInResult(nullable.TypeArguments[0], visited, matches);
+                case not INamedTypeSymbol:
+                    return null;
+            }
+
+            var named = (INamedTypeSymbol)type;
+            if (named.TypeKind is TypeKind.Enum or TypeKind.Error || named.SpecialType != SpecialType.None || !visited.Add(named)) return null;
+
+            if (named.IsTupleType || FrameworkComposites.Contains(MetadataName(named.OriginalDefinition)))
+            {
+                return (named.IsTupleType ? named.TupleElements.Select(e => e.Type) : named.TypeArguments)
+                    .Select(item => FindInResult(item, visited, matches)).FirstOrDefault(found => found != null);
+            }
+
+            if (DecoratorEmitter.GetSequenceElementType(named) is { } element) return FindInResult(element, visited, matches);
+            if (named.TypeKind == TypeKind.Interface || IsFrameworkType(named)) return null;
+            if (matches(named)) return named;
+
+            for (var current = named; current is not null && current.SpecialType is not (SpecialType.System_Object or SpecialType.System_ValueType); current = current.BaseType)
+            {
+                foreach (var member in current.GetMembers())
+                {
+                    if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public || member.IsImplicitlyDeclared ||
+                        member.GetAttributes().Any(a => a.AttributeClass?.Name is "IgnoreDataMemberAttribute" or "IgnoreMemberAttribute" or "JsonIgnoreAttribute"))
+                    {
+                        continue;
+                    }
+
+                    var memberType = member switch
+                    {
+                        IPropertySymbol { IsIndexer: false, GetMethod.DeclaredAccessibility: Accessibility.Public } property => property.Type,
+                        IFieldSymbol field => field.Type,
+                        _ => null,
+                    };
+                    if (memberType != null && FindInResult(memberType, visited, matches) is { } found) return found;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Whether the serializer is told which types derive from <paramref name="type"/>, with System.Text.Json's
+        /// <c>[JsonDerivedType]</c> or <c>[JsonPolymorphic]</c> or MessagePack's <c>[Union]</c>, so it writes and
+        /// restores them as themselves.
+        /// </summary>
+        private static bool NamesItsDerivedTypes(INamedTypeSymbol type)
+            => type.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() is
+                "System.Text.Json.Serialization.JsonDerivedTypeAttribute" or
+                "System.Text.Json.Serialization.JsonPolymorphicAttribute" or
+                "MessagePack.UnionAttribute");
     }
 }

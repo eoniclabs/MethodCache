@@ -103,6 +103,12 @@ public sealed class GeneratedMethodOptions
     /// type parameters, and omitted by earlier contract-1 generators.
     /// </summary>
     public Type? ResultType { get; init; }
+    /// <summary>
+    /// A fingerprint of what a serializer writes for the method's result type, which the distributed cache keeps the
+    /// method's entries apart by, so a build whose result type has another shape doesn't read them; omitted by earlier
+    /// contract-1 generators.
+    /// </summary>
+    public string? ResultShape { get; init; }
 }
 
 /// <summary>Builds descriptor data without exposing the policy pipeline or DI implementation.</summary>
@@ -117,6 +123,7 @@ public sealed class GeneratedModuleBuilder
     internal Dictionary<string, string[]> ParameterNames { get; } = new(StringComparer.Ordinal);
     internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);
     internal List<PolicySnapshot> Policies { get; } = [];
+    internal Dictionary<Type, HashSet<Type>> Derived { get; } = [];
 
     /// <summary>Records a cacheable interface definition so unsupported registrations fail explicitly.</summary>
     public void DeclareService(Type serviceType)
@@ -152,6 +159,22 @@ public sealed class GeneratedModuleBuilder
         list.Add(new CandidateRegistration(implementationType));
     }
 
+    /// <summary>
+    /// Names the types found in the project that derive from or implement <paramref name="declaredType"/>, a type a
+    /// cached result declares, so the distributed cache's JSON writes and restores them as themselves.
+    /// </summary>
+    public void DerivedTypes(Type declaredType, params Type[] derivedTypes)
+    {
+        ArgumentNullException.ThrowIfNull(declaredType);
+        ArgumentNullException.ThrowIfNull(derivedTypes);
+        if (!Derived.TryGetValue(declaredType, out var set)) Derived.Add(declaredType, set = []);
+        foreach (var derived in derivedTypes)
+        {
+            ArgumentNullException.ThrowIfNull(derived, nameof(derivedTypes));
+            if (derived != declaredType && declaredType.IsAssignableFrom(derived)) set.Add(derived);
+        }
+    }
+
     /// <summary>Describes a method's identifier, parameter names, group and explicit attribute settings.</summary>
     public void Method(string methodId, string[] parameterNames, string? group, GeneratedMethodOptions options)
     {
@@ -179,7 +202,7 @@ public sealed class GeneratedModuleBuilder
             policy = policy with { Metadata = new Dictionary<string, string?> { ["group"] = group } };
             fields |= CachePolicyFields.Metadata;
         }
-        policy = policy with { CanonicalTagParts = options.CanonicalTagParts };
+        policy = policy with { CanonicalTagParts = options.CanonicalTagParts, ResultShape = options.ResultShape };
         var timestamp = DateTimeOffset.UtcNow;
         policy = CachePolicyMapper.AttachContribution(policy, "attributes", fields, timestamp);
         Policies.Add(new PolicySnapshot("attributes", methodId, policy, timestamp, metadata));

@@ -47,6 +47,11 @@ never stops a build.
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
 | [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
 | [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
+| [MC0039](#mc0039) | Warning | A class that derives from a type a cached result holds, but that MethodCache can't name to the distributed cache, such as a generic or private one | |
+| [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
+| [MC0041](#mc0041) | Warning | A cached result holds EF Core entities with virtual navigation properties in a project that uses lazy-loading proxies | |
+| [MC0042](#mc0042) | Warning | A cached result type, or a type in it, whose state is all non-public, so serializers write it as an empty object | |
+| [MC0043](#mc0043) | Warning | Code changes a result a cached method returned | |
 
 ## Rules of a later version
 
@@ -61,7 +66,7 @@ want, in the project file or in `Directory.Build.props`:
 ```
 
 The rules that came after that version are then off. Turn one of them on in `.editorconfig`, such as
-`dotnet_diagnostic.MC0040.severity = warning`, and raise the level when you have looked at the rest. Every rule of
+`dotnet_diagnostic.MC0060.severity = warning`, and raise the level when you have looked at the rest. Every rule of
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
@@ -237,8 +242,13 @@ distributed cache is used, the default round-trip check finds that such a result
 in-memory cache only. Collection interfaces such as
 `IReadOnlyList<Product>` are fine; they are read back as a list.
 
+Not reported when the project, or a project it references, has classes that implement the
+interface or derive from the abstract class: MethodCache's generator then names them to its serializers, so they come
+back as themselves ([Derived types](../features/distributed-cache.md#derived-types)).
+
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
-cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
+abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
 `#pragma warning disable MC0020` or `<NoWarn>` in the project.
 
 ## MC0021
@@ -757,6 +767,125 @@ The two settings often come from different places, such as a sliding window on t
 `Defaults`, which the build can't see together. The host logs the same warning when it starts, once for each such
 method, whether the settings come from `[Cache]`, startup code or `appsettings.json`
 ([Sliding expiration](../features/expiration.md#sliding-expiration)).
+
+## MC0039
+
+A class derives from a type that a cached result holds, such as a `Dog` where a method returns `List<Animal>`, but
+MethodCache can't name it to the distributed cache's serializer: the class is generic, private or nested in a private
+type, `file`-local, or not public in a referenced assembly. A value that holds one can't be restored as a `Dog` from the
+distributed cache, so the check before sharing keeps it in each instance's memory, with a warning in the log:
+
+```cs
+public class Animal { public string Name { get; set; } = ""; }
+public class Box<T> : Animal { public T Value { get; set; } = default!; }   // MC0039: it is generic
+
+public interface IZoo
+{
+    [Cache] Task<List<Animal>> AnimalsAsync();
+}
+```
+
+Make the class public or internal, not generic and not nested in a private type, and MethodCache registers it, so it
+comes back from the distributed cache as itself. Or name it with `[JsonDerivedType(typeof(Box<int>), "box-int")]` on
+the base type (`[Union]` with MessagePack). When such values only need the in-memory cache, suppress the warning. A test
+project gets no MC0039, since its private test doubles don't reach a shared cache
+([Derived types](../features/distributed-cache.md#derived-types)).
+
+## MC0040
+
+Under Native AOT the distributed cache's JSON can only write the types the `JsonSerializerContext` passed to `UseJson`
+has contracts for. The context has one for a type a cached result holds, such as `Animal`, but not for a class that
+derives from it, such as `Dog`, so a value holding a `Dog` stays in each instance's memory:
+
+```cs
+[JsonSerializable(typeof(List<Animal>))]
+internal partial class AppJsonContext : JsonSerializerContext { }
+
+builder.Services.AddMethodCache(mc => mc.UseJson(AppJsonContext.Default));   // MC0040: no contract for Dog
+```
+
+Add `[JsonSerializable(typeof(Dog))]` to the context; the code fix does it for you. The derived types that classes in
+referenced projects register count too. The host also logs the derived types the context lacks when it starts, for a
+context the build can't see, such as one built at run time.
+
+## MC0041
+
+The project references Microsoft.EntityFrameworkCore.Proxies, and a cached result holds a class with public `virtual`
+navigation properties, such as an entity that `UseLazyLoadingProxies` loads as a proxy:
+
+```cs
+public class Customer
+{
+    public int Id { get; set; }
+    public virtual List<Order> Orders { get; set; } = [];
+}
+
+public interface ICustomers
+{
+    [Cache] Task<List<Customer>> GetAllAsync();   // MC0041
+}
+```
+
+EF Core returns a proxy class made at run time instead of a `Customer`. The distributed cache can't restore a proxy, so
+the check before sharing keeps these results in each instance's memory, and writing one for the cache reads its
+navigation properties, which loads them from the database, or throws once the `DbContext` is gone. Return a type
+without virtual navigations instead, such as a record the query projects with `Select`:
+
+```cs
+public sealed record CustomerSummary(int Id, string Name, int OrderCount);
+
+public Task<List<CustomerSummary>> GetAllAsync()
+    => db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count)).ToListAsync();
+```
+
+## MC0042
+
+A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
+state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
+so the other instances would get an empty value from the distributed cache:
+
+```cs
+public sealed class Money
+{
+    private readonly decimal _amount;
+    public Money(decimal amount) => _amount = amount;
+    public decimal Rounded() => Math.Round(_amount, 2);
+}
+
+[Cache] Task<Money> GetBalanceAsync(int accountId);   // MC0042: Money is written as {}
+```
+
+Give the type public properties, such as `public decimal Amount { get; }` set by the constructor, or a record such as
+`public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
+with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
+suppress the warning then.
+
+## MC0043
+
+Code changes a result that a cached method returned: it sets a property or field of the result or of an object in it,
+or adds to, removes from or sorts a collection in it. The memory cache keeps the instance the method returned and hands
+that same instance to every later caller on this instance, so they all see the change. The other instances read the copy
+in the distributed cache, which doesn't have it, so instances give different answers until the entry expires:
+
+```cs
+var orders = await _orders.GetForCustomerAsync(customerId);
+orders.Add(draft);                        // MC0043: every later caller on this instance gets the draft too
+foreach (var order in orders)
+    order.Status = OrderStatus.Shown;     // MC0043
+```
+
+Change a copy instead: `new List<Order>(orders)` or `orders.ToList()` for the collection, and a record's `with`
+expression, such as `order with { Status = OrderStatus.Shown }`, for an object in it. A list copy still holds the same
+objects, so setting a property of one of its elements is reported too. Better still, return types that can't be changed,
+such as records with `init` properties and `IReadOnlyList<T>`, so the compiler stops such code. See
+[results that don't change](../features/distributed-cache.md#results-that-dont-change).
+
+It's reported for a result kept in a local or read in a `foreach`, and for objects reached from it through properties,
+fields, indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, and through LINQ copies such as `ToList`, `ToArray`
+and `Where`. Your own methods that change an object, such as `order.Close()`, aren't seen; in Development, MethodCache
+also compares cached values with what it stored now and then, and logs a warning naming the method when one has
+changed. Not reported in test projects.
 
 ## What the analyzers read from referenced projects
 

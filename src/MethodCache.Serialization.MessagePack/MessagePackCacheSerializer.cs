@@ -13,9 +13,15 @@ namespace MethodCache.Serialization.MessagePack;
 /// use LZ4 compression and treat stored data as untrusted.
 /// Register it with <c>UseMessagePack()</c> inside <c>AddMethodCache(mc =&gt; ...)</c>.
 /// </remarks>
-internal sealed class MessagePackCacheSerializer : ISerializer
+internal sealed class MessagePackCacheSerializer : ISerializer, MethodCache.Infrastructure.IRestoresDerivedTypes
 {
     private readonly MessagePackSerializerOptions _options;
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<Type, Type[]> Restored { get; } = new Dictionary<Type, Type[]>();
+
+    /// <inheritdoc />
+    public IReadOnlyList<(Type Declared, Type Derived)> Missing { get; } = [];
 
     /// <summary>
     /// The defaults described above. <c>UseMessagePack(configure)</c> passes them to its callback, so changing one
@@ -30,11 +36,18 @@ internal sealed class MessagePackCacheSerializer : ISerializer
         .WithSecurity(MessagePackSecurity.UntrustedData);
 
     /// <summary>
-    /// Creates a serializer with the given <paramref name="options"/>, or the defaults described above.
+    /// Creates a serializer with the given <paramref name="options"/>, or the defaults described above, that also
+    /// writes and restores the derived types in <paramref name="derived"/> as themselves.
     /// </summary>
-    public MessagePackCacheSerializer(MessagePackSerializerOptions? options = null)
+    public MessagePackCacheSerializer(MessagePackSerializerOptions? options = null, MethodCache.Infrastructure.DerivedTypeRegistry? derived = null)
     {
         _options = options ?? DefaultOptions;
+        if (derived is { Count: > 0 })
+        {
+            var snapshot = derived.Snapshot();
+            Restored = snapshot;
+            _options = _options.WithResolver(new DerivedTypeResolver(_options.Resolver, snapshot));
+        }
     }
 
     internal MessagePackSerializerOptions Options => _options;

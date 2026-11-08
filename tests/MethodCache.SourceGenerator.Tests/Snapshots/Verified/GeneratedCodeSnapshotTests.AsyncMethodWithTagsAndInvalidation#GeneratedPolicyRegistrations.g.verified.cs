@@ -20,6 +20,7 @@ namespace MethodCache.Generated
                 {
                     CanonicalTagParts = true,
                     ResultType = typeof(global::App.User),
+                    ResultShape = "b67725137a4a6bbb",
                     Duration = global::System.TimeSpan.FromTicks(6000000000L),
                     Tags = new[] { "users", "user:{userId}" },
                 });

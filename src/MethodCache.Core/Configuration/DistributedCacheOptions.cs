@@ -8,7 +8,21 @@ namespace MethodCache
     public sealed class DistributedCacheOptions
     {
         private bool _verifyRoundTrip = true;
+        private bool _storeValues = true;
         private int _serializerVersion = 1;
+
+        /// <summary>
+        /// Whether cached values are stored in the distributed cache. Default true. False keeps every value in each
+        /// instance's memory, for cached methods and <see cref="ICacheManager"/> calls alike, whatever their options say,
+        /// and uses the distributed cache for invalidations only: an invalidation still reaches every instance.
+        /// HTTP responses cached by MethodCache.HttpCaching are still stored there.
+        /// </summary>
+        /// <example><code>builder.Services.AddMethodCache(mc => mc.UseRedis(connection).Distributed(o => o.StoreValues = false));</code></example>
+        public bool StoreValues
+        {
+            get => _storeValues;
+            set { CheckMutable(); _storeValues = value; }
+        }
         /// <summary>Checks newly serialized values can be restored before sharing them. Default true; this is not a semantic equality check.</summary>
         public bool VerifyRoundTrip
         {

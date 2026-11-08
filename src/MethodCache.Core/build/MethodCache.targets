@@ -15,14 +15,17 @@
     dotnet_diagnostic.<id>.severity = warning. Every rule of 1.0 stays on at any level.
   -->
   <ItemGroup>
-    <!-- A rule added after 1.0: <MethodCacheRule Include="MC0040" Since="1.1" /> -->
+    <!-- A rule added after 1.0: <MethodCacheRule Include="MC0060" Since="1.1" /> -->
   </ItemGroup>
 
   <Target Name="_MethodCacheAnalysisLevel" BeforeTargets="CoreCompile" Condition="'$(MethodCacheAnalysisLevel)' != ''">
     <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(MethodCacheAnalysisLevel)', '^\d+\.\d+(\.\d+)?$'))"
            Code="MCB001" Text="MethodCacheAnalysisLevel is '$(MethodCacheAnalysisLevel)'. Set it to a MethodCache version, such as 1.0." />
-    <ItemGroup>
+    <!-- With no rule after 1.0 the list is empty, and MSBuild would still evaluate the batched condition once, without a version -->
+    <ItemGroup Condition="'@(MethodCacheRule)' != ''">
       <_MethodCacheRuleAfterLevel Include="@(MethodCacheRule)" Condition="$([MSBuild]::VersionGreaterThan('%(MethodCacheRule.Since)', '$(MethodCacheAnalysisLevel)'))" />
+    </ItemGroup>
+    <ItemGroup>
       <_MethodCacheAnalysisLevelLine Include="is_global = true" />
       <_MethodCacheAnalysisLevelLine Include="global_level = -1" />
       <_MethodCacheAnalysisLevelLine Include="@(_MethodCacheRuleAfterLevel->'dotnet_diagnostic.%(Identity).severity = none')" />

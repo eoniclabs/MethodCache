@@ -160,10 +160,24 @@ Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 <!-- endSnippet -->
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+<!-- snippet: testing-cached-services-declared -->
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
+
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
 mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
-service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host.
+service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host. A
+minimal API endpoint that takes a cached interface as a parameter fails the host first when that interface isn't
+registered ("Body was inferred but the method does not allow inferred body parameters"), so a test that starts the host
+fails with that error before it reaches `Registered`.
 
 ## Every tag has an invalidation
 

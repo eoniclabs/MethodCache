@@ -264,7 +264,7 @@ public class EntityFrameworkCoreTests(PostgreSqlFixture postgres)
                     o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
                 })
                 .UseEntityFrameworkCore<ItemsDb>(ef => ef.Entity<Item>("item:{Id}"));
-            if (memoryOnly) mc.Defaults(o => o.WithDistributed(false));
+            if (memoryOnly) mc.Distributed(o => o.StoreValues = false);
         });
         var provider = services.BuildServiceProvider();
         var hosted = provider.GetServices<IHostedService>().ToArray();

@@ -20,15 +20,18 @@ namespace MethodCache.Generated
                 {
                     CanonicalTagParts = true,
                     ResultType = typeof(global::System.String),
+                    ResultShape = "e4e103082b0fef4a",
                 });
                 builder.Method("[SnapshotApp]App.ICatalog.Get(string)", new string[] { "slug" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
                     ResultType = typeof(global::System.String),
+                    ResultShape = "e4e103082b0fef4a",
                 });
                 builder.Method("[SnapshotApp]App.ICatalog.Load", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultShape = "bac3aa17c9918069",
                 });
             }
         }

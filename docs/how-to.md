@@ -329,13 +329,32 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 ([Runtime overrides](features/configuration.md#runtime-overrides))
 
 **A result type stays in memory only, with a warning. Why?**
-It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
-Return records with public properties, or register a serializer with `UseJson(options)`.
+It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
+derived type MethodCache can't name (MC0039). Return records with public properties, or register a serializer with
+`UseJson(options)`.
 ([Serialization](features/distributed-cache.md#serialization))
 
+**Does a `Dog` in a `List<Animal>` come back as a `Dog`?**
+Yes. MethodCache's generator names the classes that derive from a type a cached result declares to its JSON and
+MessagePack serializers, in your project and the projects around it. Under Native AOT, add `[JsonSerializable(typeof(Dog))]`
+to the context you pass to `UseJson`; MC0040 and its code fix point it out.
+([Derived types](features/distributed-cache.md#derived-types))
+
+**I renamed a property of a cached result. Do I need to raise `Version`?**
+No. The generator computes a fingerprint of the result's shape, so the new build reads entries of its own, and
+invalidations still reach both builds during a rolling deploy. Raise `Version` only for changes the build can't see,
+such as what a value means.
+([Changing result types](features/distributed-cache.md#changing-result-types-and-upgrading))
+
+**Can I change a list a cached method returned?**
+Change a copy (`result.ToList()`, or a record's `with`). The memory cache hands the same instance to later callers, so
+a change shows up there but not on other instances. MC0043 reports such code, and in Development a warning names the
+method when a cached value has changed.
+([Results that don't change](features/distributed-cache.md#results-that-dont-change))
+
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
-stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
 ([A worker and an API](features/distributed-cache.md#a-worker-and-an-api))
@@ -405,6 +424,8 @@ cached service. ([Every cached service resolves](features/testing.md#every-cache
 **How do I catch a cached service that the application never registers?**
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+To keep that list up to date by itself, compare with the interfaces the project declares:
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**

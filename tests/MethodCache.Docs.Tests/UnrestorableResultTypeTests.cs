@@ -7,9 +7,10 @@ using Xunit;
 namespace MethodCache.Docs.Tests;
 
 /// <summary>
-/// docs/user-guide/DIAGNOSTICS.md#mcg019 and docs/troubleshooting.md: a cached method whose result type is
-/// <c>object</c> or an interface keeps its results in each instance's memory when a distributed cache is used, so
-/// another instance loads its own instead of getting a <c>JsonElement</c> or a deserialization error.
+/// docs/user-guide/DIAGNOSTICS.md#mc0020 and docs/troubleshooting.md: a cached method whose result type is
+/// <c>object</c> keeps its results in each instance's memory when a distributed cache is used, so another instance
+/// loads its own instead of getting a <c>JsonElement</c>. An interface that a class of the project implements is
+/// restored as that class.
 /// </summary>
 public class UnrestorableResultTypeTests
 {
@@ -32,7 +33,7 @@ public class UnrestorableResultTypeTests
         public string Title { get; set; } = "";
     }
 
-#pragma warning disable MC0020 // what this test is about: these results can't be shared through the distributed cache
+#pragma warning disable MC0020 // what this test is about: object results can't be shared through the distributed cache
     public interface IReports
     {
         [Cache] Task<object> GetAsync(int id);
@@ -85,7 +86,7 @@ public class UnrestorableResultTypeTests
     }
 
     [Fact]
-    public async Task ObjectAndInterfaceResults_StayInEachInstancesMemory_WithOneWarningPerMethod()
+    public async Task ObjectResults_StayInEachInstancesMemory_WithOneWarning_AndAnImplementedInterfaceIsShared()
     {
         var (firstProvider, first, firstLog) = Instance();
         var (secondProvider, second, _) = Instance();
@@ -103,20 +104,23 @@ public class UnrestorableResultTypeTests
             Assert.Equal("report 1", Assert.IsType<Report>(await a.GetAsync(1)).Title);
             Assert.Equal(4, first.Calls);
 
-            // The second instance gets no JsonElement and no deserialization error: it loads its own
+            // The second instance gets no JsonElement: it loads its own
             var b = secondProvider.GetRequiredService<IReports>();
             Assert.Equal("report 1", Assert.IsType<Report>(await b.GetAsync(1)).Title);
+            Assert.Equal(1, second.Calls);
+
+            // Square implements IShape in this project, so it is restored as a Square
             Assert.Equal(9, Assert.IsType<Square>(await b.ShapeAsync(3)).Area);
-            Assert.Equal(2, second.Calls);
+            Assert.Equal(1, second.Calls);
 
             // A concrete result type is shared through the same distributed cache
             await a.ReportAsync(5);
             Assert.Equal("report 5", (await b.ReportAsync(5)).Title);
-            Assert.Equal(2, second.Calls);
+            Assert.Equal(1, second.Calls);
 
             // One warning per method, not one per write
             Assert.Single(firstLog.Warnings, w => w.Contains("GetAsync", StringComparison.Ordinal) && w.Contains("in memory only", StringComparison.Ordinal));
-            Assert.Single(firstLog.Warnings, w => w.Contains("ShapeAsync", StringComparison.Ordinal) && w.Contains("in memory only", StringComparison.Ordinal));
+            Assert.DoesNotContain(firstLog.Warnings, w => w.Contains("ShapeAsync", StringComparison.Ordinal));
         }
     }
 

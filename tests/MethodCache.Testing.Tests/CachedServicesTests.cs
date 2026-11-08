@@ -198,6 +198,47 @@ public class CachedServicesTests
         Assert.Contains("nothing was checked", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Declared_ListsTheAssemblysServicesWithCachedMethodsOnce_ByFullName()
+    {
+        var declared = CachedServices.Declared(typeof(IProducts).Assembly, typeof(IProducts).Assembly);
+
+        Assert.Subset(declared.ToHashSet(), new HashSet<Type> { typeof(IFoodCatalog), typeof(IImportedPrices), typeof(IProductWriter), typeof(IProducts) });
+        Assert.DoesNotContain(typeof(IPriceSource), declared);
+        Assert.Equal(declared.Distinct().OrderBy(static type => type.FullName, StringComparer.Ordinal), declared);
+    }
+
+    [Fact]
+    public async Task Declared_ComparedWithRegistered_FindsAServiceNeverRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddScoped<IProductWriter, ProductWriter>();
+        services.AddKeyedTransient<IImportedPrices, ImportedPrices>("import");
+        services.AddMethodCache();   // IFoodCatalog is forgotten
+        await using var provider = services.BuildServiceProvider();
+
+        var missing = CachedServices.Declared(typeof(IProducts).Assembly).Except(CachedServices.Registered(provider)).ToList();
+
+        Assert.Contains(typeof(IFoodCatalog), missing);
+        Assert.DoesNotContain(typeof(IProducts), missing);
+        Assert.DoesNotContain(typeof(IImportedPrices), missing);
+    }
+
+    [Fact]
+    public void Declared_AnAssemblyWithNoCachedService_Throws()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => CachedServices.Declared(typeof(object).Assembly));
+
+        Assert.Contains("declare no service with cached methods", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Declared_WithNoAssembly_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => CachedServices.Declared());
+    }
+
     private sealed class FixedPrice : IPriceSource
     {
         public decimal Price(int id) => 1m;

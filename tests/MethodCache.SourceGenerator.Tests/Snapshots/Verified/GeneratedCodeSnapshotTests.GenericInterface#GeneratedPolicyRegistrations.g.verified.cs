@@ -19,6 +19,7 @@ namespace MethodCache.Generated
                 builder.Method("[SnapshotApp]App.IRepository<T>.GetAsync", new string[] { "id" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
                     CanonicalTagParts = true,
+                    ResultShape = "bac3aa17c9918069",
                     Tags = new[] { "repo" },
                 });
             }

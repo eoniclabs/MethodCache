@@ -96,6 +96,14 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void CheckDeclaredServices(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services-declared
+            // Every interface with cached methods in the application's project is registered
+            Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+            // end-snippet
+        }
+
         public static async Task OtherTenantAsync(IServiceProvider provider, Guid tenantA, Guid tenantB)
         {
             // begin-snippet: testing-other-tenant

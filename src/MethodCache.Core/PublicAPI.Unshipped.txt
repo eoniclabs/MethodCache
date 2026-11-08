@@ -181,6 +181,8 @@ MethodCache.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagRetention.set -> void
 MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
 MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
+MethodCache.DistributedCacheOptions.StoreValues.get -> bool
+MethodCache.DistributedCacheOptions.StoreValues.set -> void
 MethodCache.Generated.CachedMethod
 MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall
 MethodCache.Generated.GeneratedCode
@@ -204,6 +206,8 @@ MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.get -> System.TimeSpan
 MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.init -> void
 MethodCache.Generated.GeneratedMethodOptions.ResultType.get -> System.Type?
 MethodCache.Generated.GeneratedMethodOptions.ResultType.init -> void
+MethodCache.Generated.GeneratedMethodOptions.ResultShape.get -> string?
+MethodCache.Generated.GeneratedMethodOptions.ResultShape.init -> void
 MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.get -> System.TimeSpan?
 MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.init -> void
 MethodCache.Generated.GeneratedMethodOptions.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>?
@@ -214,6 +218,7 @@ MethodCache.Generated.GeneratedModule
 MethodCache.Generated.GeneratedModule.GeneratedModule() -> void
 MethodCache.Generated.GeneratedModuleBuilder
 MethodCache.Generated.GeneratedModuleBuilder.DeclareService(System.Type! serviceType) -> void
+MethodCache.Generated.GeneratedModuleBuilder.DerivedTypes(System.Type! declaredType, params System.Type![]! derivedTypes) -> void
 MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds, string![]? keyMethods = null) -> void
 MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void
 MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void

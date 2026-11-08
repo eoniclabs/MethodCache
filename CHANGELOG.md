@@ -4,10 +4,75 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.14 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.13
+
+- Every cached method's entries in the distributed cache are now kept apart by the shape of its result (see Added), so
+  each method loads once more after the upgrade. During a rolling upgrade, instances on rc.13 and rc.14 don't read
+  each other's entries; invalidations by key and by tag reach both.
+- A result that holds `object` values, such as those of a `Dictionary<string, object>`, or a derived type MethodCache
+  can't name to the serializer (MC0039), now stays in memory with a warning instead of reaching the other instances
+  without its data. Other derived types, such as a `Dog` in a `List<Animal>`, are now shared as themselves. Under
+  Native AOT, add them to the `JsonSerializerContext` you pass to `UseJson`; MC0040 and its code fix point them out.
+- New build warnings MC0039 to MC0043 may appear (see Added). `MethodCache` now depends on
+  `Microsoft.Extensions.Hosting.Abstractions`, for the check in Development.
+- If you followed "Invalidations only" with `Defaults(o => o.WithDistributed(false))`, switch to
+  `Distributed(o => o.StoreValues = false)`. `Defaults` applies to cached methods only, so `GetOrCreateAsync` and
+  `SetAsync` still stored their values in the distributed cache.
+
+### Added
+
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, for cached methods and manual calls alike,
+  whatever their options say, and uses Redis, SQL Server or PostgreSQL for invalidations only
+  ([Invalidations only](docs/features/distributed-cache.md#invalidations-only)).
+- `CachedServices.Declared(assemblies)` in `MethodCache.Testing` lists the interfaces with cached methods in the
+  assemblies you pass, ordered as `Registered` orders them. Compare the two, and a test covers a new cached interface
+  without a change ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
+- Derived types come back from the distributed cache as themselves. The generator finds the classes that derive from a
+  type a cached result declares (a `Dog` in a `List<Animal>`, in an `Animal` property, or returned as an `Animal`), in
+  the project, in the declared type's assembly and the ones built on it, and in projects that reference the one with
+  the cached interface, and names them to MethodCache's JSON and MessagePack serializers. The application's own JSON
+  doesn't change, and `[JsonDerivedType]`, `[JsonPolymorphic]` and `[Union]` keep their settings. The startup log lists
+  the derived types the distributed cache restores ([Derived types](docs/features/distributed-cache.md#derived-types)).
+- MC0039 names a derived type the generated code can't name (private, file-local, generic, or not public in another
+  assembly), so it isn't restored. Not reported in test projects.
+- MC0040 names a derived type the `JsonSerializerContext` passed to `UseJson` has no contract for while it has one for
+  the base type, and its code fix adds `[JsonSerializable(typeof(Dog))]` to the context. At startup, MethodCache also
+  logs a warning naming such types.
+- MC0041 reports a cached result holding EF Core entities with virtual navigation properties in a project that uses
+  lazy-loading proxies, which come back without their navigations.
+- MC0042 reports a cached result type, or a type in it, whose state is all non-public, so serializers write it as `{}`.
+- MC0043 reports code that changes a result a cached method returned, such as `orders.Add(draft)` or
+  `order.Status = ...`: the memory cache hands that instance to later callers, while other instances read the stored
+  copy. In Development, MethodCache also writes the values it keeps in memory again every two seconds and logs a
+  warning naming the method whose value has changed. It never runs when a call is answered from memory
+  ([Results that don't change](docs/features/distributed-cache.md#results-that-dont-change)).
+- A cached method's entries are kept apart by a fingerprint of its result's shape, which the generator computes from the
+  members a serializer writes, their types and serializer attributes, enum members and registered derived types. A
+  renamed property or renumbered enum member no longer reads entries the previous build wrote, with no `Version` bump,
+  while invalidations still reach both builds
+  ([Changing result types](docs/features/distributed-cache.md#changing-result-types-and-upgrading)).
+
+### Fixed
+
+- The check before a value is shared through the distributed cache compares the types inside it too, through its
+  collections, properties and fields. A `Dog` in a `List<Animal>` came back as a plain `Animal` on the other
+  instances, and an `int` in a `Dictionary<string, object>` as a `JsonElement`; such a value now stays in memory with
+  the warning ([Serialization](docs/reference/distributed.md#serialization)).
+- The check before sharing also compares the comparer of a dictionary or set. A `Dictionary` made with
+  `StringComparer.OrdinalIgnoreCase` came back with the default comparer on the other instances, so `dict["KEY"]`
+  found a value on one instance and not on the others; such a value now stays in memory with the warning.
+- MC0020 no longer reports an interface or abstract class with `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]`,
+  or one the project or a project it references has implementations of, whose results the serializer restores.
+- Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
 
+- Distributed cache: new sections on derived types and on results that don't change, with what to return and how to
+  change a copy.
+- Testing: a minimal API endpoint that takes a cached interface fails the host before `Registered` runs when the
+  interface isn't registered.
 - The agent instructions no longer ask a coding agent to draft feedback by itself: it mentions a problem in its
   report and offers to draft feedback, and drafts and files it only when its user asks. They say we appreciate it.
 

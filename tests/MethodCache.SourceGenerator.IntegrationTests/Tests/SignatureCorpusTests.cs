@@ -303,6 +303,24 @@ public class SignatureCorpusTests
     }
 
     [Fact]
+    public async Task ResultTypeThatNamesItsDerivedTypes_IsNotReported()
+    {
+        var source = Member(
+            "Task<List<IShape>> Get(int id)",
+            "Task<List<IShape>> Get(int id) { Counter.Hit(); return Task.FromResult(new List<IShape> { new Square() }); }",
+            "await s.Get(1)", "await s.Get(2)",
+            extraTypes: """
+                [System.Text.Json.Serialization.JsonDerivedType(typeof(Square), "square")]
+                public interface IShape { }
+
+                public sealed class Square : IShape { public int Side { get; set; } }
+                """).ToSource();
+        var compiled = await _engine.CompileWithSourceGeneratorAsync(source, "PolymorphicResultType", LanguageVersion.CSharp12);
+
+        Assert.DoesNotContain(compiled.Diagnostics, d => d.Id == "MC0020");
+    }
+
+    [Fact]
     public async Task RuntimeKeyArgument_IsInformation_AndStillCaches()
     {
         var source = Member(

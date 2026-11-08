@@ -46,7 +46,7 @@ namespace App
     }
 }";
 
-        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries", "EntityMapping", "HostMarkers", "RequestState", "InvalidatedTags" };
+        private static readonly string[] TrackedSteps = { "ExternalInterfaces", "Interfaces", "Classes", "Decorators", "Summaries", "EntityMapping", "HostMarkers", "RequestState", "InvalidatedTags", "DerivedTypes", "DerivedTypeRegistrations" };
 
         [Fact]
         public void EditingAMethodBody_RegeneratesNothing()
@@ -163,6 +163,39 @@ namespace App
 
             static string MappingSource(GeneratorDriver driver)
                 => driver.GetRunResult().GeneratedTrees.Single(t => t.FilePath.EndsWith("MethodCacheEntityMapping.g.cs", StringComparison.Ordinal)).ToString();
+        }
+
+        private const string Animals = @"
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MethodCache;
+
+namespace App
+{
+    public class Animal { public string Name { get; set; } = """"; }
+    public interface IZoo
+    {
+        [Cache] Task<List<Animal>> AnimalsAsync();
+    }
+}";
+
+        [Fact]
+        public void A_derived_type_added_in_another_file_is_registered_and_a_method_body_edit_reuses_the_registrations()
+        {
+            var (driver, compilation) = RunInitial(Animals);
+            Assert.DoesNotContain("builder.DerivedTypes", RegistrationsSource(driver));
+
+            const string dog = "namespace App { public class Dog : Animal { public string Breed { get; set; } = \"\"; } }";
+            var withDog = compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(dog));
+            driver = driver.RunGenerators(withDog);
+            Assert.Contains("builder.DerivedTypes(typeof(global::App.Animal), typeof(global::App.Dog));", RegistrationsSource(driver));
+
+            var bodyEdited = Replace(withDog, Implementation, Implementation.Replace("\"user\" + id", "\"member\" + id"));
+            driver = driver.RunGenerators(bodyEdited);
+            AssertAllReused(driver.GetRunResult().Results.Single(), "DerivedTypeRegistrations");
+
+            static string RegistrationsSource(GeneratorDriver driver)
+                => driver.GetRunResult().GeneratedTrees.Single(t => t.FilePath.EndsWith("MethodCacheDecoratorRegistrations.g.cs", StringComparison.Ordinal)).ToString();
         }
 
         private static void AssertAllReused(GeneratorRunResult result, string stepName)

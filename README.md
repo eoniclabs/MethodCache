@@ -222,7 +222,8 @@ Results live in memory and in Redis (or SQL Server or PostgreSQL, see
 [Distributed cache](docs/features/distributed-cache.md)).
 An in-memory miss reads the distributed cache before running your method, and invalidations reach every instance.
 Synchronous methods use memory only. Values are JSON by default; a method whose results JSON can't read back
-unchanged (private setters, a derived type, `object`) is kept in memory only, with a warning. `mc.UseMessagePack()`
+unchanged (private setters, `object`) is kept in memory only, with a warning; a `Dog` in a `List<Animal>` comes back as
+a `Dog`. `mc.UseMessagePack()`
 makes values smaller. If Redis goes down, calls keep working from memory: each Redis call is capped at one second, a
 circuit breaker skips Redis until it is back, and invalidations are queued and retried instead of throwing.
 

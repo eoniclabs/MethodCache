@@ -89,6 +89,40 @@ public class AttributeContractTests
         Assert.NotEqual(PolicyIdentity.Shared(oldPolicy), PolicyIdentity.Shared(newPolicy));
     }
 
+    [Fact]
+    public void AResultOfAnotherShape_GetsEntriesOfItsOwn_AndAPolicyWithoutOneKeepsItsIdentity()
+    {
+        static CacheRuntimePolicy Policy(string? shape)
+        {
+            var builder = new GeneratedModuleBuilder(new EmptyModule());
+            builder.Method("Read", ["value"], null, new GeneratedMethodOptions { CanonicalTagParts = true, ResultShape = shape });
+            return CacheRuntimePolicy.FromPolicy("Read", builder.Policies.Single().Policy, MethodCache.Policies.CachePolicyFields.None);
+        }
+
+        Assert.Equal(PolicyIdentity.Shared(Policy("0123456789abcdef")), PolicyIdentity.Shared(Policy("0123456789abcdef")));
+        Assert.NotEqual(PolicyIdentity.Shared(Policy("0123456789abcdef")), PolicyIdentity.Shared(Policy("fedcba9876543210")));
+        Assert.NotEqual(PolicyIdentity.Shared(Policy(null)), PolicyIdentity.Shared(Policy("0123456789abcdef")));
+        Assert.Equal(PolicyIdentity.Shared(Policy(null)), PolicyIdentity.Shared(Policy(null) with { ResultShape = null }));
+    }
+
+    [Fact]
+    public async Task TheGeneratedShape_ReachesTheResolvedPolicy_UnderAnotherSourcesSettings()
+    {
+        var methodId = GeneratedCode.Describe([typeof(ITagged).Assembly], [typeof(ITagged)])
+            .SelectMany(module => module.Policies).Single(policy => policy.MethodId.Contains("AttributeContractTests.ITagged.Read", StringComparison.Ordinal));
+        Assert.Matches("^[0-9a-f]{16}$", methodId.Policy.ResultShape);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ITagged>(new Tagged());
+        services.AddMethodCache(config => config.Method((ITagged t) => t.Read(default)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(7))));
+        await using var provider = services.BuildServiceProvider();
+
+        var policy = PolicyHandle.For(provider.GetRequiredService<MethodCache.Policies.IPolicyRegistry>(), methodId.MethodId).Current;
+        Assert.Equal(TimeSpan.FromMinutes(7), policy.Duration);
+        Assert.Equal(methodId.Policy.ResultShape, policy.ResultShape);
+        Assert.Equal(PolicyIdentity.Shared(policy), policy.Identity);
+    }
+
     private sealed class EmptyModule : GeneratedModule
     {
         public override void Describe(GeneratedModuleBuilder builder) { }

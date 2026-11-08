@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.Linq;
+using MethodCache.Internal;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -75,11 +76,40 @@ namespace MethodCache.SourceGenerator
                 .Select(static (classes, _) => new EquatableArray<ClassInfo>(classes!))
                 .WithTrackingName(TrackingNames.Classes);
 
+            // The project's classes that derive from its own or its references' types, matched to the types cached
+            // results declare, so the distributed cache restores a Dog in a List<Animal> as a Dog
+            var derivedTypes = context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null } or RecordDeclarationSyntax { BaseList: not null },
+                    transform: static (ctx, ct) => GetDerivedTypeInfo(ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, ct) as INamedTypeSymbol))
+                .Where(static info => info != null)
+                .Collect()
+                .Select(static (classes, _) => new EquatableArray<DerivedTypeInfo>(classes!))
+                .WithTrackingName(TrackingNames.DerivedTypes);
+
             var diagnostics = interfaces.Combine(externalProvider)
                 .Select(static (input, _) => new EquatableArray<DiagnosticInfo>(
                     input.Right.Diagnostics.Concat(input.Left.SelectMany(i => i.Diagnostics))));
-            context.RegisterSourceOutput(diagnostics, static (ctx, items) =>
+            var allSummaries = interfaces
+                .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary)));
+            // The types the referenced projects' cached results declare, so this project registers its derived types of them
+            var referencedBases = context.CompilationProvider
+                .Select(static (compilation, _) => ReferencedMetadata(compilation, DerivedTypeBaseMetadataKey))
+                .WithTrackingName(TrackingNames.ReferencedDerivedTypeBases);
+            var isTestProject = context.CompilationProvider.Select(static (compilation, _) => InvalidationTags.IsTestProject(compilation));
+            var registrations = allSummaries.Combine(derivedTypes).Combine(referencedBases).Combine(isTestProject)
+                .Select(static (input, _) => DerivedTypeRegistrations(input.Left.Left.Left, input.Left.Left.Right, input.Left.Right, input.Right))
+                .WithTrackingName(TrackingNames.DerivedTypeRegistrations);
+            context.RegisterSourceOutput(
+                allSummaries.Select(static (items, _) => new EquatableArray<string>(items.SelectMany(static i => i.DerivedTypeCandidates)
+                    .Distinct().OrderBy(static t => t, System.StringComparer.Ordinal))),
+                static (ctx, declared) => EmitDerivedTypeBases(ctx, declared));
+            RegisterJsonContextCheck(context, registrations);
+            context.RegisterSourceOutput(diagnostics.Combine(registrations), static (ctx, input) =>
             {
+                var (items, derived) = input;
+                var registered = new System.Collections.Generic.HashSet<string>(derived.Registrations.Select(static r => r.DeclaredFqn), System.StringComparer.Ordinal);
+                items = new EquatableArray<DiagnosticInfo>(items.Where(d => d.UnlessDerivedTypesOf is not { } type || !registered.Contains(type)).Concat(derived.Diagnostics));
                 // Shared attribute errors have one owner when generator and analyzer run together.
                 if (items.Any(static diagnostic => diagnostic.Id is "MC0004" or "MC0021" or "MC0023" or "MC0038"))
                     ctx.AddSource("MethodCacheAttributeValidation.g.cs",
@@ -98,8 +128,12 @@ namespace MethodCache.SourceGenerator
             var summaries = interfaces
                 .Select(static (items, _) => new EquatableArray<InterfaceSummary>(items.Select(i => i.Summary).Where(s => s.Generates)))
                 .WithTrackingName(TrackingNames.Summaries);
-            context.RegisterSourceOutput(summaries, static (ctx, items) => EmitSharedSources(ctx, items));
-            context.RegisterSourceOutput(summaries.Combine(classProvider), static (ctx, input) => EmitRegistrations(ctx, input.Left, input.Right));
+            // The shapes of the registered derived types, which the fingerprint of a result that may hold one includes
+            var derivedShapes = context.CompilationProvider.Combine(registrations)
+                .Select(static (input, ct) => DerivedTypeShapes(input.Left, input.Right, ct))
+                .WithTrackingName(TrackingNames.DerivedTypeShapes);
+            context.RegisterSourceOutput(summaries.Combine(derivedShapes), static (ctx, input) => EmitSharedSources(ctx, input.Left, input.Right));
+            context.RegisterSourceOutput(summaries.Combine(classProvider).Combine(registrations), static (ctx, input) => EmitRegistrations(ctx, input.Left.Left, input.Left.Right, input.Right.Registrations));
 
             RegisterEntityMapping(context);
             RegisterRequestState(context);
@@ -107,22 +141,24 @@ namespace MethodCache.SourceGenerator
             RegisterHostMarkers(context, summaries.Select(static (items, _) => items.Count > 0));
         }
 
-        private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces)
+        private static void EmitSharedSources(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<string> derivedShapes)
         {
             if (interfaces.Count == 0) return;
 
-            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(interfaces);
+            var policyRegistrationsCode = PolicyRegistrationsEmitter.Emit(interfaces, derivedShapes);
             if (!string.IsNullOrEmpty(policyRegistrationsCode))
             {
                 context.AddSource("GeneratedPolicyRegistrations.g.cs", policyRegistrationsCode);
             }
         }
 
-        private static void EmitRegistrations(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes)
+        private static void EmitRegistrations(SourceProductionContext context, EquatableArray<InterfaceSummary> interfaces, EquatableArray<ClassInfo> classes,
+            EquatableArray<DerivedTypeRegistration> derivedTypes)
         {
-            if (interfaces.Count == 0) return;
+            // A project without cached interfaces of its own still registers its derived types of a referenced project's
+            if (interfaces.Count == 0 && derivedTypes.Count == 0) return;
 
-            var registrationsCode = DecoratorRegistrationsEmitter.Emit(interfaces, classes);
+            var registrationsCode = DecoratorRegistrationsEmitter.Emit(interfaces, classes, derivedTypes);
             if (!string.IsNullOrEmpty(registrationsCode))
             {
                 context.AddSource("MethodCacheDecoratorRegistrations.g.cs", registrationsCode);
@@ -141,6 +177,11 @@ namespace MethodCache.SourceGenerator
             public const string HostMarkers = nameof(HostMarkers);
             public const string RequestState = nameof(RequestState);
             public const string InvalidatedTags = nameof(InvalidatedTags);
+            public const string DerivedTypeShapes = nameof(DerivedTypeShapes);
+            public const string DerivedTypes = nameof(DerivedTypes);
+            public const string DerivedTypeRegistrations = nameof(DerivedTypeRegistrations);
+            public const string ReferencedDerivedTypeBases = nameof(ReferencedDerivedTypeBases);
+            public const string JsonContexts = nameof(JsonContexts);
         }
     }
 }

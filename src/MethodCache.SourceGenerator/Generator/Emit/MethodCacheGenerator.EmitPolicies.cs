@@ -16,9 +16,9 @@ namespace MethodCache.SourceGenerator
             private const string PriorityMetadataKey = "priority";
             private const string GroupMetadataKey = "group";
 
-            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces)
+            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<string> derivedShapes)
             {
-                var definitions = BuildDefinitions(interfaces);
+                var definitions = BuildDefinitions(interfaces, derivedShapes);
                 if (definitions.Count == 0)
                 {
                     return string.Empty;
@@ -73,6 +73,8 @@ namespace MethodCache.SourceGenerator
                     sb.AppendLine("                CanonicalTagParts = true,");
                     if (definition.ResultType != null)
                         sb.AppendLine($"                ResultType = typeof({definition.ResultType}),");
+                    if (definition.ResultShape != null)
+                        sb.AppendLine($"                ResultShape = {ToLiteral(definition.ResultShape)},");
                     foreach (var statement in definition.PolicyStatements)
                     {
                         const string prefix = "policy = policy with { ";
@@ -85,8 +87,11 @@ namespace MethodCache.SourceGenerator
                 sb.Append("    }");
             }
 
-            private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces)
+            private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<string> derivedShapes)
             {
+                // The shape of each derived type registered for a declared type, as derived=shape by declared
+                var shapes = derivedShapes.Select(static entry => entry.Split(new[] { '|' }, 2))
+                    .ToLookup(static parts => parts[0], static parts => parts[1], StringComparer.Ordinal);
                 var definitions = new List<PolicyDefinition>();
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 var index = 0;
@@ -98,7 +103,11 @@ namespace MethodCache.SourceGenerator
                         continue;
                     }
 
-                    var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}") { ResultType = entry.ResultType };
+                    var definition = new PolicyDefinition(entry.MethodId, $"BuildSnapshot_{index++}")
+                    {
+                        ResultType = entry.ResultType,
+                        ResultShape = CombineResultShape(entry.ResultShape, entry.ShapeBases, shapes),
+                    };
                     definition.ParameterNames.AddRange(entry.ParameterNames);
                     definition.PolicyStatements.AddRange(entry.PolicyStatements);
                     definition.MetadataStatements.AddRange(entry.MetadataStatements);
@@ -121,13 +130,16 @@ namespace MethodCache.SourceGenerator
 
                     var definition = new PolicyDefinition(Utils.GetMethodId(method.Method), string.Empty);
                     PopulateFromCacheAttribute(definition, method.CacheAttr);
+                    var (shape, shapeBases) = DescribeResultShape(ResultOf(method.Method));
                     entries.Add(new PolicyEntry(
                         definition.MethodId,
                         Utils.GetKeyMethodName(method.Method, info.Symbol),
                         new EquatableArray<string>(method.Method.Parameters.Select(p => p.Name)),
                         new EquatableArray<string>(definition.PolicyStatements),
                         new EquatableArray<string>(definition.MetadataStatements),
-                        ResultTypeOf(method.Method)));
+                        ResultTypeOf(method.Method),
+                        shape,
+                        shapeBases));
                 }
 
                 return new EquatableArray<PolicyEntry>(entries);
@@ -149,6 +161,13 @@ namespace MethodCache.SourceGenerator
 
                 if (type.TypeKind == TypeKind.Dynamic) return "object";
                 return Nameable(type) ? Utils.GetFullyQualifiedName(type) : null;
+            }
+
+            // T of Task<T> and ValueTask<T>, else the return type itself
+            private static ITypeSymbol ResultOf(IMethodSymbol method)
+            {
+                var type = method.OriginalDefinition.ReturnType;
+                return (Utils.IsTask(type, out var inner) || Utils.IsValueTask(type, out inner)) && inner is not null ? inner : type;
             }
 
             // A type the policy source, outside any user type, can name in typeof: no type parameters and nothing private
@@ -274,6 +293,7 @@ namespace MethodCache.SourceGenerator
                 public List<string> PolicyStatements { get; } = new();
                 public List<string> MetadataStatements { get; } = new();
                 public string? ResultType { get; init; }
+                public string? ResultShape { get; init; }
             }
         }
     }

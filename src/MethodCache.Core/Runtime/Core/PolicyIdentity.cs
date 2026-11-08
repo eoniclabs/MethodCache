@@ -31,6 +31,8 @@ internal static class PolicyIdentity
         if (policy.DurationFor != null) Text(writer, "duration-for");
         if (policy.TagsFor != null) Text(writer, "tags-for");
         if (policy.SlidingFor != null) Text(writer, "sliding-for");
+        // A result type of another shape gets entries of its own, which removals and tags still reach
+        if (policy.ResultShape != null) Text(writer, "result-shape:" + policy.ResultShape);
         writer.Flush();
         return "s1:" + Convert.ToHexString(SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length))));
     }

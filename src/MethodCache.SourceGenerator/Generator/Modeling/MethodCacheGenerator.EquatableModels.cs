@@ -65,6 +65,15 @@ namespace MethodCache.SourceGenerator
         /// <summary>A diagnostic to report, kept as values until the output step creates it.</summary>
         internal sealed record DiagnosticInfo(DiagnosticDescriptor Descriptor, LocationInfo? Location, EquatableArray<string?> Arguments, string? ParameterProperty)
         {
+            /// <summary>
+            /// A type whose derived types, when the project has any, make the diagnostic moot (MC0020 for an interface
+            /// that classes of the project implement); it is reported only when none is found.
+            /// </summary>
+            public string? UnlessDerivedTypesOf { get; init; }
+
+            /// <summary>More properties a code fix reads, as <c>name=value</c>.</summary>
+            public EquatableArray<string> Properties { get; init; } = EquatableArray<string>.Empty;
+
             public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location? location, params string?[] arguments)
                 => new(descriptor, LocationInfo.From(location), new EquatableArray<string?>(arguments), null);
 
@@ -79,15 +88,23 @@ namespace MethodCache.SourceGenerator
                 var properties = ParameterProperty is null
                     ? null
                     : System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("Parameter", ParameterProperty);
+                foreach (var property in Properties)
+                {
+                    var separator = property.IndexOf('=');
+                    properties = (properties ?? System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty)
+                        .SetItem(property.Substring(0, separator), property.Substring(separator + 1));
+                }
                 return Diagnostic.Create(Descriptor, Location?.ToLocation(), properties, Arguments.Cast<object?>().ToArray());
             }
         }
 
         /// <summary>
-        /// The attribute policy of one cached method, as statements for the generated policy source, and the source of
-        /// its result type, or null when it has type parameters.
+        /// The attribute policy of one cached method, as statements for the generated policy source, the source of its
+        /// result type, or null when it has type parameters, and the fingerprint of its result's shape with the classes
+        /// and interfaces in it, whose registered derived types count too.
         /// </summary>
-        internal sealed record PolicyEntry(string MethodId, string KeyMethod, EquatableArray<string> ParameterNames, EquatableArray<string> PolicyStatements, EquatableArray<string> MetadataStatements, string? ResultType);
+        internal sealed record PolicyEntry(string MethodId, string KeyMethod, EquatableArray<string> ParameterNames, EquatableArray<string> PolicyStatements, EquatableArray<string> MetadataStatements, string? ResultType,
+            string ResultShape, EquatableArray<string> ShapeBases);
 
         /// <summary>What the shared generated files need to know about one interface.</summary>
         internal sealed record InterfaceSummary(
@@ -100,7 +117,9 @@ namespace MethodCache.SourceGenerator
             bool IsGeneric,
             bool HasCachedMethods,
             bool HasInvalidateMethods,
-            EquatableArray<PolicyEntry> Policies)
+            EquatableArray<PolicyEntry> Policies,
+            EquatableArray<string> DerivedTypeCandidates,
+            EquatableArray<DerivedTypeRegistration> ReferencedDerivedTypes)
         {
             /// <summary>Whether the interface gets a decorator; one whose every method was rejected only reports diagnostics.</summary>
             public bool Generates => HasCachedMethods || HasInvalidateMethods;

@@ -308,6 +308,17 @@ public class FeatureTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Testing_Declared_ListsTheGettingStartedService_AndFindsTheUnregisteredOnes()
+    {
+        await using var provider = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();
+        var declared = global::MethodCache.Testing.CachedServices.Declared(typeof(global::Docs.GettingStarted.After.IProductService).Assembly);
+
+        Assert.Contains(typeof(global::Docs.GettingStarted.After.IProductService), declared);
+        // This assembly declares every example's services; the getting-started provider registers one of them
+        Assert.Throws<Xunit.Sdk.EqualException>(() => global::Docs.Testing.Examples.CheckDeclaredServices(provider));
+    }
+
+    [Fact]
     public async Task Testing_ALoadForAnotherTenant_Throws_AndCachesNothing()
     {
         var services = new ServiceCollection();

@@ -185,11 +185,47 @@ namespace MethodCache.SourceGenerator
             internal static readonly DiagnosticDescriptor UnrestorableResultType = new(
                 id: "MC0020",
                 title: "Cached result type can't be read back from a distributed cache",
-                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, and with the default round-trip check these results are kept in memory only. Return a concrete type to share them through the distributed cache.",
+                messageFormat: "'{0}' returns '{1}', and '{2}' is not a concrete type: when a distributed cache is used, the serializer can't restore the runtime type from it, and with the default round-trip check these results are kept in memory only. Return a concrete type, or name its derived types with [JsonDerivedType], to share them through the distributed cache.",
                 category: "Performance",
                 defaultSeverity: DiagnosticSeverity.Warning,
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0020"));
+
+            internal static readonly DiagnosticDescriptor UnregistrableDerivedType = new(
+                id: "MC0039",
+                title: "Derived type can't be restored from a distributed cache",
+                messageFormat: "'{0}' derives from '{1}', which a cached result holds, but {2}, so MethodCache can't name it to the distributed cache's serializer, and a result holding one stays in each instance's memory. Make it a public or internal class that isn't generic or nested in a private type, or name it with [JsonDerivedType] on '{1}'.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0039"));
+
+            internal static readonly DiagnosticDescriptor UnlistedDerivedType = new(
+                id: "MC0040",
+                title: "Derived type missing from the JsonSerializerContext passed to UseJson",
+                messageFormat: "'{0}' has no contract for '{1}', which derives from '{2}' that a cached result holds, so the distributed cache can't restore it as itself, and a value holding one stays in each instance's memory. Add [JsonSerializable(typeof({1}))] to '{0}'.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0040"));
+
+            internal static readonly DiagnosticDescriptor LazyLoadedEntityResult = new(
+                id: "MC0041",
+                title: "Cached result holds entities that EF Core's lazy-loading proxies create",
+                messageFormat: "'{0}' returns '{1}', which holds '{2}', an entity with virtual navigation properties, and the project uses EF Core's lazy-loading proxies: a proxy can't be restored from the distributed cache, so these results stay in each instance's memory, and writing one for the cache can load its navigations from the database. Return a type without virtual navigations, such as a record the query projects with Select.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0041"));
+
+            internal static readonly DiagnosticDescriptor HiddenStateResultType = new(
+                id: "MC0042",
+                title: "Cached result type keeps its state where serializers don't write it",
+                messageFormat: "'{0}' returns '{1}', and '{2}' keeps its state in non-public fields or properties only, so a serializer writes it as an empty object and it would come back empty from the distributed cache. Give it public properties, mark its fields [JsonInclude], or give it a JSON converter.",
+                category: "Reliability",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0042"));
 
             internal static readonly DiagnosticDescriptor RuntimeKeyArgument = new(
                 id: "MC0037",

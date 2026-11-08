@@ -1,7 +1,7 @@
 {
-  "source_commit": "cab184d690392a67114770d0592f5ab9fe735c9a",
+  "source_commit": "a3067b269ece4074808e54c0ec70e4006faac2f9",
   "source_path": "src/MethodCache.Core/PublicAPI.Unshipped.txt",
-  "source_sha256": "a1545c3dcf73c59db3daf58c4c0bf21614d9c3645a245487878357494920cfda",
+  "source_sha256": "1d20a8c1726f026910d3e10f03bc1de007c58ff0dbba172312167f9726c50ee3",
   "declarations": [
     "MethodCache.Generated.CachedMethod",
     "MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall",
@@ -26,6 +26,8 @@
     "MethodCache.Generated.GeneratedMethodOptions.RefreshAhead.init -> void",
     "MethodCache.Generated.GeneratedMethodOptions.ResultType.get -> System.Type?",
     "MethodCache.Generated.GeneratedMethodOptions.ResultType.init -> void",
+    "MethodCache.Generated.GeneratedMethodOptions.ResultShape.get -> string?",
+    "MethodCache.Generated.GeneratedMethodOptions.ResultShape.init -> void",
     "MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.get -> System.TimeSpan?",
     "MethodCache.Generated.GeneratedMethodOptions.SlidingExpiration.init -> void",
     "MethodCache.Generated.GeneratedMethodOptions.Tags.get -> System.Collections.Generic.IReadOnlyCollection<string!>?",
@@ -36,6 +38,7 @@
     "MethodCache.Generated.GeneratedModule.GeneratedModule() -> void",
     "MethodCache.Generated.GeneratedModuleBuilder",
     "MethodCache.Generated.GeneratedModuleBuilder.DeclareService(System.Type! serviceType) -> void",
+    "MethodCache.Generated.GeneratedModuleBuilder.DerivedTypes(System.Type! declaredType, params System.Type![]! derivedTypes) -> void",
     "MethodCache.Generated.GeneratedModuleBuilder.Decorator(System.Type! serviceType, System.Func<object!, MethodCache.Generated.GeneratedServices!, object!>! factory, string![]! methodIds, string![]? keyMethods = null) -> void",
     "MethodCache.Generated.GeneratedModuleBuilder.ImplementationCandidate(System.Type! serviceType, System.Type! implementationType) -> void",
     "MethodCache.Generated.GeneratedModuleBuilder.Method(string! methodId, string![]! parameterNames, string? group, MethodCache.Generated.GeneratedMethodOptions! options) -> void",

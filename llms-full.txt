@@ -136,7 +136,8 @@ builder.Services.AddMethodCache();                               // after your r
   cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
   service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
-  list and catch one that is never registered.
+  list and catch one that is never registered; `CachedServices.Declared(typeof(IOrders).Assembly)` gives that list
+  from the project's own interfaces.
 - `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
   `WithDuration` it lives five minutes.
 - Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
@@ -164,10 +165,13 @@ builder.Services.AddMethodCache();                               // after your r
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
-  data an API caches, or several API instances), add `.Defaults(o => o.WithDistributed(false))` in every process:
-  invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
-  warning: return records with public properties.
+  data an API caches, or several API instances), add `.Distributed(o => o.StoreValues = false)` in every process (not
+  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): no value is stored, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
+  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
+  (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
+  member needs no `Version` bump: entries are kept apart by the result's shape.
 - `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
   send cookies as a `Cookie` header, or set `KeepCookies = true`, which turns response caching off.
 - Generated keys and method ids start with the service assembly's name in brackets. Never write a key or method id by
@@ -777,13 +781,32 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 ([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
 
 **A result type stays in memory only, with a warning. Why?**
-It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
-Return records with public properties, or register a serializer with `UseJson(options)`.
+It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
+derived type MethodCache can't name (MC0039). Return records with public properties, or register a serializer with
+`UseJson(options)`.
 ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization))
 
+**Does a `Dog` in a `List<Animal>` come back as a `Dog`?**
+Yes. MethodCache's generator names the classes that derive from a type a cached result declares to its JSON and
+MessagePack serializers, in your project and the projects around it. Under Native AOT, add `[JsonSerializable(typeof(Dog))]`
+to the context you pass to `UseJson`; MC0040 and its code fix point it out.
+([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types))
+
+**I renamed a property of a cached result. Do I need to raise `Version`?**
+No. The generator computes a fingerprint of the result's shape, so the new build reads entries of its own, and
+invalidations still reach both builds during a rolling deploy. Raise `Version` only for changes the build can't see,
+such as what a value means.
+([Changing result types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#changing-result-types-and-upgrading))
+
+**Can I change a list a cached method returned?**
+Change a copy (`result.ToList()`, or a record's `with`). The memory cache hands the same instance to later callers, so
+a change shows up there but not on other instances. MC0043 reports such code, and in Development a warning names the
+method when a cached value has changed.
+([Results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change))
+
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
-stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
 ([A worker and an API](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#a-worker-and-an-api))
@@ -853,6 +876,8 @@ cached service. ([Every cached service resolves](https://github.com/eoniclabs/Me
 **How do I catch a cached service that the application never registers?**
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+To keep that list up to date by itself, compare with the interfaces the project declares:
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**
@@ -2458,7 +2483,8 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 - `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
   its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
-  limits how long reads keep it.
+  limits how long reads keep it. To keep every value out of the distributed cache, manual calls included, set
+  `StoreValues = false` ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
@@ -2504,8 +2530,8 @@ await cache.SetAsync($"order:{saved.Id}", saved,
 ```
 
 - It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
-  gets the new value from the distributed cache. With `WithDistributed(false)` it stays in this instance's memory, and
-  the copies in the distributed cache and on other instances are removed.
+  gets the new value from the distributed cache. With `WithDistributed(false)` or `StoreValues = false` it stays in this
+  instance's memory, and the copies in the distributed cache and on other instances are removed.
 - It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
   since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
 - A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
@@ -2918,6 +2944,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
+| `StoreValues` | `true` | Store values in the distributed cache. `false` keeps every value in memory and uses the distributed cache for invalidations only ([Invalidations only](#invalidations-only)) |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
@@ -2939,17 +2966,23 @@ or start it with the application's name, such as `billing:order:42` ([Manual cac
 ## Invalidations only
 
 When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
-an API caches, say), turn off the distributed cache for every method. Values stay in each process's memory, and every
-invalidation still reaches the other processes:
+an API caches, say), set `StoreValues = false` in every process. Values stay in each process's memory, those of cached
+methods and of [manual calls](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) alike, and every invalidation still reaches the other processes:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
-values are written there.
+values are written there, whatever a method or call sets. Each process then loads its own values, so with ten
+instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
+[HTTP caching](http-caching.md) are still stored in the distributed cache.
+
+To keep only some methods in memory, use `[Cache(Distributed = false)]`, a group or `WithDistributed(false)` instead
+([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). `Defaults(o => o.WithDistributed(false))` applies to cached methods only, so a
+manual call would still store its value.
 
 ### A worker and an API
 
@@ -2971,7 +3004,7 @@ builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));
+    .Distributed(o => o.StoreValues = false));
 ```
 
 The worker caches nothing. With [MethodCache.EntityFrameworkCore](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md), its `SaveChanges`
@@ -2982,7 +3015,7 @@ invalidates the tags its mapping names, and the invalidation reaches the API thr
 builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false))
+    .Distributed(o => o.StoreValues = false)
     .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
 ```
 
@@ -3025,11 +3058,12 @@ API's test project references the worker project, since the worker is where the 
 ## Serialization
 
 Values are written as JSON with System.Text.Json, public fields included, so records, value tuples and structs are
-shared as they are. Each value is read back once before it is shared. A value that doesn't come back the same, such as
-a class with private setters, a `Dog` returned from a method declared to return `Animal`, or `object`, stays in that
-instance's memory only, with one warning that names the method and the type. Register your own
-`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` to share such values (`[JsonInclude]`,
-`[JsonDerivedType]`). [Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization) has the exact rules.
+shared as they are. A `Dog` where `Animal` is declared comes back as a `Dog` too ([Derived types](#derived-types)).
+Each value is read back once before it is shared. A value that doesn't come back the same, such as a class with private
+setters, `object`, or a dictionary made with its own comparer, stays in that instance's memory only, with one warning
+that names the method and the type. Register your own `JsonSerializerOptions` or `JsonSerializerContext` with `UseJson`
+to share it (`[JsonInclude]` for private setters).
+[Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
 
@@ -3042,6 +3076,47 @@ builder.Services.AddMethodCache(mc => mc
 Entries written in the other format read as misses and are replaced, so switching needs no flush. See the
 [MessagePack package guide](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.Serialization.MessagePack/README.md). Under Native AOT, register your
 `JsonSerializerContext` ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md)).
+
+## Derived types
+
+A cached result that declares a base type can hold a derived one: a `Dog` in a `List<Animal>`, in an `Animal`
+property, or returned by a method declared to return `Animal`. MethodCache's generator finds the classes that derive
+from such a type or implement such an interface, and names them to MethodCache's JSON and MessagePack serializers, so a
+`Dog` comes back from the distributed cache as a `Dog`. It finds them in the project with the cached interface, in the
+declared type's own assembly and the assemblies built on it, and in projects that reference the one with the cached
+interface. Your application's own JSON doesn't change: `JsonSerializer.Serialize<Animal>(dog)` still writes an
+`Animal`. The log at startup lists the derived types the distributed cache restores.
+
+- A base type with `[JsonDerivedType]` or `[JsonPolymorphic]`, or `[Union]` with MessagePack, keeps its own settings.
+- A derived type the generated code can't name, because it is private, file-local, generic or not public in another
+  assembly, gets [MC0039](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0039) at build time. A value holding one stays in memory only.
+- Under Native AOT, the `JsonSerializerContext` you pass to `UseJson` needs `[JsonSerializable(typeof(Dog))]` as well.
+  [MC0040](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0040) names a derived type it lacks, and its code fix adds it. At startup,
+  MethodCache also logs a warning naming the derived types the context has no contract for.
+- EF Core entities with lazy-loading proxies come back as plain entities without their navigations
+  ([MC0041](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0041)). Cache a projection such as a record instead.
+
+## Results that don't change
+
+The memory cache keeps the instance your method returned and hands that same instance to every later caller on the
+instance. The distributed cache keeps a serialized copy. Code that changes a result, such as `orders.Add(draft)` or
+`order.Status = Shown`, changes what later callers on this instance get, while the other instances still read the copy
+without the change. Instances then give different answers until the entry expires.
+
+- Return types that can't be changed, so the compiler stops such code: records with `init` properties, and
+  `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>` for collections.
+- When a caller needs to change a result, change a copy: `orders.ToList()`, `new List<Order>(orders)`, or
+  `order with { Status = OrderStatus.Shown }`. A list copy holds the same objects, so copy an object before setting
+  its properties.
+- [MC0043](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
+  methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
+  writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
+  per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
+  call is answered from memory.
+- Keep all state in what the serializer writes: data only in private fields is written as `{}`
+  ([MC0042](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0042)).
+- An object referenced twice in a result comes back as two copies, and a `DateTime` of kind `Local` shows another
+  clock time on a server in another time zone. Use `DateTimeOffset` or UTC times.
 
 ## Keep invalidations from being evicted
 
@@ -3056,8 +3131,13 @@ Entries written in the other format read as misses and are replaced, so switchin
 
 ## Changing result types and upgrading
 
-- Raise the method's `Version` (or `SerializerVersion` for serializer settings) when a cached result's shape changes,
-  so values the previous version wrote are not read.
+- When a cached result's shape changes, such as a renamed property, another property type or renumbered enum members,
+  the new build reads entries of its own. MethodCache's generator computes a fingerprint of what the serializer writes
+  for each cached method's result, including the derived types registered for it, and keeps entries of another shape
+  apart. During a rolling deploy each build reads its own entries, and invalidations by key and by tag reach both.
+- Raise the method's `Version` for a change the build can't see: what a value means changes while its shape doesn't,
+  a `JsonConverter` writes it differently, or a derived type in a project that references the cached interface's
+  project changes. Raise `SerializerVersion` when you change serializer settings.
 - Instances on different 1.x versions can share a store and backplane, so a rolling upgrade works. When a release
   writes some keys differently, its CHANGELOG section says so under "Upgrading". During the rollout, instances on the
   old and the new version then miss each other's entries for those methods: each loads once and caches under its own
@@ -3494,6 +3574,10 @@ Moments after the writes stop, the cache is back within the bound.
 > The cache stores the object your method returned and hands the same instance to every caller. Don't change a cached
 > object; return immutable types such as records, or copies.
 
+Build warning [MC0043](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0043) names code that changes a cached result, and with a
+distributed cache, a warning in the Development log names the method whose cached value changed
+([Results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change)).
+
 
 ---
 
@@ -3704,10 +3788,22 @@ can compare it with the services the application should have:
 Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
 mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
-service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host.
+service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host. A
+minimal API endpoint that takes a cached interface as a parameter fails the host first when that interface isn't
+registered ("Body was inferred but the method does not allow inferred body parameters"), so a test that starts the host
+fails with that error before it reaches `Registered`.
 
 ## Every tag has an invalidation
 
@@ -4006,6 +4102,10 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   wait for that.
 - `[Cache(Distributed = false)]`, `"Distributed": false` in `appsettings.json` and `WithDistributed(false)` keep a
   method or call in memory only.
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, whatever a method or call sets: no value of
+  a cached method or an `ICacheManager` call is read from or written to the distributed cache, and invalidations still
+  go through it. `SetAsync` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching are
+  still stored there.
 
 ## Policies and shared entries
 
@@ -4084,16 +4184,34 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 
 ## Serialization
 
-- Every value an instance writes is first read back and written again. When that doesn't give the same bytes and type,
-  that value and every later value of that method and type stay in memory only, and one warning names them. Each
+- Every value an instance writes is first read back and written again. When that doesn't give the same bytes and
+  types, that value and every later value of that method and type stay in memory only, and one warning names them. Each
   value is checked, since one with default data (an `Id` of 0 behind a private setter) can come back unchanged where
   the next one doesn't.
 - That happens with properties that have a private or protected setter, public readonly fields of a type that also
-  has a parameterless constructor, a derived type returned as its declared base type (an `Animal` method returning a
-  `Dog`), `object`, and values the serializer throws on (a cycle, a delegate), with JSON and MessagePack alike.
+  has a parameterless constructor, a derived type MethodCache can't name to the serializer (see below), `object`
+  anywhere in the value (it comes back as a `JsonElement`, so a `Dictionary<string, object>` does too), a dictionary or
+  set made with a comparer other than the default (it comes back with the default one), and values the serializer
+  throws on (a cycle, a delegate), with JSON and MessagePack alike.
+- Derived types: the generator registers the classes that derive from a class or implement an interface a cached result
+  declares (as the result, an element, or a property or field a serializer writes), found in the project with the
+  cached interface, in the declared type's assembly and the referenced assemblies built on it, and in projects that
+  reference the one with the cached interface. MethodCache's JSON writes such a value with a `$type` property holding
+  the type's full name, and MessagePack as a two-item array of the name and the value; both restore the derived type.
+  The application's own `JsonSerializerOptions` aren't changed, since MethodCache copies them. A base type with
+  `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]` keeps its own settings. With a `JsonSerializerContext`, a
+  derived type the context has no contract for isn't registered, and one warning at startup names it.
+- A dictionary's or set's comparer is compared when the declared type shows it (`Dictionary<,>`, `HashSet<T>`,
+  `SortedDictionary<,>`, `SortedSet<T>` and others with a public `Comparer`): `StringComparer.Ordinal` counts as the
+  default for `string` keys. A collection declared as `IDictionary<,>`, `IReadOnlyDictionary<,>`, `ISet<T>` or
+  `IReadOnlySet<T>` is compared the same way.
+- The types are compared through collections (a dictionary by key) and the public properties and fields a serializer
+  writes: properties with a setter and auto-properties, not computed ones, and nothing marked `[JsonIgnore]`,
+  `[IgnoreDataMember]`, `[IgnoreMember]` or `[NonSerialized]`, whose getters aren't called. A member that is null on
+  either side isn't compared. A value whose declared type can't hold another type, such as an `int`, a `List<int>` or
+  a sealed record of strings, has nothing to compare and costs nothing extra.
 - State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
-  bytes, so the check can't see that it is lost. The check also looks only at the value's own type: a `Dog` inside a
-  `List<Animal>` is shared without its `Dog` data. Make such state serializable, or register a serializer that writes
+  bytes, so the check can't see that it is lost. Make such state serializable, or register a serializer that writes
   it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
 - A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
   `List<int>` for an array, and is still shared.
@@ -4108,6 +4226,11 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   shorter; a shorter setting fails at startup. Use a new prefix to lower it.
 - Entries are stored per value format and `SerializerVersion`, so switching between JSON and MessagePack, or raising
   `SerializerVersion`, makes old entries misses. Invalidations apply to every format.
+- A cached method's entries are also stored per result shape: a fingerprint the generator computes from the result
+  type, the types in it, the names, types and serializer attributes (`[JsonPropertyName]`, `[JsonIgnore]`,
+  `[JsonInclude]`, `[Key]` and others) of the members a serializer writes, the names and values of enum members, and the
+  derived types registered for it. Framework types count by name. Reordering members, changing method bodies or
+  adding computed properties keeps the fingerprint. Invalidations by key and tag reach entries of every shape.
 - An entry's expiry is fixed from when its load started, so a slow write can't extend it.
 - SQL Server and PostgreSQL create their tables on first use (`CreateTablesIfMissing`), and refuse a schema they don't
   know instead of changing it. SQL Server ships `migrations/0001-version-existing-schema.sql` for an invalidations
@@ -4228,10 +4351,24 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
 
 ## Results stay out of the distributed cache
 
-A method whose result type is `object`, an interface or an abstract class (`Task<IShape>`, `Task<List<object>>`) has
-warning [MC0020](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads
-such a result back, so when a distributed cache is used the default round-trip check keeps these results in memory
-only, and each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`.
+A method whose result type is `object`, an interface or an abstract class with no implementations in the project or
+the projects it references (`Task<IShape>`, `Task<List<object>>`) has warning
+[MC0020](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0020). The serializer can't tell which class to create when it reads such a
+result back, so when a distributed cache is used the default round-trip check keeps these results in memory only, and
+each instance loads its own. Return a concrete type, such as `Task<Circle>` or `Task<List<Product>>`, or name the
+implementations with `[JsonDerivedType]` on the interface.
+
+The same happens, with a warning in the log when the first such value is written, for `object` values such as those of
+a `Dictionary<string, object>`, which come back as `JsonElement`, for a dictionary made with its own comparer, and for
+a derived type MethodCache can't name to the serializer ([MC0039](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0039)) or that the
+`JsonSerializerContext` passed to `UseJson` lacks ([MC0040](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0040)). Other derived types,
+such as a `Dog` in a `List<Animal>`, come back as themselves ([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types)).
+
+## Instances return different values for the same call
+
+- Code changed a cached result in place ([A caller changed a cached object](#a-caller-changed-a-cached-object-and-others-see-the-change)).
+- An invalidation hasn't reached the other instances yet, or an instance has no backplane
+  ([What other instances see](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#what-other-instances-see)).
 
 Instances that don't share entries or invalidations at all may use different settings: compare the line each one logs
 when its cache starts, which names the distributed cache, its `KeyPrefix` and the backplane
@@ -4276,6 +4413,11 @@ key.
 > [!WARNING]
 > The cache hands the same instance to every caller. Return immutable types such as records, or copies
 > ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#cached-objects-are-shared)).
+
+Code such as `orders.Add(...)` on a list a cached method returned changes it for every later caller on that instance,
+while the other instances read the stored copy. Build warnings [MC0043](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0043) name such
+code, and in Development a warning in the log names the method whose cached value changed
+([Results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change)).
 
 ## Build errors and warnings
 
@@ -4335,6 +4477,11 @@ never stops a build.
 | [MC0036](#mc0036) | Warning | A name in `methodcache.request_state_types` matches no type | |
 | [MC0037](#mc0037) | Info | A cache key that is written when the call runs, because an argument's actual type decides it | |
 | [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
+| [MC0039](#mc0039) | Warning | A class that derives from a type a cached result holds, but that MethodCache can't name to the distributed cache, such as a generic or private one | |
+| [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
+| [MC0041](#mc0041) | Warning | A cached result holds EF Core entities with virtual navigation properties in a project that uses lazy-loading proxies | |
+| [MC0042](#mc0042) | Warning | A cached result type, or a type in it, whose state is all non-public, so serializers write it as an empty object | |
+| [MC0043](#mc0043) | Warning | Code changes a result a cached method returned | |
 
 ## Rules of a later version
 
@@ -4349,7 +4496,7 @@ want, in the project file or in `Directory.Build.props`:
 ```
 
 The rules that came after that version are then off. Turn one of them on in `.editorconfig`, such as
-`dotnet_diagnostic.MC0040.severity = warning`, and raise the level when you have looked at the rest. Every rule of
+`dotnet_diagnostic.MC0060.severity = warning`, and raise the level when you have looked at the rest. Every rule of
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
@@ -4525,8 +4672,13 @@ distributed cache is used, the default round-trip check finds that such a result
 in-memory cache only. Collection interfaces such as
 `IReadOnlyList<Product>` are fine; they are read back as a list.
 
+Not reported when the project, or a project it references, has classes that implement the
+interface or derive from the abstract class: MethodCache's generator then names them to its serializers, so they come
+back as themselves ([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types)).
+
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
-cache. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
+cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
+abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
 `#pragma warning disable MC0020` or `<NoWarn>` in the project.
 
 ## MC0021
@@ -5046,6 +5198,125 @@ The two settings often come from different places, such as a sliding window on t
 method, whether the settings come from `[Cache]`, startup code or `appsettings.json`
 ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
 
+## MC0039
+
+A class derives from a type that a cached result holds, such as a `Dog` where a method returns `List<Animal>`, but
+MethodCache can't name it to the distributed cache's serializer: the class is generic, private or nested in a private
+type, `file`-local, or not public in a referenced assembly. A value that holds one can't be restored as a `Dog` from the
+distributed cache, so the check before sharing keeps it in each instance's memory, with a warning in the log:
+
+```cs
+public class Animal { public string Name { get; set; } = ""; }
+public class Box<T> : Animal { public T Value { get; set; } = default!; }   // MC0039: it is generic
+
+public interface IZoo
+{
+    [Cache] Task<List<Animal>> AnimalsAsync();
+}
+```
+
+Make the class public or internal, not generic and not nested in a private type, and MethodCache registers it, so it
+comes back from the distributed cache as itself. Or name it with `[JsonDerivedType(typeof(Box<int>), "box-int")]` on
+the base type (`[Union]` with MessagePack). When such values only need the in-memory cache, suppress the warning. A test
+project gets no MC0039, since its private test doubles don't reach a shared cache
+([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types)).
+
+## MC0040
+
+Under Native AOT the distributed cache's JSON can only write the types the `JsonSerializerContext` passed to `UseJson`
+has contracts for. The context has one for a type a cached result holds, such as `Animal`, but not for a class that
+derives from it, such as `Dog`, so a value holding a `Dog` stays in each instance's memory:
+
+```cs
+[JsonSerializable(typeof(List<Animal>))]
+internal partial class AppJsonContext : JsonSerializerContext { }
+
+builder.Services.AddMethodCache(mc => mc.UseJson(AppJsonContext.Default));   // MC0040: no contract for Dog
+```
+
+Add `[JsonSerializable(typeof(Dog))]` to the context; the code fix does it for you. The derived types that classes in
+referenced projects register count too. The host also logs the derived types the context lacks when it starts, for a
+context the build can't see, such as one built at run time.
+
+## MC0041
+
+The project references Microsoft.EntityFrameworkCore.Proxies, and a cached result holds a class with public `virtual`
+navigation properties, such as an entity that `UseLazyLoadingProxies` loads as a proxy:
+
+```cs
+public class Customer
+{
+    public int Id { get; set; }
+    public virtual List<Order> Orders { get; set; } = [];
+}
+
+public interface ICustomers
+{
+    [Cache] Task<List<Customer>> GetAllAsync();   // MC0041
+}
+```
+
+EF Core returns a proxy class made at run time instead of a `Customer`. The distributed cache can't restore a proxy, so
+the check before sharing keeps these results in each instance's memory, and writing one for the cache reads its
+navigation properties, which loads them from the database, or throws once the `DbContext` is gone. Return a type
+without virtual navigations instead, such as a record the query projects with `Select`:
+
+```cs
+public sealed record CustomerSummary(int Id, string Name, int OrderCount);
+
+public Task<List<CustomerSummary>> GetAllAsync()
+    => db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count)).ToListAsync();
+```
+
+## MC0042
+
+A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
+state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
+so the other instances would get an empty value from the distributed cache:
+
+```cs
+public sealed class Money
+{
+    private readonly decimal _amount;
+    public Money(decimal amount) => _amount = amount;
+    public decimal Rounded() => Math.Round(_amount, 2);
+}
+
+[Cache] Task<Money> GetBalanceAsync(int accountId);   // MC0042: Money is written as {}
+```
+
+Give the type public properties, such as `public decimal Amount { get; }` set by the constructor, or a record such as
+`public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
+with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
+suppress the warning then.
+
+## MC0043
+
+Code changes a result that a cached method returned: it sets a property or field of the result or of an object in it,
+or adds to, removes from or sorts a collection in it. The memory cache keeps the instance the method returned and hands
+that same instance to every later caller on this instance, so they all see the change. The other instances read the copy
+in the distributed cache, which doesn't have it, so instances give different answers until the entry expires:
+
+```cs
+var orders = await _orders.GetForCustomerAsync(customerId);
+orders.Add(draft);                        // MC0043: every later caller on this instance gets the draft too
+foreach (var order in orders)
+    order.Status = OrderStatus.Shown;     // MC0043
+```
+
+Change a copy instead: `new List<Order>(orders)` or `orders.ToList()` for the collection, and a record's `with`
+expression, such as `order with { Status = OrderStatus.Shown }`, for an object in it. A list copy still holds the same
+objects, so setting a property of one of its elements is reported too. Better still, return types that can't be changed,
+such as records with `init` properties and `IReadOnlyList<T>`, so the compiler stops such code. See
+[results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change).
+
+It's reported for a result kept in a local or read in a `foreach`, and for objects reached from it through properties,
+fields, indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, and through LINQ copies such as `ToList`, `ToArray`
+and `Where`. Your own methods that change an object, such as `order.Close()`, aren't seen; in Development, MethodCache
+also compares cached values with what it stored now and then, and logs a warning naming the method when one has
+changed. Not reported in test projects.
+
 ## What the analyzers read from referenced projects
 
 MC0026, MC0027 and MC0030 also look at the projects yours references, and so does `TagCoverage` in
@@ -5191,13 +5462,13 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseRedis("localhost:6379")
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5301,13 +5572,13 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5452,13 +5723,13 @@ MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -6000,7 +6271,10 @@ no flush.
   your objects as they are.
 - Types serialize without attributes (contractless resolver). The defaults use LZ4 compression, keep `DateTime`
   values as they are, and read stored data with `MessagePackSecurity.UntrustedData`.
-- Like JSON, the contractless resolver doesn't restore private setters or a derived type returned as its base type.
+- Like JSON, the contractless resolver doesn't restore private setters. A derived type where its base type is
+  declared, such as a `Dog` in a `List<Animal>`, comes back as itself, since MethodCache names the derived types it
+  finds to the serializer ([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types)). A base type with
+  `[Union]` keeps its own settings.
   With the default `VerifyRoundTrip = true`, MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
   with one warning per method and type.
 - To change them, start from MethodCache's defaults: `UseMessagePack(o => o.WithCompression(MessagePackCompression.None))`
@@ -6170,6 +6444,15 @@ with cached methods, ordered by full name, for a test to compare with the servic
 Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -6206,10 +6489,75 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.14 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.13
+
+- Every cached method's entries in the distributed cache are now kept apart by the shape of its result (see Added), so
+  each method loads once more after the upgrade. During a rolling upgrade, instances on rc.13 and rc.14 don't read
+  each other's entries; invalidations by key and by tag reach both.
+- A result that holds `object` values, such as those of a `Dictionary<string, object>`, or a derived type MethodCache
+  can't name to the serializer (MC0039), now stays in memory with a warning instead of reaching the other instances
+  without its data. Other derived types, such as a `Dog` in a `List<Animal>`, are now shared as themselves. Under
+  Native AOT, add them to the `JsonSerializerContext` you pass to `UseJson`; MC0040 and its code fix point them out.
+- New build warnings MC0039 to MC0043 may appear (see Added). `MethodCache` now depends on
+  `Microsoft.Extensions.Hosting.Abstractions`, for the check in Development.
+- If you followed "Invalidations only" with `Defaults(o => o.WithDistributed(false))`, switch to
+  `Distributed(o => o.StoreValues = false)`. `Defaults` applies to cached methods only, so `GetOrCreateAsync` and
+  `SetAsync` still stored their values in the distributed cache.
+
+### Added
+
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, for cached methods and manual calls alike,
+  whatever their options say, and uses Redis, SQL Server or PostgreSQL for invalidations only
+  ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
+- `CachedServices.Declared(assemblies)` in `MethodCache.Testing` lists the interfaces with cached methods in the
+  assemblies you pass, ordered as `Registered` orders them. Compare the two, and a test covers a new cached interface
+  without a change ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
+- Derived types come back from the distributed cache as themselves. The generator finds the classes that derive from a
+  type a cached result declares (a `Dog` in a `List<Animal>`, in an `Animal` property, or returned as an `Animal`), in
+  the project, in the declared type's assembly and the ones built on it, and in projects that reference the one with
+  the cached interface, and names them to MethodCache's JSON and MessagePack serializers. The application's own JSON
+  doesn't change, and `[JsonDerivedType]`, `[JsonPolymorphic]` and `[Union]` keep their settings. The startup log lists
+  the derived types the distributed cache restores ([Derived types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#derived-types)).
+- MC0039 names a derived type the generated code can't name (private, file-local, generic, or not public in another
+  assembly), so it isn't restored. Not reported in test projects.
+- MC0040 names a derived type the `JsonSerializerContext` passed to `UseJson` has no contract for while it has one for
+  the base type, and its code fix adds `[JsonSerializable(typeof(Dog))]` to the context. At startup, MethodCache also
+  logs a warning naming such types.
+- MC0041 reports a cached result holding EF Core entities with virtual navigation properties in a project that uses
+  lazy-loading proxies, which come back without their navigations.
+- MC0042 reports a cached result type, or a type in it, whose state is all non-public, so serializers write it as `{}`.
+- MC0043 reports code that changes a result a cached method returned, such as `orders.Add(draft)` or
+  `order.Status = ...`: the memory cache hands that instance to later callers, while other instances read the stored
+  copy. In Development, MethodCache also writes the values it keeps in memory again every two seconds and logs a
+  warning naming the method whose value has changed. It never runs when a call is answered from memory
+  ([Results that don't change](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#results-that-dont-change)).
+- A cached method's entries are kept apart by a fingerprint of its result's shape, which the generator computes from the
+  members a serializer writes, their types and serializer attributes, enum members and registered derived types. A
+  renamed property or renumbered enum member no longer reads entries the previous build wrote, with no `Version` bump,
+  while invalidations still reach both builds
+  ([Changing result types](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#changing-result-types-and-upgrading)).
+
+### Fixed
+
+- The check before a value is shared through the distributed cache compares the types inside it too, through its
+  collections, properties and fields. A `Dog` in a `List<Animal>` came back as a plain `Animal` on the other
+  instances, and an `int` in a `Dictionary<string, object>` as a `JsonElement`; such a value now stays in memory with
+  the warning ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization)).
+- The check before sharing also compares the comparer of a dictionary or set. A `Dictionary` made with
+  `StringComparer.OrdinalIgnoreCase` came back with the default comparer on the other instances, so `dict["KEY"]`
+  found a value on one instance and not on the others; such a value now stays in memory with the warning.
+- MC0020 no longer reports an interface or abstract class with `[JsonDerivedType]`, `[JsonPolymorphic]` or `[Union]`,
+  or one the project or a project it references has implementations of, whose results the serializer restores.
+- Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
 
+- Distributed cache: new sections on derived types and on results that don't change, with what to return and how to
+  change a copy.
+- Testing: a minimal API endpoint that takes a cached interface fails the host before `Registered` runs when the
+  interface isn't registered.
 - The agent instructions no longer ask a coding agent to draft feedback by itself: it mentions a problem in its
   report and offers to draft feedback, and drafts and files it only when its user asks. They say we appreciate it.
 
