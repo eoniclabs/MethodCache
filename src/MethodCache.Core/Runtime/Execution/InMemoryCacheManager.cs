@@ -58,6 +58,8 @@ namespace MethodCache.Extensibility
         private readonly TimeProvider _timeProvider;
         private readonly long _jitter;
         private readonly DistributedCacheLayer? _distributed;
+        // A distributed cache that stores values; false without one, or when it carries invalidations only
+        private readonly bool _sharesValues;
         private readonly Action<string>? _onMethodInvalidated;
         private readonly GeneratedDiagnostics _syncDiagnostics;
         private readonly Func<string, CacheRuntimePolicy?>? _lookupPolicy;
@@ -103,6 +105,7 @@ namespace MethodCache.Extensibility
             }
 
             _distributed = distributed;
+            _sharesValues = distributed?.StoresValues == true;
             if (logger != null) LogLayers(logger, _options, distributed);
             _telemetry?.ObserveMethods(() => new CacheObservation(_engine.Count, 0, 0, 0, _engine.TotalWeight, MethodEvictions: _engine.EvictionsSinceStart));
             _onMethodInvalidated = onMethodInvalidated;
@@ -134,6 +137,15 @@ namespace MethodCache.Extensibility
             }
 
             var (store, keyPrefix, backplane) = distributed.Describe();
+            if (!distributed.StoresValues)
+            {
+                Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
+                    "MethodCache caches in memory, up to {Memory} per instance, and stores no values in the distributed cache " +
+                    "{Store} (key prefix '{KeyPrefix}'): it carries invalidations only, through the {Backplane} backplane.",
+                    memory, store, keyPrefix, backplane ?? "no");
+                return;
+            }
+
             if (backplane == null)
             {
                 Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger,
@@ -189,7 +201,7 @@ namespace MethodCache.Extensibility
                     return hit!;
                 }
                 token.ThrowIfCancellationRequested();
-                if (_distributed != null && source.Distributed != false)
+                if (_sharesValues && source.Distributed != false)
                     _syncDiagnostics.ReportSyncBypass(name, "The provider offers no bounded native synchronous operation; only memory is used.");
                 var own = new SyncFlight(policy.Tags, source.Generation) { MethodId = source.MethodId, UnknownTags = policy.TagsFor != null };
                 SyncFlight flight;
@@ -600,9 +612,11 @@ namespace MethodCache.Extensibility
             InvalidateFlight(key);
             Store(key, value, EntryPolicy.Plain, duration: Math.Max(1, ToNanos(expiration)));
 
-            return _distributed == null
-                ? Task.CompletedTask
-                : _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration, replaces: true);
+            if (_distributed == null) return Task.CompletedTask;
+            // Values stay in memory: the other instances' copies are old, so they are removed
+            return _sharesValues
+                ? _distributed.WriteAsync(key, value, tags: null, _distributed.Now, expiration, replaces: true)
+                : _distributed.RemoveAsync([key]);
         }
 
         /// <inheritdoc />
@@ -875,7 +889,7 @@ namespace MethodCache.Extensibility
         {
             try
             {
-                if (_distributed != null && policy.Source?.Distributed != false && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
+                if (_sharesValues && policy.Source?.Distributed != false && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
                 {
                     var stored = await ReadDistributedAsync<T>(key, policy, cancellationToken).ConfigureAwait(false);
                     if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime, out var storedEntry) && Remaining(stored, policy, storedLifetime) is > 0 and var remaining)
@@ -960,7 +974,7 @@ namespace MethodCache.Extensibility
         internal async ValueTask<(bool Found, T? Value)> TryGetDistributedAsync<T>(string key, string methodName, CacheRuntimePolicy policy, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(policy);
-            if (_distributed == null || policy.Enabled == false || policy.Distributed == false || policy.Generation?.DistributedReady == false || policy.Generation?.IsCurrent == false)
+            if (!_sharesValues || policy.Enabled == false || policy.Distributed == false || policy.Generation?.DistributedReady == false || policy.Generation?.IsCurrent == false)
             {
                 return (false, default);
             }
@@ -1469,7 +1483,7 @@ namespace MethodCache.Extensibility
         /// </summary>
         private Task WriteDistributedAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt, long? lifetime)
         {
-            if (_distributed == null || policy.Source?.Distributed == false || flight.Invalidated || (result == null && !_options.CacheNullValues))
+            if (!_sharesValues || policy.Source?.Distributed == false || flight.Invalidated || (result == null && !_options.CacheNullValues))
             {
                 return Task.CompletedTask;
             }

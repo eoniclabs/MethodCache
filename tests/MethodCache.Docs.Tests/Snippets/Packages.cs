@@ -98,7 +98,7 @@ namespace Docs.Packages
             // begin-snippet: redis-invalidations-only
             builder.Services.AddMethodCache(mc => mc
                 .UseRedis("localhost:6379")
-                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+                .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
             // end-snippet
         }
 
@@ -140,7 +140,7 @@ namespace Docs.Packages
             // begin-snippet: sqlserver-invalidations-only
             builder.Services.AddMethodCache(mc => mc
                 .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
-                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+                .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
             // end-snippet
         }
     }

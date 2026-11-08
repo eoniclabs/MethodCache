@@ -334,8 +334,8 @@ Return records with public properties, or register a serializer with `UseJson(op
 ([Serialization](features/distributed-cache.md#serialization))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
-stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
 ([A worker and an API](features/distributed-cache.md#a-worker-and-an-api))
@@ -405,6 +405,8 @@ cached service. ([Every cached service resolves](features/testing.md#every-cache
 **How do I catch a cached service that the application never registers?**
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+To keep that list up to date by itself, compare with the interfaces the project declares:
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**

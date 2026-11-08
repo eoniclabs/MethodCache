@@ -181,6 +181,8 @@ MethodCache.DistributedCacheOptions.TagRetention.get -> System.TimeSpan
 MethodCache.DistributedCacheOptions.TagRetention.set -> void
 MethodCache.DistributedCacheOptions.VerifyRoundTrip.get -> bool
 MethodCache.DistributedCacheOptions.VerifyRoundTrip.set -> void
+MethodCache.DistributedCacheOptions.StoreValues.get -> bool
+MethodCache.DistributedCacheOptions.StoreValues.set -> void
 MethodCache.Generated.CachedMethod
 MethodCache.Generated.CachedMethod.Capture() -> MethodCache.Generated.MethodCall
 MethodCache.Generated.GeneratedCode

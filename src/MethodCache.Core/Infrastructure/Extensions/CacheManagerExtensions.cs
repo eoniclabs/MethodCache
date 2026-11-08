@@ -57,7 +57,9 @@ namespace MethodCache
         /// </summary>
         /// <remarks>
         /// Use it when you already have the new value, such as right after you saved it, so the next read doesn't load it
-        /// again. Other instances drop their copy and read the new one from the distributed cache. A load already running
+        /// again. Other instances drop their copy and read the new one from the distributed cache; with
+        /// <see cref="DistributedCacheOptions.StoreValues"/> false the value stays in this instance's memory, and they
+        /// load it again. A load already running
         /// for the key doesn't overwrite it. A value the options reject, such as one a <c>CacheWhen</c> predicate turns
         /// down, isn't stored, and the key's old value is removed instead. With <c>WithEnabled(false)</c> nothing happens.
         /// </remarks>
@@ -71,7 +73,9 @@ namespace MethodCache
         /// </summary>
         /// <remarks>
         /// Use it when you already have the new value, such as right after you saved it, so the next read doesn't load it
-        /// again. Other instances drop their copy and read the new one from the distributed cache. A load already running
+        /// again. Other instances drop their copy and read the new one from the distributed cache; with
+        /// <see cref="DistributedCacheOptions.StoreValues"/> false the value stays in this instance's memory, and they
+        /// load it again. A load already running
         /// for the key doesn't overwrite it. A value the options reject, such as one a <c>CacheWhen</c> predicate turns
         /// down, isn't stored, and the key's old value is removed instead. With <c>WithEnabled(false)</c> nothing happens.
         /// A manager of your own gets the key invalidated and then the value through its <c>GetOrCreateAsync</c>.

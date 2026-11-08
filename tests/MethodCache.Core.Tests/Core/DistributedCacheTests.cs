@@ -341,6 +341,74 @@ public class DistributedCacheTests
     }
 
     [Fact]
+    public async Task StoreValuesFalse_KeepsMethodAndManualValuesInMemory()
+    {
+        var store = new RecordingStore(_shared);
+        var first = CreateNode(cache: store, configure: o => o.StoreValues = false);
+        var second = CreateNode(cache: store, configure: o => o.StoreValues = false);
+
+        await Get(first, "method", () => "first");
+        await first.GetOrCreateAsync("manual", _ => ValueTask.FromResult("first"));
+        await first.SetAsync("set", "first");
+
+        // Nothing was shared, so the other instance loads its own values
+        (await Get(second, "method", () => "second")).Should().Be("second");
+        (await second.GetOrCreateAsync("manual", _ => ValueTask.FromResult("second"))).Should().Be("second");
+        store.WrittenKeys.Should().NotContain(key => key.StartsWith("methodcache:e", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task StoreValuesTrue_SharesManualValues()
+    {
+        var store = new RecordingStore(_shared);
+        var node = CreateNode(cache: store);
+
+        await node.GetOrCreateAsync("manual", _ => ValueTask.FromResult("v"));
+
+        store.WrittenKeys.Should().Contain(key => key.StartsWith("methodcache:e", StringComparison.Ordinal) && key.EndsWith("manual", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task StoreValuesFalse_WinsOverAPolicyThatSharesValues()
+    {
+        var store = new RecordingStore(_shared);
+        var node = CreateNode(cache: store, configure: o => o.StoreValues = false);
+
+        await node.GetOrCreateFastAsync("key", "M", () => Task.FromResult("v"), Policy() with { Distributed = true });
+        await node.GetOrCreateAsync("manual", _ => ValueTask.FromResult("v"), o => o.WithDistributed(true));
+
+        store.WrittenKeys.Should().NotContain(key => key.StartsWith("methodcache:e", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task StoreValuesFalse_InvalidationsStillReachEveryInstance()
+    {
+        var first = CreateNode(configure: o => o.StoreValues = false);
+        var second = CreateNode(configure: o => o.StoreValues = false);
+        await Get(first, "key", () => "first", "users");
+        await Get(second, "key", () => "second", "users");
+
+        await first.InvalidateByTagsAsync("users");
+
+        (await Get(second, "key", () => "reloaded", "users")).Should().Be("reloaded");
+    }
+
+    [Fact]
+    public async Task StoreValuesFalse_SetAsync_DropsOtherInstancesCopies()
+    {
+        var first = CreateNode(configure: o => o.StoreValues = false);
+        var second = CreateNode(configure: o => o.StoreValues = false);
+        await first.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"));
+        await second.GetOrCreateAsync("key", _ => ValueTask.FromResult("v1"));
+
+        await first.SetAsync("key", "v2");
+
+        // The new value stays in the first instance's memory; the second drops its old copy and loads again
+        (await first.GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"))).Should().Be("v2");
+        (await second.GetOrCreateAsync("key", _ => ValueTask.FromResult("loaded"))).Should().Be("loaded");
+    }
+
+    [Fact]
     public async Task Clear_ClearsEveryInstance()
     {
         var first = CreateNode();
@@ -826,6 +894,28 @@ public class DistributedCacheTests
         public Task RemoveAsync(string key, CancellationToken token = default) => inner.RemoveAsync(key, token);
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => inner.Set(key, value, options);
         public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => inner.SetAsync(key, value, options, token);
+    }
+
+    /// <summary>Records the keys written to the store, so a test can see which values were shared.</summary>
+    private sealed class RecordingStore(IDistributedCache inner) : IAtomicInvalidationStore
+    {
+        private readonly IAtomicInvalidationStore _stamps = (IAtomicInvalidationStore)inner;
+        public System.Collections.Concurrent.ConcurrentQueue<string> WrittenKeys { get; } = new();
+
+        public Task WriteInvalidationStampAsync(string key, long timestamp, TimeSpan retention, CancellationToken cancellationToken = default)
+            => _stamps.WriteInvalidationStampAsync(key, timestamp, retention, cancellationToken);
+        public byte[]? Get(string key) => inner.Get(key);
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => inner.GetAsync(key, token);
+        public void Refresh(string key) => inner.Refresh(key);
+        public Task RefreshAsync(string key, CancellationToken token = default) => inner.RefreshAsync(key, token);
+        public void Remove(string key) => inner.Remove(key);
+        public Task RemoveAsync(string key, CancellationToken token = default) => inner.RemoveAsync(key, token);
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) { WrittenKeys.Enqueue(key); inner.Set(key, value, options); }
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        {
+            WrittenKeys.Enqueue(key);
+            return inner.SetAsync(key, value, options, token);
+        }
     }
 
     private sealed class FailingDistributedCache : IAtomicInvalidationStore

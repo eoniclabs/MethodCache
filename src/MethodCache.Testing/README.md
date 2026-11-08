@@ -85,6 +85,17 @@ Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 <!-- endSnippet -->
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+<!-- snippet: testing-cached-services-declared -->
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+<!-- endSnippet -->
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,

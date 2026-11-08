@@ -1,5 +1,6 @@
 using System.CodeDom.Compiler;
 using System.Reflection;
+using MethodCache.Generated;
 using Microsoft.Extensions.DependencyInjection;
 using Registration = Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions;
 
@@ -63,6 +64,44 @@ public static class CachedServices
             .Distinct()
             .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)
             .ToList();
+
+    /// <summary>
+    /// The services with cached methods that <paramref name="assemblies"/> declare, each once, ordered by full name as
+    /// <see cref="Registered"/> orders them: the interfaces MethodCache's generator made a decorator for in those
+    /// projects. Compare the two, so a new cached interface is covered without changing the test, and one the
+    /// application never registers fails it.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// Assert.Equal(CachedServices.Declared(typeof(IOrderService).Assembly), CachedServices.Registered(provider));
+    /// </code>
+    /// </example>
+    /// <remarks>
+    /// Pass the assemblies of the projects that declare the interfaces. A generic interface is listed as its definition,
+    /// such as <c>typeof(IRepository&lt;&gt;)</c>.
+    /// </remarks>
+    /// <param name="assemblies">The assemblies with the cached interfaces, such as <c>typeof(IOrderService).Assembly</c>.</param>
+    /// <returns>The service types, such as the interfaces with <c>[Cache]</c> methods.</returns>
+    /// <exception cref="ArgumentException">No assembly is passed.</exception>
+    /// <exception cref="InvalidOperationException">The assemblies declare no service with cached methods.</exception>
+    public static IReadOnlyList<Type> Declared(params Assembly[] assemblies)
+    {
+        ArgumentNullException.ThrowIfNull(assemblies);
+        if (assemblies.Length == 0) throw new ArgumentException("Pass the assemblies that declare the cached interfaces.", nameof(assemblies));
+        foreach (var assembly in assemblies) ArgumentNullException.ThrowIfNull(assembly, nameof(assemblies));
+
+        var declared = GeneratedCode.Describe(assemblies, [])
+            .Where(module => assemblies.Contains(module.Module.GetType().Assembly))
+            .SelectMany(static module => module.DeclaredServices)
+            .Distinct()
+            .OrderBy(static type => type.FullName ?? type.Name, StringComparer.Ordinal)
+            .ToList();
+        return declared.Count > 0
+            ? declared
+            : throw new InvalidOperationException(
+                $"{string.Join(", ", assemblies.Select(static a => a.GetName().Name))} declare no service with cached methods, so nothing " +
+                "can be compared. Pass the assemblies of the projects with the [Cache] interfaces, where MethodCache's generator runs.");
+    }
 
     /// <summary>
     /// The problems of the services with cached methods registered in <paramref name="provider"/>: a service

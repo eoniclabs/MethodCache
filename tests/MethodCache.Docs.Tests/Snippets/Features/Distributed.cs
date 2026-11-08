@@ -38,7 +38,7 @@ namespace Docs.Distributed
             // begin-snippet: distributed-invalidations-only
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+                .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
             // end-snippet
         }
 
@@ -96,7 +96,7 @@ namespace Docs.Distributed.WorkerAndApi
             builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Defaults(o => o.WithDistributed(false)));
+                .Distributed(o => o.StoreValues = false));
             // end-snippet
         }
 
@@ -107,7 +107,7 @@ namespace Docs.Distributed.WorkerAndApi
             builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
             builder.Services.AddMethodCache(mc => mc
                 .UsePostgreSql(connectionString)
-                .Defaults(o => o.WithDistributed(false))
+                .Distributed(o => o.StoreValues = false)
                 .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
             // end-snippet
         }

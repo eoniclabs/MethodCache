@@ -115,6 +115,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
+| `StoreValues` | `true` | Store values in the distributed cache. `false` keeps every value in memory and uses the distributed cache for invalidations only ([Invalidations only](#invalidations-only)) |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
@@ -136,19 +137,25 @@ or start it with the application's name, such as `billing:order:42` ([Manual cac
 ## Invalidations only
 
 When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
-an API caches, say), turn off the distributed cache for every method. Values stay in each process's memory, and every
-invalidation still reaches the other processes:
+an API caches, say), set `StoreValues = false` in every process. Values stay in each process's memory, those of cached
+methods and of [manual calls](manual-caching.md) alike, and every invalidation still reaches the other processes:
 
 <!-- snippet: distributed-invalidations-only -->
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 <!-- endSnippet -->
 
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
-values are written there.
+values are written there, whatever a method or call sets. Each process then loads its own values, so with ten
+instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
+[HTTP caching](http-caching.md) are still stored in the distributed cache.
+
+To keep only some methods in memory, use `[Cache(Distributed = false)]`, a group or `WithDistributed(false)` instead
+([Configuration](configuration.md)). `Defaults(o => o.WithDistributed(false))` applies to cached methods only, so a
+manual call would still store its value.
 
 ### A worker and an API
 
@@ -173,7 +180,7 @@ builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));
+    .Distributed(o => o.StoreValues = false));
 ```
 <!-- endSnippet -->
 
@@ -186,7 +193,7 @@ invalidates the tags its mapping names, and the invalidation reaches the API thr
 builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false))
+    .Distributed(o => o.StoreValues = false)
     .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
 ```
 <!-- endSnippet -->

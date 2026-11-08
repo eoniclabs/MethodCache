@@ -4,10 +4,31 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.14 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.13
+
+- If you followed "Invalidations only" with `Defaults(o => o.WithDistributed(false))`, switch to
+  `Distributed(o => o.StoreValues = false)`. `Defaults` applies to cached methods only, so `GetOrCreateAsync` and
+  `SetAsync` still stored their values in the distributed cache.
+
+### Added
+
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, for cached methods and manual calls alike,
+  whatever their options say, and uses Redis, SQL Server or PostgreSQL for invalidations only
+  ([Invalidations only](docs/features/distributed-cache.md#invalidations-only)).
+- `CachedServices.Declared(assemblies)` in `MethodCache.Testing` lists the interfaces with cached methods in the
+  assemblies you pass, ordered as `Registered` orders them. Compare the two, and a test covers a new cached interface
+  without a change ([Every cached service resolves](docs/features/testing.md#every-cached-service-resolves)).
+
+### Fixed
+
+- Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
 
+- Testing: a minimal API endpoint that takes a cached interface fails the host before `Registered` runs when the
+  interface isn't registered.
 - The agent instructions no longer ask a coding agent to draft feedback by itself: it mentions a problem in its
   report and offers to draft feedback, and drafts and files it only when its user asks. They say we appreciate it.
 

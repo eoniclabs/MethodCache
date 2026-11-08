@@ -31,3 +31,4 @@ override MethodCache.Testing.CachedServiceProblem.ToString() -> string!
 static MethodCache.Testing.CachedServices.ProblemsAsync(System.IServiceProvider! provider) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<MethodCache.Testing.CachedServiceProblem!>!>!
 static MethodCache.Testing.CachedServices.RegistrationProblems(System.IServiceProvider! provider) -> System.Collections.Generic.IReadOnlyList<MethodCache.Testing.CachedServiceProblem!>!
 static MethodCache.Testing.CachedServices.Registered(System.IServiceProvider! provider) -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+static MethodCache.Testing.CachedServices.Declared(params System.Reflection.Assembly![]! assemblies) -> System.Collections.Generic.IReadOnlyList<System.Type!>!

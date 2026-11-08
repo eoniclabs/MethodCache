@@ -184,6 +184,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (entryVersion == 0) throw new ArgumentOutOfRangeException(nameof(entryVersion));
             _entryVersion = entryVersion;
             _verifyRoundTrip = options.VerifyRoundTrip;
+            StoresValues = options.StoreValues;
             _entryPrefix = options.KeyPrefix + "e" + entryVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ":s" + options.SerializerVersion.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             _keyPrefix = options.KeyPrefix;
@@ -198,6 +199,12 @@ namespace MethodCache.Core.Runtime.Distributed
             _breakDuration = options.CircuitBreakerDuration;
             _telemetry?.ObserveRecovery(GetInvalidationQueues);
         }
+
+        /// <summary>
+        /// Whether cached values are stored here (<see cref="DistributedCacheOptions.StoreValues"/>). When false, the
+        /// layer only carries invalidations.
+        /// </summary>
+        internal bool StoresValues { get; }
 
         /// <summary>The store, the key prefix and the backplane (null without one), as the startup log names them.</summary>
         internal (string Store, string KeyPrefix, string? Backplane) Describe()

@@ -136,7 +136,8 @@ builder.Services.AddMethodCache();                               // after your r
   cached methods resolves to its caching decorator; `CachedServices.RegistrationProblems(provider)` checks the
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
   service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
-  list and catch one that is never registered.
+  list and catch one that is never registered; `CachedServices.Declared(typeof(IOrders).Assembly)` gives that list
+  from the project's own interfaces.
 - `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
   `WithDuration` it lives five minutes.
 - Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
@@ -164,8 +165,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
-  data an API caches, or several API instances), add `.Defaults(o => o.WithDistributed(false))` in every process:
-  invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  data an API caches, or several API instances), add `.Distributed(o => o.StoreValues = false)` in every process (not
+  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): no value is stored, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
   JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, a derived type) stays in memory, with a
   warning: return records with public properties.
 - `AddHttpCaching()` needs `AddMethodCache()` in the same container, in either order. It turns off automatic cookies;
@@ -782,8 +783,8 @@ Return records with public properties, or register a serializer with `UseJson(op
 ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**
-Yes: `UsePostgreSql` (or Redis, SQL Server) with `Defaults(o => o.WithDistributed(false))` in every process. Values
-stay in each process's memory, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
+Yes: `UsePostgreSql` (or Redis, SQL Server) with `Distributed(o => o.StoreValues = false)` in every process. Values
+stay in each process's memory, from cached methods and manual calls alike, and an invalidation in one process reaches all of them: through `LISTEN`/`NOTIFY` with
 PostgreSQL, pub/sub with Redis, a table polled every second with SQL Server. The same goes for several instances of
 one app. With EF Core in the worker, its saves invalidate the tags its mapping names.
 ([A worker and an API](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#a-worker-and-an-api))
@@ -853,6 +854,8 @@ cached service. ([Every cached service resolves](https://github.com/eoniclabs/Me
 **How do I catch a cached service that the application never registers?**
 Compare `CachedServices.Registered(provider)`, the registered services with cached methods ordered by full name, with
 the list the application should have: `Assert.Equal([typeof(IOrders), typeof(IPrices)], CachedServices.Registered(provider))`.
+To keep that list up to date by itself, compare with the interfaces the project declares:
+`Assert.Equal(CachedServices.Declared(typeof(IOrders).Assembly), CachedServices.Registered(provider))`.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
 
 **How do I test that a cached method refuses another tenant's id?**
@@ -2458,7 +2461,8 @@ var list = await cache.GetOrCreateAsync(
   [Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md).
 - `Defaults` and groups are for cached methods: a manual call has only the options it passes. Without `WithDuration`
   its entry lives five minutes, whatever `Defaults` sets, and with only `WithSlidingExpiration` only `MaxExpiration`
-  limits how long reads keep it.
+  limits how long reads keep it. To keep every value out of the distributed cache, manual calls included, set
+  `StoreValues = false` ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
 - `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
@@ -2504,8 +2508,8 @@ await cache.SetAsync($"order:{saved.Id}", saved,
 ```
 
 - It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
-  gets the new value from the distributed cache. With `WithDistributed(false)` it stays in this instance's memory, and
-  the copies in the distributed cache and on other instances are removed.
+  gets the new value from the distributed cache. With `WithDistributed(false)` or `StoreValues = false` it stays in this
+  instance's memory, and the copies in the distributed cache and on other instances are removed.
 - It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
   since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
 - A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
@@ -2918,6 +2922,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
+| `StoreValues` | `true` | Store values in the distributed cache. `false` keeps every value in memory and uses the distributed cache for invalidations only ([Invalidations only](#invalidations-only)) |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
@@ -2939,17 +2944,23 @@ or start it with the application's name, such as `billing:order:42` ([Manual cac
 ## Invalidations only
 
 When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
-an API caches, say), turn off the distributed cache for every method. Values stay in each process's memory, and every
-invalidation still reaches the other processes:
+an API caches, say), set `StoreValues = false` in every process. Values stay in each process's memory, those of cached
+methods and of [manual calls](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md) alike, and every invalidation still reaches the other processes:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
-values are written there.
+values are written there, whatever a method or call sets. Each process then loads its own values, so with ten
+instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
+[HTTP caching](http-caching.md) are still stored in the distributed cache.
+
+To keep only some methods in memory, use `[Cache(Distributed = false)]`, a group or `WithDistributed(false)` instead
+([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md)). `Defaults(o => o.WithDistributed(false))` applies to cached methods only, so a
+manual call would still store its value.
 
 ### A worker and an API
 
@@ -2971,7 +2982,7 @@ builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));
+    .Distributed(o => o.StoreValues = false));
 ```
 
 The worker caches nothing. With [MethodCache.EntityFrameworkCore](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/entity-framework-core.md), its `SaveChanges`
@@ -2982,7 +2993,7 @@ invalidates the tags its mapping names, and the invalidation reaches the API thr
 builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false))
+    .Distributed(o => o.StoreValues = false)
     .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
 ```
 
@@ -3704,10 +3715,22 @@ can compare it with the services the application should have:
 Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+
 What a host already checks: when a host built with `WebApplicationFactory` or `Host.CreateApplicationBuilder` starts,
 `AddMethodCache` fails it for a service registered after `AddMethodCache`, so a test that starts the host finds that
 mistake without these methods. `ProblemsAsync` adds what starting the host doesn't check: it resolves every cached
-service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host.
+service, keyed ones too, so a missing dependency fails the test, and it works on a provider built without a host. A
+minimal API endpoint that takes a cached interface as a parameter fails the host first when that interface isn't
+registered ("Body was inferred but the method does not allow inferred body parameters"), so a test that starts the host
+fails with that error before it reaches `Registered`.
 
 ## Every tag has an invalidation
 
@@ -4006,6 +4029,10 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   wait for that.
 - `[Cache(Distributed = false)]`, `"Distributed": false` in `appsettings.json` and `WithDistributed(false)` keep a
   method or call in memory only.
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, whatever a method or call sets: no value of
+  a cached method or an `ICacheManager` call is read from or written to the distributed cache, and invalidations still
+  go through it. `SetAsync` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching are
+  still stored there.
 
 ## Policies and shared entries
 
@@ -5191,13 +5218,13 @@ builder.Services.AddMethodCache(mc => mc.UseRedis(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to Redis, and an invalidation in one process reaches all of them through pub/sub:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseRedis("localhost:6379")
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5301,13 +5328,13 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -5452,13 +5479,13 @@ MethodCache keeps its own connection pool (an `NpgsqlDataSource`), so your app's
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, turn the distributed cache off for every method, in every process. Values stay in each process's memory,
-none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
+API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, none are written to PostgreSQL, and an invalidation in one process reaches all of them through `NOTIFY`:
 
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Defaults(o => o.WithDistributed(false)));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
 ```
 
 The tables are the same as for a full distributed cache. See [Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only).
@@ -6170,6 +6197,15 @@ with cached methods, ordered by full name, for a test to compare with the servic
 Assert.Equal([typeof(IProductService)], CachedServices.Registered(provider));
 ```
 
+A list written by hand goes stale when someone adds a cached interface and forgets to register it, which is the
+mistake the test is there for. `CachedServices.Declared` lists the interfaces with cached methods in the assemblies you
+pass, in the same order, so the test covers a new interface without a change:
+
+```cs
+// Every interface with cached methods in the application's project is registered
+Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
+```
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -6206,10 +6242,31 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## Unreleased
+## 1.0.0-rc.14 (2026-11-08)
+
+### Upgrading from 1.0.0-rc.13
+
+- If you followed "Invalidations only" with `Defaults(o => o.WithDistributed(false))`, switch to
+  `Distributed(o => o.StoreValues = false)`. `Defaults` applies to cached methods only, so `GetOrCreateAsync` and
+  `SetAsync` still stored their values in the distributed cache.
+
+### Added
+
+- `DistributedCacheOptions.StoreValues = false` keeps every value in memory, for cached methods and manual calls alike,
+  whatever their options say, and uses Redis, SQL Server or PostgreSQL for invalidations only
+  ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
+- `CachedServices.Declared(assemblies)` in `MethodCache.Testing` lists the interfaces with cached methods in the
+  assemblies you pass, ordered as `Registered` orders them. Compare the two, and a test covers a new cached interface
+  without a change ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves)).
+
+### Fixed
+
+- Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
 
+- Testing: a minimal API endpoint that takes a cached interface fails the host before `Registered` runs when the
+  interface isn't registered.
 - The agent instructions no longer ask a coding agent to draft feedback by itself: it mentions a problem in its
   report and offers to draft feedback, and drafts and files it only when its user asks. They say we appreciate it.
 
