@@ -209,6 +209,24 @@ namespace MethodCache.SourceGenerator
                 isEnabledByDefault: true,
                 helpLinkUri: HelpLink("MC0040"));
 
+            internal static readonly DiagnosticDescriptor LazyLoadedEntityResult = new(
+                id: "MC0041",
+                title: "Cached result holds entities that EF Core's lazy-loading proxies create",
+                messageFormat: "'{0}' returns '{1}', which holds '{2}', an entity with virtual navigation properties, and the project uses EF Core's lazy-loading proxies: a proxy can't be restored from the distributed cache, so these results stay in each instance's memory, and writing one for the cache can load its navigations from the database. Return a type without virtual navigations, such as a record the query projects with Select.",
+                category: "Performance",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0041"));
+
+            internal static readonly DiagnosticDescriptor HiddenStateResultType = new(
+                id: "MC0042",
+                title: "Cached result type keeps its state where serializers don't write it",
+                messageFormat: "'{0}' returns '{1}', and '{2}' keeps its state in non-public fields or properties only, so a serializer writes it as an empty object and it would come back empty from the distributed cache. Give it public properties, mark its fields [JsonInclude], or give it a JSON converter.",
+                category: "Reliability",
+                defaultSeverity: DiagnosticSeverity.Warning,
+                isEnabledByDefault: true,
+                helpLinkUri: HelpLink("MC0042"));
+
             internal static readonly DiagnosticDescriptor RuntimeKeyArgument = new(
                 id: "MC0037",
                 title: "Cache key is written when the call runs",

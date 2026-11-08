@@ -81,6 +81,21 @@ namespace MethodCache.SourceGenerator
                     unsafeType.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
             }
 
+            if (FindHiddenStateResultType(result, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is { } hidden)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.HiddenStateResultType, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    hidden.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
+            if (UsesLazyLoadingProxies(method.ContainingAssembly) &&
+                FindLazyLoadedEntity(result, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is { } entity)
+            {
+                return (DiagnosticInfo.Create(Diagnostics.LazyLoadedEntityResult, location, methodName,
+                    result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
+                    entity.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
             if (FindUnrestorableResultType(result) is { } unrestorable)
             {
                 // An interface or abstract class that classes of the project derive from is restored as them

@@ -49,6 +49,8 @@ never stops a build.
 | [MC0038](#mc0038) | Warning | `SlidingExpiration` not shorter than `Duration` on the same attribute, so reads never extend an entry | |
 | [MC0039](#mc0039) | Warning | A class that derives from a type a cached result holds, but that MethodCache can't name to the distributed cache, such as a generic or private one | |
 | [MC0040](#mc0040) | Warning | A derived type the `JsonSerializerContext` passed to `UseJson` has no contract for, while it has one for the base type | Add `[JsonSerializable]` to the context |
+| [MC0041](#mc0041) | Warning | A cached result holds EF Core entities with virtual navigation properties in a project that uses lazy-loading proxies | |
+| [MC0042](#mc0042) | Warning | A cached result type, or a type in it, whose state is all non-public, so serializers write it as an empty object | |
 
 ## Rules of a later version
 
@@ -800,6 +802,59 @@ builder.Services.AddMethodCache(mc => mc.UseJson(AppJsonContext.Default));   // 
 Add `[JsonSerializable(typeof(Dog))]` to the context; the code fix does it for you. The derived types that classes in
 referenced projects register count too. The host also logs the derived types the context lacks when it starts, for a
 context the build can't see, such as one built at run time.
+
+## MC0041
+
+The project references Microsoft.EntityFrameworkCore.Proxies, and a cached result holds a class with public `virtual`
+navigation properties, such as an entity that `UseLazyLoadingProxies` loads as a proxy:
+
+```cs
+public class Customer
+{
+    public int Id { get; set; }
+    public virtual List<Order> Orders { get; set; } = [];
+}
+
+public interface ICustomers
+{
+    [Cache] Task<List<Customer>> GetAllAsync();   // MC0041
+}
+```
+
+EF Core returns a proxy class made at run time instead of a `Customer`. The distributed cache can't restore a proxy, so
+the check before sharing keeps these results in each instance's memory, and writing one for the cache reads its
+navigation properties, which loads them from the database, or throws once the `DbContext` is gone. Return a type
+without virtual navigations instead, such as a record the query projects with `Select`:
+
+```cs
+public sealed record CustomerSummary(int Id, string Name, int OrderCount);
+
+public Task<List<CustomerSummary>> GetAllAsync()
+    => db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count)).ToListAsync();
+```
+
+## MC0042
+
+A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
+state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
+so the other instances would get an empty value from the distributed cache:
+
+```cs
+public sealed class Money
+{
+    private readonly decimal _amount;
+    public Money(decimal amount) => _amount = amount;
+    public decimal Rounded() => Math.Round(_amount, 2);
+}
+
+[Cache] Task<Money> GetBalanceAsync(int accountId);   // MC0042: Money is written as {}
+```
+
+Give the type public properties, such as `public decimal Amount { get; }` set by the constructor, or a record such as
+`public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
+with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
+suppress the warning then.
 
 ## What the analyzers read from referenced projects
 
