@@ -31,7 +31,8 @@ no flush.
   your objects as they are.
 - Types serialize without attributes (contractless resolver). The defaults use LZ4 compression, keep `DateTime`
   values as they are, and read stored data with `MessagePackSecurity.UntrustedData`.
-- Like JSON, the contractless resolver doesn't restore private setters or a derived type returned as its base type.
+- Like JSON, the contractless resolver doesn't restore private setters or a derived type where its base type is
+  declared, also inside a list or property.
   With the default `VerifyRoundTrip = true`, MethodCache reads every value back before sharing it, and keeps values that don't survive that in memory only,
   with one warning per method and type.
 - To change them, start from MethodCache's defaults: `UseMessagePack(o => o.WithCompression(MessagePackCompression.None))`

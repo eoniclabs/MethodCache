@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 using MethodCache.Core.Runtime.Distributed;
 using MethodCache.Extensibility;
@@ -169,16 +170,163 @@ public class DistributedSerializationTests
         (await Load<object>(c, "k", () => "loaded")).Should().Be("loaded", "the replaced value must not stay shared");
     }
 
+    // ---------- Types inside the value ----------
+
+    public class Zoo
+    {
+        public Animal? Star { get; set; }
+
+        public List<Animal> Animals { get; set; } = [];
+    }
+
+    public sealed record Ticket(int Id, string Holder);
+
+    [JsonDerivedType(typeof(Pet), "pet")]
+    [JsonDerivedType(typeof(Poodle), "poodle")]
+    public class Pet
+    {
+        public string Name { get; set; } = "";
+    }
+
+    public class Poodle : Pet
+    {
+        public string Cut { get; set; } = "";
+    }
+
+    [Theory]
+    [MemberData(nameof(Serializers))]
+    public async Task DerivedValueInsideAList_StaysInMemoryOnly(object serializer)
+    {
+        var (a, _) = CreateNode((ISerializer)serializer);
+        var (b, _) = CreateNode((ISerializer)serializer);
+
+        (await Load<List<Animal>>(a, "k", () => [new Animal { Name = "a" }, new Dog { Name = "rex", Breed = "collie" }]))[1].Should().BeOfType<Dog>();
+
+        var result = await Load<List<Animal>>(b, "k", () => [new Dog { Name = "rex", Breed = "loaded" }]);
+        result.Should().ContainSingle().Which.Should().BeOfType<Dog>("B ran its method instead of reading a plain Animal without its breed");
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull();
+        Warnings.Should().Be(2, "each instance warns once");
+    }
+
     [Fact]
-    public async Task NestedDerivedValue_RoundTripCheckCannotDetectLostDerivedState()
+    public async Task DerivedValueInAProperty_StaysInMemoryOnly()
+    {
+        var (a, _) = CreateNode();
+
+        await Load(a, "k", () => new Zoo { Star = new Dog { Name = "rex", Breed = "collie" } });
+
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull("Star would come back as a plain Animal");
+        Warnings.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ArrayOfADerivedTypeBehindABaseTypeSequence_StaysInMemoryOnly()
+    {
+        var (a, _) = CreateNode();
+
+        await Load<IEnumerable<Animal>>(a, "k", () => new[] { new Dog { Name = "rex", Breed = "collie" } });
+
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull("the elements are written as Animal and come back as Animal");
+        Warnings.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ObjectValuesInADictionary_StayInMemoryOnly_SinceTheyComeBackAsJsonElements()
+    {
+        var (a, _) = CreateNode();
+
+        await Load(a, "k", () => new Dictionary<string, object> { ["count"] = 3, ["name"] = "x" });
+
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull("another instance would read JsonElement values, which can't be cast to int");
+        Warnings.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ValuesOfTheirDeclaredTypes_AllTheWayDown_AreShared()
     {
         var (a, _) = CreateNode();
         var (b, _) = CreateNode();
-        await Load<List<Animal>>(a, "nested", () => [new Dog { Name = "rex", Breed = "collie" }]);
-        var result = await Load<List<Animal>>(b, "nested", () => throw new InvalidOperationException("Expected L2"));
-        result.Should().ContainSingle().Which.Should().BeOfType<Animal>();
-        result[0].Name.Should().Be("rex");
-        Warnings.Should().Be(0, "the check compares the serialized representation, not nested semantic equality");
+
+        await Load(a, "zoo", () => new Zoo { Star = new Animal { Name = "s" }, Animals = [new Animal { Name = "a" }] });
+        await Load(a, "tickets", () => new List<Ticket> { new(1, "x") });
+        await Load<IReadOnlyDictionary<string, Animal>>(a, "map", () => new System.Collections.Concurrent.ConcurrentDictionary<string, Animal>(
+            Enumerable.Range(0, 50).Select(i => KeyValuePair.Create("k" + i, new Animal { Name = "a" + i }))));
+
+        (await Load<Zoo>(b, "zoo", () => throw new InvalidOperationException("Expected L2"))).Animals.Should().ContainSingle();
+        (await Load<List<Ticket>>(b, "tickets", () => throw new InvalidOperationException("Expected L2"))).Should().Equal(new Ticket(1, "x"));
+        (await Load<IReadOnlyDictionary<string, Animal>>(b, "map", () => throw new InvalidOperationException("Expected L2")))["k7"].Name.Should().Be("a7");
+        Warnings.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DerivedTypesTheSerializerWrites_AreShared()
+    {
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        await Load<List<Pet>>(a, "k", () => [new Pet { Name = "p" }, new Poodle { Name = "fifi", Cut = "lion" }]);
+
+        var result = await Load<List<Pet>>(b, "k", () => throw new InvalidOperationException("Expected L2"));
+        result[1].Should().BeOfType<Poodle>().Which.Cut.Should().Be("lion");
+        Warnings.Should().Be(0);
+    }
+
+    public class WithIgnoredMembers
+    {
+        public int Reads;
+
+        public List<Animal> Animals { get; set; } = [];
+
+        [JsonIgnore]
+        public Animal Lazy
+        {
+            get
+            {
+                Reads++;
+                return new Dog();
+            }
+            set { }
+        }
+
+        public Animal Computed => new Dog();
+    }
+
+    [Fact]
+    public async Task MembersTheSerializerSkips_AreNotCompared_NorTheirGettersCalled()
+    {
+        var (a, _) = CreateNode();
+        var value = new WithIgnoredMembers { Animals = [new Animal { Name = "a" }] };
+
+        await Load(a, "k", () => value);
+
+        _shared.Get("methodcache:e6:s1:k").Should().NotBeNull();
+        value.Reads.Should().Be(0, "a lazy-loading getter the serializer skips must not run");
+        Warnings.Should().Be(0);
+    }
+
+    public class Node
+    {
+        public Animal? Pet { get; set; }
+
+        public Node? Next { get; set; }
+    }
+
+    [Fact]
+    public async Task CyclicGraph_WithReferencesPreserved_IsCompared()
+    {
+        var serializer = new JsonCacheSerializer(new System.Text.Json.JsonSerializerOptions { ReferenceHandler = ReferenceHandler.Preserve });
+        var (a, _) = CreateNode(serializer);
+        var shared = new Node { Pet = new Animal { Name = "a" } };
+        shared.Next = shared;
+        var lossy = new Node { Pet = new Dog { Name = "d" } };
+        lossy.Next = lossy;
+
+        await Load(a, "shared", () => shared, method: "Shared");
+        await Load(a, "lossy", () => lossy, method: "Lossy");
+
+        _shared.Get("methodcache:e6:s1:shared").Should().NotBeNull();
+        _shared.Get("methodcache:e6:s1:lossy").Should().BeNull();
+        Warnings.Should().Be(1);
     }
 
     [Fact]

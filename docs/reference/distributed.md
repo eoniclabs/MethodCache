@@ -98,16 +98,22 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 
 ## Serialization
 
-- Every value an instance writes is first read back and written again. When that doesn't give the same bytes and type,
-  that value and every later value of that method and type stay in memory only, and one warning names them. Each
+- Every value an instance writes is first read back and written again. When that doesn't give the same bytes and
+  types, that value and every later value of that method and type stay in memory only, and one warning names them. Each
   value is checked, since one with default data (an `Id` of 0 behind a private setter) can come back unchanged where
   the next one doesn't.
 - That happens with properties that have a private or protected setter, public readonly fields of a type that also
-  has a parameterless constructor, a derived type returned as its declared base type (an `Animal` method returning a
-  `Dog`), `object`, and values the serializer throws on (a cycle, a delegate), with JSON and MessagePack alike.
+  has a parameterless constructor, a derived type where its base type is declared (an `Animal` method returning a
+  `Dog`, a `Dog` in a `List<Animal>` or in an `Animal` property), `object` anywhere in the value (it comes back as a
+  `JsonElement`, so a `Dictionary<string, object>` does too), and values the serializer throws on (a cycle, a
+  delegate), with JSON and MessagePack alike. `[JsonDerivedType]` on the base type shares a derived type as itself.
+- The types are compared through collections (a dictionary by key) and the public properties and fields a serializer
+  writes: properties with a setter and auto-properties, not computed ones, and nothing marked `[JsonIgnore]`,
+  `[IgnoreDataMember]`, `[IgnoreMember]` or `[NonSerialized]`, whose getters aren't called. A member that is null on
+  either side isn't compared. A value whose declared type can't hold another type, such as an `int`, a `List<int>` or
+  a sealed record of strings, has nothing to compare and costs nothing extra.
 - State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
-  bytes, so the check can't see that it is lost. The check also looks only at the value's own type: a `Dog` inside a
-  `List<Animal>` is shared without its `Dog` data. Make such state serializable, or register a serializer that writes
+  bytes, so the check can't see that it is lost. Make such state serializable, or register a serializer that writes
   it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
 - A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
   `List<int>` for an array, and is still shared.

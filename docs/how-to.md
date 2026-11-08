@@ -329,8 +329,9 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 ([Runtime overrides](features/configuration.md#runtime-overrides))
 
 **A result type stays in memory only, with a warning. Why?**
-It doesn't read back from JSON unchanged: private setters, a derived type returned as its base type, or `object`.
-Return records with public properties, or register a serializer with `UseJson(options)`.
+It doesn't read back from JSON unchanged: private setters, a derived type where its base type is declared (also in a
+list or property), or `object`. Return records with public properties, add `[JsonDerivedType]` to the base type, or
+register a serializer with `UseJson(options)`.
 ([Serialization](features/distributed-cache.md#serialization))
 
 **Can a worker process invalidate the API's memory cache without sharing values?**

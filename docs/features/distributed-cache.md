@@ -238,10 +238,11 @@ API's test project references the worker project, since the worker is where the 
 
 Values are written as JSON with System.Text.Json, public fields included, so records, value tuples and structs are
 shared as they are. Each value is read back once before it is shared. A value that doesn't come back the same, such as
-a class with private setters, a `Dog` returned from a method declared to return `Animal`, or `object`, stays in that
-instance's memory only, with one warning that names the method and the type. Register your own
-`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` to share such values (`[JsonInclude]`,
-`[JsonDerivedType]`). [Distributed cache reference](../reference/distributed.md#serialization) has the exact rules.
+a class with private setters, a `Dog` where `Animal` is declared (as the result, in a list or in a property), or
+`object`, stays in that instance's memory only, with one warning that names the method and the type. Add
+`[JsonDerivedType(typeof(Dog), "dog")]` to `Animal` to share a `Dog` as a `Dog`, or register your own
+`JsonSerializerOptions` or `JsonSerializerContext` with `UseJson` (`[JsonInclude]` for private setters).
+[Distributed cache reference](../reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
 

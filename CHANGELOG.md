@@ -8,6 +8,10 @@ release.
 
 ### Upgrading from 1.0.0-rc.13
 
+- A result that holds a derived type where its base type is declared, such as a `Dog` in a `List<Animal>` or in an
+  `Animal` property, or `object` values, such as those of a `Dictionary<string, object>`, now stays in memory with a
+  warning instead of reaching the other instances without its data. To share it, add `[JsonDerivedType]` to the base
+  type, or return a type without `object`.
 - If you followed "Invalidations only" with `Defaults(o => o.WithDistributed(false))`, switch to
   `Distributed(o => o.StoreValues = false)`. `Defaults` applies to cached methods only, so `GetOrCreateAsync` and
   `SetAsync` still stored their values in the distributed cache.
@@ -23,6 +27,10 @@ release.
 
 ### Fixed
 
+- The check before a value is shared through the distributed cache compares the types inside it too, through its
+  collections, properties and fields. A `Dog` in a `List<Animal>` came back as a plain `Animal` on the other
+  instances, and an `int` in a `Dictionary<string, object>` as a `JsonElement`; such a value now stays in memory with
+  the warning ([Serialization](docs/reference/distributed.md#serialization)).
 - Setting `MethodCacheAnalysisLevel` failed every build with MSB4184 since 1.0.0-rc.11. It builds again.
 
 ### Documentation
