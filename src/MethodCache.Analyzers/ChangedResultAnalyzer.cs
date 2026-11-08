@@ -9,9 +9,9 @@ using Microsoft.CodeAnalysis.Operations;
 namespace MethodCache.Analyzers
 {
     /// <summary>
-    /// Reports MC0043: code changes a result a cached method returned, such as <c>orders.Add(order)</c> or
-    /// <c>order.Status = Status.Closed</c>. The memory cache hands that same instance to later callers on this instance,
-    /// while other instances read the stored copy, so they see different values.
+    /// Reports MC0043: code changes a cached result, such as <c>orders.Add(order)</c> or <c>order.Status = Status.Closed</c>
+    /// on the result of a cached method or of <c>ICacheManager.GetOrCreateAsync</c>. The memory cache hands that same
+    /// instance to later callers on this instance, while other instances read the stored copy, so they see different values.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class ChangedResultAnalyzer : DiagnosticAnalyzer
@@ -20,12 +20,12 @@ namespace MethodCache.Analyzers
 
         internal static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             "MC0043",
-            "Code changes a result a cached method returned",
-            "This changes the result of cached method '{0}'. The memory cache hands that same instance to every later caller on this instance, while other instances read the stored copy, so they see different values. Change a copy instead, such as new List<T>(result), result.ToList() or a record's with expression, or return a type that can't be changed.",
+            "Code changes a cached result",
+            "This changes a cached result of '{0}'. The memory cache hands that same instance to every later caller on this instance, while other instances read the stored copy, so they see different values. Change a copy instead, such as new List<T>(result), result.ToList() or a record's with expression, or return a type that can't be changed.",
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "A cached method's result is shared: the memory cache keeps the instance it returned and hands it to later calls, and the distributed cache keeps a serialized copy. Setting a property or field of the result or of an object in it, or adding to or removing from a collection in it, changes what later callers on this instance get, but not what the distributed cache stores. Reported for results kept in a local or read in a foreach, and for objects reached from them through properties, fields, indexers, First, Single, Last, ElementAt and Find, and the elements of ToList, ToArray, Where and other LINQ copies. Not reported in test projects.",
+            description: "A cached result is shared: the memory cache keeps the instance a cached method or ICacheManager.GetOrCreateAsync returned and hands it to later calls, and the distributed cache keeps a serialized copy. Setting a property or field of the result or of an object in it, adding to or removing from a collection in it, or writing to an array in it, also through a Span<T>, Array.Copy or CopyTo, changes what later callers on this instance get, but not what the distributed cache stores. Reported for results kept in a local or read in a foreach, and for objects reached from them through properties, fields, indexers, First, Single, Last, ElementAt and Find, the elements of ToList, ToArray, Where and other LINQ copies, and the values of GetOrCreateManyAsync. Not reported in test projects.",
             helpLinkUri: HelpLink("MC0043"));
 
         // Methods of System.Collections types that change the collection they are called on
@@ -39,6 +39,20 @@ namespace MethodCache.Analyzers
 
         // Static System.Array methods that change the array passed first
         private static readonly HashSet<string> ChangingArrayMethods = new HashSet<string>(System.StringComparer.Ordinal) { "Sort", "Reverse", "Clear", "Fill", "Resize" };
+
+        // Span<T> methods that change the memory the span covers
+        private static readonly HashSet<string> ChangingSpanMethods = new HashSet<string>(System.StringComparer.Ordinal) { "Clear", "Fill" };
+
+        // MemoryExtensions methods that change the span passed first
+        private static readonly HashSet<string> ChangingMemoryExtensions = new HashSet<string>(System.StringComparer.Ordinal) { "Sort", "Reverse", "Replace" };
+
+        // Methods that copy into an array, span or memory passed as the argument of one of these parameters
+        private static readonly HashSet<string> CopyMethods = new HashSet<string>(System.StringComparer.Ordinal) { "Copy", "ConstrainedCopy", "BlockCopy", "CopyTo", "TryCopyTo" };
+        private static readonly HashSet<string> Destinations = new HashSet<string>(System.StringComparer.Ordinal) { "destinationArray", "dst", "destination", "array" };
+
+        // ICacheManager methods whose result is the cached value, or a dictionary of its own holding cached values
+        private static readonly HashSet<string> ManagerResults = new HashSet<string>(System.StringComparer.Ordinal) { "GetOrCreateAsync", "TryGetAsync" };
+        private const string ManagerMany = "GetOrCreateManyAsync";
 
         // LINQ methods whose result is an element of the source
         private static readonly HashSet<string> Elements = new HashSet<string>(System.StringComparer.Ordinal)
@@ -95,7 +109,8 @@ namespace MethodCache.Analyzers
             var methods = new List<IMethodSymbol>();
             if (ReachOf(changed, external, methods, new HashSet<ILocalSymbol>(SymbolEqualityComparer.Default)) != Reach.Result || methods.Count == 0) return;
             var method = methods[0];
-            context.ReportDiagnostic(Diagnostic.Create(Rule, context.Operation.Syntax.GetLocation(), method.ContainingType.Name + "." + method.Name));
+            var owner = IsCacheManager(method) ? "ICacheManager" : method.ContainingType.Name;
+            context.ReportDiagnostic(Diagnostic.Create(Rule, context.Operation.Syntax.GetLocation(), owner + "." + method.Name));
         }
 
         /// <summary>The object an assignment changes: the instance of a property, field or indexer, or the array of an element.</summary>
@@ -111,7 +126,7 @@ namespace MethodCache.Analyzers
             return Storage(changed);
         }
 
-        /// <summary>The collection a call to one of its changing methods changes.</summary>
+        /// <summary>The collection, array or span a call to one of its changing methods changes, or copies into.</summary>
         private static IOperation? ChangedBy(IInvocationOperation invocation)
         {
             var method = invocation.TargetMethod;
@@ -119,9 +134,31 @@ namespace MethodCache.Analyzers
             if (type == null) return null;
             if (type.SpecialType == SpecialType.System_Array && method.IsStatic && ChangingArrayMethods.Contains(method.Name) && invocation.Arguments.Length > 0)
                 return invocation.Arguments[0].Value;
+            if (CopyMethods.Contains(method.Name) && CopiesInto(type))
+                return invocation.Arguments.FirstOrDefault(a => a.Parameter is { } parameter && Destinations.Contains(parameter.Name))?.Value;
+            if (IsSystem(type, "MemoryExtensions") && ChangingMemoryExtensions.Contains(method.Name) && method.Parameters.Length > 0 &&
+                method.Parameters[0].Type is INamedTypeSymbol first && IsView(first) && invocation.Arguments.Length > 0)
+                return invocation.Arguments[0].Value;
+            if (IsView(type) && !method.IsStatic && ChangingSpanMethods.Contains(method.Name)) return invocation.Instance;
             if (method.IsStatic || !ChangingMethods.Contains(method.Name) || !IsChangingCollection(type)) return null;
             return Storage(invocation.Instance);
         }
+
+        // Types whose Copy, BlockCopy or CopyTo writes to an array, span or memory passed as an argument
+        private static bool CopiesInto(INamedTypeSymbol type)
+            => type.SpecialType == SpecialType.System_Array || IsSystem(type, "Buffer") || IsSystem(type, "MemoryExtensions") ||
+               IsSystem(type, "Span") || IsSystem(type, "ReadOnlySpan") || IsSystem(type, "Memory") || IsSystem(type, "ReadOnlyMemory") ||
+               IsChangingCollection(type);
+
+        // Span<T>, Memory<T> and ArraySegment<T> are structs that write to the array they cover
+        private static bool IsView(ITypeSymbol? type)
+            => type is INamedTypeSymbol { Arity: 1 } named && (IsSystem(named, "Span") || IsSystem(named, "Memory") || IsSystem(named, "ArraySegment"));
+
+        private static bool IsSystem(INamedTypeSymbol type, string name)
+            => type.Name == name && type.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true };
+
+        private static bool IsCacheManager(IMethodSymbol method)
+            => method.ContainingType is { Name: "ICacheManager" or "CacheManagerExtensions", ContainingNamespace: { Name: "MethodCache", ContainingNamespace.IsGlobalNamespace: true } };
 
         private static bool IsChangingCollection(INamedTypeSymbol type)
         {
@@ -137,7 +174,7 @@ namespace MethodCache.Analyzers
         private static IOperation? Storage(IOperation? operation)
         {
             while (operation is IConversionOperation conversion) operation = conversion.Operand;
-            if (operation?.Type is not { IsValueType: true }) return operation;
+            if (operation?.Type is not { IsValueType: true } || IsView(operation.Type)) return operation;
             return operation switch
             {
                 IFieldReferenceOperation field => Storage(field.Instance),
@@ -168,6 +205,9 @@ namespace MethodCache.Analyzers
                     return Member(ReachOf(field.Instance, external, methods, visited));
                 case IArrayElementReferenceOperation element:
                     return Inside(ReachOf(element.ArrayReference, external, methods, visited));
+                case IObjectCreationOperation creation when IsView(creation.Type):
+                    // new Span<T>(result) covers the result's own array
+                    return creation.Arguments.Length > 0 ? ReachOf(creation.Arguments[0].Value, external, methods, visited) : Reach.None;
                 case IObjectCreationOperation creation:
                     // new List<T>(result) holds the result's elements in a collection of its own
                     return creation.Arguments.Any(a => ReachOf(a.Value, external, methods, visited) != Reach.None) ? Reach.Copy : Reach.None;
@@ -178,7 +218,23 @@ namespace MethodCache.Analyzers
                         return Reach.Result;
                     }
 
+                    if (IsCacheManager(invocation.TargetMethod) && (ManagerResults.Contains(invocation.TargetMethod.Name) || invocation.TargetMethod.Name == ManagerMany))
+                    {
+                        methods.Add(invocation.TargetMethod);
+                        // GetOrCreateManyAsync returns a dictionary of its own; its values are the cached ones
+                        return invocation.TargetMethod.Name == ManagerMany ? Reach.Copy : Reach.Result;
+                    }
+
                     var source = invocation.Instance ?? (invocation.TargetMethod.IsExtensionMethod && invocation.Arguments.Length > 0 ? invocation.Arguments[0].Value : null);
+                    // A span or memory over the result, or a slice of one, writes to the result's own array
+                    if (invocation.TargetMethod.Name is "AsSpan" or "AsMemory" && invocation.TargetMethod.ContainingType is { } owner &&
+                        (IsSystem(owner, "MemoryExtensions") || owner is { Name: "CollectionsMarshal", ContainingNamespace.Name: "InteropServices" }) ||
+                        invocation.TargetMethod.Name == "Slice" && IsView(invocation.TargetMethod.ContainingType))
+                    {
+                        if (source == null && invocation.Arguments.Length > 0) source = invocation.Arguments[0].Value;
+                        return ReachOf(source, external, methods, visited);
+                    }
+
                     if (Elements.Contains(invocation.TargetMethod.Name)) return Inside(ReachOf(source, external, methods, visited));
                     if (Copies.Contains(invocation.TargetMethod.Name)) return ReachOf(source, external, methods, visited) == Reach.None ? Reach.None : Reach.Copy;
                     return Reach.None;

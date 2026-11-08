@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 namespace MethodCache.PostgreSql.IntegrationTests;
 
 /// <summary>
-/// With UsePostgreSql and StoreValues = false, values stay in each process's memory, from cached methods and manual
+/// With UsePostgreSql and StoreValuesByDefault = false, values stay in each process's memory, from cached methods and manual
 /// calls alike, and only the invalidations go through PostgreSQL (docs/features/distributed-cache.md, "Invalidations only").
 /// </summary>
 [Collection(PostgreSqlCollection.Name)]
@@ -24,7 +24,7 @@ public class MemoryOnlyValuesTests(PostgreSqlFixture postgres)
     }
 
     [SkippableFact]
-    public async Task StoreValuesOff_ValuesStayInEachProcess_InvalidationsReachTheOthers()
+    public async Task StoreValuesByDefaultOff_ValuesStayInEachProcess_InvalidationsReachTheOthers()
     {
         var options = postgres.Options("memoryonly");
         try
@@ -74,7 +74,7 @@ public class MemoryOnlyValuesTests(PostgreSqlFixture postgres)
                 o.SchemaName = options.SchemaName;
                 o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50);
             })
-            .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+            .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
         var provider = services.BuildServiceProvider();
         var hosted = provider.GetServices<IHostedService>().ToArray();
         foreach (var service in hosted) await service.StartAsync(CancellationToken.None);

@@ -160,8 +160,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Several registrations of one interface with different implementation types each cache their own results.
 - For a distributed cache use `UseRedis`, `UseSqlServer` or `UsePostgreSql`; MethodCache never uses the app's
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
-  data an API caches, or several API instances), add `.Distributed(o => o.StoreValues = false)` in every process (not
-  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): no value is stored, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
+  data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
+  `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
   JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
   warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place

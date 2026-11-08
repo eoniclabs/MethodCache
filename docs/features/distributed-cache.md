@@ -115,7 +115,8 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
 | `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
-| `StoreValues` | `true` | Store values in the distributed cache. `false` keeps every value in memory and uses the distributed cache for invalidations only ([Invalidations only](#invalidations-only)) |
+| `StoreValuesByDefault` | `true` | Store values in the distributed cache. `false` keeps values in memory, except those of methods and calls that set `Distributed` to `true`, and uses the distributed cache for invalidations ([Invalidations only](#invalidations-only)) |
+| `VerifyUnchangedInDevelopment` | `true` | In Development, write the values kept in memory again every two seconds and warn when code changed one ([Results that don't change](#results-that-dont-change)) |
 | `VerifyRoundTrip` | `true` | Read each value back before sharing it, and keep values that don't come back the same in memory only ([Serialization](#serialization)) |
 | `SerializerVersion` | `1` | Raise it when you change serializer settings, so values written with the old settings are not read |
 
@@ -137,25 +138,50 @@ or start it with the application's name, such as `billing:order:42` ([Manual cac
 ## Invalidations only
 
 When each process should keep its own values, and only needs to hear about invalidations (a worker that changes data
-an API caches, say), set `StoreValues = false` in every process. Values stay in each process's memory, those of cached
-methods and of [manual calls](manual-caching.md) alike, and every invalidation still reaches the other processes:
+an API caches, say), set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, those of
+cached methods and of [manual calls](manual-caching.md) alike, and every invalidation still reaches the other processes:
 
 <!-- snippet: distributed-invalidations-only -->
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 <!-- endSnippet -->
 
 Invalidations are still stored in the database, so it needs the same tables as a full distributed cache, but no
-values are written there, whatever a method or call sets. Each process then loads its own values, so with ten
-instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
+values are written there unless a method or call asks for it (below). Each process then loads its own values, so with
+ten instances a key is loaded ten times, and a new instance starts with an empty cache. Responses cached by
 [HTTP caching](http-caching.md) are still stored in the distributed cache.
 
 To keep only some methods in memory, use `[Cache(Distributed = false)]`, a group or `WithDistributed(false)` instead
 ([Configuration](configuration.md)). `Defaults(o => o.WithDistributed(false))` applies to cached methods only, so a
 manual call would still store its value.
+
+### Memory by default, shared where you say so
+
+With `StoreValuesByDefault = false`, a method with `[Cache(Distributed = true)]` or a call with `WithDistributed(true)`
+still stores its value in the distributed cache, so every instance reads it. Share values that are expensive or
+rate-limited to load, such as an access token or a supplier's response, and keep the rest in each instance's memory:
+
+<!-- snippet: distributed-memory-by-default -->
+```cs
+builder.Services.AddMethodCache(mc => mc
+    .UseRedis("localhost:6379")
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory unless a method or call says otherwise
+```
+<!-- endSnippet -->
+
+<!-- snippet: distributed-shared-call -->
+```cs
+// Every instance reuses one access token instead of asking the provider for its own
+return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.RequestTokenAsync(ct),
+    o => o.WithDuration(TimeSpan.FromMinutes(50)).WithDistributed(true));
+```
+<!-- endSnippet -->
+
+A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
+`appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
 ### A worker and an API
 
@@ -180,7 +206,7 @@ builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddScoped<IFoodCatalog, FoodCatalog>();
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false));
+    .Distributed(o => o.StoreValuesByDefault = false));
 ```
 <!-- endSnippet -->
 
@@ -193,7 +219,7 @@ invalidates the tags its mapping names, and the invalidation reaches the API thr
 builder.Services.AddDbContext<FoodDb>(o => o.UseNpgsql(connectionString));
 builder.Services.AddMethodCache(mc => mc
     .UsePostgreSql(connectionString)
-    .Distributed(o => o.StoreValues = false)
+    .Distributed(o => o.StoreValuesByDefault = false)
     .UseEntityFrameworkCore<FoodDb>(ef => ef.Entity<Food>("food-catalog")));
 ```
 <!-- endSnippet -->
@@ -288,12 +314,14 @@ without the change. Instances then give different answers until the entry expire
   `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>` for collections.
 - When a caller needs to change a result, change a copy: `orders.ToList()`, `new List<Order>(orders)`, or
   `order with { Status = OrderStatus.Shown }`. A list copy holds the same objects, so copy an object before setting
-  its properties.
+  its properties. Copy an array, such as a `float[]` embedding, before you normalize it in place: `vector.ToArray()`,
+  then write to the copy or a `Span<float>` over it.
 - [MC0043](../user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
   methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
   writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
   per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
-  call is answered from memory.
+  call is answered from memory. When values are so large that writing them again slows down development, turn it off
+  with `Distributed(o => o.VerifyUnchangedInDevelopment = false)`.
 - Keep all state in what the serializer writes: data only in private fields is written as `{}`
   ([MC0042](../user-guide/DIAGNOSTICS.md#mc0042)).
 - An object referenced twice in a result comes back as two copies, and a `DateTime` of kind `Local` shows another

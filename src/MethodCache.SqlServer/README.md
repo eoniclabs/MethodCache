@@ -51,14 +51,14 @@ builder.Services.AddMethodCache(mc => mc.UseSqlServer(options =>
 ### Invalidations only
 
 When each process should keep its own values and only hear about invalidations, such as a worker that changes data an
-API caches, set `StoreValues = false` in every process. Values stay in each process's memory, for cached methods and
-manual calls alike, none are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
+API caches, set `StoreValuesByDefault = false` in every process. Values stay in each process's memory, for cached methods and
+manual calls alike, only those that set `Distributed` to `true` are written to SQL Server, and an invalidation in one process reaches all of them on their next poll:
 
 <!-- snippet: sqlserver-invalidations-only -->
 ```cs
 builder.Services.AddMethodCache(mc => mc
     .UseSqlServer(builder.Configuration.GetConnectionString("Cache")!)
-    .Distributed(o => o.StoreValues = false));   // values stay in memory; invalidations reach every process
+    .Distributed(o => o.StoreValuesByDefault = false));   // values stay in memory; invalidations reach every process
 ```
 <!-- endSnippet -->
 
