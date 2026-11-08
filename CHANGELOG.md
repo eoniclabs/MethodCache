@@ -4,6 +4,19 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.16 (2026-11-08)
+
+No code changes from rc.15; upgrade by changing the version number.
+
+### Documentation
+
+- MC0043: changes made in a method of your own that the result is passed to, such as a helper that adds to a cached
+  list, aren't reported; the check in Development finds them at run time for values shared through the distributed
+  cache.
+- Distributed cache: a `SetAsync` that keeps its value in memory writes a removal stamp, `methodcache:r:<key>` with the
+  default `KeyPrefix`, that holds no value and expires after `TagRetention`
+  ([Memory by default, shared where you say so](docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
+
 ## 1.0.0-rc.15 (2026-11-08)
 
 ### Upgrading from 1.0.0-rc.14

@@ -3010,6 +3010,10 @@ return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.Reque
 A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
 `appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
+A `SetAsync` that keeps its value in memory still removes the key's old copy from the distributed cache, so other
+instances load the value again instead of reading the old one. Like invalidating the key, it writes a removal stamp there:
+`methodcache:r:<key>` with the default `KeyPrefix`, which holds no value and expires after `TagRetention` (1 day).
+
 ### A worker and an API
 
 A common case: a worker writes data with EF Core, and an API caches reads of it. The API caches in its own memory and
@@ -3136,9 +3140,9 @@ without the change. Instances then give different answers until the entry expire
   its properties. Copy an array, such as a `float[]` embedding, before you normalize it in place: `vector.ToArray()`,
   then write to the copy or a `Span<float>` over it.
 - [MC0043](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0043) reports code that changes a cached result while you build. Your own
-  methods that change an object, such as `order.Close()`, aren't seen by the build. In Development, MethodCache also
-  writes the values it keeps in memory again every two seconds, compares them with what it stored, and logs one warning
-  per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
+  methods that change an object, such as `order.Close()` or a helper you pass the result to, aren't seen by the build.
+  In Development, MethodCache also writes the values it keeps in memory again every two seconds, compares them with
+  what it stored, and logs one warning per method whose value has changed. That check runs only when `IHostEnvironment` says Development, and never when a
   call is answered from memory. When values are so large that writing them again slows down development, turn it off
   with `Distributed(o => o.VerifyUnchangedInDevelopment = false)`.
 - Keep all state in what the serializer writes: data only in private fields is written as `{}`
@@ -4156,8 +4160,9 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   `ICacheManager` call whose `Distributed` is unset is neither read from nor written to the distributed cache, and
   invalidations still go through it. `Distributed = true` (attribute, group, `Defaults`, `appsettings.json` or
   `WithDistributed(true)`) still shares a value, and `false` keeps it in memory whatever the option says. `SetAsync`
-  without `WithDistributed(true)` then removes the key's copies on other instances. Responses of MethodCache.HttpCaching
-  are still stored there.
+  without `WithDistributed(true)` then removes the key's copies on other instances and in the distributed cache, where it
+  writes a removal stamp `<KeyPrefix>r:<key>` with no value that expires after `TagRetention`, as invalidating the key
+  does. Responses of MethodCache.HttpCaching are still stored there.
 - `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
   values kept in memory and shared again every two seconds and warns about one that code changed.
 
@@ -5374,9 +5379,11 @@ For an array, such as a `float[]` embedding, copy it before you change it: `(flo
 It's reported for the result of a cached method, and of `GetOrCreateAsync`, `GetOrCreateManyAsync` and `TryGetAsync` on
 `ICacheManager`, kept in a local or read in a `foreach`. It follows objects reached from it through properties, fields,
 indexers, `First`, `Single`, `Last`, `ElementAt` and `Find`, through LINQ copies such as `ToList`, `ToArray` and
-`Where`, and through spans over its arrays. Your own methods that change an object, such as `order.Close()`, and a value
-you change after passing it to `SetAsync` aren't seen; in Development, MethodCache also compares cached values with what
-it stored now and then, and logs a warning naming the method when one has changed. Not reported in test projects.
+`Where`, and through spans over its arrays. It looks only at the method that holds the result, so a method of yours that
+changes an object isn't seen: neither one on the object, such as `order.Close()`, nor a helper you pass it to, such as
+`AddDraft(orders)` with `static void AddDraft(List<Order> list) => list.Add(Draft)`. A value you change after passing it
+to `SetAsync` isn't seen either. For those, in Development, MethodCache also compares cached values with what it stored
+now and then, and logs a warning naming the method when one has changed. Not reported in test projects.
 
 ## What the analyzers read from referenced projects
 
@@ -6549,6 +6556,19 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.16 (2026-11-08)
+
+No code changes from rc.15; upgrade by changing the version number.
+
+### Documentation
+
+- MC0043: changes made in a method of your own that the result is passed to, such as a helper that adds to a cached
+  list, aren't reported; the check in Development finds them at run time for values shared through the distributed
+  cache.
+- Distributed cache: a `SetAsync` that keeps its value in memory writes a removal stamp, `methodcache:r:<key>` with the
+  default `KeyPrefix`, that holds no value and expires after `TagRetention`
+  ([Memory by default, shared where you say so](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
 
 ## 1.0.0-rc.15 (2026-11-08)
 
