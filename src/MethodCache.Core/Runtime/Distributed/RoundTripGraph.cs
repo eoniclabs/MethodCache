@@ -18,7 +18,8 @@ namespace MethodCache.Core.Runtime.Distributed;
 /// serializer writes: a property with a setter or an auto-property, and a public field, unless it is marked
 /// <c>[JsonIgnore]</c>, <c>[IgnoreDataMember]</c>, <c>[IgnoreMember]</c> or <c>[NonSerialized]</c>, so a computed or
 /// lazy-loading getter the serializer skips isn't called. A member that is null on either side isn't compared: the
-/// serializer may skip it on purpose. Positions whose declared type can't hold another type (an <c>int</c>, a sealed
+/// serializer may skip it on purpose. A dictionary or set's comparer is compared too, since a serializer writes only the
+/// items and reads them back into one with the default comparer, so a case-insensitive lookup would then miss. Positions whose declared type can't hold another type (an <c>int</c>, a sealed
 /// record of strings, a <c>List&lt;int&gt;</c>) are never visited, so most values cost nothing.
 /// </remarks>
 internal static class RoundTripGraph
@@ -87,6 +88,7 @@ internal static class RoundTripGraph
 
         internal bool Inside(object written, object read, Facts declared, Facts facts, int depth)
         {
+            if (facts.Comparer is { } comparer && !SameComparer(comparer(written), FactsOf(read.GetType()).Comparer?.Invoke(read))) return false;
             if (facts.Element != null)
             {
                 // The declared element type, since an array behind IEnumerable<Animal> may be a Dog[]
@@ -163,6 +165,17 @@ internal static class RoundTripGraph
     private static Facts FactsOf(Type type) => Known.GetOrAdd(type, static type => new Facts(type));
 
     /// <summary>
+    /// Whether a collection read back looks its items up as the written one did. A collection read back without a
+    /// comparer of its own isn't compared; <see cref="StringComparer.Ordinal"/> tells strings apart as the default
+    /// equality comparer does.
+    /// </summary>
+    private static bool SameComparer(object? written, object? read)
+        => read is null || written is null || written.Equals(read) || (Ordinal(written) && Ordinal(read));
+
+    private static bool Ordinal(object comparer)
+        => ReferenceEquals(comparer, StringComparer.Ordinal) || ReferenceEquals(comparer, EqualityComparer<string>.Default);
+
+    /// <summary>
     /// What the walk needs to know about a type, worked out once: as a declared type, whether a value there may come
     /// back holding other types; as a runtime type, what is compared inside it.
     /// </summary>
@@ -178,6 +191,8 @@ internal static class RoundTripGraph
         private Member[]? _members;
         private Facts? _dictionaryValue;
         private bool _dictionaryValueKnown;
+        private Func<object, object?>? _comparer;
+        private bool _comparerKnown;
 
         public Facts(Type type)
         {
@@ -196,6 +211,21 @@ internal static class RoundTripGraph
         /// never one, since what its elements may hold depends on the element type it is declared with.
         /// </summary>
         public bool IsLeaf => _element == null && Members.Length == 0;
+
+        /// <summary>
+        /// For a collection with a comparer, such as a <c>Dictionary</c> or <c>HashSet</c>, the getter of its
+        /// <c>Comparer</c> or <c>KeyComparer</c>; null for anything else.
+        /// </summary>
+        public Func<object, object?>? Comparer
+        {
+            get
+            {
+                if (Volatile.Read(ref _comparerKnown)) return _comparer;
+                _comparer = _element == null ? null : ComparerOf(Type);
+                Volatile.Write(ref _comparerKnown, true);
+                return _comparer;
+            }
+        }
 
         /// <summary>The members compared inside a value of this runtime type: those whose declared type may differ.</summary>
         public Member[] Members => _members ??= Serialized.Where(static m => m.Facts.MayDiffer).ToArray();
@@ -260,7 +290,8 @@ internal static class RoundTripGraph
             var type = Nullable.GetUnderlyingType(Type) ?? Type;
             if (IsSimple(type)) return false;
             if (type != Type) return FactsOf(type).MayDiffer;
-            if (_element != null) return Element!.MayDiffer;
+            // A collection declared with a comparer, or as an interface a dictionary or set may stand behind
+            if (_element != null) return Element!.MayDiffer || ComparerOf(type) != null || LooksUp(type);
             if (type.IsInterface || type.IsAbstract || (!type.IsValueType && !type.IsSealed)) return true;
             return Serialized.Any(static m => m.Facts.MayDiffer);
         }
@@ -287,6 +318,39 @@ internal static class RoundTripGraph
             }
         }
     }
+
+    /// <summary>The getter of a collection's public <c>Comparer</c> or <c>KeyComparer</c>, or null when it has none.</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "A check only: a comparer trimming removed isn't compared, so it finds less, never a false difference.")]
+    private static Func<object, object?>? ComparerOf(Type type)
+    {
+        if (type.IsInterface || type.IsAbstract) return null;
+        try
+        {
+            foreach (var name in (ReadOnlySpan<string>)["Comparer", "KeyComparer"])
+            {
+                var property = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+                if (property is { GetMethod.IsPublic: true } && property.GetIndexParameters().Length == 0 && property.PropertyType.IsGenericType &&
+                    property.PropertyType.GetGenericTypeDefinition() is var definition &&
+                    (definition == typeof(IEqualityComparer<>) || definition == typeof(IComparer<>)))
+                {
+                    return Getter(property);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // A comparer that can't be read by reflection isn't compared
+        }
+
+        return null;
+    }
+
+    /// <summary>A dictionary or set interface, behind which a collection with a comparer may stand.</summary>
+    private static bool LooksUp(Type type)
+        => type.IsGenericType && type.GetGenericTypeDefinition() is var definition &&
+           (definition == typeof(IDictionary<,>) || definition == typeof(IReadOnlyDictionary<,>) ||
+            definition == typeof(ISet<>) || definition == typeof(IReadOnlySet<>));
 
     private static bool IsSimple(Type type)
         => type.IsPrimitive || type.IsEnum || type.IsPointer || type.IsByRefLike ||

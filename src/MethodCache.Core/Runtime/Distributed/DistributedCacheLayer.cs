@@ -558,8 +558,8 @@ namespace MethodCache.Core.Runtime.Distributed
         /// one loses data; once one fails, every value of that method and runtime type stays in memory only. A collection declared
         /// as an interface or abstract type may come back as another implementation of it (an array as a
         /// <c>List&lt;T&gt;</c>, say), since only its elements are written. A value that doesn't come back (private
-        /// setters, a derived type where its base type is declared, <c>object</c>) is kept in memory only, with one
-        /// warning per method and runtime type.
+        /// setters, a derived type the serializer can't name, <c>object</c>, a dictionary's comparer) is kept in memory
+        /// only, with one warning per method and runtime type.
         /// </summary>
         private bool RoundTrips<T>(string? methodName, T value, ReadOnlyMemory<byte> payload)
         {
@@ -597,7 +597,7 @@ namespace MethodCache.Core.Runtime.Distributed
             if (_roundTrips.TryAdd(method, false))
             {
                 _logger.LogWarning(
-                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of private setters, a derived type where its base type is declared (as the result, in a collection or in a property), or object. To share them between instances, configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter, [JsonDerivedType] on the base type), or select UseMessagePack.",
+                    "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of a private setter, a derived type MethodCache can't name to it (see MC0039), object, an EF Core lazy-loading proxy, or a dictionary or set made with its own comparer. To share them between instances, return a type the serializer writes in full, such as a record with public properties, or configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter).",
                     methodName ?? "SetAsync", written, typeof(T), _serializer.GetType().Name);
             }
 

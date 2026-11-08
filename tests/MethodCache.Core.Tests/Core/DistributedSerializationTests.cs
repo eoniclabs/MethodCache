@@ -172,6 +172,11 @@ public class DistributedSerializationTests
 
     // ---------- Types inside the value ----------
 
+    public sealed class Registry
+    {
+        public Dictionary<string, int> Names { get; set; } = [];
+    }
+
     public class Zoo
     {
         public Animal? Star { get; set; }
@@ -239,6 +244,43 @@ public class DistributedSerializationTests
 
         _shared.Get("methodcache:e6:s1:k").Should().BeNull("another instance would read JsonElement values, which can't be cast to int");
         Warnings.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("dictionary")]
+    [InlineData("set")]
+    [InlineData("member")]
+    [InlineData("interface")]
+    public async Task ACollectionMadeWithItsOwnComparer_StaysInMemoryOnly(string shape)
+    {
+        var (a, _) = CreateNode();
+        var ignoringCase = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Rex"] = 1 };
+
+        switch (shape)
+        {
+            case "dictionary": await Load(a, "k", () => ignoringCase); break;
+            case "set": await Load(a, "k", () => new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Rex" }); break;
+            case "member": await Load(a, "k", () => new Registry { Names = ignoringCase }); break;
+            case "interface": await Load<IReadOnlyDictionary<string, int>>(a, "k", () => ignoringCase); break;
+        }
+
+        _shared.Get("methodcache:e6:s1:k").Should().BeNull("another instance would look 'rex' up case-sensitively and miss");
+        Warnings.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CollectionsWithTheDefaultComparer_OrOrdinal_AreShared()
+    {
+        var (a, _) = CreateNode();
+
+        await Load(a, "plain", () => new Dictionary<string, int> { ["Rex"] = 1 });
+        await Load(a, "ordinal", () => new Dictionary<string, int>(StringComparer.Ordinal) { ["Rex"] = 1 });
+        await Load(a, "set", () => new HashSet<int> { 1, 2 });
+        await Load(a, "member", () => new Registry { Names = new Dictionary<string, int> { ["Rex"] = 1 } });
+
+        foreach (var key in new[] { "plain", "ordinal", "set", "member" })
+            _shared.Get("methodcache:e6:s1:" + key).Should().NotBeNull(key);
+        Warnings.Should().Be(0);
     }
 
     [Fact]
