@@ -27,18 +27,10 @@ namespace MethodCache.SourceGenerator
         /// or implements, so the types a cached result declares can be matched to it. A class generated code can't name,
         /// such as a generic or private one, says why, so the project gets MC0039 when a cached result declares a base.
         /// </summary>
-        internal sealed record DerivedTypeInfo(string Fqn, EquatableArray<string> Bases, string? Unregistrable = null, string? DisplayName = null, LocationInfo? Location = null)
-        {
-            /// <summary>The fingerprint of the type's shape, which the entries of a result that may hold it carry.</summary>
-            public string Shape { get; init; } = string.Empty;
-        }
+        internal sealed record DerivedTypeInfo(string Fqn, EquatableArray<string> Bases, string? Unregistrable = null, string? DisplayName = null, LocationInfo? Location = null);
 
         /// <summary>A type a cached result declares, and the types that derive from it or implement it.</summary>
-        internal sealed record DerivedTypeRegistration(string DeclaredFqn, EquatableArray<string> DerivedFqns)
-        {
-            /// <summary>The fingerprint of each derived type's shape, as <c>fqn=shape</c>.</summary>
-            public EquatableArray<string> Shapes { get; init; }
-        }
+        internal sealed record DerivedTypeRegistration(string DeclaredFqn, EquatableArray<string> DerivedFqns);
 
         /// <summary>The project's registrations, and MC0039 for each derived type of the project that can't be registered.</summary>
         internal sealed record DerivedTypesModel(EquatableArray<DerivedTypeRegistration> Registrations, EquatableArray<DiagnosticInfo> Diagnostics)
@@ -69,7 +61,7 @@ namespace MethodCache.SourceGenerator
 
             var unregistrable = WhyUnregistrable(symbol, assembly);
             return unregistrable == null
-                ? new DerivedTypeInfo(Utils.GetFullyQualifiedName(symbol), new EquatableArray<string>(bases)) { Shape = DescribeResultShape(symbol).Shape }
+                ? new DerivedTypeInfo(Utils.GetFullyQualifiedName(symbol), new EquatableArray<string>(bases))
                 : new DerivedTypeInfo(Utils.GetFullyQualifiedName(symbol), new EquatableArray<string>(bases), unregistrable,
                     symbol.ToDisplayString(), LocationInfo.From(symbol.Locations.FirstOrDefault()));
         }
@@ -136,7 +128,7 @@ namespace MethodCache.SourceGenerator
                     derived.AddRange(types.Where(t => DerivesFrom(t, declared)));
                 }
 
-                var registrable = new SortedDictionary<string, string>(System.StringComparer.Ordinal);
+                var registrable = new List<string>();
                 foreach (var type in derived)
                 {
                     if (WhyUnregistrable(type, generating) is { } reason)
@@ -146,16 +138,14 @@ namespace MethodCache.SourceGenerator
                     }
                     else
                     {
-                        registrable[Utils.GetFullyQualifiedName(type)] = DescribeResultShape(type).Shape;
+                        registrable.Add(Utils.GetFullyQualifiedName(type));
                     }
                 }
 
                 if (registrable.Count > 0)
                 {
-                    referenced.Add(new DerivedTypeRegistration(Utils.GetFullyQualifiedName(declared), new EquatableArray<string>(registrable.Keys))
-                    {
-                        Shapes = new EquatableArray<string>(registrable.Select(static pair => pair.Key + "=" + pair.Value)),
-                    });
+                    registrable.Sort(System.StringComparer.Ordinal);
+                    referenced.Add(new DerivedTypeRegistration(Utils.GetFullyQualifiedName(declared), new EquatableArray<string>(registrable.Distinct())));
                 }
             }
 
@@ -318,26 +308,14 @@ namespace MethodCache.SourceGenerator
                 .SelectMany(static c => c.Bases.Select(b => (Base: b, c.Fqn)))
                 .ToLookup(static pair => pair.Base, static pair => pair.Fqn, System.StringComparer.Ordinal);
             var referenced = interfaces.SelectMany(static i => i.ReferencedDerivedTypes)
-                .ToLookup(static r => r.DeclaredFqn, System.StringComparer.Ordinal);
-            // The shape of each derived type, as fqn=shape: the project's own, and those found in referenced assemblies
-            var shapes = new Dictionary<string, string>(System.StringComparer.Ordinal);
-            foreach (var shape in unique.Where(static c => c.Unregistrable == null).Select(static c => c.Fqn + "=" + c.Shape)
-                         .Concat(interfaces.SelectMany(static i => i.ReferencedDerivedTypes).SelectMany(static r => r.Shapes)))
-            {
-                shapes[shape.Substring(0, shape.IndexOf('='))] = shape;
-            }
+                .ToLookup(static r => r.DeclaredFqn, static r => r.DerivedFqns, System.StringComparer.Ordinal);
 
             var registrations = new List<DerivedTypeRegistration>();
             foreach (var type in declared)
             {
-                var derived = byBase[type].Concat(referenced[type].SelectMany(static r => r.DerivedFqns))
+                var derived = byBase[type].Concat(referenced[type].SelectMany(static d => d))
                     .Distinct().OrderBy(static t => t, System.StringComparer.Ordinal).ToList();
-                if (derived.Count == 0) continue;
-
-                registrations.Add(new DerivedTypeRegistration(type, new EquatableArray<string>(derived))
-                {
-                    Shapes = new EquatableArray<string>(derived.Where(shapes.ContainsKey).Select(d => shapes[d])),
-                });
+                if (derived.Count > 0) registrations.Add(new DerivedTypeRegistration(type, new EquatableArray<string>(derived)));
             }
 
             var diagnostics = new List<DiagnosticInfo>();

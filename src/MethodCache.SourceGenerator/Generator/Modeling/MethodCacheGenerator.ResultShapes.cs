@@ -27,6 +27,36 @@ namespace MethodCache.SourceGenerator
         }
 
         /// <summary>
+        /// The fingerprint of each derived type the project registers, as <c>declared|derived=shape</c>. Read from the
+        /// compilation after the registrations are known, so only those types are walked, and every edit is followed.
+        /// </summary>
+        internal static EquatableArray<string> DerivedTypeShapes(Compilation compilation, DerivedTypesModel model, System.Threading.CancellationToken cancellationToken)
+        {
+            if (model.Registrations.Count == 0) return EquatableArray<string>.Empty;
+
+            var shapes = new SortedSet<string>(System.StringComparer.Ordinal);
+            var computed = new Dictionary<string, string?>(System.StringComparer.Ordinal);
+            foreach (var registration in model.Registrations)
+            {
+                foreach (var derived in registration.DerivedFqns)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!computed.TryGetValue(derived, out var shape))
+                    {
+                        var id = "T:" + (derived.StartsWith("global::", System.StringComparison.Ordinal) ? derived.Substring("global::".Length) : derived);
+                        computed[derived] = shape = DocumentationCommentId.GetFirstSymbolForDeclarationId(id, compilation) is ITypeSymbol type
+                            ? DescribeResultShape(type).Shape
+                            : null;
+                    }
+
+                    if (shape != null) shapes.Add(registration.DeclaredFqn + "|" + derived + "=" + shape);
+                }
+            }
+
+            return new EquatableArray<string>(shapes);
+        }
+
+        /// <summary>
         /// The fingerprint a cached method's entries carry: its result's own, and those of the derived types registered
         /// for the classes and interfaces in it, as <c>fqn=shape</c>.
         /// </summary>

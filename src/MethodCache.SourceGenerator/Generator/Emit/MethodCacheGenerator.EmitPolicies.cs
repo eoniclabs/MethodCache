@@ -16,9 +16,9 @@ namespace MethodCache.SourceGenerator
             private const string PriorityMetadataKey = "priority";
             private const string GroupMetadataKey = "group";
 
-            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, DerivedTypesModel derivedTypes)
+            internal static string Emit(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<string> derivedShapes)
             {
-                var definitions = BuildDefinitions(interfaces, derivedTypes);
+                var definitions = BuildDefinitions(interfaces, derivedShapes);
                 if (definitions.Count == 0)
                 {
                     return string.Empty;
@@ -87,11 +87,11 @@ namespace MethodCache.SourceGenerator
                 sb.Append("    }");
             }
 
-            private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces, DerivedTypesModel derivedTypes)
+            private static List<PolicyDefinition> BuildDefinitions(IReadOnlyList<InterfaceSummary> interfaces, EquatableArray<string> derivedShapes)
             {
-                // The shape of each derived type registered for a declared type, as fqn=shape
-                var shapes = derivedTypes.Registrations.SelectMany(static r => r.Shapes.Select(shape => (r.DeclaredFqn, Shape: shape)))
-                    .ToLookup(static pair => pair.DeclaredFqn, static pair => pair.Shape, StringComparer.Ordinal);
+                // The shape of each derived type registered for a declared type, as derived=shape by declared
+                var shapes = derivedShapes.Select(static entry => entry.Split(new[] { '|' }, 2))
+                    .ToLookup(static parts => parts[0], static parts => parts[1], StringComparer.Ordinal);
                 var definitions = new List<PolicyDefinition>();
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 var index = 0;
