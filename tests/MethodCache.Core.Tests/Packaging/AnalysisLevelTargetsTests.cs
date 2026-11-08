@@ -5,7 +5,8 @@ namespace MethodCache.Core.Tests.Packaging;
 
 /// <summary>
 /// MethodCacheAnalysisLevel in the package's build targets turns off the analyzer rules that came after the given
-/// version. The targets run in MSBuild on a project that lists made-up rules of later versions.
+/// version. The targets run in MSBuild on a project that lists made-up rules of later versions, or only the rules the
+/// targets list themselves.
 /// </summary>
 public sealed class AnalysisLevelTargetsTests : IDisposable
 {
@@ -37,6 +38,16 @@ public sealed class AnalysisLevelTargetsTests : IDisposable
     }
 
     [Fact]
+    public async Task Level_WithTheRulesAsShipped_Builds()
+    {
+        // The package lists no rule after 1.0 yet; an empty list must not fail the build
+        var config = await RunAsync("1.0", rules: "");
+
+        Assert.Contains("is_global = true", config);
+        Assert.DoesNotContain("dotnet_diagnostic", config);
+    }
+
+    [Fact]
     public async Task Level_ThatIsNoVersion_FailsTheBuild()
     {
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync("latest"));
@@ -44,8 +55,17 @@ public sealed class AnalysisLevelTargetsTests : IDisposable
         Assert.Contains("MCB001", error.Message);
     }
 
-    /// <summary>Runs the targets and returns the global config they wrote, or null when they wrote none.</summary>
-    private async Task<string?> RunAsync(string? level)
+    private const string MadeUpRules = """
+        <MethodCacheRule Include="MC9001" Since="1.1" />
+        <MethodCacheRule Include="MC9002" Since="1.1.1" />
+        <MethodCacheRule Include="MC9003" Since="1.2" />
+        """;
+
+    /// <summary>
+    /// Runs the targets and returns the global config they wrote, or null when they wrote none. <paramref name="rules"/>
+    /// are added to the rules the targets list themselves.
+    /// </summary>
+    private async Task<string?> RunAsync(string? level, string rules = MadeUpRules)
     {
         var targets = Path.Combine(RepositoryRoot(), "src", "MethodCache.Core", "build", "MethodCache.targets");
         var project = Path.Combine(_directory, "app.proj");
@@ -56,9 +76,7 @@ public sealed class AnalysisLevelTargetsTests : IDisposable
                 {(level == null ? "" : $"<MethodCacheAnalysisLevel>{level}</MethodCacheAnalysisLevel>")}
               </PropertyGroup>
               <ItemGroup>
-                <MethodCacheRule Include="MC9001" Since="1.1" />
-                <MethodCacheRule Include="MC9002" Since="1.1.1" />
-                <MethodCacheRule Include="MC9003" Since="1.2" />
+                {rules}
               </ItemGroup>
               <Import Project="{targets}" />
               <Target Name="CoreCompile" />
