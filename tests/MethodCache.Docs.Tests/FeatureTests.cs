@@ -337,20 +337,42 @@ public class FeatureTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task Testing_AMethodsPolicy_TheTenantKey_AndThePoliciesAsJson_AreRead()
+    public async Task Testing_AMethodsPolicy_AReplacedSource_TheTenantKey_AndThePoliciesAsJson_AreRead()
     {
         var services = new ServiceCollection();
         services.AddScoped<global::Docs.Testing.RequestTenant>();
         services.AddScoped<global::Docs.Testing.IProjects, global::Docs.Testing.Projects>();
-        services.AddMethodCache();
+        services.AddSingleton<global::Docs.Testing.IApiKeys, global::Docs.Testing.ApiKeys>();
+        services.AddMethodCache(global::Docs.Testing.Examples.ReplacedOnPurpose);
         await using var provider = services.BuildServiceProvider();
 
         global::Docs.Testing.Examples.CheckPolicy(provider);
+        global::Docs.Testing.Examples.CheckReplacedSource(provider);
         global::Docs.Testing.Examples.CheckTenantKeys(provider);
+        var apiKeys = global::MethodCache.Testing.CachedServices.Method<global::Docs.Testing.IApiKeys>(provider, k => k.FindAsync("", default));
+        Assert.Equal(["keyHash"], apiKeys.KeyParameters);   // the one the tenant recipe leaves out
         var json = global::Docs.Testing.Examples.PoliciesAsJson(provider);
         Assert.Contains("IProjects.ListAsync", json, StringComparison.Ordinal);
         Assert.Contains("\"KeyParameters\": [\n", json.ReplaceLineEndings("\n"), StringComparison.Ordinal);
         Assert.Equal(json, global::Docs.Testing.Examples.PoliciesAsJson(provider));
+    }
+
+    [Fact]
+    public void Memory_AHostsOwnCall_AddsToTheSetupItShares()
+    {
+        var services = new ServiceCollection();
+        services.AddMethodCache(mc => mc.Memory(o => o.MaxItems = 200_000));   // the setup every host shares
+        services.AddMethodCache(mc => mc.Memory(o =>                           // this host's own, for its large reports
+        {
+            o.Weigher = global::MethodCache.MethodCacheWeigher.Bytes;
+            o.WeightLimit = 64 * 1024 * 1024;
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<global::MethodCache.MethodCacheMemoryOptions>>().Value;
+        Assert.Equal(200_000, options.MaxItems);
+        Assert.Equal(64 * 1024 * 1024, options.WeightLimit);
+        Assert.NotNull(options.Weigher);
     }
 
     [Fact]

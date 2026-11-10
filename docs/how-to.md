@@ -385,6 +385,10 @@ Bound memory by size: set a `Weigher` and a `WeightLimit` with `mc.Memory(...)`.
 the entries read least often first, and the next read of one gets it from the distributed cache, not from your method.
 There is no separate duration for memory. ([Bounding by size](features/memory-cache.md#bounding-by-size))
 
+**One host needs a `WeightLimit` the others don't. Does its own `mc.Memory(...)` replace the shared settings?**
+No. Each `mc.Memory` call changes only the options it sets, in the order of the calls, so a call after the setup the
+hosts share adds to it and keeps the rest, such as the shared `MaxItems`. ([Memory cache](features/memory-cache.md))
+
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
 derived type MethodCache can't name (MC0039). Return records with public properties, or register a serializer with

@@ -29,6 +29,10 @@ builder.Services.AddMethodCache(cache => cache
 | `CacheNullValues` | `true` | Caches `null` results like any other value |
 | `MaxHttpBytes` | 100 MiB | The most bytes the HTTP response cache keeps in memory, bodies and headers included. Shared by all HTTP clients and separate from `MaxItems` and `WeightLimit` |
 
+Each `mc.Memory` call changes only the options it sets, in the order of the calls. A host that shares its setup with
+others, such as through an extension method of your own, can add a call of its own after it, such as a `Weigher` and
+`WeightLimit` for its large reports, and keep the shared `MaxItems`.
+
 Method defaults are set with `Defaults.WithDuration`; unset defaults use five minutes. Cleanup, statistics and
 the generated fast path are always enabled.
 
