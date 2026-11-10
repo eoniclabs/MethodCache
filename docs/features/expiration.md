@@ -131,6 +131,9 @@ builder.Services.AddMethodCache(mc =>
   [`SlidingFor`](#a-sliding-window-from-the-result).
 - `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
   method in `appsettings.json` or a runtime override replaces `DurationFor`.
+- A `DurationFor` in startup code replaces the `Duration` of the method's `[Cache]` attribute too, so the attribute's
+  time doesn't cap it: a cap belongs in the function, such as `left < cap ? left : cap`. `GetMethods()` lists a setting one source replaces in another under `ReplacedSources`
+  ([What applies on this instance](configuration.md#what-applies-on-this-instance)).
 - In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
   for a type the method can't return.
 - With manual caching, pass it in the options: `o => o.DurationFor<AccessToken>(token => ...)`

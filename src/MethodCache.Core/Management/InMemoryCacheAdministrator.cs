@@ -171,6 +171,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
                     MethodId = result.MethodId,
                     Options = CacheEntryOptions.FromRuntime(runtime, preparedKey: false),
                     SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(sources),
+                    ReplacedSources = result.ReplacedSources,
                     Lifetime = Lifetime(runtime, storage.Distributed),
                     Storage = storage,
                     KeyParameters = _parameters?.KeyNames.GetValueOrDefault(result.MethodId) ?? _parameters?.Names.GetValueOrDefault(result.MethodId) ?? [],

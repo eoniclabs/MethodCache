@@ -53,6 +53,18 @@ public class MethodBehaviorViewTests
         [Cache(Distributed = true)] Task<int> SharedAsync(int id);
     }
 
+    public interface IReplaced
+    {
+        [Cache(Duration = "5m")] Task<int> PriceAsync(int id);
+        [Cache(Duration = "10m", Tags = ["own"])] Task<int> OwnAsync(int id);
+    }
+
+    public sealed class Replaced : IReplaced
+    {
+        public Task<int> PriceAsync(int id) => Task.FromResult(id);
+        public Task<int> OwnAsync(int id) => Task.FromResult(id);
+    }
+
     public sealed class Configured : IConfigured
     {
         public Task<int> FromResultAsync(int id) => Task.FromResult(id);
@@ -89,6 +101,7 @@ public class MethodBehaviorViewTests
         Assert.False(method.Storage.Distributed);
         Assert.Null(method.Storage.Store);
         Assert.Equal("No distributed cache is registered.", method.Storage.MemoryOnlyReason);
+        Assert.False(method.Storage.Shared);
         Assert.Equal(["id"], method.KeyParameters);
     }
 
@@ -105,6 +118,7 @@ public class MethodBehaviorViewTests
         Assert.True(sliding.Storage.Distributed);
         Assert.Equal("AtomicTestCache", sliding.Storage.Store);
         Assert.Null(sliding.Storage.MemoryOnlyReason);
+        Assert.True(sliding.Storage.Shared);
         Assert.Equal(["id", "region"], sliding.KeyParameters);
 
         var slidingOnly = Method(provider, "SlidingOnlyAsync");
@@ -124,6 +138,7 @@ public class MethodBehaviorViewTests
         var local = Method(provider, "LocalAsync");
         Assert.False(local.Storage.Distributed);
         Assert.Equal("Distributed is false in the method's attribute.", local.Storage.MemoryOnlyReason);
+        Assert.False(local.Storage.Shared);
         Assert.Null(local.Lifetime.Distributed);
 
         Assert.Equal("A synchronous method keeps its values in memory.", Method(provider, "Read").Storage.MemoryOnlyReason);
@@ -181,5 +196,33 @@ public class MethodBehaviorViewTests
         var shared = Get("SharedAsync");
         Assert.True(shared.Storage.Distributed);
         Assert.Equal(TimeSpan.FromMinutes(5), shared.Lifetime.Distributed);
+    }
+
+    [Fact]
+    public void ASettingStartupCodeReplacesInTheAttribute_IsListed_ButADefaultTheMethodReplacesIsNot()
+    {
+        const string replaced = "[MethodCache.Core.Tests]MethodCache.Core.Tests.Management.MethodBehaviorViewTests.IReplaced.";
+        var services = new ServiceCollection();
+        services.AddSingleton<IReplaced, Replaced>();
+        services.AddMethodCache(mc =>
+        {
+            mc.Defaults(o => o.WithDuration(TimeSpan.FromHours(1)).AddTags("all"));
+            mc.Method((IReplaced r) => r.PriceAsync(Any<int>.Value)).DurationFor(seconds => TimeSpan.FromSeconds(seconds));
+            mc.Method((IReplaced r) => r.OwnAsync(Any<int>.Value)).Configure(o => o.AddTags("code"));
+        });
+        using var provider = services.BuildServiceProvider();
+        CachedMethodInfo Get(string name) => provider.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == replaced + name);
+
+        // The attribute's five minutes no longer cap the duration: the result gives it
+        var price = Get("PriceAsync");
+        Assert.Equal(CacheSettingSource.Code, price.SettingSources["Duration"]);
+        Assert.Equal([CacheSettingSource.Attribute], price.ReplacedSources["Duration"]);
+        Assert.True(price.Lifetime.DurationFromResult);
+
+        // The method's own Duration replacing the defaults' is what defaults are for, and tags add up
+        var own = Get("OwnAsync");
+        Assert.Equal(CacheSettingSource.Attribute, own.SettingSources["Duration"]);
+        Assert.Empty(own.ReplacedSources);
+        Assert.Equal(TimeSpan.FromMinutes(10), own.Lifetime.Duration);
     }
 }

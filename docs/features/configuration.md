@@ -234,12 +234,16 @@ foreach (var report in diagnostics.GetMethods())
 `SettingSources` is keyed by the `CacheEntryOptions` property name (`Duration`, `Tags`, `SlidingExpiration`,
 `RefreshAhead`, `Version`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Enabled`, `Distributed`), and each
 value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
-is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+is left out. `ReplacedSources` lists a setting that two of the method's own sources set, with the lower ones the
+higher one replaced: `Duration` with `[Attribute]` when startup code sets a `DurationFor` for a method whose `[Cache]`
+sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](monitoring.md)).
 
 ### What applies on this instance
 
-`Options` holds what is set. Next to it, each method says what that comes to on this instance, with defaults filled in:
+`Options` holds what the method's sources set; a setting none of them sets is null there and missing from
+`SettingSources`, and has the library's default. Next to it, each method says what that comes to on this instance,
+with the defaults filled in:
 
 <!-- snippet: configuration-what-applies -->
 ```cs
@@ -259,7 +263,7 @@ foreach (var method in diagnostics.GetMethods())
 |---|---|
 | `Lifetime.Duration` | The longest an entry lives in memory: the method's `Duration`, from `Defaults` or its group, else five minutes; with only a sliding window, `MaxExpiration`. Null when `DurationFor` gives each result its own (`DurationFromResult`) |
 | `Lifetime.SlidingExpiration` | The sliding window, or null without one or when `SlidingFor` gives each result its own (`SlidingFromResult`) |
-| `Lifetime.MaxExpiration` | The longest any entry lives (7 days by default) |
+| `Lifetime.MaxExpiration` | The longest any entry lives: a limit for the whole cache, not a setting of the method (7 days unless `mc.Memory` sets it) |
 | `Lifetime.Distributed` | How long the copy in the distributed cache lives: the `Duration`, at most one sliding window and at most `TagRetention` less `ClockSkewTolerance`. Null when values aren't stored there or the result gives its own times |
 | `Storage.Distributed` | Whether values are stored in the distributed cache as well as in memory |
 | `Storage.Store` | The distributed cache, such as `Redis`, `SqlServer` or `PostgreSql` |

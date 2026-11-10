@@ -774,8 +774,8 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
 
                 layers.AddRange(defaultLayers(MethodIds.AllMethods).Reverse());
 
-                var (effectivePolicy, fieldSources) = ResolveLayers(layers, metadata);
-                var (declaration, _) = ResolveLayers(layers.Where(static layer => !layer.Policy.Provenance.Any(static contribution => contribution.SourceId == "runtime-overrides")), metadata);
+                var (effectivePolicy, fieldSources, replaced) = ResolveLayers(layers, metadata, _layers.Count);
+                var (declaration, _, _) = ResolveLayers(layers.Where(static layer => !layer.Policy.Provenance.Any(static contribution => contribution.SourceId == "runtime-overrides")), metadata, ownLayers: 0);
 
                 return new PolicyResolutionResult(
                     MethodId,
@@ -783,7 +783,11 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                     effectivePolicy.Provenance.ToArray(),
                     resolvedAt,
                     currentVersion)
-                { Declaration = declaration, FieldSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(fieldSources) };
+                {
+                    Declaration = declaration,
+                    FieldSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(fieldSources),
+                    ReplacedSources = replaced
+                };
             }
         }
 
@@ -811,8 +815,16 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
             _ => null
         };
 
-        private static (CachePolicy Policy, Dictionary<string, CacheSettingSource> Sources) ResolveLayers(IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata)
+        /// <summary>
+        /// Merges <paramref name="layers"/>, highest first. The first <paramref name="ownLayers"/> are the method's own,
+        /// and a setting one of them sets that a higher one of them already set from another source is reported as
+        /// replaced; a method's own setting replacing a default is what defaults are for, so that isn't reported.
+        /// </summary>
+        private static (CachePolicy Policy, Dictionary<string, CacheSettingSource> Sources, IReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>> Replaced) ResolveLayers(
+            IEnumerable<PolicyLayer> layers, IReadOnlyDictionary<string, string?> metadata, int ownLayers)
         {
+            Dictionary<string, List<CacheSettingSource>>? replaced = null;
+            var index = 0;
             var canonicalTagParts = true;
             string? resultShape = null;
             bool? enabled = null;
@@ -850,12 +862,18 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 {
                     foreach (var (settingFields, setting) in ReportedSettings)
                     {
-                        if ((fields & settingFields) != 0)
+                        if ((fields & settingFields) == 0 || fieldSources.TryAdd(setting, settingSource)) continue;
+                        // Tags add up across layers, unless a higher layer cleared them
+                        if (index < ownLayers && fieldSources[setting] != settingSource &&
+                            (setting != nameof(CacheEntryOptions.Tags) || tagsCleared))
                         {
-                            fieldSources.TryAdd(setting, settingSource);
+                            replaced ??= new Dictionary<string, List<CacheSettingSource>>(StringComparer.Ordinal);
+                            if (!replaced.TryGetValue(setting, out var list)) replaced[setting] = list = [];
+                            if (!list.Contains(settingSource)) list.Add(settingSource);
                         }
                     }
                 }
+                index++;
 
                 // Duration and DurationFor are one setting: the highest layer that sets either decides the duration
                 if (duration == null && durationFor == null)
@@ -951,7 +969,13 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
                 Provenance = contributions is { Count: > 0 } ? new PolicyProvenance(contributions) : PolicyProvenance.Empty
             };
 
-            return (effectivePolicy, fieldSources);
+            return (effectivePolicy, fieldSources, replaced == null
+                ? EmptyReplaced
+                : new System.Collections.ObjectModel.ReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>>(
+                    replaced.ToDictionary(static pair => pair.Key, static pair => (IReadOnlyList<CacheSettingSource>)pair.Value.ToArray(), StringComparer.Ordinal)));
         }
+
+        private static readonly IReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>> EmptyReplaced =
+            new System.Collections.ObjectModel.ReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>>(new Dictionary<string, IReadOnlyList<CacheSettingSource>>());
     }
 }

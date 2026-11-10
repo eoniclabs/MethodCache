@@ -56,4 +56,6 @@ internal sealed class PolicyResolutionResult
     public long Version { get; }
     internal CachePolicy? Declaration { get; init; }
     internal IReadOnlyDictionary<string, CacheSettingSource> FieldSources { get; init; } = new Dictionary<string, CacheSettingSource>();
+    /// <summary>The sources of the method's own whose setting a higher source of its own replaced, by setting.</summary>
+    internal IReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>> ReplacedSources { get; init; } = new Dictionary<string, IReadOnlyList<CacheSettingSource>>();
 }
