@@ -81,7 +81,8 @@ public static class CachedServices
     /// <param name="provider">The application's service provider, built as in the application.</param>
     /// <param name="call">
     /// Calls one cached method of <typeparamref name="TService"/>, such as <c>s =&gt; s.GetPriceAsync("", "")</c>. It runs on a
-    /// stand-in, so the method itself never runs and the arguments don't matter.
+    /// stand-in, so the method itself never runs and the arguments don't matter: pass <c>""</c>, <c>0</c> or
+    /// <c>default</c>, such as <c>s =&gt; s.GetAsync(0, default)</c> for a method that also takes a cancellation token.
     /// </param>
     /// <param name="serviceKey">The service key of a keyed registration, or <c>null</c> for the unkeyed one.</param>
     /// <returns>The method's policy.</returns>

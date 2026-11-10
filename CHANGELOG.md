@@ -4,6 +4,21 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.19 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.18
+
+Nothing to change: the code and the cache keys are the same as in 1.0.0-rc.18.
+
+### Documentation
+
+- Testing: the arguments of the call passed to `CachedServices.Method` don't matter, so pass `""`, `0` or `default`; a
+  test of a setting that startup code replaces on purpose, compared with `CacheSettingSource`; and the tenant check
+  finds the methods that serve every tenant by a call instead of method id strings
+  ([How each method is cached](docs/features/testing.md#how-each-method-is-cached)).
+- Memory cache: each `mc.Memory` call changes only the options it sets, so a host can add its own after the setup it
+  shares with others ([Memory cache](docs/features/memory-cache.md)).
+
 ## 1.0.0-rc.18 (2026-11-10)
 
 ### Upgrading from 1.0.0-rc.17

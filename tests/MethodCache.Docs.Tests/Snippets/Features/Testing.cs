@@ -155,6 +155,25 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void ReplacedOnPurpose(MethodCacheBuilder mc)
+        {
+            // begin-snippet: testing-replaced-source-setup
+            // An archived project changes rarely: its own duration, in place of the 10 minutes of its [Cache]
+            mc.Method((IProjects p) => p.GetAsync(Any<Guid>.Value, Any<int>.Value, default))
+                .DurationFor(project => project.Archived ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(10));
+            // end-snippet
+        }
+
+        public static void CheckReplacedSource(IServiceProvider provider)
+        {
+            // begin-snippet: testing-replaced-source
+            // GetAsync's duration comes from startup code, which replaces the Duration of its [Cache] on purpose
+            var get = CachedServices.Method<IProjects>(provider, p => p.GetAsync(Guid.Empty, 0, default));
+            Assert.Equal(CacheSettingSource.Code, get.SettingSources["Duration"]);
+            Assert.Equal([CacheSettingSource.Attribute], get.ReplacedSources["Duration"]);
+            // end-snippet
+        }
+
         public static string PoliciesAsJson(IServiceProvider provider)
         {
             // begin-snippet: testing-methods-json
@@ -168,8 +187,8 @@ namespace Docs.Testing
         public static void CheckTenantKeys(IServiceProvider provider)
         {
             // begin-snippet: testing-tenant-keys
-            // The methods that serve every tenant, such as an API key lookup, by MethodId
-            string[] everyTenant = [];
+            // The methods that serve every tenant, such as the API key lookup, found by a call
+            string[] everyTenant = [CachedServices.Method<IApiKeys>(provider, k => k.FindAsync("", default)).MethodId];
             foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
             {
                 if (everyTenant.Contains(method.MethodId)) continue;
@@ -215,6 +234,22 @@ namespace Docs.Testing
     {
         [Cache(Duration = "5m")]
         Task<List<string>> ListAsync(Guid tenantId);
+
+        [Cache(Duration = "10m")]
+        Task<ProjectInfo> GetAsync(Guid tenantId, int id, CancellationToken ct);
+    }
+
+    public sealed record ProjectInfo(int Id, string Name, bool Archived);
+
+    public interface IApiKeys
+    {
+        [Cache(Duration = "10m")]
+        Task<Guid?> FindAsync(string keyHash, CancellationToken ct);
+    }
+
+    public sealed class ApiKeys : IApiKeys
+    {
+        public Task<Guid?> FindAsync(string keyHash, CancellationToken ct) => Task.FromResult<Guid?>(null);
     }
 
     public sealed class RequestTenant
@@ -234,6 +269,12 @@ namespace Docs.Testing
         {
             tenant.EnsureActsFor(tenantId);
             return Task.FromResult(new List<string> { $"project of {tenantId}" });
+        }
+
+        public Task<ProjectInfo> GetAsync(Guid tenantId, int id, CancellationToken ct)
+        {
+            tenant.EnsureActsFor(tenantId);
+            return Task.FromResult(new ProjectInfo(id, $"project {id}", Archived: false));
         }
     }
 

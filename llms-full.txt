@@ -837,6 +837,10 @@ Bound memory by size: set a `Weigher` and a `WeightLimit` with `mc.Memory(...)`.
 the entries read least often first, and the next read of one gets it from the distributed cache, not from your method.
 There is no separate duration for memory. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
 
+**One host needs a `WeightLimit` the others don't. Does its own `mc.Memory(...)` replace the shared settings?**
+No. Each `mc.Memory` call changes only the options it sets, in the order of the calls, so a call after the setup the
+hosts share adds to it and keeps the rest, such as the shared `MaxItems`. ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md))
+
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
 derived type MethodCache can't name (MC0039). Return records with public properties, or register a serializer with
@@ -3717,6 +3721,10 @@ builder.Services.AddMethodCache(cache => cache
 | `CacheNullValues` | `true` | Caches `null` results like any other value |
 | `MaxHttpBytes` | 100 MiB | The most bytes the HTTP response cache keeps in memory, bodies and headers included. Shared by all HTTP clients and separate from `MaxItems` and `WeightLimit` |
 
+Each `mc.Memory` call changes only the options it sets, in the order of the calls. A host that shares its setup with
+others, such as through an extension method of your own, can add a call of its own after it, such as a `Weigher` and
+`WeightLimit` for its large reports, and keep the shared `MaxItems`.
+
 Method defaults are set with `Defaults.WithDuration`; unset defaults use five minutes. Cleanup, statistics and
 the generated fast path are always enabled.
 
@@ -4125,9 +4133,28 @@ Assert.Equal(["tenantId"], list.KeyParameters);
 Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
 ```
 
-The call runs on a stand-in, so the method never runs and the arguments don't matter. `ReplacedSources` is empty when
-no source replaces a setting another one sets for the method, such as a `DurationFor` in startup code that replaces the
-`Duration` of its `[Cache]`.
+The call runs on a stand-in, so the method never runs and the arguments don't matter: pass `""`, `0`, `Guid.Empty` or
+`default`. `ReplacedSources` is empty when no source replaces a setting another one sets for the method. When startup
+code replaces one on purpose, assert which source applies and which one it replaces, so a test fails when either
+changes. Here a `DurationFor` gives each result its own duration in place of the `Duration` of its `[Cache]`:
+
+```cs
+// An archived project changes rarely: its own duration, in place of the 10 minutes of its [Cache]
+mc.Method((IProjects p) => p.GetAsync(Any<Guid>.Value, Any<int>.Value, default))
+    .DurationFor(project => project.Archived ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(10));
+```
+
+The test:
+
+```cs
+// GetAsync's duration comes from startup code, which replaces the Duration of its [Cache] on purpose
+var get = CachedServices.Method<IProjects>(provider, p => p.GetAsync(Guid.Empty, 0, default));
+Assert.Equal(CacheSettingSource.Code, get.SettingSources["Duration"]);
+Assert.Equal([CacheSettingSource.Attribute], get.ReplacedSources["Duration"]);
+```
+
+`SettingSources` and `ReplacedSources` name each source with `CacheSettingSource`: `Attribute`, `Code`,
+`Configuration` or `RuntimeOverride`. The attribute's `Duration` then caps nothing: a cap belongs in the function.
 
 To see every change to how the application caches in review, write all the policies as JSON and compare them with a
 file kept in the repository, with a library such as Verify that compares output with an approved file, or by hand:
@@ -4161,11 +4188,11 @@ another tenant's key. That a caller takes the id from the request is the caller'
 such as in the endpoint.
 
 Values of one tenant are kept apart from another's only when the tenant is part of the key. Check that for every cached
-method with `KeyParameters`, listing the few that serve every tenant:
+method with `KeyParameters`, leaving out the few that serve every tenant, found by a call as above:
 
 ```cs
-// The methods that serve every tenant, such as an API key lookup, by MethodId
-string[] everyTenant = [];
+// The methods that serve every tenant, such as the API key lookup, found by a call
+string[] everyTenant = [CachedServices.Method<IApiKeys>(provider, k => k.FindAsync("", default)).MethodId];
 foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
 {
     if (everyTenant.Contains(method.MethodId)) continue;
@@ -6818,6 +6845,10 @@ Assert.Equal(["tenantId"], list.KeyParameters);
 Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
 ```
 
+The call runs on a stand-in, so the method never runs and the arguments don't matter: pass `""`, `0`, `Guid.Empty` or
+`default`. [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached)
+shows how to assert on a setting that startup code replaces on purpose.
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -6853,6 +6884,21 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.19 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.18
+
+Nothing to change: the code and the cache keys are the same as in 1.0.0-rc.18.
+
+### Documentation
+
+- Testing: the arguments of the call passed to `CachedServices.Method` don't matter, so pass `""`, `0` or `default`; a
+  test of a setting that startup code replaces on purpose, compared with `CacheSettingSource`; and the tenant check
+  finds the methods that serve every tenant by a call instead of method id strings
+  ([How each method is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached)).
+- Memory cache: each `mc.Memory` call changes only the options it sets, so a host can add its own after the setup it
+  shares with others ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md)).
 
 ## 1.0.0-rc.18 (2026-11-10)
 

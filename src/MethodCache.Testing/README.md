@@ -111,6 +111,10 @@ Assert.Empty(list.ReplacedSources);   // no source replaces what another one set
 ```
 <!-- endSnippet -->
 
+The call runs on a stand-in, so the method never runs and the arguments don't matter: pass `""`, `0`, `Guid.Empty` or
+`default`. [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached)
+shows how to assert on a setting that startup code replaces on purpose.
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,

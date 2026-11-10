@@ -260,9 +260,32 @@ Assert.Empty(list.ReplacedSources);   // no source replaces what another one set
 ```
 <!-- endSnippet -->
 
-The call runs on a stand-in, so the method never runs and the arguments don't matter. `ReplacedSources` is empty when
-no source replaces a setting another one sets for the method, such as a `DurationFor` in startup code that replaces the
-`Duration` of its `[Cache]`.
+The call runs on a stand-in, so the method never runs and the arguments don't matter: pass `""`, `0`, `Guid.Empty` or
+`default`. `ReplacedSources` is empty when no source replaces a setting another one sets for the method. When startup
+code replaces one on purpose, assert which source applies and which one it replaces, so a test fails when either
+changes. Here a `DurationFor` gives each result its own duration in place of the `Duration` of its `[Cache]`:
+
+<!-- snippet: testing-replaced-source-setup -->
+```cs
+// An archived project changes rarely: its own duration, in place of the 10 minutes of its [Cache]
+mc.Method((IProjects p) => p.GetAsync(Any<Guid>.Value, Any<int>.Value, default))
+    .DurationFor(project => project.Archived ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(10));
+```
+<!-- endSnippet -->
+
+The test:
+
+<!-- snippet: testing-replaced-source -->
+```cs
+// GetAsync's duration comes from startup code, which replaces the Duration of its [Cache] on purpose
+var get = CachedServices.Method<IProjects>(provider, p => p.GetAsync(Guid.Empty, 0, default));
+Assert.Equal(CacheSettingSource.Code, get.SettingSources["Duration"]);
+Assert.Equal([CacheSettingSource.Attribute], get.ReplacedSources["Duration"]);
+```
+<!-- endSnippet -->
+
+`SettingSources` and `ReplacedSources` name each source with `CacheSettingSource`: `Attribute`, `Code`,
+`Configuration` or `RuntimeOverride`. The attribute's `Duration` then caps nothing: a cap belongs in the function.
 
 To see every change to how the application caches in review, write all the policies as JSON and compare them with a
 file kept in the repository, with a library such as Verify that compares output with an approved file, or by hand:
@@ -300,12 +323,12 @@ another tenant's key. That a caller takes the id from the request is the caller'
 such as in the endpoint.
 
 Values of one tenant are kept apart from another's only when the tenant is part of the key. Check that for every cached
-method with `KeyParameters`, listing the few that serve every tenant:
+method with `KeyParameters`, leaving out the few that serve every tenant, found by a call as above:
 
 <!-- snippet: testing-tenant-keys -->
 ```cs
-// The methods that serve every tenant, such as an API key lookup, by MethodId
-string[] everyTenant = [];
+// The methods that serve every tenant, such as the API key lookup, found by a call
+string[] everyTenant = [CachedServices.Method<IApiKeys>(provider, k => k.FindAsync("", default)).MethodId];
 foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
 {
     if (everyTenant.Contains(method.MethodId)) continue;
