@@ -526,3 +526,48 @@ MethodCache.MethodCacheWeigher
 const MethodCache.MethodCacheWeigher.OtherValue = 64 -> long
 static MethodCache.MethodCacheWeigher.Bytes(long otherValue) -> System.Func<string!, object?, long>!
 static MethodCache.MethodCacheWeigher.Bytes(string! key, object? value) -> long
+MethodCache.CachedMethodInfo.KeyParameters.get -> System.Collections.Generic.IReadOnlyList<string!>!
+MethodCache.CachedMethodInfo.KeyParameters.init -> void
+MethodCache.CachedMethodInfo.Lifetime.get -> MethodCache.CacheLifetimeInfo!
+MethodCache.CachedMethodInfo.Lifetime.init -> void
+MethodCache.CachedMethodInfo.NotShared.get -> System.Collections.Generic.IReadOnlyList<MethodCache.NotSharedResultInfo!>!
+MethodCache.CachedMethodInfo.NotShared.init -> void
+MethodCache.CachedMethodInfo.Storage.get -> MethodCache.CacheStorageInfo!
+MethodCache.CachedMethodInfo.Storage.init -> void
+MethodCache.CacheLifetimeInfo
+MethodCache.CacheLifetimeInfo.Distributed.get -> System.TimeSpan?
+MethodCache.CacheLifetimeInfo.Distributed.init -> void
+MethodCache.CacheLifetimeInfo.Duration.get -> System.TimeSpan?
+MethodCache.CacheLifetimeInfo.Duration.init -> void
+MethodCache.CacheLifetimeInfo.DurationFromResult.get -> bool
+MethodCache.CacheLifetimeInfo.DurationFromResult.init -> void
+MethodCache.CacheLifetimeInfo.MaxExpiration.get -> System.TimeSpan
+MethodCache.CacheLifetimeInfo.MaxExpiration.init -> void
+MethodCache.CacheLifetimeInfo.SlidingExpiration.get -> System.TimeSpan?
+MethodCache.CacheLifetimeInfo.SlidingExpiration.init -> void
+MethodCache.CacheLifetimeInfo.SlidingFromResult.get -> bool
+MethodCache.CacheLifetimeInfo.SlidingFromResult.init -> void
+MethodCache.CacheStorageInfo
+MethodCache.CacheStorageInfo.Distributed.get -> bool
+MethodCache.CacheStorageInfo.Distributed.init -> void
+MethodCache.CacheStorageInfo.MemoryOnlyReason.get -> string?
+MethodCache.CacheStorageInfo.MemoryOnlyReason.init -> void
+MethodCache.CacheStorageInfo.Store.get -> string?
+MethodCache.CacheStorageInfo.Store.init -> void
+MethodCache.NotSharedResultInfo
+MethodCache.NotSharedResultInfo.Count.get -> long
+MethodCache.NotSharedResultInfo.Count.init -> void
+MethodCache.NotSharedResultInfo.DeclaredType.get -> string!
+MethodCache.NotSharedResultInfo.DeclaredType.init -> void
+MethodCache.NotSharedResultInfo.Reason.get -> string!
+MethodCache.NotSharedResultInfo.Reason.init -> void
+MethodCache.NotSharedResultInfo.Since.get -> System.DateTimeOffset
+MethodCache.NotSharedResultInfo.Since.init -> void
+MethodCache.NotSharedResultInfo.Type.get -> string!
+MethodCache.NotSharedResultInfo.Type.init -> void
+MethodCache.Generated.GeneratedMethodOptions.KeyParameters.get -> System.Collections.Generic.IReadOnlyList<string!>?
+MethodCache.Generated.GeneratedMethodOptions.KeyParameters.init -> void
+MethodCache.Generated.GeneratedMethodOptions.Synchronous.get -> bool
+MethodCache.Generated.GeneratedMethodOptions.Synchronous.init -> void
+MethodCache.CacheEntryOptions.Name.get -> string?
+MethodCache.CacheEntryOptions.Builder.WithName(string! name) -> MethodCache.CacheEntryOptions.Builder!

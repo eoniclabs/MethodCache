@@ -47,6 +47,11 @@ Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `I
 No, synchronous methods use the memory cache only, so they never block on the network. Make the method async to share
 its results between instances. ([Distributed cache reference](reference/distributed.md#which-calls-use-the-distributed-cache))
 
+**Can I keep a lock, an idempotency record or an "already sent" marker in MethodCache?**
+No. Any entry can disappear (expiry, eviction, invalidation, a lost backplane connection), and a failed write to the
+distributed cache is only logged, so a lost marker repeats the action. Keep such state in a store with atomic writes,
+such as a database row or Redis `SET NX`. ([State that isn't a cache](migration-from-imemorycache.md#state-that-isnt-a-cache))
+
 **What changed in a new version, and what do I change when I upgrade?**
 `CHANGELOG.md` lists each version's changes, and its "Upgrading" part says what to change in your code and which
 keys change. The `MethodCache` package carries it in its `docs` folder next to these pages.
@@ -107,9 +112,22 @@ needed. ([Cleared by hand](features/invalidation.md#cleared-by-hand))
 
 **My sliding window seems to do nothing. Why?**
 It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a
-day on a default `Duration` of five minutes expires each entry after five minutes. Make the window shorter than the
-`Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning that names
-the method when it starts. ([Sliding expiration](features/expiration.md#sliding-expiration), [MC0038](user-guide/DIAGNOSTICS.md#mc0038))
+day with a `Duration` of five minutes from `Defaults` expires each entry after five minutes. Make the window shorter
+than the `Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning
+that names the method when it starts. ([Sliding expiration](features/expiration.md#sliding-expiration), [MC0038](user-guide/DIAGNOSTICS.md#mc0038))
+
+**How do I keep an entry for as long as it is read, like an `IMemoryCache` entry with only `SlidingExpiration`?**
+Set only the window: `[Cache(SlidingExpiration = "30m")]`. Without a `Duration` the entry is kept while it is read at
+least once per window, up to `MaxExpiration` (7 days, raise it with `mc.Memory(o => o.MaxExpiration = ...)`). A
+`Duration` from `Defaults` or a group still ends it, so then give the method its own long `Duration`. With a
+distributed cache the stored copy lives one window from when it was stored, so another instance that asks for the
+value after that loads it again, and the new value replaces the copies on every instance.
+([Kept as long as it is read](features/expiration.md#kept-as-long-as-it-is-read))
+
+**How long does an entry live when I set nothing?**
+Five minutes, in memory and in the distributed cache. No entry lives past `MaxExpiration` (7 days), and the distributed
+cache keeps an entry at most `TagRetention` (1 day) from when its load started.
+([How long an entry lives](features/expiration.md#how-long-an-entry-lives))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -186,11 +204,13 @@ its entry lives five minutes, and with only `WithSlidingExpiration` only `MaxExp
 
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
-in the background. ([Refresh-ahead](features/expiration.md#refresh-ahead))
+in the background. With a distributed cache the new value replaces the stored copy, so other instances read it instead
+of loading it. ([Refresh-ahead](features/expiration.md#refresh-ahead))
 
 **How do I keep serving the last value when the database is down?**
-`FailSafe`: when the method throws or is slower than `FailSafeTimeout`, the last good value is returned.
-([Fail-safe](features/fail-safe.md))
+`FailSafe`: when the method throws or is slower than `FailSafeTimeout`, the last good value is returned. Each instance
+serves the value it has in memory, also one it read from the distributed cache; an instance that never had the value
+gets the exception. ([Fail-safe](features/fail-safe.md))
 
 **Is `null` cached?**
 Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off for every method. For one method, use
@@ -275,6 +295,12 @@ Arguments whose only state is private are rejected, at build time with error MC0
 the type.
 ([Types whose state is private](features/keys.md#types-whose-state-is-private))
 
+**An argument holds a secret, such as a URL with a SAS token. How do I keep it out of the key?**
+Keys hold arguments in plain text, and they show up in the admin endpoints, the distributed cache and traces. Pass an
+id where you can; otherwise wrap the value in a type whose `ICacheKeyProvider` returns a SHA-256 hash of all of it,
+token included, so a caller with another token never gets this caller's result.
+([Secrets in arguments](features/keys.md#secrets-in-arguments))
+
 **Which methods get a key that is written when the call runs?**
 Those with an argument of type `object`, an interface the decorator can't write or a collection of collections.
 Information MC0037 marks them in the editor; pass simple values or a sealed record to have the key written when you
@@ -321,12 +347,29 @@ warns with NU1608 when they differ. ([Recommended project setup](getting-started
 `AddMethodCache(mc => mc.UseRedis("..."))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)`.
 ([Distributed cache](features/distributed-cache.md))
 
+**How do I keep some values on one instance, with no network call at all?**
+`WithDistributed(false)` on the call (or `[Cache(Distributed = false)]` on the method): `GetOrCreateAsync` and
+`SetAsync` then use only this instance's memory, so no second container or cache is needed. Invalidating the key or a
+tag still reaches every instance. ([Manual caching](features/manual-caching.md#storing-a-value-you-already-have))
+
 **Does a runtime override reach every instance and survive a restart?**
 Yes, with Redis, SQL Server or PostgreSQL and their backplane: `IRuntimeCacheConfigurator.UpsertAsync` stores it in the
 distributed cache, the other instances apply it within moments, and an instance that starts applies the active ones.
 Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`. Without a distributed cache, or with
 `EnableBackplane = false`, it stays on its own instance until a restart.
 ([Runtime overrides](features/configuration.md#runtime-overrides))
+
+**Right after the app starts, the first calls don't use Redis. Is something wrong?**
+No. The connection opens in the background once the host has started, and until the distributed cache first answers,
+a call waits at most `OperationTimeout` (one second) and then uses memory only. A slow start doesn't open the circuit
+breaker; a connection that fails or takes over 30 seconds does, and is logged as a warning. In a console app without a
+generic host, the first call opens the connection. ([When the distributed cache is down](features/distributed-cache.md#when-the-distributed-cache-is-down))
+
+**How do I see how long a method's entries live, whether they reach Redis, and what is in the key?**
+`ICacheAdministrator.GetMethods()`, or `GET /methodcache/methods` with `MapMethodCacheAdmin`: each method's
+`Lifetime` (defaults filled in, and how long the shared copy lives), `Storage` (where values go, and why only in memory),
+`KeyParameters`, and `NotShared`, the result types this instance kept in memory with the reason and count.
+([What applies on this instance](features/configuration.md#what-applies-on-this-instance))
 
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a

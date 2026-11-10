@@ -71,6 +71,14 @@ namespace MethodCache.Core.Runtime.Distributed
         internal bool HasIncompatibleScope => Volatile.Read(ref _incompatibleScope) != 0;
         internal bool HasRetentionMismatch => Volatile.Read(ref _retentionMismatch) != 0;
 
+        // The first contact with the store, which a host starts once its services have started: it opens the store's
+        // connection and checks the scope, which can take longer than one operation. Until it answers, callers wait
+        // for it up to the operation timeout and then use memory only, without opening the breaker; once one caller
+        // waited that long, the rest don't wait. Without a host it stays null, and the first operation makes contact.
+        internal static readonly TimeSpan FirstContactLimit = TimeSpan.FromSeconds(30);
+        private TaskCompletionSource? _firstContact;
+        private int _firstContactWaited;
+
         // Written into every entry, so values another serializer wrote read as misses instead of wrong values
         private readonly byte[] _contentType;
         private readonly IBackplane? _backplane;
@@ -87,8 +95,32 @@ namespace MethodCache.Core.Runtime.Distributed
         private readonly TimeSpan _breakDuration;
         private readonly ConcurrentDictionary<string, TagStamp> _tagStamps = new(StringComparer.Ordinal);
 
-        // Method, declared and runtime types whose values didn't survive the serializer (always false); see RoundTrips
-        private readonly ConcurrentDictionary<(string Method, Type Declared, Type Written), bool> _roundTrips = new();
+        // Method, declared and runtime types whose values didn't survive the serializer, and how often a value of them
+        // was kept in memory since; see RoundTrips
+        private readonly ConcurrentDictionary<(string Method, Type Declared, Type Written), NotShared> _roundTrips = new();
+
+        /// <summary>Values of one method and type that are kept in memory only, since when, how many, and why.</summary>
+        internal sealed class NotShared(string? methodId, string reason, long since)
+        {
+            public string? MethodId { get; } = methodId;
+            public string Reason { get; } = reason;
+            public long Since { get; } = since;
+            public long Count = 1;
+        }
+
+        internal const string UnwritableReason = "The serializer can't write these values.";
+        internal const string ChangedReason = "These values don't read back unchanged from the serializer.";
+
+        /// <summary>The method, declared and runtime types whose values this instance keeps in memory only.</summary>
+        internal IEnumerable<(Type Declared, Type Written, NotShared Record)> NotSharedResults()
+            => _roundTrips.Select(static pair => (pair.Key.Declared, pair.Key.Written, pair.Value));
+
+        /// <summary>The store's name: its type's name without "DistributedCache", such as Redis or SqlServer.</summary>
+        internal string StoreName
+            => _cache.GetType().Name is var name && name.EndsWith("DistributedCache", StringComparison.Ordinal) && name.Length > 16 ? name[..^16] : _cache.GetType().Name;
+
+        /// <summary>The longest an entry stays in the distributed cache: the scope's tag retention less the clock skew.</summary>
+        internal TimeSpan MaxStoredLifetime => TimeSpan.FromMilliseconds(Volatile.Read(ref _retentionMilliseconds) - _clockSkewMilliseconds);
 
         // Methods with a value shared through the distributed cache, so a later value that can't be shared must
         // remove it there
@@ -349,7 +381,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// answers), so no node keeps the value it replaced. <paramref name="invalidated"/> is checked again after the
         /// write. Never throws.
         /// </summary>
-        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null, string? identity = null, string? methodId = null, long? publishedAt = null)
+        public async Task WriteAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated = null, bool replaces = false, string? methodName = null, string? identity = null, string? methodId = null, long? publishedAt = null, string? reportAs = null)
         {
             // Shutdown waits for writes in flight (each bounded by the timeout), so the removal a write that times
             // out or fails leaves behind is flushed with the rest of the queue
@@ -369,7 +401,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     return;
                 }
 
-                await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName, identity, methodId, publishedAt).ConfigureAwait(false);
+                await WriteCoreAsync(key, value, tags, createdAt, lifetime, invalidated, replaces, methodName, identity, methodId, publishedAt, reportAs).ConfigureAwait(false);
             }
             finally
             {
@@ -387,7 +419,7 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
-        private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName, string? identity, string? methodId, long? publishedAt)
+        private async Task WriteCoreAsync<T>(string key, T value, string[]? tags, long createdAt, TimeSpan lifetime, Func<bool>? invalidated, bool replaces, string? methodName, string? identity, string? methodId, long? publishedAt, string? reportAs)
         {
             if (HasIncompatibleScope || _epochStore != null && !ScopeVerified)
             {
@@ -432,8 +464,9 @@ namespace MethodCache.Core.Runtime.Distributed
             }
 
             // A method whose values of this type can't be shared isn't serialized again
-            if (value is not null && _roundTrips.ContainsKey(RoundTripKey(methodName, value)))
+            if (value is not null && _roundTrips.TryGetValue(RoundTripKey(methodName, value), out var notShared))
             {
+                Interlocked.Increment(ref notShared.Count);
                 if (MayHoldAnEarlierValue(replaces, methodName))
                 {
                     await InvalidateAsync(new[] { key }, Array.Empty<string>(), repair: true).ConfigureAwait(false);
@@ -457,7 +490,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 {
                     // Only these values can't be shared; the cache itself is fine. Said once, like a value that
                     // doesn't read back, rather than on every write.
-                    if (_roundTrips.TryAdd(RoundTripKey(methodName, value), false))
+                    if (_roundTrips.TryAdd(RoundTripKey(methodName, value), new NotShared(reportAs, UnwritableReason, Now)))
                     {
                         _logger.LogWarning("MethodCache could not serialize a value of type {Type} from {Method} for the distributed cache; its values of this type are cached in memory only. Error type: {ErrorType}.", value.GetType(), methodName ?? "SetAsync", ex.GetType().FullName);
                     }
@@ -474,7 +507,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 }
 
                 // A value the serializer can't read back as it was would be a different value on every other node
-                if (_verifyRoundTrip && !RoundTrips(methodName, value, buffer.WrittenMemory.Slice(payloadStart)))
+                if (_verifyRoundTrip && !RoundTrips(methodName, reportAs, value, buffer.WrittenMemory.Slice(payloadStart)))
                 {
                     // An earlier value of the method (an Animal before this Dog, say) may still be there for the key
                     if (MayHoldAnEarlierValue(replaces, methodName))
@@ -568,7 +601,7 @@ namespace MethodCache.Core.Runtime.Distributed
         /// setters, a derived type the serializer can't name, <c>object</c>, a dictionary's comparer) is kept in memory
         /// only, with one warning per method and runtime type.
         /// </summary>
-        private bool RoundTrips<T>(string? methodName, T value, ReadOnlyMemory<byte> payload)
+        private bool RoundTrips<T>(string? methodName, string? reportAs, T value, ReadOnlyMemory<byte> payload)
         {
             var written = value!.GetType();
             var method = RoundTripKey(methodName, value);
@@ -601,7 +634,7 @@ namespace MethodCache.Core.Runtime.Distributed
                 return true;
             }
 
-            if (_roundTrips.TryAdd(method, false))
+            if (_roundTrips.TryAdd(method, new NotShared(reportAs, ChangedReason, Now)))
             {
                 _logger.LogWarning(
                     "MethodCache keeps the results of {Method} of type {Type} (declared as {Declared}) in memory only: {Serializer} doesn't read them back unchanged, for example because of a private setter, a derived type MethodCache can't name to it (see MC0039), object, an EF Core lazy-loading proxy, or a dictionary or set made with its own comparer. To share them between instances, return a type the serializer writes in full, such as a record with public properties, or configure UseJson with JsonSerializerOptions or a JsonSerializerContext that preserves them (for example [JsonInclude] on the setter).",
@@ -1031,21 +1064,125 @@ namespace MethodCache.Core.Runtime.Distributed
         private async ValueTask<bool> EnsureScopeAsync(long probe, CancellationToken cancellationToken)
         {
             if (HasIncompatibleScope) return false;
+            if (Volatile.Read(ref _firstContact) is { Task.IsCompleted: false } contact)
+            {
+                // A first contact that failed opened the breaker after this caller was let in
+                if (!await AwaitFirstContactAsync(contact.Task, probe, cancellationToken).ConfigureAwait(false)
+                    || HasIncompatibleScope || (probe == NotProbing && Volatile.Read(ref _openUntil) != 0))
+                {
+                    return false;
+                }
+            }
+
             var revision = Volatile.Read(ref _scopeRevision);
             if (_epochStore == null || Volatile.Read(ref _verifiedScopeRevision) == revision) return true;
             var contract = await TryRunAsync(static (layer, _, ct) => layer._epochStore!.EnsureRetentionContractAsync(layer._scopeKey, layer._tagRetention, ct).AsTask(),
-                0, "validate scope retention", probe, cancellationToken).ConfigureAwait(false);
+                0, Volatile.Read(ref _establishedRetention) == 0 ? "connect and validate scope retention" : "validate scope retention", probe, cancellationToken).ConfigureAwait(false);
             if (!contract.Succeeded || revision != Volatile.Read(ref _scopeRevision)) return false;
-            var milliseconds = contract.Value.Ticks / TimeSpan.TicksPerMillisecond;
-            if (milliseconds <= _clockSkewMilliseconds || (Volatile.Read(ref _establishedRetention) is > 0 and var established && milliseconds < established))
+            return AcceptContract(contract.Value, revision);
+        }
+
+        /// <summary>
+        /// Starts the first contact with the store, once, in the background: it opens the store's connection and checks
+        /// the scope, so the first request finds the store ready. The host calls it when its services have started.
+        /// Never throws; a failure opens the breaker as any other.
+        /// </summary>
+        internal Task BeginFirstContact()
+        {
+            var contact = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (Interlocked.CompareExchange(ref _firstContact, contact, null) is { } started) return started.Task;
+            _ = Task.Run(() => FirstContactAsync(contact));
+            return contact.Task;
+        }
+
+        /// <summary>
+        /// Waits for the first contact up to the operation timeout. False when it hasn't answered by then, or when
+        /// another caller already waited that long: the caller then uses memory only, and the breaker stays closed.
+        /// </summary>
+        private async ValueTask<bool> AwaitFirstContactAsync(Task contact, long probe, CancellationToken cancellationToken)
+        {
+            if (Volatile.Read(ref _firstContactWaited) == 0)
+            {
+                try
+                {
+                    await contact.WaitAsync(_timeout, _time, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+                catch (TimeoutException)
+                {
+                    if (Interlocked.Exchange(ref _firstContactWaited, 1) == 0)
+                    {
+                        _logger.LogInformation("The distributed cache hasn't answered for the first time within {Timeout}; MethodCache uses only its in-memory cache until it does.", _timeout);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    ReleaseProbe(probe);
+                    throw;
+                }
+            }
+
+            ReleaseProbe(probe);
+            return false;
+        }
+
+        private async Task FirstContactAsync(TaskCompletionSource contact)
+        {
+            var revision = Volatile.Read(ref _scopeRevision);
+            using var observed = _telemetry?.BeginDistributed(TransportOperation(_epochStore != null ? "validate scope retention" : "answer a health check"));
+            try
+            {
+                using var limit = new CancellationTokenSource(FirstContactLimit, _time);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(limit.Token, _disposing.Token);
+                if (_epochStore != null)
+                {
+                    var established = await _epochStore.EnsureRetentionContractAsync(_scopeKey, _tagRetention, linked.Token).AsTask()
+                        .WaitAsync(FirstContactLimit, _time, _disposing.Token).ConfigureAwait(false);
+                    if (revision == Volatile.Read(ref _scopeRevision)) AcceptContract(established, revision);
+                }
+                else
+                {
+                    await ReadRemovalAsync(this, HealthCheckKey, linked.Token).WaitAsync(FirstContactLimit, _time, _disposing.Token).ConfigureAwait(false);
+                }
+
+                if (Volatile.Read(ref _firstContactWaited) != 0)
+                {
+                    _logger.LogInformation("The distributed cache answered; MethodCache uses it from now on.");
+                }
+            }
+            catch (IncompatibleDistributedScopeException error)
+            {
+                observed?.Fail(error);
+                MarkIncompatibleScope();
+            }
+            catch (OperationCanceledException) when (_disposing.IsCancellationRequested)
+            {
+                // Shutting down: there is nothing left to connect for
+            }
+            catch (Exception error)
+            {
+                observed?.Fail(error);
+                Trip(error, "connect");
+            }
+            finally
+            {
+                contact.TrySetResult();
+            }
+        }
+
+        /// <summary>Takes the retention the scope holds, read at <paramref name="revision"/>; false when it is incompatible.</summary>
+        private bool AcceptContract(TimeSpan established, long revision)
+        {
+            var milliseconds = established.Ticks / TimeSpan.TicksPerMillisecond;
+            if (milliseconds <= _clockSkewMilliseconds || (Volatile.Read(ref _establishedRetention) is > 0 and var previous && milliseconds < previous))
             {
                 MarkIncompatibleScope();
                 return false;
             }
-            var mismatch = contract.Value != _tagRetention;
+            var mismatch = established != _tagRetention;
             Volatile.Write(ref _retentionMismatch, mismatch ? 1 : 0);
             if (mismatch && Interlocked.Exchange(ref _retentionWarning, 1) == 0)
-                _logger.LogWarning("Configured MethodCache TagRetention {ConfiguredRetention} differs from the established scope retention {EstablishedRetention}; the established contract is used. Use a new KeyPrefix to change the contract.", _tagRetention, contract.Value);
+                _logger.LogWarning("Configured MethodCache TagRetention {ConfiguredRetention} differs from the established scope retention {EstablishedRetention}; the established contract is used. Use a new KeyPrefix to change the contract.", _tagRetention, established);
             Volatile.Write(ref _establishedRetention, milliseconds);
             Volatile.Write(ref _retentionMilliseconds, milliseconds);
             Volatile.Write(ref _verifiedScopeRevision, revision);

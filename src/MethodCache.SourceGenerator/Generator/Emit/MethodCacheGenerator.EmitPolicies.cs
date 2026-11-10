@@ -75,6 +75,10 @@ namespace MethodCache.SourceGenerator
                         sb.AppendLine($"                ResultType = typeof({definition.ResultType}),");
                     if (definition.ResultShape != null)
                         sb.AppendLine($"                ResultShape = {ToLiteral(definition.ResultShape)},");
+                    if (!definition.KeyParameterNames.SequenceEqual(definition.ParameterNames))
+                        sb.AppendLine($"                KeyParameters = new string[] {{ {string.Join(", ", definition.KeyParameterNames.Select(ToLiteral))} }},");
+                    if (definition.Synchronous)
+                        sb.AppendLine("                Synchronous = true,");
                     foreach (var statement in definition.PolicyStatements)
                     {
                         const string prefix = "policy = policy with { ";
@@ -109,6 +113,8 @@ namespace MethodCache.SourceGenerator
                         ResultShape = CombineResultShape(entry.ResultShape, entry.ShapeBases, shapes),
                     };
                     definition.ParameterNames.AddRange(entry.ParameterNames);
+                    definition.KeyParameterNames.AddRange(entry.KeyParameterNames);
+                    definition.Synchronous = entry.Synchronous;
                     definition.PolicyStatements.AddRange(entry.PolicyStatements);
                     definition.MetadataStatements.AddRange(entry.MetadataStatements);
                     definitions.Add(definition);
@@ -139,11 +145,18 @@ namespace MethodCache.SourceGenerator
                         new EquatableArray<string>(definition.MetadataStatements),
                         ResultTypeOf(method.Method),
                         shape,
-                        shapeBases));
+                        shapeBases,
+                        new EquatableArray<string>(method.Method.Parameters.Where(p => !Utils.IsCancellationToken(p.Type)).Select(p => p.Name)),
+                        IsSynchronous(method.Method)));
                 }
 
                 return new EquatableArray<PolicyEntry>(entries);
             }
+
+            /// <summary>Whether the method returns its result directly, which the cache keeps in memory only.</summary>
+            private static bool IsSynchronous(IMethodSymbol method)
+                => (method.ReturnType as INamedTypeSymbol)?.ConstructedFrom.ToDisplayString() is not ("System.Threading.Tasks.Task"
+                    or "System.Threading.Tasks.Task<TResult>" or "System.Threading.Tasks.ValueTask" or "System.Threading.Tasks.ValueTask<TResult>");
 
             /// <summary>
             /// The source of the method's result type, <c>T</c> of <c>Task&lt;T&gt;</c> and <c>ValueTask&lt;T&gt;</c>, which a
@@ -290,6 +303,8 @@ namespace MethodCache.SourceGenerator
                 public string MethodId { get; }
                 public string SnapshotMethodName { get; }
                 public List<string> ParameterNames { get; } = new();
+                public List<string> KeyParameterNames { get; } = new();
+                public bool Synchronous { get; set; }
                 public List<string> PolicyStatements { get; } = new();
                 public List<string> MetadataStatements { get; } = new();
                 public string? ResultType { get; init; }

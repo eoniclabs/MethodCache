@@ -80,6 +80,18 @@ namespace Docs.Configuration
                 Console.WriteLine($"{report.MethodId}: Duration={report.Options.Duration}, from {sources}");
             }
             // end-snippet
+
+            // begin-snippet: configuration-what-applies
+            foreach (var method in diagnostics.GetMethods())
+            {
+                // Defaults filled in: 5 minutes without a Duration, the stored copy's life, and why values stay local
+                Console.WriteLine($"{method.MethodId}: in memory up to {method.Lifetime.Duration}, " +
+                    $"shared for {method.Lifetime.Distributed?.ToString() ?? "-"} ({method.Storage.MemoryOnlyReason ?? method.Storage.Store})");
+                Console.WriteLine($"  key: {string.Join(", ", method.KeyParameters)}");
+                foreach (var kept in method.NotShared)
+                    Console.WriteLine($"  {kept.Type} kept in memory {kept.Count} times since {kept.Since}: {kept.Reason}");
+            }
+            // end-snippet
         }
     }
 }

@@ -46,6 +46,7 @@
     <Compile Include="../TestSupport/EpochBackendContract.cs" Link="TestSupport/EpochBackendContract.cs" />
     <Compile Include="../TestSupport/HttpNativeContract.cs" Link="TestSupport/HttpNativeContract.cs" />
     <Compile Include="../TestSupport/PolicyBackendContract.cs" Link="TestSupport/PolicyBackendContract.cs" />
+    <Compile Include="../TestSupport/ExpirationContract.cs" Link="TestSupport/ExpirationContract.cs" />
     <Compile Include="../TestSupport/PolicyBackendAcceptanceContract.cs" Link="TestSupport/PolicyBackendAcceptanceContract.cs" />
     <Compile Include="../TestSupport/PolicySubscriptionBarrier.cs" Link="TestSupport/PolicySubscriptionBarrier.cs" />
     <Compile Include="../MethodCache.Core.Tests/FaultInjection/NativePolicyFaultContract.cs" Link="TestSupport/NativePolicyFaultContract.cs" />

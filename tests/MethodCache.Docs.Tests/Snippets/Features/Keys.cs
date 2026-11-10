@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using MethodCache;
 using MethodCache.Extensibility;
 using Microsoft.AspNetCore.Builder;
@@ -77,6 +79,22 @@ namespace MyApp
         private readonly Guid _value = value;   // private state: MethodCache can't see it
 
         public string CacheKeyPart => _value.ToString("N");
+    }
+    // end-snippet
+
+    // begin-snippet: keys-secret
+    // A URL with a SAS token in its query: the key holds a hash of the whole URL, never the token
+    public sealed class SignedUrl(Uri value) : ICacheKeyProvider
+    {
+        public Uri Value { get; } = value;
+
+        public string CacheKeyPart => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Value.AbsoluteUri)));
+    }
+
+    public interface IBlobReader
+    {
+        [Cache(Duration = "10m")]
+        Task<byte[]> ReadAsync(SignedUrl url);
     }
     // end-snippet
 

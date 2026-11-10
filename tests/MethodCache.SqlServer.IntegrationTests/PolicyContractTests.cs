@@ -17,29 +17,41 @@ public class PolicyContractTests(SqlServerFixture sql)
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var schema = "policy_" + Guid.NewGuid().ToString("N");
         var connection = sql.RequireConnectionString();
-        async Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<TimeProvider>(time);
-            services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
-            services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
-            services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCache(mc => mc.UseSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
-            PolicySubscriptionBarrier.Decorate(services);
-            var provider = services.BuildServiceProvider();
-            try
-            {
-                var hosted = provider.GetServices<IHostedService>().ToArray();
-                foreach (var service in hosted) await service.StartAsync(CancellationToken.None);
-                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                await SqlServerFixture.WaitForTablesAsync(hosted, deadline.Token);
-                await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
-                return provider;
-            }
-            catch { await provider.DisposeAsync(); throw; }
-        }
-        await PolicyBackendContract.RunAsync(Create, time);
+        await PolicyBackendContract.RunAsync((origin, configure) => NodeAsync(time, connection, schema, origin, configure), time);
     }
+
+    [SkippableFact]
+    public async Task ExpirationRules_ConformToSharedContract()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
+        var schema = "expiration_" + Guid.NewGuid().ToString("N");
+        var connection = sql.RequireConnectionString();
+        await ExpirationContract.RunAsync((origin, configure) => NodeAsync(time, connection, schema, origin, configure), time);
+    }
+
+    private static async Task<ServiceProvider> NodeAsync(FakeTimeProvider time, string connection, string schema,
+        PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(time);
+        services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
+        services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
+        services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
+        services.AddMethodCache(mc => mc.UseSqlServer(o => { o.ConnectionString = connection; o.SchemaName = schema; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
+        PolicySubscriptionBarrier.Decorate(services);
+        var provider = services.BuildServiceProvider();
+        try
+        {
+            var hosted = provider.GetServices<IHostedService>().ToArray();
+            foreach (var service in hosted) await service.StartAsync(CancellationToken.None);
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await SqlServerFixture.WaitForTablesAsync(hosted, deadline.Token);
+            await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
+            return provider;
+        }
+        catch { await provider.DisposeAsync(); throw; }
+    }
+
     [SkippableTheory]
     [InlineData("partial")]
     [InlineData("cancellation")]

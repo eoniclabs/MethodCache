@@ -69,42 +69,6 @@ public static partial class PolicyBackendContract
         await using var verifier = await create(new Origin(600), null);
         Assert.Equal(1, await verifier.GetRequiredService<ICacheManager>().GetOrCreateAsync("local-only", _ => ValueTask.FromResult(3)));
 
-        // Deadline assertions have no dependency on the preceding policy mutations or their callbacks.
-        // Keep both timed nodes on one fresh physical scope. Subscription recovery may legitimately retire
-        // a running load, so detach and drain callbacks before testing only L2 publication/deadlines.
-        var expiryScope = "expiry:" + Guid.NewGuid().ToString("N") + ":";
-        Action<MethodCacheBuilder> isolateExpiry = builder => builder.Services.PostConfigure<DistributedCacheOptions>(o => o.KeyPrefix += expiryScope);
-        await using var timedFirst = await create(new Origin(700), isolateExpiry);
-        await using var timedSecond = await create(new Origin(800), isolateExpiry);
-        await timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
-        await timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").UnsubscribeAsync();
-        Assert.Equal(BackplaneState.Disconnected, timedFirst.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
-        Assert.Equal(BackplaneState.Disconnected, timedSecond.GetRequiredKeyedService<IBackplane>("MethodCache").ConnectionState);
-        var timedWriter = timedFirst.GetRequiredService<ICacheManager>();
-        var timedReceiver = timedSecond.GetRequiredService<ICacheManager>();
-        var slow = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var loading = timedWriter.GetOrCreateAsync("slow", _ => { started.TrySetResult(); return new ValueTask<int>(slow.Task); }, o => o.WithDuration(TimeSpan.FromSeconds(10))).AsTask();
-        await started.Task;
-        time.Advance(TimeSpan.FromSeconds(20));
-        slow.SetResult(10); Assert.Equal(10, await loading);
-        time.Advance(TimeSpan.FromSeconds(8));
-        Assert.Equal(10, await timedReceiver.GetOrCreateAsync("slow", _ => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
-        time.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(20, await timedReceiver.GetOrCreateAsync("slow", _ => ValueTask.FromResult(20), o => o.WithDuration(TimeSpan.FromSeconds(30))));
-        await timedWriter.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(1), o => o.WithDuration(TimeSpan.FromSeconds(10)));
-        var sliding = new CacheEntryOptions.Builder().WithDuration(TimeSpan.FromSeconds(30))
-            .WithSlidingExpiration(TimeSpan.FromSeconds(2)).WithFailSafe(TimeSpan.FromSeconds(5)).Build();
-        Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(2), sliding));
-        for (var i = 0; i < 6; i++)
-        {
-            time.Advance(TimeSpan.FromMilliseconds(1500));
-            Assert.Equal(1, await timedReceiver.GetOrCreateAsync("deadline", _ => ValueTask.FromResult(2), sliding));
-        }
-        time.Advance(TimeSpan.FromSeconds(1));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => timedReceiver.GetOrCreateAsync<int>("deadline",
-            _ => ValueTask.FromException<int>(new InvalidOperationException()), sliding).AsTask());
-
         await writer.GetOrCreateAsync("version", _ => ValueTask.FromResult(7), o => o.WithVersion(2));
         Assert.True((await verifier.GetRequiredService<ICacheManager>().TryGetAsync<int>("version", version: 2)).Found);
         var result = await writer.InvalidateKeysAsync(["version", "version"], version: 2);
@@ -115,7 +79,7 @@ public static partial class PolicyBackendContract
     /// <summary>What a generic host runs in StartAsync: among others, it reads the runtime overrides every instance applies.</summary>
     public static void StartAsHost(ServiceProvider node) => node.GetRequiredService<IStartupValidator>().Validate();
 
-    private static async Task EventuallyAsync(Func<bool> condition)
+    internal static async Task EventuallyAsync(Func<bool> condition)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         while (!condition())
@@ -131,6 +95,8 @@ public static partial class PolicyBackendContract
         [Cache] int Read(int id);
         [Cache(Group = "native-enabled", Enabled = true)] Task<int> EnabledAsync(int id);
         [Cache(Group = "native-disabled", Enabled = false)] Task<int> DisabledAsync(int id);
+        [Cache(Duration = "10s")] Task<int> FixedAsync(int id);
+        [Cache(Duration = "5s", SlidingExpiration = "1s")] Task<int> SlidingAsync(int id);
     }
     public sealed class Origin(int basis) : IOrigin
     {
@@ -147,5 +113,7 @@ public static partial class PolicyBackendContract
         public int Read(int id) => basis + Interlocked.Increment(ref _syncCalls);
         public Task<int> EnabledAsync(int id) => ReadAsync(id);
         public Task<int> DisabledAsync(int id) => ReadAsync(id);
+        public Task<int> FixedAsync(int id) => ReadAsync(id);
+        public Task<int> SlidingAsync(int id) => ReadAsync(id);
     }
 }

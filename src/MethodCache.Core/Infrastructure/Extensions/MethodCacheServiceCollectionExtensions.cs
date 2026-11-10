@@ -210,7 +210,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var method = services.GetService<InMemoryCacheManager>();
             var http = services.GetService<HttpResponseStore>();
-            if (method != null) return new InMemoryCacheAdministrator(method, services.GetService<IPolicyRegistry>(), http);
+            if (method != null) return new InMemoryCacheAdministrator(method, services.GetService<IPolicyRegistry>(), http, services.GetService<GeneratedParameters>());
             return http != null ? new HttpCacheAdministrator(http) : null!;
         }
 
@@ -296,6 +296,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 sp.GetRequiredService<RuntimePolicyStore>(),
                 sp.GetService<TimeProvider>(),
                 sp.GetService<ILoggerFactory>()?.CreateLogger<SharedRuntimeOverrides>()));
+
+            // A generic host opens the connection once it has started; without one, the first operation does
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<Microsoft.Extensions.Hosting.IHostedService, DistributedCacheStartup>());
 
             // A generic host checks the cache when it starts; without one, the layer above rejects it on first use
             services.AddOptions<DistributedCacheStoreValidation>().ValidateOnStart();
@@ -663,6 +666,10 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             private readonly Dictionary<(Type Service, object? Key), List<DecoratedRegistration>> _groups = [];
             internal Dictionary<string, string[]> Names { get; } = new(StringComparer.Ordinal);
+
+            // The parameters that make up each cached method's keys, and the methods that return their result directly
+            internal Dictionary<string, string[]> KeyNames { get; } = new(StringComparer.Ordinal);
+            internal HashSet<string> Synchronous { get; } = new(StringComparer.Ordinal);
 
             // Every [Cache] method the loaded generated modules describe, registered or not, so a policy for a method
             // whose service a host leaves out is told apart from a misspelled id

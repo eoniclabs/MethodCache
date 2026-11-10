@@ -170,7 +170,7 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
     }
 
     [Fact]
-    public async Task PublicSet_MemoryOnly_RemovesTheDistributedAndOtherCopies()
+    public async Task PublicSet_MemoryOnly_ChangesOnlyThisNode()
     {
         var (a, b, _, _) = CreateNodes();
         await Warm(a, b);
@@ -179,7 +179,13 @@ public sealed class TwoNodeFaultInjectionTests : IDisposable
         _time.Advance(OneMillisecond);
 
         (await a.TryGetAsync<string>("key")).Value.Should().Be("v2");
-        (await Get(b, "key", "loaded by B", "users")).Should().Be("loaded by B");
+        (await Get(b, "key", "loaded by B", "users")).Should().Be("v1", "the other node keeps its copy");
+        (await Get(CreateNode(_hub.Join()), "key", "unused", "users")).Should().Be("v1", "the distributed cache keeps its copy");
+
+        // An invalidation still reaches every node and the distributed cache
+        await ((ICacheManager)a).InvalidateByKeysAsync("key");
+        _time.Advance(OneMillisecond);
+        (await Get(b, "key", "v3", "users")).Should().Be("v3");
     }
 
     [Theory]

@@ -65,6 +65,17 @@ namespace Docs.Expiration
     }
     // end-snippet
 
+    public sealed record Layout(string Name);
+
+    // begin-snippet: expiration-sliding-only
+    public interface ILayouts
+    {
+        // Kept while it is read at least every 30 minutes, up to MaxExpiration (7 days)
+        [Cache(SlidingExpiration = "30m")]
+        Task<Layout> GetAsync(string name);
+    }
+    // end-snippet
+
     public static class Defaults
     {
         public static void Register(WebApplicationBuilder builder)

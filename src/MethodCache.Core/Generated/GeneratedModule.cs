@@ -109,6 +109,13 @@ public sealed class GeneratedMethodOptions
     /// contract-1 generators.
     /// </summary>
     public string? ResultShape { get; init; }
+    /// <summary>
+    /// The parameters that make up the method's keys, when they aren't all of them (a <c>CancellationToken</c> isn't
+    /// part of a key); omitted by earlier generators.
+    /// </summary>
+    public IReadOnlyList<string>? KeyParameters { get; init; }
+    /// <summary>Whether the method returns its result directly instead of a task, so its values stay in memory.</summary>
+    public bool Synchronous { get; init; }
 }
 
 /// <summary>Builds descriptor data without exposing the policy pipeline or DI implementation.</summary>
@@ -121,6 +128,8 @@ public sealed class GeneratedModuleBuilder
     internal Dictionary<Type, List<CandidateRegistration>> Candidates { get; } = [];
     internal HashSet<Type> DeclaredServices { get; } = [];
     internal Dictionary<string, string[]> ParameterNames { get; } = new(StringComparer.Ordinal);
+    internal Dictionary<string, string[]> KeyParameterNames { get; } = new(StringComparer.Ordinal);
+    internal HashSet<string> SynchronousMethods { get; } = new(StringComparer.Ordinal);
     internal Dictionary<string, Type> ResultTypes { get; } = new(StringComparer.Ordinal);
     internal List<PolicySnapshot> Policies { get; } = [];
     internal Dictionary<Type, HashSet<Type>> Derived { get; } = [];
@@ -182,6 +191,8 @@ public sealed class GeneratedModuleBuilder
         ArgumentNullException.ThrowIfNull(parameterNames);
         ArgumentNullException.ThrowIfNull(options);
         ParameterNames[methodId] = parameterNames.ToArray();
+        KeyParameterNames[methodId] = options.KeyParameters?.ToArray() ?? parameterNames.ToArray();
+        if (options.Synchronous) SynchronousMethods.Add(methodId);
         if (options.ResultType is { } resultType) ResultTypes[methodId] = resultType;
         var fields = CachePolicyFields.None;
         var policy = CachePolicy.Empty;
@@ -216,6 +227,8 @@ public sealed class GeneratedModuleBuilder
         foreach (var id in methodIds)
         {
             if (ParameterNames.TryGetValue(id, out var names)) parameters.Names[id] = names;
+            if (KeyParameterNames.TryGetValue(id, out var keyNames)) parameters.KeyNames[id] = keyNames;
+            if (SynchronousMethods.Contains(id)) parameters.Synchronous.Add(id);
             if (ResultTypes.TryGetValue(id, out var resultType)) parameters.ResultTypes[id] = resultType;
         }
         services.AddSingleton(new ModulePolicyMarker(Module, serviceType));

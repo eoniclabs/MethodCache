@@ -88,6 +88,13 @@ A value set directly while the distributed cache is down stays in that instance'
 removed from the distributed cache and the other instances once it is back. An entry that comes back damaged (cut
 short, or unreadable by the serializer) is a miss: your method runs and its result replaces the entry.
 
+When the app starts, the connection is opened in the background once the host has started, so the first request
+finds it open. Opening a connection can take longer than one call: until the distributed cache first answers, a call
+waits for it up to `OperationTimeout` and then uses memory only, and once one call has waited that long the rest
+don't wait. A slow start doesn't open the circuit breaker; one that fails, or hasn't answered after 30 seconds, does.
+Without a generic host, such as in a console app that builds its own `ServiceProvider`, the first call opens the
+connection within its `OperationTimeout`.
+
 The timeout caps each call to the distributed cache, not a whole cache miss. A cache that stops answering costs a miss
 one timeout, after which the circuit breaker skips it. One that answers just within the timeout costs a miss up to
 three: reading the entry, writing your method's result and checking that no removal raced the write (and a fourth for
@@ -183,9 +190,10 @@ return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.Reque
 A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
 `appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
-A `SetAsync` that keeps its value in memory still removes the key's old copy from the distributed cache, so other
-instances load the value again instead of reading the old one. Like invalidating the key, it writes a removal stamp there:
-`methodcache:r:<key>` with the default `KeyPrefix`, which holds no value and expires after `TagRetention` (1 day).
+A call that keeps its value in memory touches only that instance: `GetOrCreateAsync` and `SetAsync` with
+`WithDistributed(false)` make no network call, and the distributed cache and the other instances keep what they hold.
+To change a value every instance sees, set it with `WithDistributed(true)` or invalidate the key, which reaches every
+instance whatever `Distributed` says.
 
 ### A worker and an API
 
@@ -254,6 +262,10 @@ API's test project references the worker project, since the worker is where the 
     it expires.
 - Messages carry no values, so a late, repeated or reordered message only makes an instance read the distributed cache
   again.
+- Reads don't reach the distributed cache, so a value with a sliding window is stored there for one window, or its
+  `Duration` if that is shorter, from when it was stored. The next instance that asks for it after that loads it again,
+  and the new value replaces the copy that the instance that loaded it first kept extending while it was read
+  ([Sliding expiration](expiration.md#sliding-expiration)).
 - An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
   succeeds, other instances can serve the old value; the instance that invalidated never does.
 - A write that timed out (a large value, say) doesn't open the circuit breaker, since the cache may answer everything

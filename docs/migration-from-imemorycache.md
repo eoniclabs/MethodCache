@@ -80,3 +80,18 @@ Migrate one service at a time; both caches can run side by side.
   that changes the result is a parameter, not a field of the class.
 - **`null` is cached** by default. Set `MethodCacheMemoryOptions.CacheNullValues = false` ([Memory cache](features/memory-cache.md#null-values)) if your old code skipped `null`.
 - **Exceptions are never cached**, as before.
+
+## State that isn't a cache
+
+`IMemoryCache` often holds more than results that can be loaded again: a marker that a notification was sent, a
+throttle counter, a lock, a record of a request that was already handled, an "in progress" flag. Leave those where they
+are, or move them to a store with atomic writes, such as a database row or Redis `SET NX`. MethodCache treats every
+entry as something it may lose:
+
+- An entry can disappear at any time: it expires, is evicted when memory is full, is invalidated, or is cleared when an
+  instance loses its backplane connection.
+- A write to the distributed cache that fails is logged, and the caller still gets its value.
+- Concurrent callers share one load per instance; two instances that miss at once both load.
+
+So a lost "already sent" marker sends again, and a lock kept in a cache doesn't lock. Cache what a read returns, and
+keep anything that decides whether an action runs where a missing value is an error rather than a miss.

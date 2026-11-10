@@ -30,6 +30,41 @@ public class TelemetryRequestTests
     }
 
     [Fact]
+    public async Task NamedManualCall_ReportsItsName_AndAnUnnamedOneReportsNone()
+    {
+        using var provider = Node(new FakeTimeProvider());
+        using var recorded = new TelemetryRecorder(provider);
+        var cache = provider.GetRequiredService<ICacheManager>();
+
+        await cache.GetOrCreateAsync("token", _ => ValueTask.FromResult(7), o => o.WithName("crm-token"));
+        await cache.GetOrCreateAsync("token", _ => ValueTask.FromResult(8), o => o.WithName("crm-token"));
+        await cache.GetOrCreateAsync("other", _ => ValueTask.FromResult(9));
+
+        var requests = recorded.Longs.Where(row => row.Name == "methodcache.requests").ToArray();
+        var named = requests.Where(row => Equals(row.Tags.GetValueOrDefault("methodcache.name"), "crm-token")).ToArray();
+        Assert.Equal(new[] { "hit", "miss" }, named.Select(row => (string)row.Tags["methodcache.result"]!).Order(StringComparer.Ordinal));
+        Assert.All(named, row => Assert.Equal("manual", row.Tags["methodcache.kind"]));
+        Assert.All(requests, row => Assert.False(row.Tags.ContainsKey("methodcache.method")));
+        var unnamed = Assert.Single(requests, row => !row.Tags.ContainsKey("methodcache.name"));
+        Assert.Equal("manual", unnamed.Tags["methodcache.kind"]);
+        Assert.Contains(recorded.Loads, row => Equals(row.Tags.GetValueOrDefault("methodcache.name"), "crm-token"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("line\nbreak")]
+    public void WithName_RejectsAnEmptyNameAndControlCharacters(string name)
+        => Assert.ThrowsAny<ArgumentException>(() => new CacheEntryOptions.Builder().WithName(name));
+
+    [Fact]
+    public void WithName_RejectsANameLongerThan100Characters()
+    {
+        Assert.Equal(new string('a', 100), new CacheEntryOptions.Builder().WithName(new string('a', 100)).Build().Name);
+        Assert.Throws<ArgumentException>(() => new CacheEntryOptions.Builder().WithName(new string('a', 101)));
+    }
+
+    [Fact]
     public async Task GeneratedDisabledAndNoOpCalls_AreBypasses_AndStillMeasureOrigins()
     {
         var services = new ServiceCollection();

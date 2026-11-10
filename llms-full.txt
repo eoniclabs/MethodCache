@@ -499,6 +499,11 @@ Synchronous values, `Task<T>` and `ValueTask<T>`. Return a list, never a lazy `I
 No, synchronous methods use the memory cache only, so they never block on the network. Make the method async to share
 its results between instances. ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#which-calls-use-the-distributed-cache))
 
+**Can I keep a lock, an idempotency record or an "already sent" marker in MethodCache?**
+No. Any entry can disappear (expiry, eviction, invalidation, a lost backplane connection), and a failed write to the
+distributed cache is only logged, so a lost marker repeats the action. Keep such state in a store with atomic writes,
+such as a database row or Redis `SET NX`. ([State that isn't a cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/migration-from-imemorycache.md#state-that-isnt-a-cache))
+
 **What changed in a new version, and what do I change when I upgrade?**
 `CHANGELOG.md` lists each version's changes, and its "Upgrading" part says what to change in your code and which
 keys change. The `MethodCache` package carries it in its `docs` folder next to these pages.
@@ -559,9 +564,22 @@ needed. ([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/do
 
 **My sliding window seems to do nothing. Why?**
 It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a
-day on a default `Duration` of five minutes expires each entry after five minutes. Make the window shorter than the
-`Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning that names
-the method when it starts. ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration), [MC0038](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0038))
+day with a `Duration` of five minutes from `Defaults` expires each entry after five minutes. Make the window shorter
+than the `Duration`, or raise the `Duration`. Warning MC0038 reports it on one `[Cache]`, and the host logs a warning
+that names the method when it starts. ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration), [MC0038](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0038))
+
+**How do I keep an entry for as long as it is read, like an `IMemoryCache` entry with only `SlidingExpiration`?**
+Set only the window: `[Cache(SlidingExpiration = "30m")]`. Without a `Duration` the entry is kept while it is read at
+least once per window, up to `MaxExpiration` (7 days, raise it with `mc.Memory(o => o.MaxExpiration = ...)`). A
+`Duration` from `Defaults` or a group still ends it, so then give the method its own long `Duration`. With a
+distributed cache the stored copy lives one window from when it was stored, so another instance that asks for the
+value after that loads it again, and the new value replaces the copies on every instance.
+([Kept as long as it is read](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#kept-as-long-as-it-is-read))
+
+**How long does an entry live when I set nothing?**
+Five minutes, in memory and in the distributed cache. No entry lives past `MaxExpiration` (7 days), and the distributed
+cache keeps an entry at most `TagRetention` (1 day) from when its load started.
+([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -638,11 +656,13 @@ its entry lives five minutes, and with only `WithSlidingExpiration` only `MaxExp
 
 **How do I refresh a value before it expires?**
 `RefreshAhead`, shorter than `Duration`: a call near the end of the duration returns the cached value and refreshes it
-in the background. ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead))
+in the background. With a distributed cache the new value replaces the stored copy, so other instances read it instead
+of loading it. ([Refresh-ahead](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#refresh-ahead))
 
 **How do I keep serving the last value when the database is down?**
-`FailSafe`: when the method throws or is slower than `FailSafeTimeout`, the last good value is returned.
-([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md))
+`FailSafe`: when the method throws or is slower than `FailSafeTimeout`, the last good value is returned. Each instance
+serves the value it has in memory, also one it read from the distributed cache; an instance that never had the value
+gets the exception. ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md))
 
 **Is `null` cached?**
 Yes, by default. `CacheNullValues = false` in `mc.Memory(...)` turns that off for every method. For one method, use
@@ -727,6 +747,12 @@ Arguments whose only state is private are rejected, at build time with error MC0
 the type.
 ([Types whose state is private](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#types-whose-state-is-private))
 
+**An argument holds a secret, such as a URL with a SAS token. How do I keep it out of the key?**
+Keys hold arguments in plain text, and they show up in the admin endpoints, the distributed cache and traces. Pass an
+id where you can; otherwise wrap the value in a type whose `ICacheKeyProvider` returns a SHA-256 hash of all of it,
+token included, so a caller with another token never gets this caller's result.
+([Secrets in arguments](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#secrets-in-arguments))
+
 **Which methods get a key that is written when the call runs?**
 Those with an argument of type `object`, an interface the decorator can't write or a collection of collections.
 Information MC0037 marks them in the editor; pass simple values or a sealed record to have the key written when you
@@ -773,12 +799,29 @@ warns with NU1608 when they differ. ([Recommended project setup](https://github.
 `AddMethodCache(mc => mc.UseRedis("..."))`, `mc.UseSqlServer(...)` or `mc.UsePostgreSql(...)`.
 ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md))
 
+**How do I keep some values on one instance, with no network call at all?**
+`WithDistributed(false)` on the call (or `[Cache(Distributed = false)]` on the method): `GetOrCreateAsync` and
+`SetAsync` then use only this instance's memory, so no second container or cache is needed. Invalidating the key or a
+tag still reaches every instance. ([Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md#storing-a-value-you-already-have))
+
 **Does a runtime override reach every instance and survive a restart?**
 Yes, with Redis, SQL Server or PostgreSQL and their backplane: `IRuntimeCacheConfigurator.UpsertAsync` stores it in the
 distributed cache, the other instances apply it within moments, and an instance that starts applies the active ones.
 Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`. Without a distributed cache, or with
 `EnableBackplane = false`, it stays on its own instance until a restart.
 ([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
+
+**Right after the app starts, the first calls don't use Redis. Is something wrong?**
+No. The connection opens in the background once the host has started, and until the distributed cache first answers,
+a call waits at most `OperationTimeout` (one second) and then uses memory only. A slow start doesn't open the circuit
+breaker; a connection that fails or takes over 30 seconds does, and is logged as a warning. In a console app without a
+generic host, the first call opens the connection. ([When the distributed cache is down](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#when-the-distributed-cache-is-down))
+
+**How do I see how long a method's entries live, whether they reach Redis, and what is in the key?**
+`ICacheAdministrator.GetMethods()`, or `GET /methodcache/methods` with `MapMethodCacheAdmin`: each method's
+`Lifetime` (defaults filled in, and how long the shared copy lives), `Storage` (where values go, and why only in memory),
+`KeyParameters`, and `NotShared`, the result types this instance kept in memory with the reason and count.
+([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance))
 
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
@@ -1160,11 +1203,42 @@ singleton factory.
 `ICacheManager` directly. An application `ICacheManager` stores entries under `MethodCacheKeys.StoredKey(key, version)`;
 see [Manual caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/manual-caching.md).
 
+## Secrets in arguments
+
+Keys hold the arguments as they are, and keys show up in `ListEntries`, the admin endpoints, your distributed cache and,
+when you turn it on, traces. A plain string doesn't look secret to MethodCache, yet a URL can carry a SAS token or
+another secret in its query, and an argument can be a refresh token or a private report link. Pass an identifier
+instead where you can. Where the secret is what identifies the result, wrap it in a type whose `ICacheKeyProvider`
+returns a hash:
+
+```cs
+// A URL with a SAS token in its query: the key holds a hash of the whole URL, never the token
+public sealed class SignedUrl(Uri value) : ICacheKeyProvider
+{
+    public Uri Value { get; } = value;
+
+    public string CacheKeyPart => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Value.AbsoluteUri)));
+}
+
+public interface IBlobReader
+{
+    [Cache(Duration = "10m")]
+    Task<byte[]> ReadAsync(SignedUrl url);
+}
+```
+
+- Hash the whole value, token included. A key without the token would hand the cached result to a caller whose token
+  is wrong or has expired.
+- Each new token is a new entry, so a URL that is signed again for every call is never read from the cache. Cache by
+  what the token grants access to, such as the blob's name, only where the caller is already authorized for it.
+- SHA-256 of a long random token can't be reversed; a hash of a short or guessable secret, such as a password or a
+  PIN, can be. Don't cache by those.
+
 ## Things to know
 
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
-  an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
-  another call's key; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
+  an identifier, or a hash ([Secrets in arguments](#secrets-in-arguments)). Hashed keys are not encryption. No argument,
+  whatever characters it contains, can produce another call's key; see [Security](https://github.com/eoniclabs/MethodCache/blob/main/docs/security.md).
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#versions).
 - **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See
@@ -1274,6 +1348,27 @@ cut short: at startup, in a runtime override or in a manual call. For longer ent
 with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
 [Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md).
 
+### How long an entry lives
+
+What a cached method or a manual call ends up with, by what it sets. A cached method also takes a `Duration` from
+`Defaults` or its group when it sets none itself; a manual call takes only its own options.
+
+| Sets | Kept in memory | Kept in the distributed cache |
+|---|---|---|
+| nothing | 5 minutes | 5 minutes |
+| `Duration` | the `Duration` | the `Duration`, at most one day |
+| `DurationFor` | the duration the result gives | that duration, at most one day |
+| `SlidingExpiration` | while it is read once per window, up to `MaxExpiration` (7 days) | one window from when it was stored |
+| `Duration` and `SlidingExpiration` | while it is read once per window, up to the `Duration` | one window from when it was stored, or the `Duration` if that is shorter |
+
+- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` fails where it is set.
+- The one-day limit in the distributed cache is `TagRetention` (1 day) less `ClockSkewTolerance` (2 seconds), counted
+  from when the method started loading the value, so that a tag invalidation always outlives the entries it covers.
+  Raise `TagRetention` to share values longer ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#options)).
+- An instance that reads a value from the distributed cache keeps it no longer than the copy stored there.
+- `FailSafe` keeps an expired value in memory for its window, to serve when a reload fails, on every instance that
+  has the value, also one that read it from the distributed cache ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
+
 ## A duration from the result
 
 `DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token, a
@@ -1334,6 +1429,33 @@ A method that inherits a sliding window from the defaults, a group or configurat
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.
 
+With a distributed cache, the copy stored there lives one window from when it was stored, or the `Duration` if that is
+shorter: reads in one instance's memory don't reach it. An instance that got the value from the distributed cache keeps
+it no longer than the stored copy, and the next instance that asks for it after that loads it again. The instance that
+loaded the value keeps extending its own copy while it is read, up to the `Duration`, until another instance loads the
+value again: a new value replaces the older copies on every instance. So a value that several instances read is loaded
+about once per window. To share a value for its whole `Duration`, leave the window out.
+
+### Kept as long as it is read
+
+For a cache that only slides, such as one that replaces an `IMemoryCache` entry with only `SlidingExpiration`, set
+the window and no `Duration`: the entry is kept while it is read at least once per window, up to `MaxExpiration`.
+
+```cs
+public interface ILayouts
+{
+    // Kept while it is read at least every 30 minutes, up to MaxExpiration (7 days)
+    [Cache(SlidingExpiration = "30m")]
+    Task<Layout> GetAsync(string name);
+}
+```
+
+- When `Defaults` or the method's group sets a `Duration`, that still ends the entry. `Duration` can't be turned off,
+  so give the method its own `Duration` as long as you accept, such as `Duration = "7d"`.
+- To keep entries past seven days, raise `MaxExpiration`, up to 365 days:
+  `mc.Memory(o => o.MaxExpiration = TimeSpan.FromDays(30))`.
+- A manual call does the same with only `o.WithSlidingExpiration(...)`, since it takes no `Duration` from `Defaults`.
+
 ### A sliding window from the result
 
 `SlidingFor` gives each result its own sliding window, in place of `SlidingExpiration`. Zero turns sliding off for that
@@ -1361,7 +1483,8 @@ builder.Services.AddMethodCache(mc =>
 
 `RefreshAhead` reloads an entry in the background when it is read within that window before it expires. The caller
 gets the cached value at once, and the reload replaces it, so a popular entry never makes anyone wait. An entry that
-isn't read in the window simply expires.
+isn't read in the window simply expires. With a distributed cache the reload also replaces the stored copy, so other
+instances read the new value instead of loading it.
 
 The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: on `[Cache]`
 (build error [MC0023](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0023)), in code (`Build()` throws an `InvalidOperationException`)
@@ -2099,8 +2222,9 @@ change only the timeout. `o.WithFailSafe(TimeSpan.Zero)` turns fail-safe off. In
 ## Limits
 
 > [!NOTE]
-> The fallback lives in each instance's memory, so right after a restart there is none until the method has succeeded
-> once.
+> The fallback lives in each instance's memory: an instance has one for each value it loaded or read from the
+> distributed cache, for the fail-safe window after the value expired. Right after a restart there is none until the
+> instance has had the value once.
 
 Cancelling a call stops its wait for the distributed cache, a slow method or a fail-safe value. Work that other callers share may finish for them, and a cancelled call doesn't count as a failure.
 
@@ -2400,6 +2524,36 @@ value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `Runtim
 is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
+### What applies on this instance
+
+`Options` holds what is set. Next to it, each method says what that comes to on this instance, with defaults filled in:
+
+```cs
+foreach (var method in diagnostics.GetMethods())
+{
+    // Defaults filled in: 5 minutes without a Duration, the stored copy's life, and why values stay local
+    Console.WriteLine($"{method.MethodId}: in memory up to {method.Lifetime.Duration}, " +
+        $"shared for {method.Lifetime.Distributed?.ToString() ?? "-"} ({method.Storage.MemoryOnlyReason ?? method.Storage.Store})");
+    Console.WriteLine($"  key: {string.Join(", ", method.KeyParameters)}");
+    foreach (var kept in method.NotShared)
+        Console.WriteLine($"  {kept.Type} kept in memory {kept.Count} times since {kept.Since}: {kept.Reason}");
+}
+```
+
+| Property | Shows |
+|---|---|
+| `Lifetime.Duration` | The longest an entry lives in memory: the method's `Duration`, from `Defaults` or its group, else five minutes; with only a sliding window, `MaxExpiration`. Null when `DurationFor` gives each result its own (`DurationFromResult`) |
+| `Lifetime.SlidingExpiration` | The sliding window, or null without one or when `SlidingFor` gives each result its own (`SlidingFromResult`) |
+| `Lifetime.MaxExpiration` | The longest any entry lives (7 days by default) |
+| `Lifetime.Distributed` | How long the copy in the distributed cache lives: the `Duration`, at most one sliding window and at most `TagRetention` less `ClockSkewTolerance`. Null when values aren't stored there or the result gives its own times |
+| `Storage.Distributed` | Whether values are stored in the distributed cache as well as in memory |
+| `Storage.Store` | The distributed cache, such as `Redis`, `SqlServer` or `PostgreSql` |
+| `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
+| `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
+| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
+
+`NotShared` is what this instance saw since it started; each instance keeps its own.
+
 ## Validation
 
 | Setting | Rule | Checked |
@@ -2489,7 +2643,12 @@ var list = await cache.GetOrCreateAsync(
   `StoreValuesByDefault = false`; a call with `WithDistributed(true)` then still shares its value
   ([Invalidations only](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#invalidations-only)).
 - `WithEnabled(false)` runs the factory on every call, and neither reads nor stores the entry.
-- `WithDistributed(false)` uses memory only. `CacheWhen<T>` checks the result before it is stored, and a value read
+- `WithName("crm-token")` names the call in metrics, traces and logs (`methodcache.name`), where a manual call otherwise
+  reports only that it was one ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#opentelemetry)). Use one fixed name for one kind of value,
+  not one per key.
+- `WithDistributed(false)` uses this instance's memory only: neither `GetOrCreateAsync` nor `SetAsync` makes a network
+  call, so a cache of values that must never leave the instance needs nothing else. Invalidating a key or tag still
+  reaches every instance. `CacheWhen<T>` checks the result before it is stored, and a value read
   from the distributed cache. `DurationFor<T>` gives each result its own duration in place of `WithDuration`
   ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)), and `SlidingFor<T>` its own sliding window
   in place of `WithSlidingExpiration` ([A sliding window from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-sliding-window-from-the-result)).
@@ -2533,13 +2692,15 @@ await cache.SetAsync($"order:{saved.Id}", saved,
 ```
 
 - It stores the value in memory and the distributed cache, and other instances drop their copy, so their next read
-  gets the new value from the distributed cache. With `WithDistributed(false)`, or with `StoreValuesByDefault = false`
-  and no `WithDistributed(true)`, it stays in this instance's memory, and the copies in the distributed cache and on
-  other instances are removed.
+  gets the new value from the distributed cache.
+- With `WithDistributed(false)`, or with `StoreValuesByDefault = false` and no `WithDistributed(true)`, it changes only
+  this instance's memory and makes no network call: the distributed cache and the other instances keep what they hold.
+  To change what every instance sees, use `WithDistributed(true)` or invalidate the key.
 - It takes the options `GetOrCreateAsync` takes. Use the same duration, tags and version as the calls that read the key,
   since the value replaces theirs. `DurationFor<T>` gives it its own lifetime.
-- A value the options turn down isn't stored, and the key's old value is removed instead: one `CacheWhen<T>` rejects,
-  one `DurationFor<T>` gives no time, or `null` without `CacheNullValues`. `WithEnabled(false)` does nothing.
+- A value the options turn down isn't stored, and the key's old value is removed instead, from this instance only when
+  the value would have stayed in memory: one `CacheWhen<T>` rejects, one `DurationFor<T>` gives no time, or `null`
+  without `CacheNullValues`. `WithEnabled(false)` does nothing.
 - A load of the key that is running when you call it doesn't overwrite the value with what it read before.
 - To remove a value instead, invalidate the key or its tags ([Invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md)).
 
@@ -2923,6 +3084,13 @@ A value set directly while the distributed cache is down stays in that instance'
 removed from the distributed cache and the other instances once it is back. An entry that comes back damaged (cut
 short, or unreadable by the serializer) is a miss: your method runs and its result replaces the entry.
 
+When the app starts, the connection is opened in the background once the host has started, so the first request
+finds it open. Opening a connection can take longer than one call: until the distributed cache first answers, a call
+waits for it up to `OperationTimeout` and then uses memory only, and once one call has waited that long the rest
+don't wait. A slow start doesn't open the circuit breaker; one that fails, or hasn't answered after 30 seconds, does.
+Without a generic host, such as in a console app that builds its own `ServiceProvider`, the first call opens the
+connection within its `OperationTimeout`.
+
 The timeout caps each call to the distributed cache, not a whole cache miss. A cache that stops answering costs a miss
 one timeout, after which the circuit breaker skips it. One that answers just within the timeout costs a miss up to
 three: reading the entry, writing your method's result and checking that no removal raced the write (and a fourth for
@@ -3010,9 +3178,10 @@ return cache.GetOrCreateAsync("crm:access-token", async ct => await tokens.Reque
 A cached method gets `Distributed` from its settings as usual: from its attribute, its group, `Defaults` or
 `appsettings.json`. A manual call gets it only from its own options. A method or call that sets nothing stays in memory.
 
-A `SetAsync` that keeps its value in memory still removes the key's old copy from the distributed cache, so other
-instances load the value again instead of reading the old one. Like invalidating the key, it writes a removal stamp there:
-`methodcache:r:<key>` with the default `KeyPrefix`, which holds no value and expires after `TagRetention` (1 day).
+A call that keeps its value in memory touches only that instance: `GetOrCreateAsync` and `SetAsync` with
+`WithDistributed(false)` make no network call, and the distributed cache and the other instances keep what they hold.
+To change a value every instance sees, set it with `WithDistributed(true)` or invalidate the key, which reaches every
+instance whatever `Distributed` says.
 
 ### A worker and an API
 
@@ -3075,6 +3244,10 @@ API's test project references the worker project, since the worker is where the 
     it expires.
 - Messages carry no values, so a late, repeated or reordered message only makes an instance read the distributed cache
   again.
+- Reads don't reach the distributed cache, so a value with a sliding window is stored there for one window, or its
+  `Duration` if that is shorter, from when it was stored. The next instance that asks for it after that loads it again,
+  and the new value replaces the copy that the instance that loaded it first kept extending while it was read
+  ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
 - An invalidation the distributed cache didn't accept is retried every `CircuitBreakerDuration`. Until the retry
   succeeds, other instances can serve the old value; the instance that invalidated never does.
 - A write that timed out (a large value, say) doesn't open the circuit breaker, since the cache may answer everything
@@ -3258,7 +3431,8 @@ Statistics never serialize results or inspect their properties to estimate bytes
 remain zero until the separate HTTP store is registered.
 
 `GetMethods()` returns each method's `MethodId`, its effective `Options`, the `SettingSources` each setting comes from
-and `IsDistributedNamespaceShared`. `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
+and `IsDistributedNamespaceShared`, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
+result types it kept in memory instead of sharing (`NotShared`) ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)). `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
 inspect live local entries without values; listing is a diagnostic scan, not a transaction. `CacheEntryInfo.MethodId`
 names the method an entry belongs to (`null` for manual entries and HTTP responses), and `ListEntries(methodId: ...)`
 lists exactly that method's entries. `IMethodCacheKeys.MethodId` returns the id of a call ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md)).
@@ -3353,7 +3527,9 @@ builder.Services.AddOpenTelemetry()
 
 Each completed cache call has one `methodcache.requests` outcome, `methodcache.result`: `hit`, `miss`, `stale`,
 `revalidated`, `bypass` or `error`. `methodcache.kind` is `method`, `manual` or `http`, and `methodcache.method` (a
-method id) or `methodcache.http.client` (a client name) says which; manual calls by key carry neither. Every attribute
+method id) or `methodcache.http.client` (a client name) says which. A manual call carries `methodcache.name` when its
+options name it with `WithName("crm-token")`, and neither otherwise; give the calls that cache one kind of value one
+fixed name, since each name is its own series. Every attribute
 is in the `methodcache.` namespace, apart from `error.type`. `methodcache.load.duration` measures your method when it
 actually runs, background refreshes included; callers that join a running load and values read from the distributed
 cache record none. A bulk call has one outcome and measures its one batch factory call.
@@ -3961,7 +4137,7 @@ What each package protects against, what it leaves to you, and the tests that ho
 |---|---|
 | A caller crafts an argument (`"1:orders"`, `"a)"`, a newline) so that their call gets another call's key and its cached result | Keys separate arguments unambiguously: string parts escape `\` and `:`, `null` is `\0`, records are `(a:b)` with escaped members, and hashed keys length-prefix every value and record the runtime type of values in `object`, base-class or interface slots (`1` and `1L` in an `object[]` differ). JSON and MessagePack key-provider parts and nested strings preserve exact UTF-16 code units, including lone surrogates. Building a key that itself builds keys (an `ICacheKeyProvider`, a getter) can't change another call's key. Arguments whose only state is private, including fields inherited from base classes, are rejected rather than hashed as an empty object. Framework types are written by their value (`BigInteger`, `IPAddress`, `JsonElement` and the others in [Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#framework-types)), not by public properties such as `BigInteger.Sign`, and any other type from .NET, ASP.NET Core or Microsoft.Extensions in a key, such as `StringBuilder`, is build error MC0019. Overloaded methods include the namespaces of their parameter types, so equally named types from different namespaces cannot share a method identity, and a method name that two interfaces of one hierarchy declare adds the parameter types (and the declaring interface for equal signatures) to the key, so `ILookup.Find(int)` and `ICatalog.Find(string)` cannot share an entry through the `ICatalog` decorator. A collection subclass's own public properties are part of the key, with its elements. No argument list produces another method's key or another argument list's key. Fluent versions have a separate namespace, with reserved user-key prefixes escaped, so a crafted raw key cannot reach a versioned entry. |
 | Two service libraries declare identical namespace/type names | Generated service keys and policy ids include the assembly simple name, without its version; keyed-service enum types, closed generic arguments and fallback runtime types (including nested object values) also include assembly identity. Assembly-name delimiters are escaped. `AssemblyKeySecurityTests` and the cross-assembly SignatureCorpus regression verify separate values and overrides. Libraries with the same assembly identity are trusted as the same logical library; this is not isolation between AssemblyLoadContexts. |
-| An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id. |
+| An argument that is a secret ends up readable | Keys contain argument values in plain text (hashed keys are not encryption) and appear in the admin endpoints and, if you turn them on, in traces. Don't cache methods that take passwords or tokens; pass an id, or wrap a token that identifies the result (a URL with a SAS token, say) in a type whose `ICacheKeyProvider` returns a hash of it ([Secrets in arguments](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#secrets-in-arguments)). |
 | A dynamic tag argument impersonates another argument | Dynamic placeholders use canonical key parts: null has its own marker, strings escape colons and backslashes, enums use invariant numbers, and dates keep their full precision. Static template text stays literal. Tags remain an application-defined shared invalidation namespace; they are not an authorization boundary. |
 | A load races invalidation and a newer write | Invalidated loads cannot publish over newer entries, even when custom weight calculation stalls or re-enters the cache. Existing callers may finish with their pre-invalidation result; later loads and writes retain their own entry. |
 | A tag built from user text clears the whole distributed cache | The distributed cache stores every character of a tag exactly, lone surrogates included, so a tag never turns into another one. A tag is only ever its own tag, whatever characters it holds; the internal "clear everything" marker can't be named by a tag. |
@@ -4155,14 +4331,14 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   the invalidation in the distributed cache and tells the other instances in the background; use an async method to
   wait for that.
 - `[Cache(Distributed = false)]`, `"Distributed": false` in `appsettings.json` and `WithDistributed(false)` keep a
-  method or call in memory only.
+  method or call in this instance's memory: its reads, loads and `SetAsync` make no call to the distributed cache or
+  the backplane. Invalidations still go to every instance and the distributed cache.
 - `DistributedCacheOptions.StoreValuesByDefault = false` keeps values in memory: the value of a cached method or an
   `ICacheManager` call whose `Distributed` is unset is neither read from nor written to the distributed cache, and
   invalidations still go through it. `Distributed = true` (attribute, group, `Defaults`, `appsettings.json` or
   `WithDistributed(true)`) still shares a value, and `false` keeps it in memory whatever the option says. `SetAsync`
-  without `WithDistributed(true)` then removes the key's copies on other instances and in the distributed cache, where it
-  writes a removal stamp `<KeyPrefix>r:<key>` with no value that expires after `TagRetention`, as invalidating the key
-  does. Responses of MethodCache.HttpCaching are still stored there.
+  without `WithDistributed(true)` then changes only this instance's memory. Responses of MethodCache.HttpCaching are
+  still stored there.
 - `DistributedCacheOptions.VerifyUnchangedInDevelopment = false` turns off the check in Development that writes the
   values kept in memory and shared again every two seconds and warns about one that code changed.
 
@@ -4201,6 +4377,13 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
 - Each entry remembers when its load started and when it expires. Reading it applies the reading instance's
   `CacheNullValues` and `CacheWhen`, and never keeps it longer than its own `Duration` (or the duration its
   `DurationFor` gives the value) from when it was first stored, or `MaxExpiration`. A slow method doesn't use up the entry's duration.
+- A value with a sliding window is stored for one window, or its `Duration` if that is shorter, from when it was
+  stored. Reads in memory don't extend the stored copy, and an instance that reads it keeps it no longer than the
+  stored copy. The instance that loaded it slides its own copy until a load on another instance replaces it, since
+  every new value replaces the copies on other instances. Without a `Duration` the window alone sets the stored copy's
+  life.
+- An instance that read a value from the distributed cache keeps it as a [fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)
+  fallback for the fail-safe window after the stored copy ended, like the instance that loaded it.
 
 ## Backplanes
 
@@ -5486,6 +5669,21 @@ Migrate one service at a time; both caches can run side by side.
 - **`null` is cached** by default. Set `MethodCacheMemoryOptions.CacheNullValues = false` ([Memory cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#null-values)) if your old code skipped `null`.
 - **Exceptions are never cached**, as before.
 
+## State that isn't a cache
+
+`IMemoryCache` often holds more than results that can be loaded again: a marker that a notification was sent, a
+throttle counter, a lock, a record of a request that was already handled, an "in progress" flag. Leave those where they
+are, or move them to a store with atomic writes, such as a database row or Redis `SET NX`. MethodCache treats every
+entry as something it may lose:
+
+- An entry can disappear at any time: it expires, is evicted when memory is full, is invalidated, or is cleared when an
+  instance loses its backplane connection.
+- A write to the distributed cache that fails is logged, and the caller still gets its value.
+- Concurrent callers share one load per instance; two instances that miss at once both load.
+
+So a lost "already sent" marker sends again, and a lock kept in a cache doesn't lock. Cache what a read returns, and
+keep anything that decides whether an action runs where a missing value is an error rather than a miss.
+
 
 ---
 
@@ -6556,6 +6754,57 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.17 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.16
+
+- A value with a sliding window is now kept in the distributed cache for one window from when it was stored, or its
+  `Duration` if that is shorter, instead of its whole `Duration` (five minutes when it set none). Reads in one
+  instance's memory don't reach the distributed cache, so other instances used to serve a value nobody had read for
+  longer than its window. A short window now means more loads on other instances; to share a value for its whole
+  `Duration`, leave the window out ([Sliding expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#sliding-expiration)).
+- `WithDistributed(false)`, and a call that keeps its value in memory because of `StoreValuesByDefault = false`, now
+  touches only this instance's memory: `SetAsync` no longer removes the key from the distributed cache, writes no
+  removal stamp and sends nothing on the backplane, so the other instances keep what they hold. To change a value every
+  instance sees, use `WithDistributed(true)` or invalidate the key. This replaces the rc.16 note about removal stamps
+  ([Memory by default, shared where you say so](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
+- An instance that read a value from the distributed cache now keeps it as a fail-safe fallback, like the instance that
+  loaded it. With `FailSafe` on, every instance that has the value serves it when a reload fails, where only the
+  instance that loaded it did before ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
+
+### Added
+
+- `ICacheAdministrator.GetMethods()`, and `/methodcache/methods` with MethodCache.AspNetCore, show what each method
+  does on this instance: `Lifetime` (how long its entries live with defaults filled in, and how long the copy in the
+  distributed cache lives), `Storage` (whether its values reach the distributed cache, and why not when they don't),
+  `KeyParameters` (the arguments its keys are made of) and `NotShared` (result types kept in memory because they don't
+  read back unchanged from the serializer, with how many and since when)
+  ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)).
+- `WithName("crm-token")` on a manual call names it in metrics, traces and logs as `methodcache.name`, where a manual
+  call reported only that it was one ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#opentelemetry)).
+
+### Fixed
+
+- A slow first contact with the distributed cache, such as a cold Redis connection or SQL Server or PostgreSQL creating
+  its tables, no longer opens the circuit breaker. With a generic host the connection opens in the background once the
+  host has started; until the distributed cache first answers, a call waits for it up to `OperationTimeout` and then
+  uses memory, and once one call has waited that long the rest don't wait. A contact that fails, or hasn't answered
+  after 30 seconds, still opens the breaker
+  ([When the distributed cache is down](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#when-the-distributed-cache-is-down)).
+
+### Documentation
+
+- Expiration: how long an entry lives in memory and in the distributed cache, with every default filled in, and a
+  recipe for a cache that only slides, such as an `IMemoryCache` entry with only `SlidingExpiration`
+  ([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives),
+  [Kept as long as it is read](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#kept-as-long-as-it-is-read)).
+- Cache keys: an argument that holds a secret, such as a URL with a SAS token, wrapped in a type whose
+  `ICacheKeyProvider` returns a hash ([Secrets in arguments](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#secrets-in-arguments)).
+- Migrating from IMemoryCache: locks, idempotency records and "already sent" markers aren't a cache and stay where a
+  missing value is an error ([State that isn't a cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/migration-from-imemorycache.md#state-that-isnt-a-cache)).
+- Refresh-ahead and sliding windows with a distributed cache: what the other instances read.
+- MC0043's description in the IDE says that a method of yours the result is passed to isn't seen.
 
 ## 1.0.0-rc.16 (2026-11-08)
 

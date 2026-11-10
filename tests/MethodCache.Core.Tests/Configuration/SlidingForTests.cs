@@ -181,7 +181,7 @@ public class SlidingForTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AValueReadFromTheDistributedCache_GetsTheSlidingWindowItGives(bool many)
+    public async Task AValueReadFromTheDistributedCache_LivesAsLongAsTheStoredCopyItsSlidingWindowSets(bool many)
     {
         var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
         var writer = Node(shared);
@@ -203,11 +203,14 @@ public class SlidingForTests
         _time.Advance(TimeSpan.FromSeconds(50));
         Assert.Equal("slides", await Read(reader, "s", "reader"));
         Assert.Equal("fixed", await Read(reader, "f", "reader"));
-        _time.Advance(TimeSpan.FromSeconds(50));
-        Assert.Equal("slides", await Read(reader, "s", "reader"));
-        _time.Advance(TimeSpan.FromSeconds(70));
+        // The sliding value was stored for one window, and the reader's copy ends with it; the other one lives its Duration
+        _time.Advance(TimeSpan.FromSeconds(10));
         Assert.Equal("reader", await Read(reader, "s", "reader"));
         Assert.Equal("fixed", await Read(reader, "f", "reader"));
+        _time.Advance(TimeSpan.FromMinutes(9) - TimeSpan.FromMilliseconds(2));
+        Assert.Equal("fixed", await Read(reader, "f", "reader"));
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        Assert.Equal("reader", await Read(reader, "f", "reader"));
     }
 
     private ICacheManager Node(MethodCache.TestSupport.AtomicTestCache shared)

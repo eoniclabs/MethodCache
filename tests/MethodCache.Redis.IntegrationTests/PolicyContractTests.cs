@@ -16,27 +16,39 @@ public class PolicyContractTests(RedisFixture redis)
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var prefix = "policy:" + Guid.NewGuid().ToString("N") + ":";
         var configuration = redis.RequireConfiguration();
-        async Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton<TimeProvider>(time);
-            services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
-            services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
-            services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-            services.AddMethodCache(mc => mc.UseRedis(o => { o.Configuration = configuration; }));
-            PolicySubscriptionBarrier.Decorate(services);
-            var provider = services.BuildServiceProvider();
-            try
-            {
-                var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
-                await RedisFixture.WaitForSubscriberAsync(connection);
-                await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
-                return provider;
-            }
-            catch { await provider.DisposeAsync(); throw; }
-        }
-        await PolicyBackendContract.RunAsync(Create, time);
+        await PolicyBackendContract.RunAsync((origin, configure) => NodeAsync(time, prefix, configuration, origin, configure), time);
     }
+
+    [SkippableFact]
+    public async Task ExpirationRules_ConformToSharedContract()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
+        var prefix = "expiration:" + Guid.NewGuid().ToString("N") + ":";
+        var configuration = redis.RequireConfiguration();
+        await ExpirationContract.RunAsync((origin, configure) => NodeAsync(time, prefix, configuration, origin, configure), time);
+    }
+
+    private static async Task<ServiceProvider> NodeAsync(FakeTimeProvider time, string prefix, string configuration,
+        PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(time);
+        services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
+        services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
+        services.Configure<DistributedCacheOptions>(o => { o.KeyPrefix = prefix; o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
+        services.AddMethodCache(mc => mc.UseRedis(o => { o.Configuration = configuration; }));
+        PolicySubscriptionBarrier.Decorate(services);
+        var provider = services.BuildServiceProvider();
+        try
+        {
+            var connection = await provider.GetRequiredService<RedisConnection>().GetAsync();
+            await RedisFixture.WaitForSubscriberAsync(connection);
+            await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
+            return provider;
+        }
+        catch { await provider.DisposeAsync(); throw; }
+    }
+
     [SkippableTheory]
     [InlineData("partial")]
     [InlineData("cancellation")]

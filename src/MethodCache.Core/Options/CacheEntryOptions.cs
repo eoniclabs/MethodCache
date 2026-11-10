@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using MethodCache.Extensibility;
+using System.Linq;
+using MethodCache.Core.Telemetry;
 
 namespace MethodCache
 {
@@ -151,6 +153,15 @@ namespace MethodCache
         internal CacheRuntimePolicy? Runtime { get; init; }
 
         /// <summary>
+        /// The name a manual call reports in metrics, traces and logs, set with <see cref="Builder.WithName"/>; null
+        /// when the call has none. A cached method is named by its method id instead.
+        /// </summary>
+        public string? Name { get; private init; }
+
+        // What telemetry and logs receive for a manual call: the manual marker, followed by the name when there is one
+        internal string ManualName { get; private init; } = CacheKeyLookup.MethodName;
+
+        /// <summary>
         /// Options for a call with a prepared key: a generated call's key already carries its version, so
         /// <see cref="Version"/> stays unset and an application manager does not add it a second time. The administrator's
         /// view of a method (<paramref name="preparedKey"/> false) keeps the version.
@@ -263,6 +274,22 @@ namespace MethodCache
             private TimeSpan? _failSafe;
             private TimeSpan? _failSafeTimeout;
             private TimeSpan? _failSafeRetryAfter;
+            private string? _name;
+
+            /// <summary>
+            /// Names a manual call in metrics, traces and logs, such as <c>"crm-token"</c>, where it otherwise reports
+            /// only that it was a manual call. Use one fixed name for the calls that cache the same kind of value, not a
+            /// name per key: every name is a separate series in a metrics backend.
+            /// </summary>
+            /// <exception cref="ArgumentException"><paramref name="name"/> is empty, longer than 100 characters, or has a control character.</exception>
+            public Builder WithName(string name)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(name);
+                if (name.Length > 100 || name.Any(char.IsControl))
+                    throw new ArgumentException("A name is at most 100 characters, without control characters.", nameof(name));
+                _name = name;
+                return this;
+            }
 
             /// <summary>
             /// Sets the cache duration. It replaces <see cref="DurationFor{T}"/>; whichever is called last wins.
@@ -452,7 +479,11 @@ namespace MethodCache
                     _failSafe,
                     _failSafeTimeout,
                     _failSafeRetryAfter,
-                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor, _tagsFor, _slidingFor);
+                    _clearTags, _enabled, _distributed, _cacheWhen, _durationFor, _tagsFor, _slidingFor)
+                {
+                    Name = _name,
+                    ManualName = _name == null ? CacheKeyLookup.MethodName : CoreTelemetry.NamedManual(_name)
+                };
             }
         }
     }

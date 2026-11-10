@@ -26,6 +26,8 @@ internal static class TelemetryAttributes
     internal const string Method = "methodcache.method";
     /// <summary>The HttpClient name of an HTTP request.</summary>
     internal const string HttpClient = "methodcache.http.client";
+    /// <summary>The name a manual call was given with <c>WithName</c>.</summary>
+    internal const string Name = "methodcache.name";
     /// <summary><c>true</c> on a <c>GetOrCreateManyAsync</c> batch, which reports one outcome for all its keys.</summary>
     internal const string Bulk = "methodcache.bulk";
     /// <summary>hit, miss, stale, revalidated, bypass or error.</summary>
@@ -117,6 +119,10 @@ internal sealed class CoreTelemetry : IDisposable
     // they are reported as kind=manual, the bulk one also as bulk=true, and with no method attribute.
     internal const string ManualName = CacheKeyLookup.MethodName;
     internal const string ManualBulkName = CacheKeyLookup.MethodName + ".Bulk";
+    private const string NamedPrefix = CacheKeyLookup.MethodName + ":";
+
+    /// <summary>What a manual call named <paramref name="name"/> reports in place of a method id.</summary>
+    internal static string NamedManual(string name) => NamedPrefix + name;
     private static readonly object BoxedTrue = true;
     private static readonly KeyValuePair<string, object?> KindMethod = new(TelemetryAttributes.Kind, "method");
     private static readonly KeyValuePair<string, object?> KindManual = new(TelemetryAttributes.Kind, "manual");
@@ -135,6 +141,7 @@ internal sealed class CoreTelemetry : IDisposable
         {
             if (name.Length == ManualName.Length) return (KindManual, default);
             if (string.Equals(name, ManualBulkName, StringComparison.Ordinal)) return (KindManual, ManualBulk);
+            if (name.StartsWith(NamedPrefix, StringComparison.Ordinal)) return (KindManual, new(TelemetryAttributes.Name, name[NamedPrefix.Length..]));
         }
         return (KindMethod, new(TelemetryAttributes.Method, name));
     }

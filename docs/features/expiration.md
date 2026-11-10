@@ -70,6 +70,27 @@ cut short: at startup, in a runtime override or in a manual call. For longer ent
 with `mc.Memory(o => o.MaxExpiration = ...)`. With your own `ICacheManager`, its own limits apply. See
 [Memory cache](memory-cache.md).
 
+### How long an entry lives
+
+What a cached method or a manual call ends up with, by what it sets. A cached method also takes a `Duration` from
+`Defaults` or its group when it sets none itself; a manual call takes only its own options.
+
+| Sets | Kept in memory | Kept in the distributed cache |
+|---|---|---|
+| nothing | 5 minutes | 5 minutes |
+| `Duration` | the `Duration` | the `Duration`, at most one day |
+| `DurationFor` | the duration the result gives | that duration, at most one day |
+| `SlidingExpiration` | while it is read once per window, up to `MaxExpiration` (7 days) | one window from when it was stored |
+| `Duration` and `SlidingExpiration` | while it is read once per window, up to the `Duration` | one window from when it was stored, or the `Duration` if that is shorter |
+
+- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` fails where it is set.
+- The one-day limit in the distributed cache is `TagRetention` (1 day) less `ClockSkewTolerance` (2 seconds), counted
+  from when the method started loading the value, so that a tag invalidation always outlives the entries it covers.
+  Raise `TagRetention` to share values longer ([Distributed cache](distributed-cache.md#options)).
+- An instance that reads a value from the distributed cache keeps it no longer than the copy stored there.
+- `FailSafe` keeps an expired value in memory for its window, to serve when a reload fails, on every instance that
+  has the value, also one that read it from the distributed cache ([Fail-safe](fail-safe.md)).
+
 ## A duration from the result
 
 `DurationFor` gives each result its own duration, in place of `Duration`, such as the time left on a token, a
@@ -132,6 +153,35 @@ A method that inherits a sliding window from the defaults, a group or configurat
 `SlidingExpiration = "off"` (`TimeSpan.Zero` in code). Leaving the setting out inherits it. `RefreshAhead` works the
 same way.
 
+With a distributed cache, the copy stored there lives one window from when it was stored, or the `Duration` if that is
+shorter: reads in one instance's memory don't reach it. An instance that got the value from the distributed cache keeps
+it no longer than the stored copy, and the next instance that asks for it after that loads it again. The instance that
+loaded the value keeps extending its own copy while it is read, up to the `Duration`, until another instance loads the
+value again: a new value replaces the older copies on every instance. So a value that several instances read is loaded
+about once per window. To share a value for its whole `Duration`, leave the window out.
+
+### Kept as long as it is read
+
+For a cache that only slides, such as one that replaces an `IMemoryCache` entry with only `SlidingExpiration`, set
+the window and no `Duration`: the entry is kept while it is read at least once per window, up to `MaxExpiration`.
+
+<!-- snippet: expiration-sliding-only -->
+```cs
+public interface ILayouts
+{
+    // Kept while it is read at least every 30 minutes, up to MaxExpiration (7 days)
+    [Cache(SlidingExpiration = "30m")]
+    Task<Layout> GetAsync(string name);
+}
+```
+<!-- endSnippet -->
+
+- When `Defaults` or the method's group sets a `Duration`, that still ends the entry. `Duration` can't be turned off,
+  so give the method its own `Duration` as long as you accept, such as `Duration = "7d"`.
+- To keep entries past seven days, raise `MaxExpiration`, up to 365 days:
+  `mc.Memory(o => o.MaxExpiration = TimeSpan.FromDays(30))`.
+- A manual call does the same with only `o.WithSlidingExpiration(...)`, since it takes no `Duration` from `Defaults`.
+
 ### A sliding window from the result
 
 `SlidingFor` gives each result its own sliding window, in place of `SlidingExpiration`. Zero turns sliding off for that
@@ -161,7 +211,8 @@ builder.Services.AddMethodCache(mc =>
 
 `RefreshAhead` reloads an entry in the background when it is read within that window before it expires. The caller
 gets the cached value at once, and the reload replaces it, so a popular entry never makes anyone wait. An entry that
-isn't read in the window simply expires.
+isn't read in the window simply expires. With a distributed cache the reload also replaces the stored copy, so other
+instances read the new value instead of loading it.
 
 The window must be shorter than `Duration` and `SlidingExpiration`, or every read would reload the entry: on `[Cache]`
 (build error [MC0023](../user-guide/DIAGNOSTICS.md#mc0023)), in code (`Build()` throws an `InvalidOperationException`)

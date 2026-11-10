@@ -4,6 +4,57 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.17 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.16
+
+- A value with a sliding window is now kept in the distributed cache for one window from when it was stored, or its
+  `Duration` if that is shorter, instead of its whole `Duration` (five minutes when it set none). Reads in one
+  instance's memory don't reach the distributed cache, so other instances used to serve a value nobody had read for
+  longer than its window. A short window now means more loads on other instances; to share a value for its whole
+  `Duration`, leave the window out ([Sliding expiration](docs/features/expiration.md#sliding-expiration)).
+- `WithDistributed(false)`, and a call that keeps its value in memory because of `StoreValuesByDefault = false`, now
+  touches only this instance's memory: `SetAsync` no longer removes the key from the distributed cache, writes no
+  removal stamp and sends nothing on the backplane, so the other instances keep what they hold. To change a value every
+  instance sees, use `WithDistributed(true)` or invalidate the key. This replaces the rc.16 note about removal stamps
+  ([Memory by default, shared where you say so](docs/features/distributed-cache.md#memory-by-default-shared-where-you-say-so)).
+- An instance that read a value from the distributed cache now keeps it as a fail-safe fallback, like the instance that
+  loaded it. With `FailSafe` on, every instance that has the value serves it when a reload fails, where only the
+  instance that loaded it did before ([Fail-safe](docs/features/fail-safe.md)).
+
+### Added
+
+- `ICacheAdministrator.GetMethods()`, and `/methodcache/methods` with MethodCache.AspNetCore, show what each method
+  does on this instance: `Lifetime` (how long its entries live with defaults filled in, and how long the copy in the
+  distributed cache lives), `Storage` (whether its values reach the distributed cache, and why not when they don't),
+  `KeyParameters` (the arguments its keys are made of) and `NotShared` (result types kept in memory because they don't
+  read back unchanged from the serializer, with how many and since when)
+  ([What applies on this instance](docs/features/configuration.md#what-applies-on-this-instance)).
+- `WithName("crm-token")` on a manual call names it in metrics, traces and logs as `methodcache.name`, where a manual
+  call reported only that it was one ([Monitoring](docs/features/monitoring.md#opentelemetry)).
+
+### Fixed
+
+- A slow first contact with the distributed cache, such as a cold Redis connection or SQL Server or PostgreSQL creating
+  its tables, no longer opens the circuit breaker. With a generic host the connection opens in the background once the
+  host has started; until the distributed cache first answers, a call waits for it up to `OperationTimeout` and then
+  uses memory, and once one call has waited that long the rest don't wait. A contact that fails, or hasn't answered
+  after 30 seconds, still opens the breaker
+  ([When the distributed cache is down](docs/features/distributed-cache.md#when-the-distributed-cache-is-down)).
+
+### Documentation
+
+- Expiration: how long an entry lives in memory and in the distributed cache, with every default filled in, and a
+  recipe for a cache that only slides, such as an `IMemoryCache` entry with only `SlidingExpiration`
+  ([How long an entry lives](docs/features/expiration.md#how-long-an-entry-lives),
+  [Kept as long as it is read](docs/features/expiration.md#kept-as-long-as-it-is-read)).
+- Cache keys: an argument that holds a secret, such as a URL with a SAS token, wrapped in a type whose
+  `ICacheKeyProvider` returns a hash ([Secrets in arguments](docs/features/keys.md#secrets-in-arguments)).
+- Migrating from IMemoryCache: locks, idempotency records and "already sent" markers aren't a cache and stay where a
+  missing value is an error ([State that isn't a cache](docs/migration-from-imemorycache.md#state-that-isnt-a-cache)).
+- Refresh-ahead and sliding windows with a distributed cache: what the other instances read.
+- MC0043's description in the IDE says that a method of yours the result is passed to isn't seen.
+
 ## 1.0.0-rc.16 (2026-11-08)
 
 No code changes from rc.15; upgrade by changing the version number.

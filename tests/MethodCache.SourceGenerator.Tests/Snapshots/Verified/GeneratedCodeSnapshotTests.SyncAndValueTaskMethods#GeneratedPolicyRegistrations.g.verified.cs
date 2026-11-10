@@ -21,6 +21,7 @@ namespace MethodCache.Generated
                     CanonicalTagParts = true,
                     ResultType = typeof(global::System.Decimal),
                     ResultShape = "d812eb477c2e62d6",
+                    Synchronous = true,
                 });
                 builder.Method("[SnapshotApp]App.IPricing.FindAsync", new string[] { "sku" }, null, new global::MethodCache.Generated.GeneratedMethodOptions
                 {
