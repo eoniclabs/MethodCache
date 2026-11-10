@@ -153,8 +153,6 @@ MethodCache.CacheStats.ObservedDistributedEntries.init -> void
 MethodCache.CacheStats.TotalWeight.get -> long
 MethodCache.CacheStats.TotalWeight.init -> void
 MethodCache.CachedMethodInfo
-MethodCache.CachedMethodInfo.IsDistributedNamespaceShared.get -> bool
-MethodCache.CachedMethodInfo.IsDistributedNamespaceShared.init -> void
 MethodCache.CachedMethodInfo.MethodId.get -> string!
 MethodCache.CachedMethodInfo.MethodId.init -> void
 MethodCache.CachedMethodInfo.Options.get -> MethodCache.CacheEntryOptions!
@@ -552,6 +550,8 @@ MethodCache.CacheStorageInfo.Distributed.get -> bool
 MethodCache.CacheStorageInfo.Distributed.init -> void
 MethodCache.CacheStorageInfo.MemoryOnlyReason.get -> string?
 MethodCache.CacheStorageInfo.MemoryOnlyReason.init -> void
+MethodCache.CacheStorageInfo.Shared.get -> bool
+MethodCache.CacheStorageInfo.Shared.init -> void
 MethodCache.CacheStorageInfo.Store.get -> string?
 MethodCache.CacheStorageInfo.Store.init -> void
 MethodCache.NotSharedResultInfo

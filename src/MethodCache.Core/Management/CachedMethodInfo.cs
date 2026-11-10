@@ -16,11 +16,6 @@ public sealed record CachedMethodInfo
     /// such as <c>Duration</c> or <c>FailSafeTimeout</c>. A setting no source sets is left out.
     /// </summary>
     public IReadOnlyDictionary<string, CacheSettingSource> SettingSources { get; init; } = new Dictionary<string, CacheSettingSource>();
-    /// <summary>
-    /// Whether the method's distributed entries are shared with other instances that have the same configuration;
-    /// <c>false</c> while a local runtime override gives this instance a private namespace.
-    /// </summary>
-    public bool IsDistributedNamespaceShared { get; init; } = true;
     /// <summary>How long the method's entries live on this instance, with defaults filled in.</summary>
     public CacheLifetimeInfo Lifetime { get; init; } = new();
     /// <summary>Where the method's values are kept on this instance, and why only in memory when they are.</summary>
@@ -71,6 +66,12 @@ public sealed record CacheStorageInfo
     public string? Store { get; init; }
     /// <summary>Why the method's values stay in memory only; null when they are stored in the distributed cache.</summary>
     public string? MemoryOnlyReason { get; init; }
+    /// <summary>
+    /// Whether other instances with the same configuration read the values this instance stores in the distributed
+    /// cache. False when the values stay in memory, and while a runtime override that only this instance applies gives
+    /// it a namespace of its own there.
+    /// </summary>
+    public bool Shared { get; init; }
 }
 
 /// <summary>Values of one result type that an instance kept in memory only instead of sharing them.</summary>
