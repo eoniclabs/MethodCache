@@ -35,25 +35,32 @@ public class ContractTests(PostgreSqlFixture postgres)
         // Keep physical native TTLs ahead of wall-clock setup; expiry assertions use source deadlines on this clock.
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
         var options = postgres.Options("policy");
-        try
-        {
-            async Task<ServiceProvider> Create(PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
-            {
-                var services = new ServiceCollection();
-                services.AddSingleton<TimeProvider>(time);
-                services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
-                services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
-                services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
-                services.AddMethodCache(mc => mc.UsePostgreSql(o => { o.ConnectionString = options.ConnectionString; o.SchemaName = options.SchemaName; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
-                PolicySubscriptionBarrier.Decorate(services);
-                var provider = await StartAsync(services);
-                await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
-                return provider;
-            }
-
-            await PolicyBackendContract.RunAsync(Create, time);
-        }
+        try { await PolicyBackendContract.RunAsync((origin, configure) => NodeAsync(time, options, origin, configure), time); }
         finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    [SkippableFact]
+    public async Task ExpirationRules_ConformToSharedContract()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(10));
+        var options = postgres.Options("expiration");
+        try { await ExpirationContract.RunAsync((origin, configure) => NodeAsync(time, options, origin, configure), time); }
+        finally { await PostgreSqlFixture.DropSchemaAsync(options); }
+    }
+
+    private static async Task<ServiceProvider> NodeAsync(FakeTimeProvider time, PostgreSqlOptions options,
+        PolicyBackendContract.Origin origin, Action<MethodCacheBuilder>? configure)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<TimeProvider>(time);
+        services.AddSingleton<PolicyBackendContract.IOrigin>(origin);
+        services.AddMethodCache(b => { b.FromAssemblyOf<PolicyBackendContract.Origin>(); configure?.Invoke(b); });
+        services.Configure<DistributedCacheOptions>(o => { o.OperationTimeout = TimeSpan.FromSeconds(5); o.ClockSkewTolerance = TimeSpan.Zero; o.TagCheckInterval = TimeSpan.Zero; });
+        services.AddMethodCache(mc => mc.UsePostgreSql(o => { o.ConnectionString = options.ConnectionString; o.SchemaName = options.SchemaName; o.BackplanePollingInterval = TimeSpan.FromMilliseconds(50); }));
+        PolicySubscriptionBarrier.Decorate(services);
+        var provider = await StartAsync(services);
+        await PolicySubscriptionBarrier.WaitForNodeAsync(provider);
+        return provider;
     }
 
     [SkippableTheory]

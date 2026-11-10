@@ -52,7 +52,7 @@ public class PolicyIsolationTests
         Assert.Equal(1, await third.GetOrCreateFastAsync("local", "Get", () => Task.FromResult(3), policy));
     }
     [Fact]
-    public async Task DistributedSlidingFailSafe_CannotOutliveTheStoredDeadline()
+    public async Task ACopyReadFromTheDistributedCache_SlidesNoLongerThanTheStoredCopy_ThenServesAsAFailSafeFallback()
     {
         using var writer = Node();
         using var receiver = Node();
@@ -66,6 +66,9 @@ public class PolicyIsolationTests
             Assert.Equal(1, await receiver.GetOrCreateFastAsync("deadline", "Get", () => Task.FromResult(2), sliding));
         }
         _time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, await receiver.GetOrCreateFastAsync<int>("deadline", "Get", () => Task.FromException<int>(new InvalidOperationException()), sliding));
+        // The fallback lasts the fail-safe window from when the stored copy ended
+        _time.Advance(TimeSpan.FromSeconds(5));
         await Assert.ThrowsAsync<InvalidOperationException>(() => receiver.GetOrCreateFastAsync<int>("deadline", "Get", () => Task.FromException<int>(new InvalidOperationException()), sliding));
     }
 

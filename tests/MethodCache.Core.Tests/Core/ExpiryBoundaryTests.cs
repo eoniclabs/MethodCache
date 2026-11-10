@@ -222,6 +222,118 @@ public class ExpiryBoundaryTests
     }
 
     [Fact]
+    public async Task Sliding_SharedCopy_ServesOtherInstancesUntilExactlyOneWindowAfterTheLoad()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+        var third = CreateManager(distributed: CreateLayer(shared));
+        var policy = Policy(TimeSpan.FromSeconds(5)) with { SlidingExpiration = TimeSpan.FromSeconds(1) };
+        var counter = new Counter();
+
+        await first.GetOrCreateFastAsync("key", "M", counter.Next, policy);
+
+        _time.Advance(TimeSpan.FromSeconds(1) - TimeSpan.FromMilliseconds(1));
+        (await second.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(1);
+
+        // The shared copy ends one window after the load, and so does the copy the second instance took from it
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        (await second.ExistsAsync("key")).Should().BeFalse();
+        (await third.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Sliding_ValueNobodyReadForAWindow_IsLoadedAgainOnAnotherInstance()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+        var policy = Policy(TimeSpan.FromSeconds(5)) with { SlidingExpiration = TimeSpan.FromSeconds(1) };
+        var counter = new Counter();
+
+        await first.GetOrCreateFastAsync("key", "M", counter.Next, policy);
+
+        _time.Advance(TimeSpan.FromMilliseconds(1200));
+        (await second.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Sliding_LoadingInstance_KeepsSlidingItsOwnCopyAfterTheSharedOneEnds()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+        var policy = Policy(TimeSpan.FromSeconds(5)) with { SlidingExpiration = TimeSpan.FromSeconds(1) };
+        var counter = new Counter();
+
+        await first.GetOrCreateFastAsync("key", "M", counter.Next, policy);
+        for (var i = 0; i < 3; i++) // reads every 800 ms keep the first instance's copy alive
+        {
+            _time.Advance(TimeSpan.FromMilliseconds(800));
+            (await first.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(1);
+        }
+
+        // Reads on one instance don't reach the shared copy, which ended one window after the load
+        (await second.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Sliding_WithoutADuration_IsKeptWhileItIsRead_AndTheSharedCopyLivesAWholeWindow()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+        var policy = CacheRuntimePolicy.Empty("M") with { SlidingExpiration = TimeSpan.FromMinutes(10) };
+        var counter = new Counter();
+
+        await first.GetOrCreateFastAsync("key", "M", counter.Next, policy);
+        for (var i = 0; i < 6; i++) // an hour of reads, far past the five minutes an entry without a window gets
+        {
+            _time.Advance(TimeSpan.FromMinutes(10) - TimeSpan.FromMilliseconds(1));
+            (await first.GetOrCreateFastAsync("key", "M", counter.Next, policy)).Should().Be(1);
+        }
+
+        var third = CreateManager(distributed: CreateLayer(shared));
+        await third.GetOrCreateFastAsync("other", "M", counter.Next, policy);
+        _time.Advance(TimeSpan.FromMinutes(10) - TimeSpan.FromMilliseconds(1));
+        (await second.GetOrCreateFastAsync("other", "M", counter.Next, policy)).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Sliding_SharedCopyOfAManualSet_EndsOneWindowAfterTheWrite()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+
+        await ((ICacheManager)first).SetAsync("key", "v1", options => options
+            .WithDuration(TimeSpan.FromSeconds(5)).WithSlidingExpiration(TimeSpan.FromSeconds(1)).WithDistributed(true));
+
+        _time.Advance(TimeSpan.FromSeconds(1) - TimeSpan.FromMilliseconds(1));
+        (await ((ICacheManager)second).TryGetAsync<string>("key")).Value.Should().Be("v1");
+
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        (await ((ICacheManager)second).TryGetAsync<string>("key")).Found.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Sliding_ShorterThanTheResultsDuration_CapsTheSharedCopy_OfAManualLoad()
+    {
+        var shared = new MethodCache.TestSupport.AtomicTestCache(_time);
+        var first = CreateManager(distributed: CreateLayer(shared));
+        var second = CreateManager(distributed: CreateLayer(shared));
+        var calls = 0;
+        ValueTask<string> Load(CancellationToken _) => new($"v{++calls}");
+        void Configure(CacheEntryOptions.Builder options) => options
+            .DurationFor<string>(_ => TimeSpan.FromMinutes(1)).WithSlidingExpiration(TimeSpan.FromSeconds(1)).WithDistributed(true);
+
+        await ((ICacheManager)first).GetOrCreateAsync("key", Load, Configure);
+
+        _time.Advance(TimeSpan.FromSeconds(1));
+        (await ((ICacheManager)second).GetOrCreateAsync("key", Load, Configure)).Should().Be("v2");
+    }
+
+    [Fact]
     public async Task BackgroundCleanup_RunsOnTheInjectedClock()
     {
         var manager = CreateManager(o =>

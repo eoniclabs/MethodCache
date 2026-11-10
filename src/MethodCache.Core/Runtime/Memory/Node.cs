@@ -64,9 +64,6 @@ internal abstract class Node
     // Access-order queue links (guarded by the eviction lock).
     public QueueType Queue;
 
-    // Distributed entries must not slide or serve stale past their source deadline.
-    public bool HasSourceDeadline;
-
     // A fail-safe retry window is logically readable but still serves an older origin value.
     public bool IsStaleFallback;
     public Node? Previous;

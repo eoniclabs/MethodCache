@@ -104,7 +104,7 @@ namespace MethodCache.SourceGenerator
         /// and interfaces in it, whose registered derived types count too.
         /// </summary>
         internal sealed record PolicyEntry(string MethodId, string KeyMethod, EquatableArray<string> ParameterNames, EquatableArray<string> PolicyStatements, EquatableArray<string> MetadataStatements, string? ResultType,
-            string ResultShape, EquatableArray<string> ShapeBases);
+            string ResultShape, EquatableArray<string> ShapeBases, EquatableArray<string> KeyParameterNames, bool Synchronous);
 
         /// <summary>What the shared generated files need to know about one interface.</summary>
         internal sealed record InterfaceSummary(

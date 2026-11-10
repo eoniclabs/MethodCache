@@ -237,6 +237,38 @@ value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `Runtim
 is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](monitoring.md)).
 
+### What applies on this instance
+
+`Options` holds what is set. Next to it, each method says what that comes to on this instance, with defaults filled in:
+
+<!-- snippet: configuration-what-applies -->
+```cs
+foreach (var method in diagnostics.GetMethods())
+{
+    // Defaults filled in: 5 minutes without a Duration, the stored copy's life, and why values stay local
+    Console.WriteLine($"{method.MethodId}: in memory up to {method.Lifetime.Duration}, " +
+        $"shared for {method.Lifetime.Distributed?.ToString() ?? "-"} ({method.Storage.MemoryOnlyReason ?? method.Storage.Store})");
+    Console.WriteLine($"  key: {string.Join(", ", method.KeyParameters)}");
+    foreach (var kept in method.NotShared)
+        Console.WriteLine($"  {kept.Type} kept in memory {kept.Count} times since {kept.Since}: {kept.Reason}");
+}
+```
+<!-- endSnippet -->
+
+| Property | Shows |
+|---|---|
+| `Lifetime.Duration` | The longest an entry lives in memory: the method's `Duration`, from `Defaults` or its group, else five minutes; with only a sliding window, `MaxExpiration`. Null when `DurationFor` gives each result its own (`DurationFromResult`) |
+| `Lifetime.SlidingExpiration` | The sliding window, or null without one or when `SlidingFor` gives each result its own (`SlidingFromResult`) |
+| `Lifetime.MaxExpiration` | The longest any entry lives (7 days by default) |
+| `Lifetime.Distributed` | How long the copy in the distributed cache lives: the `Duration`, at most one sliding window and at most `TagRetention` less `ClockSkewTolerance`. Null when values aren't stored there or the result gives its own times |
+| `Storage.Distributed` | Whether values are stored in the distributed cache as well as in memory |
+| `Storage.Store` | The distributed cache, such as `Redis`, `SqlServer` or `PostgreSql` |
+| `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
+| `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
+| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](distributed-cache.md#serialization)) |
+
+`NotShared` is what this instance saw since it started; each instance keeps its own.
+
 ## Validation
 
 | Setting | Rule | Checked |

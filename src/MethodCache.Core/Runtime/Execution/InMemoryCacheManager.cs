@@ -75,6 +75,15 @@ namespace MethodCache.Extensibility
         /// </summary>
         private bool Shares(bool? distributed) => _distributed != null && (distributed ?? _sharesByDefault);
 
+        /// <summary>The distributed cache, or null without one.</summary>
+        internal DistributedCacheLayer? Distributed => _distributed;
+
+        /// <summary>Whether a value whose <c>Distributed</c> is unset is stored in the distributed cache.</summary>
+        internal bool SharesByDefault => _sharesByDefault;
+
+        /// <summary>How long an entry lives without a duration of its own.</summary>
+        internal TimeSpan DefaultExpiration => TimeSpan.FromTicks(_defaultDuration / NanosPerTick);
+
         /// <summary>Whether removals also go to a distributed cache and, through it, to the other instances.</summary>
         internal bool HasDistributedCache => _distributed != null;
 
@@ -370,7 +379,8 @@ namespace MethodCache.Extensibility
             }
 
             ArgumentNullException.ThrowIfNull(policy);
-            methodName = policy.MethodId;
+            // A generated call is reported by its method id; a manual call by the name it was given, if any
+            if (!string.Equals(policy.MethodId, CacheKeyLookup.MethodName, StringComparison.Ordinal)) methodName = policy.MethodId;
             var bulk = CurrentBulkPublication.Value;
             var publication = bulk != null && ReferenceEquals(bulk.Owner, this) && bulk.Key == cacheKey ? bulk.Guard : null;
             return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken, publication);
@@ -935,7 +945,7 @@ namespace MethodCache.Extensibility
                 if (Shares(policy.Source?.Distributed) && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
                 {
                     var stored = await ReadDistributedAsync<T>(key, policy, cancellationToken).ConfigureAwait(false);
-                    if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime, out var storedEntry) && Remaining(stored, policy, storedLifetime) is > 0 and var remaining)
+                    if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime, out var storedEntry) && Remaining(stored, policy, storedLifetime, storedEntry.Sliding) is > 0 and var remaining)
                     {
                         StoreLoaded(key, stored.Value, storedEntry, flight, duration: remaining);
                         flight.Outcome = RequestResult.Hit;
@@ -1001,9 +1011,9 @@ namespace MethodCache.Extensibility
         private ValueTask<DistributedEntry<T>> ReadDistributedAsync<T>(string key, EntryPolicy policy, CancellationToken cancellationToken)
             => _distributed!.TryGetAsync<T>(key, cancellationToken, policy.Source?.Identity);
 
-        private long Remaining<T>(DistributedEntry<T> entry, EntryPolicy policy, long? lifetime)
+        private long Remaining<T>(DistributedEntry<T> entry, EntryPolicy policy, long? lifetime, long sliding)
         {
-            var receiverLimit = Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration);
+            var receiverLimit = EntryLimit(lifetime, policy.Duration, sliding);
             var elapsedMilliseconds = Math.Max(0, _distributed!.Now - entry.CreatedAt);
             var elapsed = elapsedMilliseconds > MaxNanos / 1_000_000 ? MaxNanos : elapsedMilliseconds * 1_000_000;
             return Math.Min(ToNanos(entry.RemainingLifetime), receiverLimit - elapsed);
@@ -1045,7 +1055,7 @@ namespace MethodCache.Extensibility
 
                 var stored = await ReadDistributedAsync<T>(key, entryPolicy, cancellationToken).ConfigureAwait(false);
                 if (stored.Found && ShouldStore(stored.Value, entryPolicy, methodName, out var storedLifetime)
-                    && TrySlidingFor(stored.Value, entryPolicy, methodName, out var storedSliding) && Remaining(stored, entryPolicy, storedLifetime) is > 0 and var remaining)
+                    && TrySlidingFor(stored.Value, entryPolicy, methodName, out var storedSliding) && Remaining(stored, entryPolicy, storedLifetime, storedSliding ?? entryPolicy.Sliding) is > 0 and var remaining)
                 {
                     entryPolicy = EntryPolicy.From(policy with { Tags = stored.Tags ?? [] }).ForResult(null, storedSliding);
                     StoreLoaded(key, stored.Value, entryPolicy, flight, duration: remaining);
@@ -1352,7 +1362,8 @@ namespace MethodCache.Extensibility
             return stored;
         }
 
-        // duration: the time left of a value read from the distributed cache, which the entry never outlives.
+        // duration: the time left of a value read from the distributed cache, which the entry is never fresh past
+        // (fail-safe may still serve it after that, as on the instance that loaded it).
         // lifetime: the duration DurationFor gave this value, in place of the policy's duration.
         private Node? Store<T>(string key, T value, EntryPolicy policy, long? duration = null, Node? replacing = null, Flight? flight = null, long? lifetime = null)
         {
@@ -1388,9 +1399,8 @@ namespace MethodCache.Extensibility
             {
                 CreatedAt = now,
                 LogicalExpiresAt = logicalExpiresAt,
-                PhysicalExpiresAt = Math.Min(logicalExpiresAt + policy.FailSafe, duration.HasValue ? now + duration.Value : now + _maxDuration),
+                PhysicalExpiresAt = Math.Min(logicalExpiresAt + policy.FailSafe, now + _maxDuration),
                 AbsoluteExpiresAt = absoluteExpiresAt,
-                HasSourceDeadline = duration.HasValue,
                 Tags = policy.Tags,
                 Policy = policy,
                 Weight = _weigher == null ? 1 : Math.Max(0, _weigher(key, value))
@@ -1461,8 +1471,7 @@ namespace MethodCache.Extensibility
                     if (extended > Volatile.Read(ref found.LogicalExpiresAt))
                     {
                         Volatile.Write(ref found.LogicalExpiresAt, extended);
-                        var physicalCap = found.HasSourceDeadline ? found.AbsoluteExpiresAt : found.CreatedAt + _maxDuration;
-                        Volatile.Write(ref found.PhysicalExpiresAt, Math.Min(extended + policy.FailSafe, physicalCap));
+                        Volatile.Write(ref found.PhysicalExpiresAt, Math.Min(extended + policy.FailSafe, found.CreatedAt + _maxDuration));
                     }
                 }
 
@@ -1542,16 +1551,35 @@ namespace MethodCache.Extensibility
                 return Task.CompletedTask;
             }
 
-            var written = TimeSpan.FromTicks(Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
-            return WriteDistributedCoreAsync(key, result, policy, methodName, flight, loadStartedAt, written);
+            return WriteDistributedCoreAsync(key, result, policy, methodName, flight, loadStartedAt, SharedLifetime(lifetime, policy));
         }
+
+        /// <summary>
+        /// How long the distributed copy of a value lives: its lifetime, but at most one sliding window. The store can't
+        /// see reads on other instances, so the copy counts from when it was written, and a value nobody read for a
+        /// window can't come back from it. The instance that loaded the value keeps sliding its own copy in memory.
+        /// </summary>
+        private TimeSpan SharedLifetime(long? lifetime, EntryPolicy policy)
+        {
+            var nanos = EntryLimit(lifetime, policy.Duration, policy.Sliding);
+            if (policy.Sliding > 0) nanos = Math.Min(nanos, policy.Sliding);
+            return TimeSpan.FromTicks(nanos / NanosPerTick);
+        }
+
+        /// <summary>
+        /// The longest an entry may live, as <see cref="Store{T}"/> counts it: the result's own duration, else the
+        /// policy's, else the default. An entry with a sliding window and no duration is kept while it is read, so
+        /// only MaxExpiration limits it.
+        /// </summary>
+        private long EntryLimit(long? lifetime, long? duration, long sliding)
+            => Math.Min(lifetime ?? duration ?? (sliding > 0 ? _maxDuration : _defaultDuration), _maxDuration);
 
         // The invalidation predicate captures its flight. Its allocation belongs
         // only to an actual L2 write, after the memory-only/disabled guards above.
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private Task WriteDistributedCoreAsync<T>(string key, T result, EntryPolicy policy, string methodName, Flight flight, long loadStartedAt, TimeSpan lifetime)
         {
-            return _distributed!.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated, methodName: methodName, identity: policy.Source?.Identity, methodId: policy.Source?.Identity != null ? policy.Source.MethodId : null, publishedAt: flight.PublishedAt);
+            return _distributed!.WriteAsync(key, result, policy.Tags, loadStartedAt, lifetime, () => flight.Invalidated, methodName: methodName, identity: policy.Source?.Identity, methodId: policy.Source?.Identity != null ? policy.Source.MethodId : null, publishedAt: flight.PublishedAt, reportAs: policy.Source?.MethodId);
         }
 
         private bool RemoveLocal(string key)

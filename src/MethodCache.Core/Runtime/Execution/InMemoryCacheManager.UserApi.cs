@@ -19,7 +19,7 @@ internal partial class InMemoryCacheManager
         _telemetry?.ClaimCustomRequest();
         if (options.Enabled != false && options.Runtime == null && options.CacheWhen == null && TryGetFastNode<T>(cacheKey, out var cached, out var cachedNode))
         {
-            RecordHitTelemetry(CacheKeyLookup.MethodName, cachedNode);
+            RecordHitTelemetry(options.ManualName, cachedNode);
             return new(cached!);
         }
         return GetOrCreateUserSlowAsync(key, cacheKey, state, factory, options, cancellationToken);
@@ -29,7 +29,7 @@ internal partial class InMemoryCacheManager
         Func<TState, CancellationToken, ValueTask<T>> factory, CacheEntryOptions options, CancellationToken cancellationToken)
     {
         if (options.Enabled == false) return _telemetry?.Enabled == true
-            ? new ValueTask<T>(_telemetry.BypassAsync(CacheKeyLookup.MethodName, key, () => factory(state, cancellationToken).AsTask())) : factory(state, cancellationToken);
+            ? new ValueTask<T>(_telemetry.BypassAsync(options.ManualName, key, () => factory(state, cancellationToken).AsTask())) : factory(state, cancellationToken);
         // A CacheWhen<T> or DurationFor<T> that can never see this result type is a configuration error, reported before the factory runs
         CachePredicateCheck.EnsureMatches(options.CacheWhen, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.DurationFor, typeof(T), key);
@@ -42,15 +42,16 @@ internal partial class InMemoryCacheManager
             var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
             policy = CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
         }
-        return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, policy.MethodId,
+        return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, options.Runtime == null ? options.ManualName : policy.MethodId,
             () => factory(state, cancellationToken).AsTask(), policy, cancellationToken));
     }
 
     /// <summary>
     /// Stores <paramref name="value"/> under an application key in memory and the distributed cache, and removes the copies
-    /// other instances hold, so the next read anywhere gets it. A load already running for the key doesn't overwrite it.
-    /// A value the options reject (<c>CacheWhen</c>, <c>DurationFor</c>, <c>SlidingFor</c>, <c>TagsFor</c> or a null without <c>CacheNullValues</c>) isn't
-    /// stored, and the key's old value is removed everywhere.
+    /// other instances hold, so the next read anywhere gets it. A value kept in memory only (<c>Distributed</c> false)
+    /// touches only this instance. A load already running for the key doesn't overwrite it. A value the options reject
+    /// (<c>CacheWhen</c>, <c>DurationFor</c>, <c>SlidingFor</c>, <c>TagsFor</c> or a null without <c>CacheNullValues</c>)
+    /// isn't stored, and the key's old value is removed where the value would have gone.
     /// </summary>
     internal ValueTask SetUserAsync<T>(string key, T value, CacheEntryOptions options, CancellationToken cancellationToken)
     {
@@ -65,22 +66,24 @@ internal partial class InMemoryCacheManager
         var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
         var policy = GetEntryPolicy(CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields));
         var cacheKey = MethodCacheKeys.VersionedKey(key, options.Version);
+        var shares = Shares(options.Distributed);
         if (!ShouldStore(value, policy, key, out var lifetime, out var entry))
         {
             // The key's value is now one the cache doesn't keep, so the old one must not be served either
-            return RemoveEverywhereAsync(cacheKey);
+            if (shares) return RemoveEverywhereAsync(cacheKey);
+            RemoveLocal(cacheKey);
+            return default;
         }
 
         // A load that started before this write must not overwrite it with an older result
         InvalidateFlight(cacheKey);
         var startedAt = _distributed?.Now ?? 0;
         Store(cacheKey, value, entry, lifetime: lifetime);
-        if (_distributed == null) return default;
-        // Memory only: the distributed copy and the other instances' copies are old, so they are removed
-        if (!Shares(options.Distributed)) return new ValueTask(_distributed.RemoveAsync([cacheKey]));
-        var written = TimeSpan.FromTicks(Math.Min(lifetime ?? policy.Duration ?? _defaultDuration, _maxDuration) / NanosPerTick);
-        return new ValueTask(_distributed.WriteAsync(cacheKey, value, entry.Tags, startedAt, written, replaces: true,
-            methodName: CacheKeyLookup.MethodName));
+        // Memory only: this instance's cache, without any network call; a shared value changes with Distributed true
+        // or an invalidation
+        if (!shares) return default;
+        return new ValueTask(_distributed!.WriteAsync(cacheKey, value, entry.Tags, startedAt, SharedLifetime(lifetime, entry), replaces: true,
+            methodName: options.ManualName));
     }
 
     private async ValueTask RemoveEverywhereAsync(string cacheKey)

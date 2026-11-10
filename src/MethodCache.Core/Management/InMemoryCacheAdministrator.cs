@@ -20,12 +20,15 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
     private readonly InMemoryCacheManager _cache;
     private readonly HttpResponseStore? _http;
     private readonly IPolicyRegistry? _policies;
+    private readonly Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.GeneratedParameters? _parameters;
 
-    public InMemoryCacheAdministrator(InMemoryCacheManager cache, IPolicyRegistry? policies, HttpResponseStore? http = null)
+    public InMemoryCacheAdministrator(InMemoryCacheManager cache, IPolicyRegistry? policies, HttpResponseStore? http = null,
+        Microsoft.Extensions.DependencyInjection.MethodCacheServiceCollectionExtensions.GeneratedParameters? parameters = null)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _policies = policies;
         _http = http;
+        _parameters = parameters;
     }
 
     public ValueTask<bool?> CheckDistributedCacheAsync(CancellationToken cancellationToken = default)
@@ -153,18 +156,91 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             return Array.Empty<CachedMethodInfo>();
         }
 
+        var notShared = _cache.Distributed?.NotSharedResults()
+            .Where(static result => result.Record.MethodId != null)
+            .ToLookup(static result => result.Record.MethodId!, StringComparer.Ordinal);
         return _policies.GetAllPolicies()
             .OrderBy(static result => result.MethodId, StringComparer.Ordinal)
-            .Select(result => new CachedMethodInfo
+            .Select(result =>
             {
-                MethodId = result.MethodId,
-                Options = CacheEntryOptions.FromRuntime(CacheRuntimePolicy.FromResolverResult(result), preparedKey: false),
-                IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
-                SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(
-                    new Dictionary<string, CacheSettingSource>(result.FieldSources, StringComparer.Ordinal))
+                var runtime = CacheRuntimePolicy.FromResolverResult(result);
+                var sources = new Dictionary<string, CacheSettingSource>(result.FieldSources, StringComparer.Ordinal);
+                var storage = Storage(result.MethodId, runtime, sources);
+                return new CachedMethodInfo
+                {
+                    MethodId = result.MethodId,
+                    Options = CacheEntryOptions.FromRuntime(runtime, preparedKey: false),
+                    IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
+                    SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(sources),
+                    Lifetime = Lifetime(runtime, storage.Distributed),
+                    Storage = storage,
+                    KeyParameters = _parameters?.KeyNames.GetValueOrDefault(result.MethodId) ?? _parameters?.Names.GetValueOrDefault(result.MethodId) ?? [],
+                    NotShared = notShared?[result.MethodId]
+                        .Select(static result => new NotSharedResultInfo
+                        {
+                            Type = result.Written.FullName ?? result.Written.Name,
+                            DeclaredType = result.Declared.FullName ?? result.Declared.Name,
+                            Reason = result.Record.Reason,
+                            Since = DateTimeOffset.FromUnixTimeMilliseconds(result.Record.Since),
+                            Count = Interlocked.Read(ref result.Record.Count)
+                        })
+                        .OrderBy(static result => result.Since)
+                        .ToArray() ?? []
+                };
             })
             .ToArray();
     }
+
+    /// <summary>What a method's settings come to: its own duration or the default, and the stored copy's life.</summary>
+    private CacheLifetimeInfo Lifetime(CacheRuntimePolicy policy, bool stored)
+    {
+        var max = _cache.MaxExpiration;
+        var sliding = policy.SlidingFor == null && policy.SlidingExpiration is { } window && window > TimeSpan.Zero ? window : (TimeSpan?)null;
+        TimeSpan? duration = policy.DurationFor != null ? null
+            : policy.Duration is { } own ? Min(own, max)
+            : policy.SlidingExpiration > TimeSpan.Zero || policy.SlidingFor != null ? max : Min(_cache.DefaultExpiration, max);
+        TimeSpan? distributed = null;
+        if (stored && duration is { } limit && policy.SlidingFor == null)
+        {
+            var copy = sliding is { } slide ? Min(limit, slide) : limit;
+            distributed = Min(copy, _cache.Distributed!.MaxStoredLifetime);
+        }
+
+        return new CacheLifetimeInfo
+        {
+            Duration = duration,
+            SlidingExpiration = sliding,
+            DurationFromResult = policy.DurationFor != null,
+            SlidingFromResult = policy.SlidingFor != null,
+            MaxExpiration = max,
+            Distributed = distributed
+        };
+    }
+
+    /// <summary>Whether a method's values reach the distributed cache, and if not, why.</summary>
+    private CacheStorageInfo Storage(string methodId, CacheRuntimePolicy policy, IReadOnlyDictionary<string, CacheSettingSource> sources)
+    {
+        var layer = _cache.Distributed;
+        var reason = policy.Enabled == false ? "Caching is turned off for the method (Enabled is false)."
+            : layer == null ? "No distributed cache is registered."
+            : _parameters?.Synchronous.Contains(methodId) == true ? "A synchronous method keeps its values in memory."
+            : policy.Distributed == false ? $"Distributed is false{From(sources, nameof(CacheRuntimePolicy.Distributed))}."
+            : policy.Distributed == null && !_cache.SharesByDefault ? "StoreValuesByDefault is false and the method doesn't set Distributed."
+            : null;
+        return new CacheStorageInfo { Distributed = reason == null, Store = layer?.StoreName, MemoryOnlyReason = reason };
+    }
+
+    private static string From(IReadOnlyDictionary<string, CacheSettingSource> sources, string setting) => sources.TryGetValue(setting, out var source)
+        ? source switch
+        {
+            CacheSettingSource.Attribute => " in the method's attribute",
+            CacheSettingSource.Code => " in startup code",
+            CacheSettingSource.Configuration => " in configuration",
+            _ => " in a runtime override"
+        }
+        : string.Empty;
+
+    private static TimeSpan Min(TimeSpan a, TimeSpan b) => a < b ? a : b;
 
     private static bool IsLive(Node node, long now) => node.IsAlive && !node.IsLogicallyExpired(now) && !node.IsPhysicallyExpired(now);
 

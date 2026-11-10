@@ -195,11 +195,44 @@ singleton factory.
 `ICacheManager` directly. An application `ICacheManager` stores entries under `MethodCacheKeys.StoredKey(key, version)`;
 see [Manual caching](manual-caching.md).
 
+## Secrets in arguments
+
+Keys hold the arguments as they are, and keys show up in `ListEntries`, the admin endpoints, your distributed cache and,
+when you turn it on, traces. A plain string doesn't look secret to MethodCache, yet a URL can carry a SAS token or
+another secret in its query, and an argument can be a refresh token or a private report link. Pass an identifier
+instead where you can. Where the secret is what identifies the result, wrap it in a type whose `ICacheKeyProvider`
+returns a hash:
+
+<!-- snippet: keys-secret -->
+```cs
+// A URL with a SAS token in its query: the key holds a hash of the whole URL, never the token
+public sealed class SignedUrl(Uri value) : ICacheKeyProvider
+{
+    public Uri Value { get; } = value;
+
+    public string CacheKeyPart => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Value.AbsoluteUri)));
+}
+
+public interface IBlobReader
+{
+    [Cache(Duration = "10m")]
+    Task<byte[]> ReadAsync(SignedUrl url);
+}
+```
+<!-- endSnippet -->
+
+- Hash the whole value, token included. A key without the token would hand the cached result to a caller whose token
+  is wrong or has expired.
+- Each new token is a new entry, so a URL that is signed again for every call is never read from the cache. Cache by
+  what the token grants access to, such as the blob's name, only where the caller is already authorized for it.
+- SHA-256 of a long random token can't be reversed; a hash of a short or guessable secret, such as a password or a
+  PIN, can be. Don't cache by those.
+
 ## Things to know
 
 - **Keys contain the arguments.** Don't cache methods that take secrets such as passwords or tokens as arguments; pass
-  an identifier instead. Hashed keys are not encryption. No argument, whatever characters it contains, can produce
-  another call's key; see [Security](../security.md).
+  an identifier, or a hash ([Secrets in arguments](#secrets-in-arguments)). Hashed keys are not encryption. No argument,
+  whatever characters it contains, can produce another call's key; see [Security](../security.md).
 - **`Version` changes every key** of a method, so values cached by an earlier version are ignored. See
   [Expiration](expiration.md#versions).
 - **Overloaded methods** have their parameter types in their keys, so overloads never share entries. See

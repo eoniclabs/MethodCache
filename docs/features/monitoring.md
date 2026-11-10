@@ -62,7 +62,8 @@ Statistics never serialize results or inspect their properties to estimate bytes
 remain zero until the separate HTTP store is registered.
 
 `GetMethods()` returns each method's `MethodId`, its effective `Options`, the `SettingSources` each setting comes from
-and `IsDistributedNamespaceShared`. `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
+and `IsDistributedNamespaceShared`, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
+result types it kept in memory instead of sharing (`NotShared`) ([What applies on this instance](configuration.md#what-applies-on-this-instance)). `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
 inspect live local entries without values; listing is a diagnostic scan, not a transaction. `CacheEntryInfo.MethodId`
 names the method an entry belongs to (`null` for manual entries and HTTP responses), and `ListEntries(methodId: ...)`
 lists exactly that method's entries. `IMethodCacheKeys.MethodId` returns the id of a call ([Cache keys](keys.md)).
@@ -163,7 +164,9 @@ builder.Services.AddOpenTelemetry()
 
 Each completed cache call has one `methodcache.requests` outcome, `methodcache.result`: `hit`, `miss`, `stale`,
 `revalidated`, `bypass` or `error`. `methodcache.kind` is `method`, `manual` or `http`, and `methodcache.method` (a
-method id) or `methodcache.http.client` (a client name) says which; manual calls by key carry neither. Every attribute
+method id) or `methodcache.http.client` (a client name) says which. A manual call carries `methodcache.name` when its
+options name it with `WithName("crm-token")`, and neither otherwise; give the calls that cache one kind of value one
+fixed name, since each name is its own series. Every attribute
 is in the `methodcache.` namespace, apart from `error.type`. `methodcache.load.duration` measures your method when it
 actually runs, background refreshes included; callers that join a running load and values read from the distributed
 cache record none. A bulk call has one outcome and measures its one batch factory call.

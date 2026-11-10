@@ -414,7 +414,7 @@ public class DistributedCacheTests
     }
 
     [Fact]
-    public async Task StoreValuesByDefaultFalse_SetAsync_DropsOtherInstancesCopies()
+    public async Task StoreValuesByDefaultFalse_SetAsync_ChangesOnlyThisInstance()
     {
         var first = CreateNode(configure: o => o.StoreValuesByDefault = false);
         var second = CreateNode(configure: o => o.StoreValuesByDefault = false);
@@ -423,9 +423,9 @@ public class DistributedCacheTests
 
         await first.SetAsync("key", "v2");
 
-        // The new value stays in the first instance's memory; the second drops its old copy and loads again
+        // The new value stays in the first instance's memory, and nothing reaches the second
         (await first.GetOrCreateAsync("key", _ => ValueTask.FromResult("unused"))).Should().Be("v2");
-        (await second.GetOrCreateAsync("key", _ => ValueTask.FromResult("loaded"))).Should().Be("loaded");
+        (await second.GetOrCreateAsync("key", _ => ValueTask.FromResult("loaded"))).Should().Be("v1");
     }
 
     [Fact]
