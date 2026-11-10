@@ -93,8 +93,8 @@ internal partial class InMemoryCacheManager
     }
 
     /// <summary>
-    /// Throws when an application's own call asks to keep an entry longer than the cache keeps any, before its factory
-    /// runs, instead of removing the entry early. A generated call's duration was checked when its policy was set.
+    /// Throws when an application's own call asks to keep an entry, or to slide it, longer than the cache keeps any, before
+    /// its factory runs, instead of cutting it short. A generated call's times were checked when its policy was set.
     /// </summary>
     internal void EnsureWithinMaxExpiration(CacheEntryOptions options, string parameterName)
     {
@@ -104,6 +104,14 @@ internal partial class InMemoryCacheManager
                 $"The Duration {duration} is longer than MethodCacheMemoryOptions.MaxExpiration ({_options.MaxExpiration}), the longest " +
                 "MethodCache keeps an entry, so it would be removed early. Shorten the Duration, or raise MaxExpiration with " +
                 "mc.Memory(o => o.MaxExpiration = ...).");
+        }
+
+        if (options.Runtime == null && options.SlidingExpiration is { } sliding && sliding > _options.MaxExpiration)
+        {
+            throw new ArgumentOutOfRangeException(parameterName, sliding,
+                $"The SlidingExpiration {sliding} is longer than MethodCacheMemoryOptions.MaxExpiration ({_options.MaxExpiration}), the " +
+                "longest MethodCache keeps an entry, so reads would never extend it. Shorten the window, or raise MaxExpiration " +
+                "with mc.Memory(o => o.MaxExpiration = ...).");
         }
     }
 

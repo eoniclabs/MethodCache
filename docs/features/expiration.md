@@ -83,7 +83,8 @@ What a cached method or a manual call ends up with, by what it sets. A cached me
 | `SlidingExpiration` | while it is read once per window, up to `MaxExpiration` (7 days) | one window from when it was stored |
 | `Duration` and `SlidingExpiration` | while it is read once per window, up to the `Duration` | one window from when it was stored, or the `Duration` if that is shorter |
 
-- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` fails where it is set.
+- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` or sliding window fails where
+  it is set, at startup for a method and at the call for manual caching.
 - The one-day limit in the distributed cache is `TagRetention` (1 day) less `ClockSkewTolerance` (2 seconds), counted
   from when the method started loading the value, so that a tag invalidation always outlives the entries it covers.
   Raise `TagRetention` to share values longer ([Distributed cache](distributed-cache.md#options)).
