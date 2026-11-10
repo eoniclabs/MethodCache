@@ -170,8 +170,8 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
                 {
                     MethodId = result.MethodId,
                     Options = CacheEntryOptions.FromRuntime(runtime, preparedKey: false),
-                    IsDistributedNamespaceShared = !PolicyHandle.For(_policies, result.MethodId).Current.PrivateIdentity,
                     SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(sources),
+                    ReplacedSources = result.ReplacedSources,
                     Lifetime = Lifetime(runtime, storage.Distributed),
                     Storage = storage,
                     KeyParameters = _parameters?.KeyNames.GetValueOrDefault(result.MethodId) ?? _parameters?.Names.GetValueOrDefault(result.MethodId) ?? [],
@@ -227,7 +227,13 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
             : policy.Distributed == false ? $"Distributed is false{From(sources, nameof(CacheRuntimePolicy.Distributed))}."
             : policy.Distributed == null && !_cache.SharesByDefault ? "StoreValuesByDefault is false and the method doesn't set Distributed."
             : null;
-        return new CacheStorageInfo { Distributed = reason == null, Store = layer?.StoreName, MemoryOnlyReason = reason };
+        return new CacheStorageInfo
+        {
+            Distributed = reason == null,
+            Store = layer?.StoreName,
+            MemoryOnlyReason = reason,
+            Shared = reason == null && !PolicyHandle.For(_policies!, methodId).Current.PrivateIdentity
+        };
     }
 
     private static string From(IReadOnlyDictionary<string, CacheSettingSource> sources, string setting) => sources.TryGetValue(setting, out var source)

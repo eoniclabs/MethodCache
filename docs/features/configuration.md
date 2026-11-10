@@ -234,12 +234,16 @@ foreach (var report in diagnostics.GetMethods())
 `SettingSources` is keyed by the `CacheEntryOptions` property name (`Duration`, `Tags`, `SlidingExpiration`,
 `RefreshAhead`, `Version`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Enabled`, `Distributed`), and each
 value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
-is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+is left out. `ReplacedSources` lists a setting that two of the method's own sources set, with the lower ones the
+higher one replaced: `Duration` with `[Attribute]` when startup code sets a `DurationFor` for a method whose `[Cache]`
+sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](monitoring.md)).
 
 ### What applies on this instance
 
-`Options` holds what is set. Next to it, each method says what that comes to on this instance, with defaults filled in:
+`Options` holds what the method's sources set; a setting none of them sets is null there and missing from
+`SettingSources`, and has the library's default. Next to it, each method says what that comes to on this instance,
+with the defaults filled in:
 
 <!-- snippet: configuration-what-applies -->
 ```cs
@@ -259,11 +263,12 @@ foreach (var method in diagnostics.GetMethods())
 |---|---|
 | `Lifetime.Duration` | The longest an entry lives in memory: the method's `Duration`, from `Defaults` or its group, else five minutes; with only a sliding window, `MaxExpiration`. Null when `DurationFor` gives each result its own (`DurationFromResult`) |
 | `Lifetime.SlidingExpiration` | The sliding window, or null without one or when `SlidingFor` gives each result its own (`SlidingFromResult`) |
-| `Lifetime.MaxExpiration` | The longest any entry lives (7 days by default) |
+| `Lifetime.MaxExpiration` | The longest any entry lives: a limit for the whole cache, not a setting of the method (7 days unless `mc.Memory` sets it) |
 | `Lifetime.Distributed` | How long the copy in the distributed cache lives: the `Duration`, at most one sliding window and at most `TagRetention` less `ClockSkewTolerance`. Null when values aren't stored there or the result gives its own times |
 | `Storage.Distributed` | Whether values are stored in the distributed cache as well as in memory |
 | `Storage.Store` | The distributed cache, such as `Redis`, `SqlServer` or `PostgreSql` |
 | `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
+| `Storage.Shared` | Whether other instances read the values this one stores: false when values stay in memory, and while a runtime override that only this instance applies gives it a namespace of its own |
 | `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
 | `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](distributed-cache.md#serialization)) |
 
@@ -274,7 +279,7 @@ foreach (var method in diagnostics.GetMethods())
 | Setting | Rule | Checked |
 |---------|------|---------|
 | `Duration` | A positive time span, and with the built-in memory cache at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup. Longer than `MaxExpiration`: at startup from `[Cache]`, code and JSON, an `ArgumentException` from a runtime override, and an `ArgumentOutOfRangeException` from a manual call |
-| `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off. A `SlidingExpiration` is at most `MaxExpiration`, like `Duration` | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup. A window longer than `MaxExpiration` fails where a longer `Duration` does |
 | `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](../user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
 | `Tags` | Not empty or whitespace; templates name parameters of the method | `[Cache]`: at build time. Code: `AddTags` throws an `ArgumentException` for an empty tag; templates at startup. JSON: at startup |

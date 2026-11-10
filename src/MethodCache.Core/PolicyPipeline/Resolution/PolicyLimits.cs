@@ -53,6 +53,14 @@ internal sealed class PolicyLimits
                    "mc.Memory(o => o.MaxExpiration = ...).";
         }
 
+        if (fields.HasFlag(CachePolicyFields.SlidingExpiration) && policy.SlidingExpiration is { } sliding && MaxDuration is { } limit && sliding > limit)
+        {
+            var at = isMethod ? $"{where} on '{id}'" : where;
+            return $"The SlidingExpiration {sliding} set in {at} is longer than MethodCacheMemoryOptions.MaxExpiration ({limit}), the " +
+                   "longest MethodCache keeps an entry, so reads would never extend it. Shorten the window, or raise MaxExpiration " +
+                   "with mc.Memory(o => o.MaxExpiration = ...).";
+        }
+
         if (isMethod && _resultTypes != null && _resultTypes.TryGetValue(id, out var resultType))
         {
             try

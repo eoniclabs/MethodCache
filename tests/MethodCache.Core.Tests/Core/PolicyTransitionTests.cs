@@ -80,7 +80,7 @@ public class PolicyTransitionTests
         Assert.Equal(103, await first.GetRequiredService<IReader>().ReadAsync(1));
         await using var fourth = Node(new Reader(400));
         Assert.Equal(103, await fourth.GetRequiredService<IReader>().ReadAsync(1));
-        Assert.True(first.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == MethodId).IsDistributedNamespaceShared);
+        Assert.True(first.GetRequiredService<ICacheAdministrator>().GetMethods().Single(m => m.MethodId == MethodId).Storage.Shared);
     }
 
     [Fact]

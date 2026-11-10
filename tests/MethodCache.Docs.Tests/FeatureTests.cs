@@ -337,6 +337,23 @@ public class FeatureTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Testing_AMethodsPolicy_TheTenantKey_AndThePoliciesAsJson_AreRead()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<global::Docs.Testing.RequestTenant>();
+        services.AddScoped<global::Docs.Testing.IProjects, global::Docs.Testing.Projects>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        global::Docs.Testing.Examples.CheckPolicy(provider);
+        global::Docs.Testing.Examples.CheckTenantKeys(provider);
+        var json = global::Docs.Testing.Examples.PoliciesAsJson(provider);
+        Assert.Contains("IProjects.ListAsync", json, StringComparison.Ordinal);
+        Assert.Contains("\"KeyParameters\": [\n", json.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+        Assert.Equal(json, global::Docs.Testing.Examples.PoliciesAsJson(provider));
+    }
+
+    [Fact]
     public async Task Testing_TagCoverage_CoversTheTagsOfTheGettingStartedService()
     {
         await using var provider = (ServiceProvider)global::Docs.Testing.Examples.WithCaching();

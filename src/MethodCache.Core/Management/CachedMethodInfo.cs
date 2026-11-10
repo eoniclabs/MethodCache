@@ -9,19 +9,30 @@ public sealed record CachedMethodInfo
     /// returns the id of a call.
     /// </summary>
     public required string MethodId { get; init; }
-    /// <summary>The effective immutable method options, as resolved from attributes, configuration and overrides.</summary>
+    /// <summary>
+    /// What the method's sources set, resolved from its attribute, startup code, configuration and runtime overrides:
+    /// a setting no source sets is null here. <see cref="Lifetime"/> and <see cref="Storage"/> show what applies, with
+    /// the defaults filled in.
+    /// </summary>
     public required CacheEntryOptions Options { get; init; }
     /// <summary>
     /// Where each setting with an effective value comes from, keyed by its <see cref="CacheEntryOptions"/> property name,
-    /// such as <c>Duration</c> or <c>FailSafeTimeout</c>. A setting no source sets is left out.
+    /// such as <c>Duration</c> or <c>FailSafeTimeout</c>. A setting no source sets is left out: it has the library's
+    /// default, which <see cref="Lifetime"/> shows.
     /// </summary>
     public IReadOnlyDictionary<string, CacheSettingSource> SettingSources { get; init; } = new Dictionary<string, CacheSettingSource>();
     /// <summary>
-    /// Whether the method's distributed entries are shared with other instances that have the same configuration;
-    /// <c>false</c> while a local runtime override gives this instance a private namespace.
+    /// The settings that one of the method's own sources sets and a higher one of them replaces, with the sources
+    /// replaced, highest first: such as <c>Duration</c> with <c>Attribute</c> when startup code sets a <c>DurationFor</c>
+    /// for a method whose <c>[Cache]</c> sets a <c>Duration</c>. <see cref="SettingSources"/> names the source that
+    /// applies. A default from <c>Defaults</c> or a group that a method's own setting replaces isn't listed. Empty when
+    /// no setting of the method is set twice.
     /// </summary>
-    public bool IsDistributedNamespaceShared { get; init; } = true;
-    /// <summary>How long the method's entries live on this instance, with defaults filled in.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<CacheSettingSource>> ReplacedSources { get; init; } = new Dictionary<string, IReadOnlyList<CacheSettingSource>>();
+    /// <summary>
+    /// How long the method's entries live on this instance: what <see cref="Options"/> comes to, with the defaults
+    /// filled in and the cache-wide limits applied.
+    /// </summary>
     public CacheLifetimeInfo Lifetime { get; init; } = new();
     /// <summary>Where the method's values are kept on this instance, and why only in memory when they are.</summary>
     public CacheStorageInfo Storage { get; init; } = new();
@@ -52,7 +63,10 @@ public sealed record CacheLifetimeInfo
     public bool DurationFromResult { get; init; }
     /// <summary>Whether <c>SlidingFor</c> gives each result its own sliding window.</summary>
     public bool SlidingFromResult { get; init; }
-    /// <summary>The longest any entry lives: <c>MethodCacheMemoryOptions.MaxExpiration</c>.</summary>
+    /// <summary>
+    /// The longest any entry lives: <c>MethodCacheMemoryOptions.MaxExpiration</c>, a limit for the whole cache (7 days
+    /// unless it is set with <c>mc.Memory(o => o.MaxExpiration = ...)</c>), not a setting of the method.
+    /// </summary>
     public TimeSpan MaxExpiration { get; init; }
     /// <summary>
     /// How long the copy in the distributed cache lives from when it was stored: the <see cref="Duration"/>, at most
@@ -71,6 +85,12 @@ public sealed record CacheStorageInfo
     public string? Store { get; init; }
     /// <summary>Why the method's values stay in memory only; null when they are stored in the distributed cache.</summary>
     public string? MemoryOnlyReason { get; init; }
+    /// <summary>
+    /// Whether other instances with the same configuration read the values this instance stores in the distributed
+    /// cache. False when the values stay in memory, and while a runtime override that only this instance applies gives
+    /// it a namespace of its own there.
+    /// </summary>
+    public bool Shared { get; init; }
 }
 
 /// <summary>Values of one result type that an instance kept in memory only instead of sharing them.</summary>

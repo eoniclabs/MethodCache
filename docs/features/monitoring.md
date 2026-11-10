@@ -61,8 +61,8 @@ explicit scopes:
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
 remain zero until the separate HTTP store is registered.
 
-`GetMethods()` returns each method's `MethodId`, its effective `Options`, the `SettingSources` each setting comes from
-and `IsDistributedNamespaceShared`, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
+`GetMethods()` returns each method's `MethodId`, its effective `Options` and the `SettingSources` each setting comes
+from, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
 result types it kept in memory instead of sharing (`NotShared`) ([What applies on this instance](configuration.md#what-applies-on-this-instance)). `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
 inspect live local entries without values; listing is a diagnostic scan, not a transaction. `CacheEntryInfo.MethodId`
 names the method an entry belongs to (`null` for manual entries and HTTP responses), and `ListEntries(methodId: ...)`

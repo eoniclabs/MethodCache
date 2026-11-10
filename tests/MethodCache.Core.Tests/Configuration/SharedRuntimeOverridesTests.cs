@@ -3,6 +3,7 @@ using MethodCache.Core.Configuration.Surfaces.Runtime;
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.Tests.FaultInjection;
 using MethodCache.Extensibility;
+using MethodCache.Infrastructure;
 using MethodCache.Policies;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,6 +62,9 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
         public IRuntimeCacheConfigurator Configurator => Provider.GetRequiredService<IRuntimeCacheConfigurator>();
         public ISharedCatalog Catalog => Provider.GetRequiredService<ISharedCatalog>();
         public TimeSpan? Duration => Provider.GetRequiredService<IPolicyRegistry>().GetPolicy(GetId).Policy.Duration;
+
+        /// <summary>The Duration the instance's calls use, which follows <see cref="Duration"/> once a change applies here.</summary>
+        public TimeSpan? CallDuration => PolicyHandle.For(Provider.GetRequiredService<IPolicyRegistry>(), GetId).Current.Duration;
     }
 
     /// <summary>Starts an instance; with <paramref name="host"/>, as a generic host starts it.</summary>
@@ -120,13 +124,16 @@ public sealed class SharedRuntimeOverridesTests : IDisposable
 
         await b.Configurator.RemoveAsync(GetId);
 
-        await Eventually(() => a.Duration == TimeSpan.FromMinutes(10));
+        await Eventually(() => a.Duration == TimeSpan.FromMinutes(10) && a.CallDuration == TimeSpan.FromMinutes(10));
         Assert.Empty(a.Configurator.GetOverrides());
         Assert.Empty(b.Configurator.GetOverrides());
 
-        // Both share the entries of the method's own settings again
+        // Both share the entries of the method's own settings again. b loads first: its removal returned once the
+        // method was invalidated everywhere, while a may still be dropping its own entries, which keeps a load that
+        // runs at that moment out of the distributed cache.
         _time.Advance(TimeSpan.FromMilliseconds(1));
-        Assert.Equal(await a.Catalog.GetAsync(1), await b.Catalog.GetAsync(1));
+        var loaded = await b.Catalog.GetAsync(1);
+        Assert.Equal(loaded, await a.Catalog.GetAsync(1));
         Assert.Equal(1, _loads.Count);
     }
 

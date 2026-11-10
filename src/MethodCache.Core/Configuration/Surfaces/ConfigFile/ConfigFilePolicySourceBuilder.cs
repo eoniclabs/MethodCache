@@ -131,6 +131,14 @@ internal static class ConfigFilePolicySourceBuilder
                 "shorten the Duration, or raise MaxExpiration with mc.Memory(o => o.MaxExpiration = ...)");
         }
 
+        if (checks?.MaxDuration is { } maxWindow &&
+            policies.FirstOrDefault(policy => policy.Draft.Policy.SlidingExpiration > maxWindow) is { } tooWide)
+        {
+            throw InvalidValue(tooWide.Section, "SlidingExpiration", tooWide.Section["SlidingExpiration"] ?? string.Empty,
+                $"at most MethodCacheMemoryOptions.MaxExpiration ({maxWindow}), the longest MethodCache keeps an entry, so reads " +
+                "would never extend it; shorten the window, or raise MaxExpiration with mc.Memory(o => o.MaxExpiration = ...)");
+        }
+
         if (checks?.FindTagProblem(policies.Select(static policy => policy.Draft).ToArray()) is { } tagProblem)
         {
             throw TagError(root, policies, tagProblem);

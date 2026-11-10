@@ -243,6 +243,41 @@ value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 Analyzer [MC0028](../user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.
 
+## How each method is cached
+
+`CachedServices.Method` returns how one method is cached: what `GetMethods()` reports for it
+([What applies on this instance](configuration.md#what-applies-on-this-instance)), found by a call instead of a
+`MethodId` string, so a renamed method or service still finds it. Assert on it, so a change to its duration, its key
+or where its values are kept fails a test:
+
+<!-- snippet: testing-method-policy -->
+```cs
+// How ListAsync is cached, from its attribute, startup code and configuration together
+var list = CachedServices.Method<IProjects>(provider, p => p.ListAsync(Guid.Empty));
+Assert.Equal(TimeSpan.FromMinutes(5), list.Lifetime.Duration);
+Assert.Equal(["tenantId"], list.KeyParameters);
+Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
+```
+<!-- endSnippet -->
+
+The call runs on a stand-in, so the method never runs and the arguments don't matter. `ReplacedSources` is empty when
+no source replaces a setting another one sets for the method, such as a `DurationFor` in startup code that replaces the
+`Duration` of its `[Cache]`.
+
+To see every change to how the application caches in review, write all the policies as JSON and compare them with a
+file kept in the repository, with a library such as Verify that compares output with an approved file, or by hand:
+
+<!-- snippet: testing-methods-json -->
+```cs
+// Every method's policy as JSON: compare it with a file in the repository, so a change shows up in review
+var policies = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+    new JsonSerializerOptions { WriteIndented = true });
+```
+<!-- endSnippet -->
+
+`NotShared` counts the values this instance kept in memory while it ran, so write the JSON before the test calls any
+cached method.
+
 ## A load for another tenant fails
 
 A cached method that takes the tenant as a parameter and checks it against the request's tenant with a
@@ -263,6 +298,24 @@ await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(t
 The check runs when the method loads a value, not on a hit, so this test proves that nothing wrong is cached under
 another tenant's key. That a caller takes the id from the request is the caller's part; test it where the id is taken,
 such as in the endpoint.
+
+Values of one tenant are kept apart from another's only when the tenant is part of the key. Check that for every cached
+method with `KeyParameters`, listing the few that serve every tenant:
+
+<!-- snippet: testing-tenant-keys -->
+```cs
+// The methods that serve every tenant, such as an API key lookup, by MethodId
+string[] everyTenant = [];
+foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
+{
+    if (everyTenant.Contains(method.MethodId)) continue;
+    Assert.True(method.KeyParameters is ["tenantId", ..], $"{method.MethodId} doesn't key on the tenant first.");
+}
+```
+<!-- endSnippet -->
+
+A method added later without the tenant fails the test, and so does a parameter renamed from `tenantId`: rename it in
+the test too.
 
 ## Turning method caching off
 

@@ -96,6 +96,21 @@ Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedSe
 ```
 <!-- endSnippet -->
 
+## How each method is cached
+
+`CachedServices.Method` returns how one method is cached, as `ICacheAdministrator.GetMethods()` reports it, found by a
+call instead of a method id string:
+
+<!-- snippet: testing-method-policy -->
+```cs
+// How ListAsync is cached, from its attribute, startup code and configuration together
+var list = CachedServices.Method<IProjects>(provider, p => p.ListAsync(Guid.Empty));
+Assert.Equal(TimeSpan.FromMinutes(5), list.Lifetime.Duration);
+Assert.Equal(["tenantId"], list.KeyParameters);
+Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
+```
+<!-- endSnippet -->
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,

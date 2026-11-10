@@ -83,10 +83,12 @@ What a cached method or a manual call ends up with, by what it sets. A cached me
 | `SlidingExpiration` | while it is read once per window, up to `MaxExpiration` (7 days) | one window from when it was stored |
 | `Duration` and `SlidingExpiration` | while it is read once per window, up to the `Duration` | one window from when it was stored, or the `Duration` if that is shorter |
 
-- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` fails where it is set.
+- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` or sliding window fails where
+  it is set, at startup for a method and at the call for manual caching.
 - The one-day limit in the distributed cache is `TagRetention` (1 day) less `ClockSkewTolerance` (2 seconds), counted
   from when the method started loading the value, so that a tag invalidation always outlives the entries it covers.
-  Raise `TagRetention` to share values longer ([Distributed cache](distributed-cache.md#options)).
+  Raise `TagRetention` to share values longer ([Distributed cache](distributed-cache.md#options)). The first value of
+  each method, or of each `WithName` name for manual caching, that asks for longer logs a warning that says so.
 - An instance that reads a value from the distributed cache keeps it no longer than the copy stored there.
 - `FailSafe` keeps an expired value in memory for its window, to serve when a reload fails, on every instance that
   has the value, also one that read it from the distributed cache ([Fail-safe](fail-safe.md)).
@@ -131,6 +133,9 @@ builder.Services.AddMethodCache(mc =>
   [`SlidingFor`](#a-sliding-window-from-the-result).
 - `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
   method in `appsettings.json` or a runtime override replaces `DurationFor`.
+- A `DurationFor` in startup code replaces the `Duration` of the method's `[Cache]` attribute too, so the attribute's
+  time doesn't cap it: a cap belongs in the function, such as `left < cap ? left : cap`. `GetMethods()` lists a setting one source replaces in another under `ReplacedSources`
+  ([What applies on this instance](configuration.md#what-applies-on-this-instance)).
 - In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
   for a type the method can't return.
 - With manual caching, pass it in the options: `o => o.DurationFor<AccessToken>(token => ...)`

@@ -8,8 +8,8 @@ using Xunit;
 namespace MethodCache.Core.Tests.Configuration;
 
 /// <summary>
-/// Settings that can't be honored fail when they are set, never on a later call: a <c>Duration</c> longer than
-/// <see cref="MethodCacheMemoryOptions.MaxExpiration"/>, and a <c>CacheWhen&lt;T&gt;</c> for a type the method's result
+/// Settings that can't be honored fail when they are set, never on a later call: a <c>Duration</c> or a sliding window
+/// longer than <see cref="MethodCacheMemoryOptions.MaxExpiration"/>, and a <c>CacheWhen&lt;T&gt;</c> for a type the method's result
 /// can never be.
 /// </summary>
 public class PolicyContradictionTests
@@ -28,6 +28,16 @@ public class PolicyContradictionTests
     public interface IShort
     {
         [Cache] int Get(int id);
+    }
+
+    public interface IWide
+    {
+        [Cache(SlidingExpiration = "45d")] int Get(int id);
+    }
+
+    public sealed class Wide : IWide
+    {
+        public int Get(int id) => id;
     }
 
     public sealed class Contradictions : IContradictions
@@ -160,6 +170,70 @@ public class PolicyContradictionTests
             await cache.GetOrCreateAsync("report", _ => ValueTask.FromResult(++calls), o => o.WithDuration(TooLong)));
 
         Assert.Contains("MethodCacheMemoryOptions.MaxExpiration (7.00:00:00)", error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, calls);
+    }
+
+    [Fact]
+    public void AttributeSlidingWindow_LongerThanMaxExpiration_FailsStartup()
+    {
+        using var provider = Build(services => services.AddSingleton<IWide, Wide>());
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains($"The SlidingExpiration 45.00:00:00 set in [Cache] on '{MethodIds.For(typeof(IWide), nameof(IWide.Get))}'",
+            error.Message, StringComparison.Ordinal);
+        Assert.Contains("so reads would never extend it", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AttributeSlidingWindow_WithinARaisedMaxExpiration_IsAllowed()
+    {
+        using var provider = Build(services => services.AddSingleton<IWide, Wide>(), mc => mc.Memory(o => o.MaxExpiration = TimeSpan.FromDays(60)));
+
+        Assert.NotEmpty(provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+    }
+
+    [Theory]
+    [InlineData("defaults")]
+    [InlineData("method")]
+    public void CodeSlidingWindow_LongerThanMaxExpiration_FailsStartup(string layer)
+    {
+        using var provider = Build(services => services.AddSingleton<IShort, Short>(), mc =>
+        {
+            if (layer == "defaults") mc.Defaults(o => o.WithSlidingExpiration(TooLong));
+            else mc.Method((IShort s) => s.Get(0)).Configure(o => o.WithSlidingExpiration(TooLong));
+        });
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains("The SlidingExpiration 8.00:00:00 set in mc.", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConfigurationSlidingWindow_LongerThanMaxExpiration_FailsStartup_NamingThePath()
+    {
+        var key = $"MethodCache:Methods:{MethodIds.For(typeof(IShort), nameof(IShort.Get))}:SlidingExpiration";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [key] = "8d" }).Build();
+        using var provider = Build(services => services.AddSingleton<IShort, Short>(), mc => mc.FromConfiguration(configuration));
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains($"'{key}' has value '8d', which is not at most MethodCacheMemoryOptions.MaxExpiration (7.00:00:00)",
+            error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ManualSlidingWindow_LongerThanMaxExpiration_ThrowsBeforeTheFactoryRuns()
+    {
+        await using var provider = Build(_ => { });
+        var cache = provider.GetRequiredService<ICacheManager>();
+        var calls = 0;
+
+        var error = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await cache.GetOrCreateAsync("report",
+            _ => ValueTask.FromResult(++calls), o => o.WithSlidingExpiration(TimeSpan.FromDays(45)).WithDistributed(true)));
+
+        Assert.Contains("The SlidingExpiration 45.00:00:00 is longer than MethodCacheMemoryOptions.MaxExpiration (7.00:00:00)",
+            error.Message, StringComparison.Ordinal);
         Assert.Equal(0, calls);
     }
 
