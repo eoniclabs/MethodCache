@@ -123,6 +123,15 @@ internal sealed class CoreTelemetry : IDisposable
 
     /// <summary>What a manual call named <paramref name="name"/> reports in place of a method id.</summary>
     internal static string NamedManual(string name) => NamedPrefix + name;
+
+    /// <summary>What a log message calls the method or manual call that reports as <paramref name="name"/>.</summary>
+    internal static string Describe(string? name) => name switch
+    {
+        null or ManualName => "A manual call without WithName",
+        ManualBulkName => "A manual GetOrCreateManyAsync call",
+        _ when name.StartsWith(NamedPrefix, StringComparison.Ordinal) => $"The manual call named '{name[NamedPrefix.Length..]}'",
+        _ => name
+    };
     private static readonly object BoxedTrue = true;
     private static readonly KeyValuePair<string, object?> KindMethod = new(TelemetryAttributes.Kind, "method");
     private static readonly KeyValuePair<string, object?> KindManual = new(TelemetryAttributes.Kind, "manual");

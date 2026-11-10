@@ -125,6 +125,8 @@ namespace MethodCache.Core.Runtime.Distributed
         // Methods with a value shared through the distributed cache, so a later value that can't be shared must
         // remove it there
         private readonly ConcurrentDictionary<string, byte> _sharedMethods = new(StringComparer.Ordinal);
+        // The methods and manual call names already warned that TagRetention cuts their stored copies short
+        private readonly ConcurrentDictionary<string, byte> _cutShort = new(StringComparer.Ordinal);
 
         // Tag invalidations and clears other nodes announced so far
         private long _remoteInvalidations;
@@ -409,6 +411,20 @@ namespace MethodCache.Core.Runtime.Distributed
             }
         }
 
+        /// <summary>
+        /// Logs a warning, once per method or manual call name, when a value asks to be shared for longer than the
+        /// store keeps any: TagRetention less ClockSkewTolerance, so that a tag invalidation outlives the values it
+        /// covers. The value is still shared, for that long, and other instances load it again after.
+        /// </summary>
+        private void WarnIfCutShort(string? methodName, TimeSpan lifetime)
+        {
+            var stored = MaxStoredLifetime;
+            if (lifetime <= stored || !_cutShort.TryAdd(methodName ?? string.Empty, 0)) return;
+            _logger.LogWarning(
+                "{Caller} asks to share values for {Requested}, but the distributed cache keeps them for at most {Stored}: TagRetention less ClockSkewTolerance, so that a tag invalidation always outlives the values it covers. Other instances load the value again after that. Raise TagRetention to share values longer, or shorten the Duration.",
+                CoreTelemetry.Describe(methodName), lifetime, stored);
+        }
+
         private void BeginWrite() => Interlocked.Increment(ref _writesInFlight);
 
         private void EndWrite()
@@ -429,6 +445,7 @@ namespace MethodCache.Core.Runtime.Distributed
                     return;
                 }
             }
+            WarnIfCutShort(methodName, lifetime);
             // The metadata that can invalidate this value must outlive it, including time spent loading or
             // writing it. Anchor its logical expiry to the source read, not the later publication time.
             var now = Now;
