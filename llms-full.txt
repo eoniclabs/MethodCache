@@ -579,7 +579,7 @@ value after that loads it again, and the new value replaces the copies on every 
 **How long does an entry live when I set nothing?**
 Five minutes, in memory and in the distributed cache. No entry lives past `MaxExpiration` (7 days), and the distributed
 cache keeps an entry at most `TagRetention` (1 day) from when its load started.
-([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives))
+([Duration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#duration))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -821,7 +821,21 @@ generic host, the first call opens the connection. ([When the distributed cache 
 `ICacheAdministrator.GetMethods()`, or `GET /methodcache/methods` with `MapMethodCacheAdmin`: each method's
 `Lifetime` (defaults filled in, and how long the shared copy lives), `Storage` (where values go, and why only in memory),
 `KeyParameters`, and `NotShared`, the result types this instance kept in memory with the reason and count.
+`SettingSources` names where each setting comes from, and `ReplacedSources` a setting one source replaces in another,
+such as a `DurationFor` in startup code that replaces the `Duration` of the method's `[Cache]`.
 ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance))
+
+**A value lives longer in Redis than I asked for, or shorter. Why?**
+The copy in the distributed cache lives the `Duration`, at most one sliding window, and at most `TagRetention` (one day)
+less two seconds, so that a tag invalidation always outlives it. The first value of each method, or of each `WithName`
+name, that asks for longer than `TagRetention` allows logs a warning; raise `TagRetention` to share values longer. A
+`Duration` or a sliding window longer than `MaxExpiration` (7 days) fails where it is set.
+([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives))
+
+**How do I keep large, rarely read values in Redis without filling every instance's memory?**
+Bound memory by size: set a `Weigher` and a `WeightLimit` with `mc.Memory(...)`. When the limit is reached, memory evicts
+the entries read least often first, and the next read of one gets it from the distributed cache, not from your method.
+There is no separate duration for memory. ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size))
 
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
@@ -924,6 +938,16 @@ To keep that list up to date by itself, compare with the interfaces the project 
 assembly of each project with cached interfaces the application registers; for a shared library that declares
 interfaces other applications register, add the ones this application uses by hand.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-cached-service-resolves))
+
+**How do I test how a method is cached: its duration, its key, whether it is shared?**
+`CachedServices.Method<IPrices>(provider, p => p.GetAsync(""))` from `MethodCache.Testing` returns what `GetMethods()`
+reports for that method, found by a call, so a rename still finds it. To see every change in review, serialize
+`GetMethods()` to JSON and compare it with a file in the repository.
+([How each method is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached))
+
+**How do I check that every tenant's values have the tenant in the key?**
+Loop over `GetMethods()` and assert that `KeyParameters` starts with the tenant parameter, except for the methods that
+serve every tenant. ([A load for another tenant fails](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#a-load-for-another-tenant-fails))
 
 **How do I test that a cached method refuses another tenant's id?**
 Set the request's tenant to one tenant, call the method with another tenant's id, and assert that the `[ChecksRequestState]`
@@ -1361,10 +1385,12 @@ What a cached method or a manual call ends up with, by what it sets. A cached me
 | `SlidingExpiration` | while it is read once per window, up to `MaxExpiration` (7 days) | one window from when it was stored |
 | `Duration` and `SlidingExpiration` | while it is read once per window, up to the `Duration` | one window from when it was stored, or the `Duration` if that is shorter |
 
-- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` fails where it is set.
+- No entry lives longer than `MaxExpiration` (7 days, at most 365); a longer `Duration` or sliding window fails where
+  it is set, at startup for a method and at the call for manual caching.
 - The one-day limit in the distributed cache is `TagRetention` (1 day) less `ClockSkewTolerance` (2 seconds), counted
   from when the method started loading the value, so that a tag invalidation always outlives the entries it covers.
-  Raise `TagRetention` to share values longer ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#options)).
+  Raise `TagRetention` to share values longer ([Distributed cache](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#options)). The first value of
+  each method, or of each `WithName` name for manual caching, that asks for longer logs a warning that says so.
 - An instance that reads a value from the distributed cache keeps it no longer than the copy stored there.
 - `FailSafe` keeps an expired value in memory for its window, to serve when a reload fails, on every instance that
   has the value, also one that read it from the distributed cache ([Fail-safe](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/fail-safe.md)).
@@ -1407,6 +1433,9 @@ builder.Services.AddMethodCache(mc =>
   [`SlidingFor`](#a-sliding-window-from-the-result).
 - `WithDuration` and `DurationFor` replace each other in code: whichever is called last wins. A `Duration` for the
   method in `appsettings.json` or a runtime override replaces `DurationFor`.
+- A `DurationFor` in startup code replaces the `Duration` of the method's `[Cache]` attribute too, so the attribute's
+  time doesn't cap it: a cap belongs in the function, such as `left < cap ? left : cap`. `GetMethods()` lists a setting one source replaces in another under `ReplacedSources`
+  ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)).
 - In `Defaults` or a group it fails at startup, since it reads one method's result type. So does a `DurationFor<T>`
   for a type the method can't return.
 - With manual caching, pass it in the options: `o => o.DurationFor<AccessToken>(token => ...)`
@@ -2521,12 +2550,16 @@ foreach (var report in diagnostics.GetMethods())
 `SettingSources` is keyed by the `CacheEntryOptions` property name (`Duration`, `Tags`, `SlidingExpiration`,
 `RefreshAhead`, `Version`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Enabled`, `Distributed`), and each
 value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
-is left out. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+is left out. `ReplacedSources` lists a setting that two of the method's own sources set, with the lower ones the
+higher one replaced: `Duration` with `[Attribute]` when startup code sets a `DurationFor` for a method whose `[Cache]`
+sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
 ### What applies on this instance
 
-`Options` holds what is set. Next to it, each method says what that comes to on this instance, with defaults filled in:
+`Options` holds what the method's sources set; a setting none of them sets is null there and missing from
+`SettingSources`, and has the library's default. Next to it, each method says what that comes to on this instance,
+with the defaults filled in:
 
 ```cs
 foreach (var method in diagnostics.GetMethods())
@@ -2544,11 +2577,12 @@ foreach (var method in diagnostics.GetMethods())
 |---|---|
 | `Lifetime.Duration` | The longest an entry lives in memory: the method's `Duration`, from `Defaults` or its group, else five minutes; with only a sliding window, `MaxExpiration`. Null when `DurationFor` gives each result its own (`DurationFromResult`) |
 | `Lifetime.SlidingExpiration` | The sliding window, or null without one or when `SlidingFor` gives each result its own (`SlidingFromResult`) |
-| `Lifetime.MaxExpiration` | The longest any entry lives (7 days by default) |
+| `Lifetime.MaxExpiration` | The longest any entry lives: a limit for the whole cache, not a setting of the method (7 days unless `mc.Memory` sets it) |
 | `Lifetime.Distributed` | How long the copy in the distributed cache lives: the `Duration`, at most one sliding window and at most `TagRetention` less `ClockSkewTolerance`. Null when values aren't stored there or the result gives its own times |
 | `Storage.Distributed` | Whether values are stored in the distributed cache as well as in memory |
 | `Storage.Store` | The distributed cache, such as `Redis`, `SqlServer` or `PostgreSql` |
 | `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
+| `Storage.Shared` | Whether other instances read the values this one stores: false when values stay in memory, and while a runtime override that only this instance applies gives it a namespace of its own |
 | `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
 | `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
 
@@ -2559,7 +2593,7 @@ foreach (var method in diagnostics.GetMethods())
 | Setting | Rule | Checked |
 |---------|------|---------|
 | `Duration` | A positive time span, and with the built-in memory cache at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup. Longer than `MaxExpiration`: at startup from `[Cache]`, code and JSON, an `ArgumentException` from a runtime override, and an `ArgumentOutOfRangeException` from a manual call |
-| `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup |
+| `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off. A `SlidingExpiration` is at most `MaxExpiration`, like `Duration` | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup. A window longer than `MaxExpiration` fails where a longer `Duration` does |
 | `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
 | `Tags` | Not empty or whitespace; templates name parameters of the method | `[Cache]`: at build time. Code: `AddTags` throws an `ArgumentException` for an empty tag; templates at startup. JSON: at startup |
@@ -3114,7 +3148,7 @@ builder.Services.AddMethodCache(mc => mc.Distributed(options =>
 | `CircuitBreakerDuration` | 10 seconds | How long the distributed cache is skipped after a failure or timeout. Invalidations it didn't accept are retried at this interval |
 | `ClockSkewTolerance` | 2 seconds | How far apart your servers' clocks may be. A tag invalidation also applies to entries created up to this long after it. One stamped further ahead of an instance's clock (by a server whose clock runs fast) counts from when that instance first read it, until its clock reaches the stamp |
 | `TagCheckInterval` | 1 second | How long an instance trusts the invalidation time it last read for a tag. Without a backplane, an entry read from the distributed cache can outlive a tag invalidation made on another instance by up to this long |
-| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter); a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
+| `TagRetention` | 1 day | How long tag invalidations are kept. An entry stays in the distributed cache at most `TagRetention - ClockSkewTolerance` from when your method started loading it (less if its own duration is shorter), and the first value of each method or `WithName` name that asks for longer logs a warning; a load that takes longer is kept only in that instance's memory. Both values are truncated to whole milliseconds, and `TagRetention` must exceed `ClockSkewTolerance` by at least one millisecond, or startup fails; with SQL Server it must also end before 9999-12-31 |
 | `KeyPrefix` | `methodcache:` | The prefix of everything MethodCache stores and of its backplane messages. Applications that share a store share their entries and invalidations under one prefix; give an application its own to keep them apart ([below](#several-applications-on-one-store)). It can't change while the app runs |
 | `StoreValuesByDefault` | `true` | Store values in the distributed cache. `false` keeps values in memory, except those of methods and calls that set `Distributed` to `true`, and uses the distributed cache for invalidations ([Invalidations only](#invalidations-only)) |
 | `VerifyUnchangedInDevelopment` | `true` | In Development, write the values kept in memory again every two seconds and warn when code changed one ([Results that don't change](#results-that-dont-change)) |
@@ -3430,8 +3464,8 @@ explicit scopes:
 Statistics never serialize results or inspect their properties to estimate bytes. HTTP storage/observation fields
 remain zero until the separate HTTP store is registered.
 
-`GetMethods()` returns each method's `MethodId`, its effective `Options`, the `SettingSources` each setting comes from
-and `IsDistributedNamespaceShared`, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
+`GetMethods()` returns each method's `MethodId`, its effective `Options` and the `SettingSources` each setting comes
+from, and what applies on this instance: `Lifetime`, `Storage`, `KeyParameters` and the
 result types it kept in memory instead of sharing (`NotShared`) ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)). `ListEntries(storedKeyPrefix, tag, limit, methodId)` and `GetEntry(storedKey)`
 inspect live local entries without values; listing is a diagnostic scan, not a transaction. `CacheEntryInfo.MethodId`
 names the method an entry belongs to (`null` for manual entries and HTTP responses), and `ListEntries(methodId: ...)`
@@ -3742,6 +3776,11 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
         : MethodCacheWeigher.Bytes(key, value);
 }));
 ```
+
+With a distributed cache, this is also how large, rarely read values, such as reports, stay out of memory without
+leaving the distributed cache: when the limit is reached, the entries read least often are evicted first, and the next
+read of one gets it from the distributed cache, not from your method. There is no separate duration for memory: the
+entry's `Duration` applies to both.
 
 The weigher must be fast, thread-safe and return a non-negative value. Both limits apply: an entry is evicted as soon
 as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when many small entries should fit. Setting
@@ -4071,6 +4110,37 @@ value, so `"product:{id}"` covers `"product:{Id}"` and `"product:42"`.
 Analyzer [MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028) checks the same within one project while you build; this
 check sees the whole application, including the tags in configuration.
 
+## How each method is cached
+
+`CachedServices.Method` returns how one method is cached: what `GetMethods()` reports for it
+([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)), found by a call instead of a
+`MethodId` string, so a renamed method or service still finds it. Assert on it, so a change to its duration, its key
+or where its values are kept fails a test:
+
+```cs
+// How ListAsync is cached, from its attribute, startup code and configuration together
+var list = CachedServices.Method<IProjects>(provider, p => p.ListAsync(Guid.Empty));
+Assert.Equal(TimeSpan.FromMinutes(5), list.Lifetime.Duration);
+Assert.Equal(["tenantId"], list.KeyParameters);
+Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
+```
+
+The call runs on a stand-in, so the method never runs and the arguments don't matter. `ReplacedSources` is empty when
+no source replaces a setting another one sets for the method, such as a `DurationFor` in startup code that replaces the
+`Duration` of its `[Cache]`.
+
+To see every change to how the application caches in review, write all the policies as JSON and compare them with a
+file kept in the repository, with a library such as Verify that compares output with an approved file, or by hand:
+
+```cs
+// Every method's policy as JSON: compare it with a file in the repository, so a change shows up in review
+var policies = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+    new JsonSerializerOptions { WriteIndented = true });
+```
+
+`NotShared` counts the values this instance kept in memory while it ran, so write the JSON before the test calls any
+cached method.
+
 ## A load for another tenant fails
 
 A cached method that takes the tenant as a parameter and checks it against the request's tenant with a
@@ -4089,6 +4159,22 @@ await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(t
 The check runs when the method loads a value, not on a hit, so this test proves that nothing wrong is cached under
 another tenant's key. That a caller takes the id from the request is the caller's part; test it where the id is taken,
 such as in the endpoint.
+
+Values of one tenant are kept apart from another's only when the tenant is part of the key. Check that for every cached
+method with `KeyParameters`, listing the few that serve every tenant:
+
+```cs
+// The methods that serve every tenant, such as an API key lookup, by MethodId
+string[] everyTenant = [];
+foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
+{
+    if (everyTenant.Contains(method.MethodId)) continue;
+    Assert.True(method.KeyParameters is ["tenantId", ..], $"{method.MethodId} doesn't key on the tenant first.");
+}
+```
+
+A method added later without the tenant fails the test, and so does a parameter renamed from `tenantId`: rename it in
+the test too.
 
 ## Turning method caching off
 
@@ -6719,6 +6805,19 @@ pass, in the same order, so the test covers a new interface without a change:
 Assert.Equal(CachedServices.Declared(typeof(IProductService).Assembly), CachedServices.Registered(provider));
 ```
 
+## How each method is cached
+
+`CachedServices.Method` returns how one method is cached, as `ICacheAdministrator.GetMethods()` reports it, found by a
+call instead of a method id string:
+
+```cs
+// How ListAsync is cached, from its attribute, startup code and configuration together
+var list = CachedServices.Method<IProjects>(provider, p => p.ListAsync(Guid.Empty));
+Assert.Equal(TimeSpan.FromMinutes(5), list.Lifetime.Duration);
+Assert.Equal(["tenantId"], list.KeyParameters);
+Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
+```
+
 ## Every tag has an invalidation
 
 `TagCoverage.Uninvalidated` lists the tags of the cached methods, from attributes, startup code and configuration,
@@ -6754,6 +6853,43 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.18 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.17
+
+- `CachedMethodInfo.IsDistributedNamespaceShared` is replaced by `Storage.Shared`, which is true only when other
+  instances read the values this instance stores. The old property was true for a method with no distributed cache too.
+  Read `method.Storage.Shared` instead.
+- A `SlidingExpiration` longer than `MaxExpiration` (7 days unless you set it) now fails where it is set, as a longer
+  `Duration` already did: at startup from `[Cache]`, startup code or configuration, and with an
+  `ArgumentOutOfRangeException` from a manual call. Before, such a window was cut to `MaxExpiration` without a word,
+  so reads never extended the entry. Shorten the window, or raise `MaxExpiration` with `mc.Memory(o => o.MaxExpiration = ...)`
+  ([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives)).
+
+### Added
+
+- `CachedMethodInfo.ReplacedSources` lists a setting that two of a method's own sources set, with the ones the higher
+  source replaced, such as a `DurationFor` in startup code that replaces the `Duration` of the method's `[Cache]`
+  ([What applies on this instance](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-applies-on-this-instance)).
+- The first value of each method, or of each `WithName` name for manual caching, that asks to be shared for longer than
+  the distributed cache keeps values (`TagRetention`, one day, less `ClockSkewTolerance`) logs a warning that says how
+  long it is shared and how to share it longer. It was cut short without a word
+  ([How long an entry lives](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#how-long-an-entry-lives)).
+- MethodCache.Testing: `CachedServices.Method<TService>(provider, s => s.Call(...))` returns how one method is cached,
+  found by a call instead of a method id string ([How each method is cached](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached)).
+
+### Documentation
+
+- The doc comments of `GetMethods()` say what each part is: `Options` what the method's sources set, `Lifetime` and
+  `Storage` what applies with defaults filled in; a setting missing from `SettingSources` has the library's default, and
+  `MaxExpiration` is a limit for the whole cache.
+- Expiration: a `DurationFor` in startup code replaces the `Duration` of the method's `[Cache]`, so a cap belongs in the
+  function ([A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result)).
+- Testing: a test of one method's policy, every method's policy as JSON to compare in review, and a check that every
+  tenant method has the tenant in its key ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#how-each-method-is-cached)).
+- Memory cache: large, rarely read values stay out of memory with `WeightLimit` and a `Weigher`, and are read back from
+  the distributed cache ([Bounding by size](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/memory-cache.md#bounding-by-size)).
 
 ## 1.0.0-rc.17 (2026-11-10)
 

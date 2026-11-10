@@ -337,7 +337,7 @@ public class FeatureTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task Testing_AMethodsPolicy_TheTenantKey_AndASnapshot_AreRead()
+    public async Task Testing_AMethodsPolicy_TheTenantKey_AndThePoliciesAsJson_AreRead()
     {
         var services = new ServiceCollection();
         services.AddScoped<global::Docs.Testing.RequestTenant>();
@@ -347,10 +347,10 @@ public class FeatureTests(ITestOutputHelper output)
 
         global::Docs.Testing.Examples.CheckPolicy(provider);
         global::Docs.Testing.Examples.CheckTenantKeys(provider);
-        var snapshot = global::Docs.Testing.Examples.Snapshot(provider);
-        Assert.Contains("IProjects.ListAsync", snapshot, StringComparison.Ordinal);
-        Assert.Contains("\"KeyParameters\": [\n", snapshot.ReplaceLineEndings("\n"), StringComparison.Ordinal);
-        Assert.Equal(snapshot, global::Docs.Testing.Examples.Snapshot(provider));
+        var json = global::Docs.Testing.Examples.PoliciesAsJson(provider);
+        Assert.Contains("IProjects.ListAsync", json, StringComparison.Ordinal);
+        Assert.Contains("\"KeyParameters\": [\n", json.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+        Assert.Equal(json, global::Docs.Testing.Examples.PoliciesAsJson(provider));
     }
 
     [Fact]

@@ -155,14 +155,14 @@ namespace Docs.Testing
             // end-snippet
         }
 
-        public static string Snapshot(IServiceProvider provider)
+        public static string PoliciesAsJson(IServiceProvider provider)
         {
-            // begin-snippet: testing-methods-snapshot
+            // begin-snippet: testing-methods-json
             // Every method's policy as JSON: compare it with a file in the repository, so a change shows up in review
-            var snapshot = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+            var policies = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
                 new JsonSerializerOptions { WriteIndented = true });
             // end-snippet
-            return snapshot;
+            return policies;
         }
 
         public static void CheckTenantKeys(IServiceProvider provider)

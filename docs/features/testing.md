@@ -265,17 +265,17 @@ no source replaces a setting another one sets for the method, such as a `Duratio
 `Duration` of its `[Cache]`.
 
 To see every change to how the application caches in review, write all the policies as JSON and compare them with a
-file kept in the repository, with a snapshot library such as Verify or by hand:
+file kept in the repository, with a library such as Verify that compares output with an approved file, or by hand:
 
-<!-- snippet: testing-methods-snapshot -->
+<!-- snippet: testing-methods-json -->
 ```cs
 // Every method's policy as JSON: compare it with a file in the repository, so a change shows up in review
-var snapshot = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+var policies = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
     new JsonSerializerOptions { WriteIndented = true });
 ```
 <!-- endSnippet -->
 
-`NotShared` counts the values this instance kept in memory while it ran, so take the snapshot before the test calls any
+`NotShared` counts the values this instance kept in memory while it ran, so write the JSON before the test calls any
 cached method.
 
 ## A load for another tenant fails

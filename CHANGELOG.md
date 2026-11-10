@@ -4,6 +4,43 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.18 (2026-11-10)
+
+### Upgrading from 1.0.0-rc.17
+
+- `CachedMethodInfo.IsDistributedNamespaceShared` is replaced by `Storage.Shared`, which is true only when other
+  instances read the values this instance stores. The old property was true for a method with no distributed cache too.
+  Read `method.Storage.Shared` instead.
+- A `SlidingExpiration` longer than `MaxExpiration` (7 days unless you set it) now fails where it is set, as a longer
+  `Duration` already did: at startup from `[Cache]`, startup code or configuration, and with an
+  `ArgumentOutOfRangeException` from a manual call. Before, such a window was cut to `MaxExpiration` without a word,
+  so reads never extended the entry. Shorten the window, or raise `MaxExpiration` with `mc.Memory(o => o.MaxExpiration = ...)`
+  ([How long an entry lives](docs/features/expiration.md#how-long-an-entry-lives)).
+
+### Added
+
+- `CachedMethodInfo.ReplacedSources` lists a setting that two of a method's own sources set, with the ones the higher
+  source replaced, such as a `DurationFor` in startup code that replaces the `Duration` of the method's `[Cache]`
+  ([What applies on this instance](docs/features/configuration.md#what-applies-on-this-instance)).
+- The first value of each method, or of each `WithName` name for manual caching, that asks to be shared for longer than
+  the distributed cache keeps values (`TagRetention`, one day, less `ClockSkewTolerance`) logs a warning that says how
+  long it is shared and how to share it longer. It was cut short without a word
+  ([How long an entry lives](docs/features/expiration.md#how-long-an-entry-lives)).
+- MethodCache.Testing: `CachedServices.Method<TService>(provider, s => s.Call(...))` returns how one method is cached,
+  found by a call instead of a method id string ([How each method is cached](docs/features/testing.md#how-each-method-is-cached)).
+
+### Documentation
+
+- The doc comments of `GetMethods()` say what each part is: `Options` what the method's sources set, `Lifetime` and
+  `Storage` what applies with defaults filled in; a setting missing from `SettingSources` has the library's default, and
+  `MaxExpiration` is a limit for the whole cache.
+- Expiration: a `DurationFor` in startup code replaces the `Duration` of the method's `[Cache]`, so a cap belongs in the
+  function ([A duration from the result](docs/features/expiration.md#a-duration-from-the-result)).
+- Testing: a test of one method's policy, every method's policy as JSON to compare in review, and a check that every
+  tenant method has the tenant in its key ([Testing](docs/features/testing.md#how-each-method-is-cached)).
+- Memory cache: large, rarely read values stay out of memory with `WeightLimit` and a `Weigher`, and are read back from
+  the distributed cache ([Bounding by size](docs/features/memory-cache.md#bounding-by-size)).
+
 ## 1.0.0-rc.17 (2026-11-10)
 
 ### Upgrading from 1.0.0-rc.16

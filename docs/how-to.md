@@ -378,7 +378,7 @@ The copy in the distributed cache lives the `Duration`, at most one sliding wind
 less two seconds, so that a tag invalidation always outlives it. The first value of each method, or of each `WithName`
 name, that asks for longer than `TagRetention` allows logs a warning; raise `TagRetention` to share values longer. A
 `Duration` or a sliding window longer than `MaxExpiration` (7 days) fails where it is set.
-([Duration](features/expiration.md#duration))
+([How long an entry lives](features/expiration.md#how-long-an-entry-lives))
 
 **How do I keep large, rarely read values in Redis without filling every instance's memory?**
 Bound memory by size: set a `Weigher` and a `WeightLimit` with `mc.Memory(...)`. When the limit is reached, memory evicts
