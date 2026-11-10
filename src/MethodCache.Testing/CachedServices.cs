@@ -66,6 +66,43 @@ public static class CachedServices
             .ToList();
 
     /// <summary>
+    /// The cache policy of the method <paramref name="call"/> calls, as <see cref="ICacheAdministrator.GetMethods"/>
+    /// reports it: how long its entries live with the defaults filled in, where they are kept, where each setting comes
+    /// from and which parameters make up its keys. Assert on it, so a change to how the method is cached fails a test,
+    /// and a renamed method or service still finds its policy.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var price = CachedServices.Method&lt;IPriceService&gt;(provider, s =&gt; s.GetPriceAsync("", ""));
+    /// Assert.Equal(TimeSpan.FromMinutes(5), price.Lifetime.Duration);
+    /// Assert.Equal(["provider", "model"], price.KeyParameters);
+    /// </code>
+    /// </example>
+    /// <param name="provider">The application's service provider, built as in the application.</param>
+    /// <param name="call">
+    /// Calls one cached method of <typeparamref name="TService"/>, such as <c>s =&gt; s.GetPriceAsync("", "")</c>. It runs on a
+    /// stand-in, so the method itself never runs and the arguments don't matter.
+    /// </param>
+    /// <param name="serviceKey">The service key of a keyed registration, or <c>null</c> for the unkeyed one.</param>
+    /// <returns>The method's policy.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <typeparamref name="TService"/> has no cached registration with <paramref name="serviceKey"/>, <paramref name="call"/>
+    /// doesn't call exactly one cached method, or the provider's cache has no policies, such as with an
+    /// <see cref="ICacheManager"/> of the application's own.
+    /// </exception>
+    public static CachedMethodInfo Method<TService>(IServiceProvider provider, Func<TService, object?> call, object? serviceKey = null)
+        where TService : class
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(call);
+        var id = provider.GetRequiredService<IMethodCacheKeys>().MethodId(call, serviceKey);
+        return provider.GetRequiredService<ICacheAdministrator>().GetMethods().FirstOrDefault(method => method.MethodId == id)
+            ?? throw new InvalidOperationException(
+                $"The provider's cache has no policy for '{id}', so it can't report one. Pass the application's provider, with " +
+                "MethodCache's own cache manager.");
+    }
+
+    /// <summary>
     /// The services with cached methods that <paramref name="assemblies"/> declare, each once, ordered by full name as
     /// <see cref="Registered"/> orders them: the interfaces MethodCache's generator made a decorator for in those
     /// projects. Compare the two, so a new cached interface is covered without changing the test, and one the

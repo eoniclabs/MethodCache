@@ -127,7 +127,7 @@ value after that loads it again, and the new value replaces the copies on every 
 **How long does an entry live when I set nothing?**
 Five minutes, in memory and in the distributed cache. No entry lives past `MaxExpiration` (7 days), and the distributed
 cache keeps an entry at most `TagRetention` (1 day) from when its load started.
-([How long an entry lives](features/expiration.md#how-long-an-entry-lives))
+([Duration](features/expiration.md#duration))
 
 **Deleting a user makes the database delete their posts by cascade, but users are saved on every sign-in. What do I map?**
 `ef.Entity<User>(user => user.WhenDeleted("posts"))`: those tags are invalidated only when a user is deleted, not
@@ -369,7 +369,21 @@ generic host, the first call opens the connection. ([When the distributed cache 
 `ICacheAdministrator.GetMethods()`, or `GET /methodcache/methods` with `MapMethodCacheAdmin`: each method's
 `Lifetime` (defaults filled in, and how long the shared copy lives), `Storage` (where values go, and why only in memory),
 `KeyParameters`, and `NotShared`, the result types this instance kept in memory with the reason and count.
+`SettingSources` names where each setting comes from, and `ReplacedSources` a setting one source replaces in another,
+such as a `DurationFor` in startup code that replaces the `Duration` of the method's `[Cache]`.
 ([What applies on this instance](features/configuration.md#what-applies-on-this-instance))
+
+**A value lives longer in Redis than I asked for, or shorter. Why?**
+The copy in the distributed cache lives the `Duration`, at most one sliding window, and at most `TagRetention` (one day)
+less two seconds, so that a tag invalidation always outlives it. The first value of each method, or of each `WithName`
+name, that asks for longer than `TagRetention` allows logs a warning; raise `TagRetention` to share values longer. A
+`Duration` or a sliding window longer than `MaxExpiration` (7 days) fails where it is set.
+([Duration](features/expiration.md#duration))
+
+**How do I keep large, rarely read values in Redis without filling every instance's memory?**
+Bound memory by size: set a `Weigher` and a `WeightLimit` with `mc.Memory(...)`. When the limit is reached, memory evicts
+the entries read least often first, and the next read of one gets it from the distributed cache, not from your method.
+There is no separate duration for memory. ([Bounding by size](features/memory-cache.md#bounding-by-size))
 
 **A result type stays in memory only, with a warning. Why?**
 It doesn't read back from JSON unchanged: private setters, `object`, a dictionary made with its own comparer, or a
@@ -472,6 +486,16 @@ To keep that list up to date by itself, compare with the interfaces the project 
 assembly of each project with cached interfaces the application registers; for a shared library that declares
 interfaces other applications register, add the ones this application uses by hand.
 `ProblemsAsync` can't see a service with no registration. ([Every cached service resolves](features/testing.md#every-cached-service-resolves))
+
+**How do I test how a method is cached: its duration, its key, whether it is shared?**
+`CachedServices.Method<IPrices>(provider, p => p.GetAsync(""))` from `MethodCache.Testing` returns what `GetMethods()`
+reports for that method, found by a call, so a rename still finds it. To see every change in review, serialize
+`GetMethods()` to JSON and compare it with a file in the repository.
+([How each method is cached](features/testing.md#how-each-method-is-cached))
+
+**How do I check that every tenant's values have the tenant in the key?**
+Loop over `GetMethods()` and assert that `KeyParameters` starts with the tenant parameter, except for the methods that
+serve every tenant. ([A load for another tenant fails](features/testing.md#a-load-for-another-tenant-fails))
 
 **How do I test that a cached method refuses another tenant's id?**
 Set the request's tenant to one tenant, call the method with another tenant's id, and assert that the `[ChecksRequestState]`

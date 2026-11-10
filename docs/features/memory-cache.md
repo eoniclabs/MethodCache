@@ -95,6 +95,11 @@ builder.Services.AddMethodCache(cache => cache.Memory(o =>
 ```
 <!-- endSnippet -->
 
+With a distributed cache, this is also how large, rarely read values, such as reports, stay out of memory without
+leaving the distributed cache: when the limit is reached, the entries read least often are evicted first, and the next
+read of one gets it from the distributed cache, not from your method. There is no separate duration for memory: the
+entry's `Duration` applies to both.
+
 The weigher must be fast, thread-safe and return a non-negative value. Both limits apply: an entry is evicted as soon
 as either `MaxItems` or `WeightLimit` is reached, so raise `MaxItems` too when many small entries should fit. Setting
 `WeightLimit` without a `Weigher` fails at startup, since there is nothing to weigh entries with.

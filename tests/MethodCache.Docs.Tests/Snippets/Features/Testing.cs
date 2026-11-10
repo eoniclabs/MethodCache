@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using System.Text.Json;
 using Xunit;
 
 namespace Docs.Testing
@@ -140,6 +141,40 @@ namespace Docs.Testing
 
             // A load for tenant B fails in the check, so nothing is cached under B's key
             await Assert.ThrowsAsync<UnauthorizedAccessException>(() => projects.ListAsync(tenantB));
+            // end-snippet
+        }
+
+        public static void CheckPolicy(IServiceProvider provider)
+        {
+            // begin-snippet: testing-method-policy
+            // How ListAsync is cached, from its attribute, startup code and configuration together
+            var list = CachedServices.Method<IProjects>(provider, p => p.ListAsync(Guid.Empty));
+            Assert.Equal(TimeSpan.FromMinutes(5), list.Lifetime.Duration);
+            Assert.Equal(["tenantId"], list.KeyParameters);
+            Assert.Empty(list.ReplacedSources);   // no source replaces what another one sets for it
+            // end-snippet
+        }
+
+        public static string Snapshot(IServiceProvider provider)
+        {
+            // begin-snippet: testing-methods-snapshot
+            // Every method's policy as JSON: compare it with a file in the repository, so a change shows up in review
+            var snapshot = JsonSerializer.Serialize(provider.GetRequiredService<ICacheAdministrator>().GetMethods(),
+                new JsonSerializerOptions { WriteIndented = true });
+            // end-snippet
+            return snapshot;
+        }
+
+        public static void CheckTenantKeys(IServiceProvider provider)
+        {
+            // begin-snippet: testing-tenant-keys
+            // The methods that serve every tenant, such as an API key lookup, by MethodId
+            string[] everyTenant = [];
+            foreach (var method in provider.GetRequiredService<ICacheAdministrator>().GetMethods())
+            {
+                if (everyTenant.Contains(method.MethodId)) continue;
+                Assert.True(method.KeyParameters is ["tenantId", ..], $"{method.MethodId} doesn't key on the tenant first.");
+            }
             // end-snippet
         }
 

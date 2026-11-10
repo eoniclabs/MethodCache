@@ -199,6 +199,35 @@ public class CachedServicesTests
     }
 
     [Fact]
+    public async Task Method_ReturnsThePolicyOfTheMethodTheCallCalls()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddMethodCache(mc => mc.Method((IProducts p) => p.PriceAsync(Any<int>.Value)).Configure(o => o.WithDuration(TimeSpan.FromMinutes(2))));
+        await using var provider = services.BuildServiceProvider();
+
+        var price = CachedServices.Method<IProducts>(provider, p => p.PriceAsync(0));
+
+        Assert.Equal(provider.GetRequiredService<IMethodCacheKeys>().MethodId<IProducts>(p => p.PriceAsync(0)), price.MethodId);
+        Assert.Equal(TimeSpan.FromMinutes(2), price.Lifetime.Duration);
+        Assert.Equal(CacheSettingSource.Code, price.SettingSources["Duration"]);
+        Assert.Equal([CacheSettingSource.Attribute], price.ReplacedSources["Duration"]);
+        Assert.Equal(["id"], price.KeyParameters);
+        Assert.Equal(TimeSpan.FromMinutes(10), CachedServices.Method<IProducts>(provider, p => p.GetAsync(0)).Lifetime.Duration);
+    }
+
+    [Fact]
+    public async Task Method_ACallThatIsntCached_Throws()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddMethodCache();
+        await using var provider = services.BuildServiceProvider();
+
+        Assert.Throws<InvalidOperationException>(() => CachedServices.Method<IProducts>(provider, _ => 42));
+    }
+
+    [Fact]
     public void Declared_ListsTheAssemblysServicesWithCachedMethodsOnce_ByFullName()
     {
         var declared = CachedServices.Declared(typeof(IProducts).Assembly, typeof(IProducts).Assembly);
