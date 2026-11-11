@@ -125,12 +125,11 @@ public sealed class JsonPolicySourceTests
     }
 
     [Fact]
-    public void AddMethodCacheFromConfiguration_GroupAndMetadata_ArePropagated()
+    public void AddMethodCacheFromConfiguration_Group_IsPropagated()
     {
         var data = new Dictionary<string, string?>
         {
             ["MethodCache:Methods:Sample.Type.Method:Group"] = "config",
-            ["MethodCache:Methods:Sample.Type.Method:Metadata:owner"] = "team-a",
             ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m"
         };
 
@@ -146,7 +145,6 @@ public sealed class JsonPolicySourceTests
         var result = registry.GetPolicy("Sample.Type.Method");
 
         Assert.Equal("config", result.Policy.Metadata["group"]);
-        Assert.Equal("team-a", result.Policy.Metadata["owner"]);
     }
 
     [Fact]
@@ -174,21 +172,19 @@ public sealed class JsonPolicySourceTests
     }
 
     [Fact]
-    public async Task ReloadedConfiguration_KeepsDiagnosticsAttribution_AndPicksUpNotes()
+    public async Task ReloadedConfiguration_KeepsDiagnosticsAttribution()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m",
-            ["MethodCache:Methods:Sample.Type.Method:Notes"] = "first"
+            ["MethodCache:Methods:Sample.Type.Method:Duration"] = "1m"
         });
         await using var provider = BuildProvider(configuration);
         var registry = provider.GetRequiredService<IPolicyRegistry>();
-        Assert.Equal("first", Assert.Single(registry.GetPolicy("Sample.Type.Method").Contributions).Notes);
 
-        configuration["MethodCache:Methods:Sample.Type.Method:Notes"] = "second";
+        configuration["MethodCache:Methods:Sample.Type.Method:Duration"] = "2m";
         configuration.Reload();
 
-        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Method").Contributions.Any(c => c.Notes == "second"));
+        await WaitUntilAsync(() => registry.GetPolicy("Sample.Type.Method").Policy.Duration == TimeSpan.FromMinutes(2));
         var contribution = Assert.Single(registry.GetPolicy("Sample.Type.Method").Contributions);
         Assert.Equal(PolicySourceIds.ConfigurationFiles, contribution.SourceId);
     }

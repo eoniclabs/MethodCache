@@ -1,5 +1,6 @@
 using MethodCache.Core.PolicyPipeline.Model;
 using MethodCache.Core.Configuration.Surfaces.Fluent;
+using MethodCache.Core.Configuration.Surfaces.ConfigFile;
 using MethodCache.Core.PolicyPipeline.Resolution;
 using MethodCache.Infrastructure;
 using MethodCache.Policies;
@@ -15,7 +16,7 @@ internal sealed partial class RuntimeCacheConfigurator
         cancellationToken.ThrowIfCancellationRequested();
         ValidateKnown(methodId);
         var options = BuildOverride(configure, metadata);
-        var draft = Prepare(methodId, options);
+        var draft = Prepare(methodId, ForMethod(methodId, options));
         await ApplyAsync(methodId, draft, metadata, cancellationToken).ConfigureAwait(false);
     }
 
@@ -58,12 +59,61 @@ internal sealed partial class RuntimeCacheConfigurator
     private async ValueTask UpsertEachAsync(IReadOnlyList<string> methods, CacheEntryOptions options, RuntimeOverrideMetadata? metadata,
         CancellationToken cancellationToken)
     {
-        var drafts = methods.Select(method => (Method: method, Draft: Prepare(method, options))).ToArray();
+        await UpsertEachAsync(methods, method => ForMethod(method, options), metadata, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask UpsertEachAsync(IReadOnlyList<string> methods, Func<string, PolicyDraft> draftFor, RuntimeOverrideMetadata? metadata,
+        CancellationToken cancellationToken, Func<CancellationToken, ValueTask>? beforeChange = null)
+    {
+        var drafts = methods.Select(method => (Method: method, Draft: Prepare(method, draftFor(method)))).ToArray();
+        if (beforeChange != null) await beforeChange(cancellationToken).ConfigureAwait(false);
         foreach (var (method, draft) in drafts)
         {
             await ApplyAsync(method, draft, metadata, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Applies an override read from an appsettings-style body, such as the admin endpoints receive, to the method,
+    /// group or every method it names; its errors are the ones <see cref="UpsertAsync"/> and its siblings throw.
+    /// </summary>
+    /// <remarks><paramref name="beforeChange"/> runs once the override is known to fit every method, before any changes.</remarks>
+    internal async ValueTask UpsertAsync(RuntimeOverrideRequest request, Func<CancellationToken, ValueTask>? beforeChange, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        CheckMetadata(request.Metadata);
+        var methods = Targets(request.MethodId, request.Group);
+        await UpsertEachAsync(methods, method => request.Policy.Build(method), request.Metadata, cancellationToken, beforeChange).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Removes the overrides of one method, of a group's methods or of every method (both names null), as the admin
+    /// endpoints do; <paramref name="beforeChange"/> runs once the method or group is known to exist.
+    /// </summary>
+    internal async ValueTask RemoveAsync(string? methodId, string? group, Func<CancellationToken, ValueTask>? beforeChange, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = Targets(methodId, group);
+        if (beforeChange != null) await beforeChange(cancellationToken).ConfigureAwait(false);
+        if (methodId != null) await RemoveAsync(methodId, cancellationToken).ConfigureAwait(false);
+        else if (group != null) await RemoveGroupAsync(group, cancellationToken).ConfigureAwait(false);
+        else await ClearAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The cached methods one method id, a group or neither (every method) names.</summary>
+    private string[] Targets(string? methodId, string? group)
+    {
+        if (methodId != null)
+        {
+            ValidateKnown(methodId);
+            return [methodId];
+        }
+
+        return group != null ? GroupMembers(group) : CachedMethods().Order(StringComparer.Ordinal).ToArray();
+    }
+
+    private static PolicyDraft ForMethod(string methodId, CacheEntryOptions options)
+        => CachePolicyBuilderFactory.ForMethod(methodId, options).Build(methodId);
 
     private CacheEntryOptions BuildOverride(Action<CacheEntryOptions.Builder> configure, RuntimeOverrideMetadata? metadata)
     {
@@ -77,25 +127,28 @@ internal sealed partial class RuntimeCacheConfigurator
                 "method id, so an override can't set it. Remove WithName from the override.", nameof(configure));
         }
 
+        CheckMetadata(metadata);
+        return options;
+    }
+
+    private void CheckMetadata(RuntimeOverrideMetadata? metadata)
+    {
         if (metadata?.ExpiresAt is { } expiresAt && expiresAt <= _store.Time.GetUtcNow())
         {
             throw new ArgumentException(
                 $"The override's ExpiresAt ({expiresAt:O}) has already passed, so it would be removed as soon as it was applied. " +
                 "Set a time in the future, or leave ExpiresAt unset to keep the override until it is removed.", nameof(metadata));
         }
-
-        return options;
     }
 
     /// <summary>The override for <paramref name="methodId"/>, checked against the method and the limits of the cache.</summary>
-    private PolicyDraft Prepare(string methodId, CacheEntryOptions options)
+    private PolicyDraft Prepare(string methodId, PolicyDraft draft)
     {
-        var draft = CachePolicyBuilderFactory.ForMethod(methodId, options).Build(methodId);
         if (draft.Fields == CachePolicyFields.None)
         {
             throw new ArgumentException(
-                "The override sets nothing, so it would change nothing. Set at least one setting, such as o.WithDuration(...) or " +
-                "o.WithEnabled(false); to go back to the method's other settings, remove its override instead.", "configure");
+                "The override sets nothing, so it would change nothing. Set at least one setting, such as the Duration or Enabled; " +
+                "to go back to the method's other settings, remove its override instead.", "configure");
         }
 
         if (_registry is PolicyRegistry registry)

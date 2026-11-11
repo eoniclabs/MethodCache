@@ -11,6 +11,8 @@ MethodCache.MethodCacheAdminAction.Time.get -> System.DateTimeOffset
 MethodCache.MethodCacheAdminAction.User.get -> System.Security.Claims.ClaimsPrincipal!
 MethodCache.MethodCacheAdminActionKind
 MethodCache.MethodCacheAdminActionKind.Clear = 3 -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.RemoveOverride = 5 -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminActionKind.UpsertOverride = 4 -> MethodCache.MethodCacheAdminActionKind
 MethodCache.MethodCacheAdminActionKind.InvalidateMethod = 2 -> MethodCache.MethodCacheAdminActionKind
 MethodCache.MethodCacheAdminActionKind.InvalidateTags = 1 -> MethodCache.MethodCacheAdminActionKind
 MethodCache.MethodCacheAdminActionKind.RemoveEntry = 0 -> MethodCache.MethodCacheAdminActionKind

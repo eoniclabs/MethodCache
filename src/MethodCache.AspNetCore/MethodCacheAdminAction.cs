@@ -17,6 +17,18 @@ public enum MethodCacheAdminActionKind
 
     /// <summary><c>POST clear</c>: removes every entry.</summary>
     Clear,
+
+    /// <summary>
+    /// <c>PUT overrides</c>: sets a runtime override. Its target is the method id, <c>group:&lt;name&gt;</c> for a group or
+    /// <c>*</c> for every cached method.
+    /// </summary>
+    UpsertOverride,
+
+    /// <summary>
+    /// <c>DELETE overrides</c>: removes runtime overrides. Its target is the method id, <c>group:&lt;name&gt;</c> for a
+    /// group or <c>*</c> for every override.
+    /// </summary>
+    RemoveOverride,
 }
 
 /// <summary>

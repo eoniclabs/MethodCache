@@ -91,6 +91,9 @@ public class AdminEndpointSecurityTests : IAsyncLifetime
                 "POST /ops/cache/invalidate",
                 "POST /ops/cache/invalidate-method",
                 "GET /ops/cache/methods",
+                "DELETE /ops/cache/overrides",
+                "GET /ops/cache/overrides",
+                "PUT /ops/cache/overrides",
                 "GET /ops/cache/stats",
             },
             mapped);
