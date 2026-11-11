@@ -359,6 +359,28 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 `EnableBackplane = false`, it stays on its own instance until a restart.
 ([Runtime overrides](features/configuration.md#runtime-overrides))
 
+**How do I turn caching off for a whole group, or for everything, during an incident?**
+`IRuntimeCacheConfigurator.UpsertGroupAsync("pricing", o => o.WithEnabled(false))`, or `UpsertAllAsync(...)` for every
+cached method. Each method gets the same override, which wins over its `[Cache]`; pass an `ExpiresAt` to end it by
+itself, and `RemoveGroupAsync` or `ClearAsync` to end it now. An unknown group throws and names the closest one.
+([Runtime overrides](features/configuration.md#runtime-overrides))
+
+**Can I change a policy over HTTP?**
+Yes, with `MapMethodCacheAdmin` from `MethodCache.AspNetCore`: `PUT /methodcache/overrides` with a body written like a
+method's entry in `appsettings.json`, plus `MethodId`, `Group` or `"All": true` for what it applies to. `GET` lists the
+overrides and `DELETE ?methodId=`, `?group=` or `?all=true` removes them.
+([Runtime overrides over HTTP](../src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http))
+
+**Which surface should I configure caching in?**
+`[Cache]` for what belongs to the method (its tags, a sensible duration), startup code for functions such as
+`DurationFor` and for settings shared by many methods, `appsettings.json` for values that differ per environment or
+that operators tune, and runtime overrides for an incident. They take the same settings, and the highest one wins
+setting by setting. ([What each surface can set](features/configuration.md#what-each-surface-can-set))
+
+**Where do I write notes about a method's settings in `appsettings.json`?**
+In a `//` comment next to its entry; .NET reads JSON configuration with comments. `Notes` and `Metadata` are errors.
+([appsettings.json](features/configuration.md#appsettingsjson))
+
 **Right after the app starts, the first calls don't use Redis. Is something wrong?**
 No. The connection opens in the background once the host has started, and until the distributed cache first answers,
 a call waits at most `OperationTimeout` (one second) and then uses memory only. A slow start doesn't open the circuit

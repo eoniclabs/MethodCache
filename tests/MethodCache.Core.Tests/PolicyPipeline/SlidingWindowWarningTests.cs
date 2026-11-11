@@ -8,7 +8,8 @@ namespace MethodCache.Core.Tests.PolicyPipeline;
 
 /// <summary>
 /// A sliding window as long as the duration, or longer, never extends an entry. The build reports it on one attribute
-/// (MC0038); the host warns when it starts about every policy, also when the two come from different places.
+/// (MC0038); the host warns when it starts about every policy, also when the two come from different places. The same
+/// goes for a refresh window as long as the duration, and for a group that has settings but no methods.
 /// </summary>
 public class SlidingWindowWarningTests
 {
@@ -57,6 +58,49 @@ public class SlidingWindowWarningTests
         Assert.Empty(warnings);
     }
 
+    [Fact]
+    public async Task StartHost_RefreshWindowNotShorterThanTheDuration_LogsAWarning()
+    {
+        // Within one layer the options refuse it; across layers the cache halves the window, which the warning says
+        var warnings = await StartAsync(mc => mc
+            .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(5)))
+            .Method((ISlidingReports r) => r.Get(default)).Configure(o => o.WithRefreshAhead(TimeSpan.FromMinutes(10))));
+
+        var warning = Assert.Single(warnings);
+        Assert.Contains("The refresh window of", warning, StringComparison.Ordinal);
+        Assert.Contains("halfway through their Duration", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StartHost_RefreshWindowShorterThanTheDuration_LogsNoWarning()
+    {
+        var warnings = await StartAsync(mc => mc
+            .Defaults(o => o.WithDuration(TimeSpan.FromMinutes(10)))
+            .Method((ISlidingReports r) => r.Get(default)).Configure(o => o.WithRefreshAhead(TimeSpan.FromMinutes(1))));
+
+        Assert.Empty(warnings);
+    }
+
+    [Theory]
+    [InlineData("Reports", "Did you mean 'reports'?")]
+    [InlineData("reprots", "Did you mean 'reports'?")]
+    public async Task StartHost_GroupWithoutMethods_LogsAWarningWithTheClosestGroup(string group, string hint)
+    {
+        var warnings = await StartAsync(mc => mc.Group(group, o => o.WithDuration(TimeSpan.FromMinutes(1))));
+
+        var warning = Assert.Single(warnings);
+        Assert.Contains($"The group '{group}' has settings in mc.Group(\"{group}\", ...), but no cached method", warning, StringComparison.Ordinal);
+        Assert.Contains(hint, warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StartHost_GroupWithMethods_LogsNoWarning()
+    {
+        var warnings = await StartAsync(mc => mc.Group("reports", o => o.WithDuration(TimeSpan.FromMinutes(1))));
+
+        Assert.Empty(warnings);
+    }
+
     private static async Task<string[]> StartAsync(Action<MethodCacheBuilder> configure)
     {
         var logs = new Logs();
@@ -74,11 +118,15 @@ public class SlidingWindowWarningTests
     {
         [Cache]
         int Get(int id);
+
+        [Cache(Group = "reports")]
+        int Summary(int id);
     }
 
     public sealed class SlidingReports : ISlidingReports
     {
         public int Get(int id) => id;
+        public int Summary(int id) => id;
     }
 
     private sealed class Logs : ILoggerProvider

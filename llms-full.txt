@@ -111,7 +111,17 @@ builder.Services.AddMethodCache();                               // after your r
 - In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
   `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
   a number and a unit, `"5m"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
-  unknown method id and a method listed twice fail startup.
+  empty value, an unknown method id and a method listed twice fail startup. There is no `Notes` or `Metadata`
+  setting: write notes as a `//` comment next to the entry.
+- `WithName` belongs on one method or manual call; in `Defaults`, a group or `mc.Method(...).Configure(...)` it fails
+  startup. `ClearTags` in `Defaults` fails startup too; a group may clear the tags its methods get from `Defaults`.
+- To change caching while the app runs, use `IRuntimeCacheConfigurator`: `UpsertAsync(methodId, ...)` for one
+  method, `UpsertGroupAsync("pricing", ...)` for every method in a group, `UpsertAllAsync(...)` for every cached
+  method, and `RemoveAsync`, `RemoveGroupAsync` or `ClearAsync` to undo. An override that sets nothing, uses
+  `WithName`, has an `ExpiresAt` already passed, refreshes as soon as it is stored or doesn't fit one method of the
+  group throws `ArgumentException` and changes no method. Group names are case-sensitive.
+- Over HTTP, `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`; the `PUT` body is a JSON object
+  with the same settings as a `Methods` entry in `appsettings.json` plus one of `MethodId`, `Group` or `"All": true`.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
   gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own
@@ -810,6 +820,28 @@ distributed cache, the other instances apply it within moments, and an instance 
 Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`. Without a distributed cache, or with
 `EnableBackplane = false`, it stays on its own instance until a restart.
 ([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
+
+**How do I turn caching off for a whole group, or for everything, during an incident?**
+`IRuntimeCacheConfigurator.UpsertGroupAsync("pricing", o => o.WithEnabled(false))`, or `UpsertAllAsync(...)` for every
+cached method. Each method gets the same override, which wins over its `[Cache]`; pass an `ExpiresAt` to end it by
+itself, and `RemoveGroupAsync` or `ClearAsync` to end it now. An unknown group throws and names the closest one.
+([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
+
+**Can I change a policy over HTTP?**
+Yes, with `MapMethodCacheAdmin` from `MethodCache.AspNetCore`: `PUT /methodcache/overrides` with a body written like a
+method's entry in `appsettings.json`, plus `MethodId`, `Group` or `"All": true` for what it applies to. `GET` lists the
+overrides and `DELETE ?methodId=`, `?group=` or `?all=true` removes them.
+([Runtime overrides over HTTP](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http))
+
+**Which surface should I configure caching in?**
+`[Cache]` for what belongs to the method (its tags, a sensible duration), startup code for functions such as
+`DurationFor` and for settings shared by many methods, `appsettings.json` for values that differ per environment or
+that operators tune, and runtime overrides for an incident. They take the same settings, and the highest one wins
+setting by setting. ([What each surface can set](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-each-surface-can-set))
+
+**Where do I write notes about a method's settings in `appsettings.json`?**
+In a `//` comment next to its entry; .NET reads JSON configuration with comments. `Notes` and `Metadata` are errors.
+([appsettings.json](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson))
 
 **Right after the app starts, the first calls don't use Redis. Is something wrong?**
 No. The connection opens in the background once the host has started, and until the distributed cache first answers,
@@ -2343,6 +2375,38 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
 setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in place.
 
+## What each surface can set
+
+The four surfaces take the same settings, with the same names, and reject the same mistakes. Where they differ, the
+table says why.
+
+| Setting | `[Cache]` | Startup code | `appsettings.json` | Runtime override |
+|---|---|---|---|---|
+| `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled`, `Distributed` | Yes | Yes | Yes | Yes |
+| `ClearTags` | No (1) | Yes | Yes | Yes |
+| `Group` (which group a method is in) | Yes | Yes | Yes | No (2) |
+| `CacheWhen`, `DurationFor`, `SlidingFor`, `TagsFor` | No (3) | Yes | No (3) | Only without a backplane (3) |
+| `InvalidatedElsewhere`, `InvalidatedManually` | Yes (4) | No | No | No |
+| For every method (`Defaults`) | No | Yes | Yes | Yes, `UpsertAllAsync` (5) |
+| For a group | No | Yes | Yes | Yes, `UpsertGroupAsync` (5) |
+| Over HTTP | No | No | No | Yes, `PUT /methodcache/overrides` ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#admin-endpoints)) |
+| Memory, distributed cache, telemetry | No | Yes (6) | No (6) | No |
+
+1. The attribute is the lowest layer, so it has no tags under it to clear. `mc.Defaults(...)` and `"Defaults"` can't
+   clear tags either, for the same reason, and say so at startup.
+2. A method's group decides which group settings it gets, which belongs to how the application is built rather than
+   to an incident.
+3. These are functions. An attribute and a JSON file can't hold one, and another instance can't run one, so an
+   override that every instance applies can't carry one.
+4. These only tell the analyzers at build time where a method is invalidated; they change no policy.
+5. A runtime override always wins, also over a method's own `[Cache]`. So the group and all-methods versions put the
+   same override on each method instead of filling in what methods leave unset, as `Defaults` does.
+6. These register services rather than set a policy. To read them from configuration, bind a section yourself:
+   `mc.Memory(o => builder.Configuration.GetSection("MethodCacheMemory").Bind(o))`.
+
+`WithName` names an application's own `GetOrCreateAsync` call in metrics and logs. A cached method is always named
+by its method id, so `WithName` in `mc.Method`, `mc.Defaults`, `mc.Group` or a runtime override is an error.
+
 Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
 and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
 lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `AddTags`
@@ -2371,10 +2435,14 @@ builder.Services.AddMethodCache(config =>
 ```
 
 - `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "10m")]`
-  keeps its ten minutes while the defaults fill in what it leaves out.
+  keeps its ten minutes while the defaults fill in what it leaves out. `ClearTags()` in `Defaults` fails at startup,
+  since nothing under the defaults has tags.
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
-  `appsettings.json`, which wins where both set a value; a method's own settings win over both.
+  `appsettings.json`, which wins where both set a value; a method's own settings win over both. `ClearTags()` in a
+  group drops the tags from `Defaults`, not the method's own tags, which are above it. A group that has settings but
+  no cached method in it, usually a typo or a difference in case, is logged as a warning at startup with the closest
+  group name in use.
 - `CacheWhen`, `DurationFor`, `SlidingFor` and `TagsFor` are set for one method only. In `Defaults` or a group they
   fail at startup ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md),
   [A duration from the result](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md#a-duration-from-the-result),
@@ -2413,9 +2481,9 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
         "Duration": "1h",
         "SlidingExpiration": "10m",
         "RefreshAhead": "5m",
+        // Profiles change rarely
         "Tags": ["users"],
-        "Version": 1,
-        "Notes": "Profiles change rarely"
+        "Version": 1
       },
       "[MyApp]MyApp.IAccountService.GetBalanceAsync": { "FailSafe": "off" }
     }
@@ -2434,10 +2502,10 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead` and `FailSafe` (each but `Duration` a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled` and `Distributed`. A group under `Groups` and a method under
   `Methods` can also set `ClearTags` (`true` or `false`): `true` makes their `Tags` replace the lower layers' instead of
-  adding to them. Only a method can set `Group`, `Metadata` and `Notes`; in `Defaults` or a group they are an error.
-  `Metadata` and `Notes` are recorded for diagnostics and never change caching; to put a method in a group, use
-  `Group`. Names are case-insensitive; any other name is an error, so a misspelled `"Durration"` is reported
-  instead of ignored. The same goes for the section itself: it holds only `Defaults`, `FailSafe`, `Groups` and
+  adding to them. Only a method can set `Group`; in `Defaults` or a group it is an error. Keep notes about a method
+  in a `//` comment next to its entry: `Notes` and `Metadata` are errors. Names are case-insensitive; any other name
+  is an error, so a misspelled `"Durration"` is reported instead of ignored. A setting written without a value, such
+  as `"Enabled": ""`, or an empty tag is an error too, rather than read as unset. The same goes for the section itself: it holds only `Defaults`, `FailSafe`, `Groups` and
   `Methods`. A leftover `Services` section from 1.0.0-rc.1 is reported as an unknown setting.
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
@@ -2505,13 +2573,42 @@ await configurator.ClearAsync();
 | Method | What it does |
 |--------|--------------|
 | `UpsertAsync` | Adds or replaces the override for one method, by expression (`UpsertAsync<IOrdersService>(s => s.GetAsync(0), ...)`) or method id |
-| `RemoveAsync` / `ClearAsync` | Removes one override, or all of them |
+| `UpsertGroupAsync` | Puts the same override on every cached method in a group |
+| `UpsertAllAsync` | Puts the same override on every cached method |
+| `RemoveAsync` / `RemoveGroupAsync` / `ClearAsync` | Removes one method's override, the overrides of a group's methods, or all of them |
 | `GetOverrides()` | Returns the active overrides, ordered by method id, with their options and audit metadata |
 
-The async operations return `ValueTask` and take cancellation last. A method id or expression that reaches no cached
-method, or a method that returns nothing, throws an `ArgumentException` naming the closest cached id before
-anything is stored. A tag template that doesn't fit the method throws too.
-- Overrides change one method each. Group and global defaults come from startup code or `appsettings.json`.
+To change a whole group or every method at once, for example to turn caching off for the `user-data` group during an
+incident:
+
+```cs
+// Every method in the "user-data" group gets the same override
+await configurator.UpsertGroupAsync("user-data", o => o.WithEnabled(false),
+    new RuntimeOverrideMetadata { Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(1) });
+
+// Every cached method
+await configurator.UpsertAllAsync(o => o.WithDuration(TimeSpan.FromMinutes(1)));
+
+// Back: the group's overrides, then all of them
+await configurator.RemoveGroupAsync("user-data");
+await configurator.ClearAsync();
+```
+
+The async operations return `ValueTask` and take cancellation last. These throw an `ArgumentException` before
+anything is stored:
+
+- a method id or expression that reaches no cached method, or a method that returns nothing (the message names the
+  closest cached id), or a group no cached method is in (the message names the closest group);
+- a tag template that doesn't fit a method the override reaches;
+- an override that sets nothing, or sets `WithName`;
+- an `ExpiresAt` that has already passed;
+- a `RefreshAhead` or `Duration` that would leave a method refreshing its entries as soon as they are stored, such as
+  a `RefreshAhead` of 20 minutes on a method whose `[Cache]` keeps entries for 10.
+
+The group and all-methods versions check every method first, so a mistake for one method changes none of them.
+- `UpsertGroupAsync` and `UpsertAllAsync` give each method an override of its own, replacing the one it had.
+  `GetOverrides()` lists them per method, `RemoveAsync` removes one of them, and a method that joins the group later
+  doesn't get it. Groups are case-sensitive, as everywhere.
 - Tags from an override are added to the method's tags unless the override calls `ClearTags()`.
   `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
 - An override that changes how the method caches drops the entries cached under the old settings at once; calls
@@ -2533,6 +2630,8 @@ anything is stored. A tag template that doesn't fit the method throws too.
   ([Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#policies-and-shared-entries)).
 - `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
   when it passes.
+- `MethodCache.AspNetCore` sets, lists and removes overrides over HTTP with a body written like a method's entry in
+  `appsettings.json` ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md#admin-endpoints)).
 - A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
   its own configuration; MethodCache doesn't distribute files.
 
@@ -2556,7 +2655,9 @@ foreach (var report in diagnostics.GetMethods())
 value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
 is left out. `ReplacedSources` lists a setting that two of the method's own sources set, with the lower ones the
 higher one replaced: `Duration` with `[Attribute]` when startup code sets a `DurationFor` for a method whose `[Cache]`
-sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for.
+Tags add up across layers, so `SettingSources["Tags"]` names the highest layer that adds tags. `Group` is the group
+the method is in, or null. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
 
 ### What applies on this instance
@@ -2598,7 +2699,7 @@ foreach (var method in diagnostics.GetMethods())
 |---------|------|---------|
 | `Duration` | A positive time span, and with the built-in memory cache at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup. Longer than `MaxExpiration`: at startup from `[Cache]`, code and JSON, an `ArgumentException` from a runtime override, and an `ArgumentOutOfRangeException` from a manual call |
 | `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off. A `SlidingExpiration` is at most `MaxExpiration`, like `Duration` | `[Cache]`: at build time ([MC0004](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup. A window longer than `MaxExpiration` fails where a longer `Duration` does |
-| `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
+| `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup. Runtime override: `ArgumentException`. When the two come from different layers, such as `RefreshAhead` in code and `Duration` in `Defaults`, the host logs a warning at startup and the cache refreshes halfway through the duration |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
 | `Tags` | Not empty or whitespace; templates name parameters of the method | `[Cache]`: at build time. Code: `AddTags` throws an `ArgumentException` for an empty tag; templates at startup. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |
@@ -3503,11 +3604,14 @@ app.MapMethodCacheAdmin("CacheAdmins");
 app.MapHealthChecks("/health");
 ```
 
-The [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
-use [runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides) to change them.
+The [package README](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. `GET methods` shows each
+method's effective policy and group, and `GET`, `PUT` and `DELETE overrides` list, set and remove
+[runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides) for a method, a group or every method, with a body written like
+a method's entry in `appsettings.json`
+([Runtime overrides over HTTP](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
 
-To record who removes entries, pass `audit`. It gets the user, what the request removes (`Kind` and `Targets`) and the
-time, before the change; when it throws, nothing changes
+To record who changes the cache, pass `audit`. It gets the user, what the request removes or overrides (`Kind` and
+`Targets`) and the time, before the change; when it throws, nothing changes
 ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)):
 
 ```cs
@@ -4276,7 +4380,9 @@ What each package protects against, what it leaves to you, and the tests that ho
 | The web demo is started outside Development | It requires cookie authentication and the `Admin` role, returning 401/403 for refused requests. Only Development permits anonymous admin access. `WebDemoSecurityTests` starts the actual sample and checks every admin route in both environments. The sample has no sign-in page; deployed applications must configure their own authentication. |
 | Demo data can be reset outside Development | `/demo/reset` and `/demo/queries` are mapped only in Development. The sample tests verify that Production returns 404 for both. |
 | A web demo price update omits a price or supplies null/negative input | The endpoint returns 400 before writing or invalidating. `WebDemoInputTests` verifies stored and cached products stay unchanged, and checks zero and the maximum decimal as valid boundaries. |
-| A cross-site form or `fetch` without preflight calls `invalidate`, `invalidate-method` or `clear` with the admin's cookie | The `POST` endpoints only accept an `application/json` body, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415, and a request without a body 400. `DELETE entry` needs a preflight too. Don't add a CORS policy that allows these routes from other origins. |
+| A cross-site form or `fetch` without preflight calls `invalidate`, `invalidate-method`, `clear` or `overrides` with the admin's cookie | The `POST` and `PUT` endpoints only accept an `application/json` body, which a browser sends cross-site only after a CORS preflight; forms and `text/plain` get 415, and a request without a body 400. `DELETE entry`, `DELETE overrides` and `PUT` need a preflight too. Don't add a CORS policy that allows these routes from other origins. |
+| An admin changes caching for every method or a group by mistake | `PUT overrides` must name exactly one of `MethodId`, `Group` or `"All": true`, a group must have cached methods, and an override is checked against every method it reaches before any of them changes, so a typo or a bad value is 400 and changes nothing. The body is read like a configuration file: unknown settings and empty values are 400. Each change goes to `audit` first. `DELETE overrides` needs exactly one of `methodId`, `group` or `all=true`. |
+| An override body as a denial of service | The body is read up to 64 KB; a longer one is 400. |
 | A filter in the wrong place empties the whole cache | Emptying everything is its own endpoint, `POST clear`, which takes only `{}`: a body with any property, such as `{ "tags": [...] }`, is 400. `invalidate` takes only `tags` and `invalidate-method` only `methodId`, and an unknown query parameter is 400 on every endpoint, so a misplaced filter is rejected instead of ignored. |
 | `invalidate-method` removes another method's entries | The `methodId` must be exactly the id of a cached method, as `methods` lists it; anything else is 400 and removes nothing. Entries are matched by the method they belong to, not by a key prefix, so `GetUser` never reaches `GetUsers`. |
 | An admin removes entries without a trace | Pass `audit` to `MapMethodCacheAdmin`: it gets the user, the action, its targets and the time for every change, before the change, and a throwing audit fails the request without changing anything. Reads and rejected requests aren't audited. Store the records where admins can't edit them. |
@@ -4754,7 +4860,7 @@ key.
 | `InvalidOperationException` from `AddMethodCache`: an interface has `[Cache]` methods, but MethodCache's source generator didn't run in its project | The project that declares the interface was built without MethodCache's source generator, so its calls would run uncached. Check that the project gets the `MethodCache` package, directly or through a project it references, and that `MethodCache.SourceGenerator` is among its analyzers (Dependencies > Analyzers in Rider or Visual Studio) |
 | `InvalidOperationException` from `AddMethodCache` naming two assemblies | Multiple generated modules contain the same interface; choose the one that wins with `FromAssemblyOf<T>()` ([Caching third-party code](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/third-party.md)) |
 | `ArgumentOutOfRangeException` from `WithDuration` | Durations must be positive. Use `WithEnabled(false)` to disable caching, including in runtime overrides |
-| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name (such as a `Services` section from 1.0.0-rc.1: it is now `Methods`), a single value for `Tags`, `Metadata` or a section that holds settings, nested settings under a single setting, an invalid duration, an unknown method id, the same method listed twice, `Group`, `Metadata` or `Notes` in `Defaults` or a group, or a tag template that names no parameter of a method it reaches; positive invariant unit durations such as `30s` are supported |
+| `InvalidOperationException` at startup naming a `MethodCache:` path | An invalid value, an unknown setting name (such as a `Services` section from 1.0.0-rc.1: it is now `Methods`), a single value for `Tags` or a section that holds settings, nested settings under a single setting, a setting or tag without a value, an invalid duration, an unknown method id, the same method listed twice, `Group` in `Defaults` or a group, `Notes` or `Metadata` anywhere (write a `//` comment instead), `ClearTags` in `Defaults`, `WithName` outside a manual call, or a tag template that names no parameter of a method it reaches; positive invariant unit durations such as `30s` are supported |
 | `InvalidOperationException` at startup about `CacheWhen` | `CacheWhen` was set in `Defaults` or a group; set it for one method with `mc.Method(...).CacheWhen(...)`. Or a `CacheWhen<T>` is for a type the method can't return; a runtime override with one throws an `ArgumentException` ([Conditional caching](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/conditional-caching.md)) |
 | `InvalidOperationException` at startup: the `Duration` is longer than `MethodCacheMemoryOptions.MaxExpiration` | A `Duration` in `[Cache]`, code or `appsettings.json` is longer than the memory cache keeps an entry (7 days by default). Shorten it, or raise the limit with `mc.Memory(o => o.MaxExpiration = ...)`. A runtime override throws an `ArgumentException`, and a manual call an `ArgumentOutOfRangeException` before its factory runs ([Expiration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/expiration.md)) |
 | `InvalidOperationException` from `IMethodCacheKeys.For` saying it can't tell which key to return | The interface has several registrations and the last is a scoped or transient factory, which may create another type in each scope. Register it with its implementation type, give it a service key of its own, or invalidate by tag ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#building-a-key-yourself)) |
@@ -6266,6 +6372,31 @@ maps them under `/ops/cache` instead.
 | `POST` | `invalidate` | Removes entries by tag. Body: `{ "tags": ["users"] }` |
 | `POST` | `invalidate-method` | Removes every entry of one cached method, also from the distributed cache and the other instances. Body: `{ "methodId": "[MyApp]MyApp.IUserService.GetUserAsync" }`, an id that `methods` lists |
 | `POST` | `clear` | Removes every entry. Body: `{}` |
+| `GET` | `overrides` | The runtime overrides in effect, one per method, in the format `PUT overrides` takes, with `updatedAt` |
+| `PUT` | `overrides` | Sets a runtime override for one method, every method in a group or every cached method. Body: a method's `appsettings.json` entry plus what it applies to, see below |
+| `DELETE` | `overrides?methodId=`, `?group=` or `?all=true` | Removes the override of one method, of a group's methods, or all of them |
+
+### Runtime overrides over HTTP
+
+The body of `PUT overrides` is written like a method's entry in `appsettings.json` and read by the same code, so it
+takes the same settings with the same formats, and a mistake gets the same message as in a configuration file. It
+names what it applies to with exactly one of `MethodId`, `Group` or `"All": true`, and can say who made it and why:
+
+```bash
+curl -X PUT https://localhost:5001/methodcache/overrides -H "Content-Type: application/json" \
+  -d '{ "Group": "pricing", "Enabled": false, "Owner": "ops", "Reason": "Incident 4211", "ExpiresAt": "2026-11-12T08:00:00Z" }'
+curl -X DELETE "https://localhost:5001/methodcache/overrides?group=pricing"
+```
+
+| Body property | Value |
+|---|---|
+| `MethodId`, `Group` or `All` | One method id as `methods` lists it, a group name (case-sensitive), or `true` for every cached method |
+| `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `ClearTags`, `Version`, `Enabled`, `Distributed` | As in `appsettings.json` ([Configuration](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson)) |
+| `Owner`, `Reason`, `Ticket`, `ExpiresAt` | Who made it and why, and when it is removed by itself (an ISO 8601 time; UTC when it has no offset) |
+
+A group or `"All": true` puts the same override on each method, as `IRuntimeCacheConfigurator.UpsertGroupAsync` and
+`UpsertAllAsync` do. With a backplane the override applies on every instance; without one, on the instance that
+answers.
 
 The `POST` endpoints take a JSON body, also `clear`, whose body is `{}`:
 
@@ -6281,16 +6412,19 @@ Answers other than 200, 204 and 404:
 - **400**, and nothing changes: a query parameter the endpoint doesn't take, a missing or empty `storedKey` or
   `methodId`, a `methodId` that no cached method has, a `limit` out of range, an empty tag list, or a body with a
   property the endpoint doesn't take (`invalidate` takes only `tags`, `invalidate-method` only `methodId`, `clear`
-  none). A `POST` without a body is 400 too.
-- **415**: a `POST` whose body isn't `application/json`.
+  none). A `POST` without a body is 400 too. For `overrides`: a body that isn't a JSON object, names no target or
+  more than one, has a setting it doesn't know or an invalid value, or doesn't fit a method it reaches (no method
+  changes then); a `DELETE` without exactly one of `methodId`, `group` or `all=true`; a method or group that isn't
+  cached. The message says what is wrong, as for a configuration file.
+- **415**: a `POST` or `PUT` whose body isn't `application/json`.
 - **503**: the removal is done in this instance's memory but the distributed cache hasn't confirmed it yet. The
   cache retries on its own; don't repeat the call.
 - **401** and **403**: the caller isn't signed in, or doesn't satisfy the policy.
 
 ## Audit
 
-Pass `audit` to record who changes the cache. It runs for `DELETE entry`, `invalidate`, `invalidate-method` and
-`clear`, after authorization and validation and before the change:
+Pass `audit` to record who changes the cache. It runs for `DELETE entry`, `invalidate`, `invalidate-method`, `clear`,
+`PUT overrides` and `DELETE overrides`, after authorization and validation and before the change:
 
 ```cs
 var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
@@ -6306,8 +6440,8 @@ app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 
 | Property | Value |
 |---|---|
-| `Kind` | `RemoveEntry`, `InvalidateTags`, `InvalidateMethod` or `Clear` |
-| `Targets` | The stored key, the tags or the method id; empty for `Clear` |
+| `Kind` | `RemoveEntry`, `InvalidateTags`, `InvalidateMethod`, `Clear`, `UpsertOverride` or `RemoveOverride` |
+| `Targets` | The stored key, the tags or the method id; empty for `Clear`. For an override: the method id, `group:<name>`, or `*` for every method |
 | `User` | The signed-in user, `HttpContext.User` |
 | `Time` | When the request arrived, from the app's `TimeProvider` |
 | `HttpContext` | The request, for anything else you record, such as the client's address or the trace id |
@@ -6347,7 +6481,8 @@ exception messages.
 - Works with the default in-memory cache manager. With your own `ICacheManager`, the endpoints need the
   `ICacheAdministrator` that `AddHttpCaching` registers, and it covers HTTP responses only: `methods` is empty,
   `clear` removes HTTP responses only, and `invalidate-method` answers 400.
-- Policies are read-only here. Change them at runtime with `IRuntimeCacheConfigurator`.
+- `overrides` needs MethodCache's own `IRuntimeCacheConfigurator`; with one the application registers instead, it
+  answers 501.
 
 
 ---
@@ -6884,6 +7019,51 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0-rc.20 (2026-11-11)
+
+### Upgrading from 1.0.0-rc.19
+
+The cache keys are the same as in 1.0.0-rc.19. A few settings that were quietly ignored are now errors, so check
+these if startup or an override fails after upgrading:
+
+- `Notes` and `Metadata` in `appsettings.json` fail startup. MethodCache never read them; keep notes as a `//`
+  comment next to the entry ([appsettings.json](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#appsettingsjson)).
+- A setting in `appsettings.json` written without a value, such as `"Enabled": ""`, or an empty tag fails startup
+  instead of being read as unset.
+- `WithName` in `mc.Defaults(...)`, `mc.Group(...)` or `mc.Method(...).Configure(...)` fails startup, as it already
+  did in `appsettings.json`. A name belongs to a manual call.
+- `ClearTags()` in `mc.Defaults(...)` fails startup, as it already did in `appsettings.json`.
+- `IRuntimeCacheConfigurator.UpsertAsync` throws `ArgumentException` for an override that sets nothing, uses
+  `WithName`, has an `ExpiresAt` that has already passed, or has a `RefreshAhead` that is not shorter than the
+  `Duration` it ends up with. Before, such an override was stored anyway and did nothing, or something else than it said.
+
+### Added
+
+- `IRuntimeCacheConfigurator.UpsertGroupAsync`, `UpsertAllAsync` and `RemoveGroupAsync` change every method in a
+  group, or every cached method, in one call. Each method gets the same override of its own; when the override
+  doesn't fit one of them, none is changed, and an unknown group name throws with the closest group in use
+  ([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides)).
+- MethodCache.AspNetCore: `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`, so an operator can
+  change a method, a group or every method while the app runs. The body takes the same settings as `appsettings.json`,
+  and each change is audited as `UpsertOverride` or `RemoveOverride`
+  ([Runtime overrides over HTTP](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
+- `CachedMethodInfo.Group` names the group a method is in.
+- Startup warnings for a `RefreshAhead` that is not shorter than the `Duration` once all sources are combined, and for
+  a group with settings but no cached method in it, usually a typo or a difference in case.
+- `SettingSources["Tags"]` names the highest source that adds tags, such as `RuntimeOverride`.
+
+### Performance
+
+- Entries of a method with a `{param}` tag, and manual calls that reuse one `CacheEntryOptions`, share the method's
+  settings instead of each keeping their own copy. With a million such entries, a garbage collection no longer has to
+  walk a million extra objects.
+
+### Documentation
+
+- Configuration starts with a table of what `[Cache]`, startup code, `appsettings.json` and runtime overrides can each
+  set, and why some settings are missing from one of them
+  ([What each surface can set](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#what-each-surface-can-set)). The README describes all four.
 
 ## 1.0.0-rc.19 (2026-11-10)
 

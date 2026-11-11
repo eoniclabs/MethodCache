@@ -43,7 +43,7 @@ namespace MethodCache.Infrastructure
                 tags.Add(tag.Contains('{') ? ExpandTag(tag, parameterNames, index => values[index]) : tag);
             }
 
-            return policy with { Tags = tags };
+            return policy with { Template = policy.Template ?? policy, Tags = tags };
         }
 
         /// <summary>Expands tag templates, formatting only the argument values their placeholders actually reference.</summary>
@@ -64,7 +64,7 @@ namespace MethodCache.Infrastructure
             string Format(int index) => formatted[index] ??= (!policy.CanonicalTagParts
                 ? Convert.ToString(values[index], CultureInfo.InvariantCulture) ?? "null"
                 : CanonicalTagPart.Format(values[index]));
-            return policy with { Tags = policy.Tags.Select(tag => tag.Contains('{') ? ExpandTag(tag, parameterNames, Format) : tag).ToArray() };
+            return policy with { Template = policy.Template ?? policy, Tags = policy.Tags.Select(tag => tag.Contains('{') ? ExpandTag(tag, parameterNames, Format) : tag).ToArray() };
         }
 
         /// <summary>

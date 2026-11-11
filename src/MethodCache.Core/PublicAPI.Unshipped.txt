@@ -299,6 +299,9 @@ MethodCache.IRuntimeCacheConfigurator
 MethodCache.IRuntimeCacheConfigurator.ClearAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.IRuntimeCacheConfigurator.GetOverrides() -> System.Collections.Generic.IReadOnlyList<MethodCache.RuntimeOverride!>!
 MethodCache.IRuntimeCacheConfigurator.RemoveAsync(string! methodId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.IRuntimeCacheConfigurator.RemoveGroupAsync(string! group, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.IRuntimeCacheConfigurator.UpsertAllAsync(System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+MethodCache.IRuntimeCacheConfigurator.UpsertGroupAsync(string! group, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.IRuntimeCacheConfigurator.UpsertAsync(string! methodId, System.Action<MethodCache.CacheEntryOptions.Builder!>! configure, MethodCache.RuntimeOverrideMetadata? metadata = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 MethodCache.InvalidatesCacheAttribute
 MethodCache.InvalidatesCacheAttribute.InvalidatesCacheAttribute() -> void
@@ -526,6 +529,8 @@ MethodCache.MethodCacheWeigher
 const MethodCache.MethodCacheWeigher.OtherValue = 64 -> long
 static MethodCache.MethodCacheWeigher.Bytes(long otherValue) -> System.Func<string!, object?, long>!
 static MethodCache.MethodCacheWeigher.Bytes(string! key, object? value) -> long
+MethodCache.CachedMethodInfo.Group.get -> string?
+MethodCache.CachedMethodInfo.Group.init -> void
 MethodCache.CachedMethodInfo.KeyParameters.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CachedMethodInfo.KeyParameters.init -> void
 MethodCache.CachedMethodInfo.Lifetime.get -> MethodCache.CacheLifetimeInfo!

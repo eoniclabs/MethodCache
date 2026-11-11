@@ -81,10 +81,7 @@ public class ConfigFileRulesTests
 
     [Theory]
     [InlineData("Defaults", "Group", "orders")]
-    [InlineData("Defaults", "Notes", "why")]
-    [InlineData("Defaults", "Metadata:owner", "team-a")]
     [InlineData("Groups:orders", "Group", "other")]
-    [InlineData("Groups:orders", "Metadata:owner", "team-a")]
     public void MethodOnlySettingOutsideAMethod_FailsStartup(string section, string setting, string value)
     {
         var error = LoadFails(new() { [$"MethodCache:{section}:{setting}"] = value });
@@ -109,18 +106,44 @@ public class ConfigFileRulesTests
     }
 
     [Theory]
-    [InlineData("group")]
-    [InlineData("GROUP")]
-    public void GroupKeyInMetadata_FailsStartup_PointingToGroup(string key)
+    [InlineData("Methods:{0}", "Notes", "why")]
+    [InlineData("Methods:{0}", "Metadata:owner", "team-a")]
+    [InlineData("Defaults", "Notes", "why")]
+    [InlineData("Groups:orders", "Metadata:owner", "team-a")]
+    public void NotesAndMetadata_FailStartup_PointingToAComment(string section, string setting, string value)
     {
-        var error = LoadFails(new()
-        {
-            [$"MethodCache:Methods:{GetId}:Metadata:{key}"] = "orders",
-            [$"MethodCache:Defaults:Duration"] = "1m"
-        });
+        section = string.Format(System.Globalization.CultureInfo.InvariantCulture, section, GetId);
+        var error = LoadFails(new() { [$"MethodCache:{section}:{setting}"] = value });
 
-        Assert.Contains($"'MethodCache:Methods:{GetId}:Metadata:{key}' sets a group in Metadata", error.Message, StringComparison.Ordinal);
-        Assert.Contains($"'MethodCache:Methods:{GetId}:Group'", error.Message, StringComparison.Ordinal);
+        Assert.Contains($"'MethodCache:{section}:{setting.Split(':')[0]}' is not a setting MethodCache reads", error.Message, StringComparison.Ordinal);
+        Assert.Contains("// comment", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Enabled")]
+    [InlineData("Distributed")]
+    [InlineData("Duration")]
+    [InlineData("Version")]
+    [InlineData("FailSafe")]
+    [InlineData("ClearTags")]
+    [InlineData("Group")]
+    [InlineData("Tags:0")]
+    public void EmptyValue_FailsStartup_NamingTheSetting(string setting)
+    {
+        var error = LoadFails(new() { [$"MethodCache:Methods:{GetId}:{setting}"] = " " });
+
+        Assert.Contains($"'MethodCache:Methods:{GetId}:{setting}' is empty", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("FailSafe:Timeout")]
+    [InlineData("Defaults:FailSafe:Timeout")]
+    public void FailSafeErrors_SuggestTheUnitFormat(string setting)
+    {
+        var error = LoadFails(new() { [$"MethodCache:{setting}"] = "1m" });
+
+        Assert.DoesNotContain("01:00:00", error.Message, StringComparison.Ordinal);
+        Assert.Contains("\"1h\"", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -284,8 +307,7 @@ public class ConfigFileRulesTests
         var configuration = Configuration(new()
         {
             [$"MethodCache:Methods:{OrderId}:SlidingExpiration"] = "1m",
-            [$"MethodCache:Methods:{OrderId}:ClearTags"] = "true",
-            [$"MethodCache:Methods:{OrderId}:Metadata:owner"] = "team-a"
+            [$"MethodCache:Methods:{OrderId}:ClearTags"] = "true"
         });
         await using var provider = Build(configuration, mc => mc.Group("orders", o => o.WithVersion(2).WithDuration(TimeSpan.FromMinutes(3))));
         await provider.GetRequiredService<IRuntimeCacheConfigurator>()
@@ -449,6 +471,35 @@ public class ConfigFileRulesTests
 
         Assert.Contains("The tag 'order:{id}' in the override reaches the cached method", error.Message, StringComparison.Ordinal);
         Assert.Equal(new[] { "order:{orderId}" }, Assert.Single(runtime.GetOverrides()).Options.Tags);
+    }
+
+    [Fact]
+    public void ClearTagsInCodeDefaults_FailsStartup_AsInConfiguration()
+    {
+        using var provider = Services(mc => mc.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1)).ClearTags())).BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains("ClearTags is set in mc.Defaults(...)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("method")]
+    [InlineData("defaults")]
+    [InlineData("group")]
+    public void WithNameInCode_FailsStartup(string where)
+    {
+        using var provider = Services(mc =>
+        {
+            Action<CacheEntryOptions.Builder> named = o => o.WithName("orders").WithDuration(TimeSpan.FromMinutes(1));
+            if (where == "method") mc.Method((IRules r) => r.GetAsync(0)).Configure(named);
+            else if (where == "defaults") mc.Defaults(named);
+            else mc.Group("orders", named);
+        }).BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains("WithName is set in mc.", error.Message, StringComparison.Ordinal);
     }
 
     private static InvalidOperationException LoadFails(Dictionary<string, string?> settings)

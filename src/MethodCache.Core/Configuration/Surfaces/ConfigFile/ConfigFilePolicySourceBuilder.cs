@@ -17,12 +17,18 @@ internal static class ConfigFilePolicySourceBuilder
     // A group's defaults, as mc.Group(...) sets them
     private static readonly HashSet<string> GroupSettings = new(DefaultsSettings, StringComparer.OrdinalIgnoreCase) { "ClearTags" };
 
-    // Group, Metadata and Notes describe one method, so only a method's entry has them
-    private static readonly HashSet<string> MethodOnlySettings = new(StringComparer.OrdinalIgnoreCase) { "Group", "Metadata", "Notes" };
+    // Group puts one method in a group, so only a method's entry has it
+    private static readonly HashSet<string> MethodOnlySettings = new(StringComparer.OrdinalIgnoreCase) { "Group" };
 
     private static readonly HashSet<string> MethodSettings = new(GroupSettings.Concat(MethodOnlySettings), StringComparer.OrdinalIgnoreCase) { "MethodId" };
 
-    private static readonly HashSet<string> CollectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Tags", "Metadata" };
+    // What a runtime override sent over HTTP names: one method, a group or every method, and who made it and why
+    private static readonly HashSet<string> OverrideTargets = new(StringComparer.OrdinalIgnoreCase) { "MethodId", "Group", "All" };
+    private static readonly HashSet<string> OverrideNotes = new(StringComparer.OrdinalIgnoreCase) { "Owner", "Reason", "Ticket", "ExpiresAt" };
+    private static readonly HashSet<string> OverrideSettings = new(GroupSettings.Concat(OverrideTargets).Concat(OverrideNotes), StringComparer.OrdinalIgnoreCase);
+
+    // Settings that held notes about a method in earlier versions; a JSON comment holds them now
+    private static readonly HashSet<string> NoteSettings = new(StringComparer.OrdinalIgnoreCase) { "Notes", "Metadata" };
 
     private static readonly HashSet<string> SectionSettings = new(StringComparer.OrdinalIgnoreCase) { "Defaults", "FailSafe", "Groups", "Methods" };
 
@@ -120,7 +126,7 @@ internal static class ConfigFilePolicySourceBuilder
                         $"the id of a cached method{MethodIds.ClosestHint(methodId, cachedMethods)}. {MethodIds.CachedMethodAdvice}");
             }
 
-            policies.Add(new ConfiguredPolicy(ParseSection(methodSection, MethodSettings).Build(methodId, methodSection["Notes"]), methodSection));
+            policies.Add(new ConfiguredPolicy(ParseSection(methodSection, MethodSettings).Build(methodId), methodSection));
         }
 
         if (checks?.MaxDuration is { } maxDuration &&
@@ -148,6 +154,47 @@ internal static class ConfigFilePolicySourceBuilder
     }
 
     /// <summary>
+    /// Reads one runtime override written like a method's entry in appsettings, as the admin endpoints take it: the
+    /// settings it changes, what it applies to (<c>MethodId</c>, <c>Group</c> or <c>"All": true</c>) and who made it and
+    /// why (<c>Owner</c>, <c>Reason</c>, <c>Ticket</c>, <c>ExpiresAt</c>). Errors name the setting as a configuration
+    /// file's errors do.
+    /// </summary>
+    public static RuntimeOverrideRequest ParseOverride(IConfigurationSection section)
+    {
+        RejectUnknownSettings(section, OverrideSettings);
+        var methodId = ReadValue(section, "MethodId");
+        var group = ReadValue(section, "Group");
+        var all = false;
+        if (ReadValue(section, "All") is { } allText && (!bool.TryParse(allText, out all) || !all))
+        {
+            throw InvalidValue(section, "All", allText, "true; name one method with MethodId or one group with Group instead");
+        }
+
+        if ((methodId != null ? 1 : 0) + (group != null ? 1 : 0) + (all ? 1 : 0) != 1)
+        {
+            throw new InvalidOperationException(
+                $"MethodCache override '{section.Path}' must name what it applies to with exactly one of MethodId, Group or \"All\": true.");
+        }
+
+        DateTimeOffset? expiresAt = null;
+        if (ReadValue(section, "ExpiresAt") is { } expiresText)
+        {
+            if (!DateTimeOffset.TryParse(expiresText, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at))
+            {
+                throw InvalidValue(section, "ExpiresAt", expiresText, "a date and time such as \"2026-11-12T08:00:00Z\"");
+            }
+
+            expiresAt = at;
+        }
+
+        var (owner, reason, ticket) = (ReadValue(section, "Owner"), ReadValue(section, "Reason"), ReadValue(section, "Ticket"));
+        var metadata = owner == null && reason == null && ticket == null && expiresAt == null
+            ? null
+            : new RuntimeOverrideMetadata { Owner = owner, Reason = reason, Ticket = ticket, ExpiresAt = expiresAt };
+        return new RuntimeOverrideRequest(methodId, group, all, ParseSection(section, OverrideSettings), metadata);
+    }
+
+    /// <summary>
     /// Explains a tag template that doesn't fit a cached method, naming the configuration that causes it. A rejected
     /// reload logs the reason, so it holds no part of the tag; InvalidValue's message quotes the whole value.
     /// </summary>
@@ -166,7 +213,7 @@ internal static class ConfigFilePolicySourceBuilder
             $"MethodCache configuration '{section.Path}' lets a tag set in {problem.Where} reach its method, but {problem.ValueFreeReason}.");
     }
 
-    /// <summary>Rejects Group, Metadata and Notes outside a method's entry, since they describe one method.</summary>
+    /// <summary>Rejects Group outside a method's entry, since it puts one method in a group.</summary>
     private static void RejectMethodOnlySettings(IConfigurationSection section)
     {
         foreach (var child in section.GetChildren())
@@ -174,7 +221,7 @@ internal static class ConfigFilePolicySourceBuilder
             if (MethodOnlySettings.Contains(child.Key))
             {
                 throw new InvalidOperationException(
-                    $"MethodCache configuration '{child.Path}' can't be set here: {child.Key} describes one method, so set it on the " +
+                    $"MethodCache configuration '{child.Path}' can't be set here: {child.Key} puts one method in a group, so set it on the " +
                     "method's entry under Methods. Defaults and Groups take the settings that change caching.");
             }
         }
@@ -245,7 +292,7 @@ internal static class ConfigFilePolicySourceBuilder
             builder.SetTags(tags);
         }
 
-        if (section["Version"] is { } versionValue)
+        if (ReadValue(section, "Version") is { } versionValue)
         {
             if (!int.TryParse(versionValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version) || version < 0)
             {
@@ -277,11 +324,11 @@ internal static class ConfigFilePolicySourceBuilder
         if (failSafeSection.GetChildren().Any())
         {
             throw new InvalidOperationException(
-                $"MethodCache configuration '{failSafeSection.Path}' must be a time span such as \"01:00:00\" or \"off\". " +
+                $"MethodCache configuration '{failSafeSection.Path}' must be a duration such as \"1h\" or \"off\". " +
                 "Set FailSafeTimeout and FailSafeRetryAfter next to it; the FailSafe block with Duration, Timeout and RetryAfter belongs at the top of the section.");
         }
 
-        if (section["FailSafe"] is { } failSafe)
+        if (ReadValue(section, "FailSafe") is { } failSafe)
         {
             builder.WithFailSafe(string.Equals(failSafe.Trim(), "off", StringComparison.OrdinalIgnoreCase)
                 ? TimeSpan.Zero
@@ -298,30 +345,9 @@ internal static class ConfigFilePolicySourceBuilder
             builder.WithFailSafeRetryAfter(failSafeRetryAfter);
         }
 
-        var groupValue = section["Group"];
-        if (!string.IsNullOrWhiteSpace(groupValue))
+        if (settings == MethodSettings && ReadValue(section, "Group") is { } groupValue)
         {
             builder.AddMetadata("group", groupValue);
-        }
-
-        // Metadata only describes the method; Group is the one setting that puts it in a group
-        var metadataSection = section.GetSection("Metadata");
-        if (metadataSection.Exists())
-        {
-            foreach (var child in metadataSection.GetChildren())
-            {
-                if (string.Equals(child.Key, "group", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidOperationException(
-                        $"MethodCache configuration '{child.Path}' sets a group in Metadata, which only describes the method; " +
-                        $"set '{section.Path}:Group' to put the method in a group.");
-                }
-
-                if (!string.IsNullOrWhiteSpace(child.Key))
-                {
-                    builder.AddMetadata(child.Key, child.Value);
-                }
-            }
         }
 
         return builder;
@@ -339,7 +365,7 @@ internal static class ConfigFilePolicySourceBuilder
 
         if (ReadTimeSpan(section, "Duration") is not { } duration)
         {
-            throw new InvalidOperationException($"MethodCache configuration '{section.Path}' needs a 'Duration', for example \"01:00:00\".");
+            throw new InvalidOperationException($"MethodCache configuration '{section.Path}' needs a 'Duration', for example \"1h\".");
         }
 
         builder.WithFailSafe(duration);
@@ -361,7 +387,18 @@ internal static class ConfigFilePolicySourceBuilder
     {
         // Configuration keys are case-insensitive, so "duration" matches too
         var value = section[name];
-        return string.IsNullOrWhiteSpace(value) ? null : value;
+        return value == null ? null : NotBlank(section.GetSection(name), value);
+    }
+
+    /// <summary>
+    /// Throws for a setting written without a value, such as <c>"Enabled": ""</c>, which would otherwise be read as
+    /// unset and leave the setting from a lower layer in place without a word.
+    /// </summary>
+    private static string NotBlank(IConfigurationSection setting, string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value)) return value;
+        throw new InvalidOperationException(
+            $"MethodCache configuration '{setting.Path}' is empty. Give it a value, or remove it to keep the value from the method's other settings.");
     }
 
     private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string name, bool allowOff = false)
@@ -370,6 +407,8 @@ internal static class ConfigFilePolicySourceBuilder
         {
             return null;
         }
+
+        NotBlank(section.GetSection(name), text);
 
         // The same grammar is used by attributes and configuration.
         if (!MethodCache.Internal.DurationParser.TryParse(text, allowOff, out var value))
@@ -390,6 +429,13 @@ internal static class ConfigFilePolicySourceBuilder
         RejectSingleValue(section);
         foreach (var child in section.GetChildren())
         {
+            if (!settings.Contains(child.Key) && NoteSettings.Contains(child.Key) && settings != SectionSettings)
+            {
+                throw new InvalidOperationException(
+                    $"MethodCache configuration '{child.Path}' is not a setting MethodCache reads: it doesn't keep notes about a " +
+                    "method. Write them as a // comment next to the method's entry in the JSON file.");
+            }
+
             if (!settings.Contains(child.Key))
             {
                 throw new InvalidOperationException(
@@ -410,14 +456,9 @@ internal static class ConfigFilePolicySourceBuilder
     /// </summary>
     private static void RejectWrongShape(IConfigurationSection setting)
     {
-        if (CollectionSettings.Contains(setting.Key))
+        if (string.Equals(setting.Key, "Tags", StringComparison.OrdinalIgnoreCase))
         {
             // A single value for Tags reports its own error
-            if (string.Equals(setting.Key, "Metadata", StringComparison.OrdinalIgnoreCase))
-            {
-                RejectSingleValue(setting, "{ \"Owner\": \"team-a\" }");
-            }
-
             foreach (var item in setting.GetChildren())
             {
                 RejectNested(item);
@@ -434,7 +475,7 @@ internal static class ConfigFilePolicySourceBuilder
         if (setting.GetChildren().Any())
         {
             throw new InvalidOperationException(
-                $"MethodCache configuration '{setting.Path}' has nested settings; write it as a single value, such as \"00:05:00\" or \"users\".");
+                $"MethodCache configuration '{setting.Path}' has nested settings; write it as a single value, such as \"5m\" or \"users\".");
         }
     }
 
@@ -462,15 +503,16 @@ internal static class ConfigFilePolicySourceBuilder
         var values = new List<string>();
         foreach (var child in section.GetChildren())
         {
-            if (!string.IsNullOrWhiteSpace(child.Value))
-            {
-                values.Add(child.Value);
-            }
+            // An empty tag would match nothing, and a tag with nothing in it is a typo
+            values.Add(NotBlank(child, child.Value ?? string.Empty));
         }
 
         return values;
     }
 }
+
+/// <summary>A runtime override read by <see cref="ConfigFilePolicySourceBuilder.ParseOverride"/>: one of a method, a group or every method, and the settings it changes.</summary>
+internal sealed record RuntimeOverrideRequest(string? MethodId, string? Group, bool All, CachePolicyBuilder Policy, RuntimeOverrideMetadata? Metadata);
 
 /// <summary>A policy read from configuration, and the section it comes from, which errors name.</summary>
 internal sealed record ConfiguredPolicy(PolicyDraft Draft, IConfigurationSection Section);

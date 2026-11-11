@@ -595,6 +595,29 @@ internal sealed class PolicyResolver : IPolicyResolver, IAsyncDisposable, IDispo
         }
     }
 
+    /// <summary>
+    /// The groups that have settings but no cached method in them, each with where its settings come from and the
+    /// group in use whose name is closest, usually a typo or a difference in case.
+    /// </summary>
+    internal IReadOnlyList<(string Group, string Where, string? Closest)> GroupsWithoutMethods()
+    {
+        var cached = CachedMethodIds();
+        var used = _resolutions.Values
+            .Where(result => cached.Contains(result.MethodId))
+            .Select(static result => result.Policy.Metadata.GetValueOrDefault("group"))
+            .Where(static group => !string.IsNullOrWhiteSpace(group))
+            .Select(static group => group!)
+            .ToHashSet(StringComparer.Ordinal);
+        var unused = new List<(string, string, string?)>();
+        foreach (var (id, aggregator) in _aggregators.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
+        {
+            if (MethodIds.GroupName(id) is not { } group || aggregator.Layers.Length == 0 || used.Contains(group)) continue;
+            unused.Add((group, Describe(aggregator.Layers[^1], id), MethodIds.Closest(group, used)));
+        }
+
+        return unused;
+    }
+
     private static string Describe(PolicyLayer layer, string layerId)
     {
         var group = MethodIds.GroupName(layerId);

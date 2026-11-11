@@ -4,6 +4,51 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0-rc.20 (2026-11-11)
+
+### Upgrading from 1.0.0-rc.19
+
+The cache keys are the same as in 1.0.0-rc.19. A few settings that were quietly ignored are now errors, so check
+these if startup or an override fails after upgrading:
+
+- `Notes` and `Metadata` in `appsettings.json` fail startup. MethodCache never read them; keep notes as a `//`
+  comment next to the entry ([appsettings.json](docs/features/configuration.md#appsettingsjson)).
+- A setting in `appsettings.json` written without a value, such as `"Enabled": ""`, or an empty tag fails startup
+  instead of being read as unset.
+- `WithName` in `mc.Defaults(...)`, `mc.Group(...)` or `mc.Method(...).Configure(...)` fails startup, as it already
+  did in `appsettings.json`. A name belongs to a manual call.
+- `ClearTags()` in `mc.Defaults(...)` fails startup, as it already did in `appsettings.json`.
+- `IRuntimeCacheConfigurator.UpsertAsync` throws `ArgumentException` for an override that sets nothing, uses
+  `WithName`, has an `ExpiresAt` that has already passed, or has a `RefreshAhead` that is not shorter than the
+  `Duration` it ends up with. Before, such an override was stored anyway and did nothing, or something else than it said.
+
+### Added
+
+- `IRuntimeCacheConfigurator.UpsertGroupAsync`, `UpsertAllAsync` and `RemoveGroupAsync` change every method in a
+  group, or every cached method, in one call. Each method gets the same override of its own; when the override
+  doesn't fit one of them, none is changed, and an unknown group name throws with the closest group in use
+  ([Runtime overrides](docs/features/configuration.md#runtime-overrides)).
+- MethodCache.AspNetCore: `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`, so an operator can
+  change a method, a group or every method while the app runs. The body takes the same settings as `appsettings.json`,
+  and each change is audited as `UpsertOverride` or `RemoveOverride`
+  ([Runtime overrides over HTTP](src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
+- `CachedMethodInfo.Group` names the group a method is in.
+- Startup warnings for a `RefreshAhead` that is not shorter than the `Duration` once all sources are combined, and for
+  a group with settings but no cached method in it, usually a typo or a difference in case.
+- `SettingSources["Tags"]` names the highest source that adds tags, such as `RuntimeOverride`.
+
+### Performance
+
+- Entries of a method with a `{param}` tag, and manual calls that reuse one `CacheEntryOptions`, share the method's
+  settings instead of each keeping their own copy. With a million such entries, a garbage collection no longer has to
+  walk a million extra objects.
+
+### Documentation
+
+- Configuration starts with a table of what `[Cache]`, startup code, `appsettings.json` and runtime overrides can each
+  set, and why some settings are missing from one of them
+  ([What each surface can set](docs/features/configuration.md#what-each-surface-can-set)). The README describes all four.
+
 ## 1.0.0-rc.19 (2026-11-10)
 
 ### Upgrading from 1.0.0-rc.18
