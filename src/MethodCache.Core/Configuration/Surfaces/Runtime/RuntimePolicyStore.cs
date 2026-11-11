@@ -15,6 +15,9 @@ internal sealed class RuntimePolicyStore : IDisposable
 
     private readonly ConcurrentDictionary<string, StoredPolicy> _policies = new(StringComparer.Ordinal);
     private readonly TimeProvider _time;
+
+    /// <summary>The clock overrides expire by.</summary>
+    internal TimeProvider Time => _time;
     private readonly object _timerSync = new();
     private readonly object _changesSync = new();
     private long _revision;

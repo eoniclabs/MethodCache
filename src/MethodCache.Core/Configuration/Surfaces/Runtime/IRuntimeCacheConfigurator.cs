@@ -20,10 +20,45 @@ public interface IRuntimeCacheConfigurator
     /// <param name="configure">Sets the settings the override changes; the others keep their values from the lower layers.</param>
     /// <param name="metadata">Who made the override and why, and when it is removed automatically.</param>
     /// <param name="cancellationToken">Cancels waiting for the method's previous values to be invalidated.</param>
-    /// <exception cref="ArgumentException"><paramref name="methodId"/> names no cached method, a tag template names no parameter of the method, or the override sets a function while every instance applies it.</exception>
+    /// <exception cref="ArgumentException"><paramref name="methodId"/> names no cached method, the override sets nothing or sets <c>WithName</c>, its <see cref="RuntimeOverrideMetadata.ExpiresAt"/> has passed, a tag template names no parameter of the method, the method would refresh entries as soon as they are stored, or the override sets a function while every instance applies it.</exception>
     /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't store the change within its <c>OperationTimeout</c>; nothing changed on this instance.</exception>
     ValueTask UpsertAsync(string methodId, Action<CacheEntryOptions.Builder> configure,
         RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Puts the same override on every cached method in <paramref name="group"/>, replacing the override each of them
+    /// had. Each method gets its own override, which <see cref="GetOverrides"/> lists and <see cref="RemoveAsync"/> removes
+    /// one by one. A method that joins the group later doesn't get it.
+    /// </summary>
+    /// <param name="group">The group name, as in <c>[Cache(Group = "pricing")]</c>; case-sensitive.</param>
+    /// <param name="configure">Sets the settings the override changes; the others keep their values from the lower layers.</param>
+    /// <param name="metadata">Who made the override and why, and when it is removed automatically.</param>
+    /// <param name="cancellationToken">Cancels waiting for the methods' previous values to be invalidated.</param>
+    /// <exception cref="ArgumentException">No cached method is in <paramref name="group"/>, or the override doesn't fit one of its methods, as for <see cref="UpsertAsync"/>; no method changed.</exception>
+    /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't store a change within its <c>OperationTimeout</c>; the methods changed before that keep their new override.</exception>
+    ValueTask UpsertGroupAsync(string group, Action<CacheEntryOptions.Builder> configure,
+        RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Puts the same override on every cached method, replacing the override each of them had, for example to turn
+    /// caching off everywhere during an incident. <see cref="ClearAsync"/> removes them all again.
+    /// </summary>
+    /// <param name="configure">Sets the settings the override changes; the others keep their values from the lower layers.</param>
+    /// <param name="metadata">Who made the override and why, and when it is removed automatically.</param>
+    /// <param name="cancellationToken">Cancels waiting for the methods' previous values to be invalidated.</param>
+    /// <exception cref="ArgumentException">The override doesn't fit one of the methods, as for <see cref="UpsertAsync"/>; no method changed.</exception>
+    /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't store a change within its <c>OperationTimeout</c>; the methods changed before that keep their new override.</exception>
+    ValueTask UpsertAllAsync(Action<CacheEntryOptions.Builder> configure,
+        RuntimeOverrideMetadata? metadata = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes the override of every cached method in <paramref name="group"/>, whichever way it was made.
+    /// </summary>
+    /// <param name="group">The group name; case-sensitive.</param>
+    /// <param name="cancellationToken">Cancels waiting for the overrides' values to be invalidated.</param>
+    /// <exception cref="ArgumentException">No cached method is in <paramref name="group"/>.</exception>
+    /// <exception cref="InvalidOperationException">Every instance applies overrides and the distributed cache didn't answer within its <c>OperationTimeout</c>; the overrides removed before that stay removed.</exception>
+    ValueTask RemoveGroupAsync(string group, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes the override of <paramref name="methodId"/>, so the method goes back to its other settings, and
