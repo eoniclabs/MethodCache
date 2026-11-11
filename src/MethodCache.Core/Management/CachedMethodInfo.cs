@@ -16,6 +16,13 @@ public sealed record CachedMethodInfo
     /// </summary>
     public required CacheEntryOptions Options { get; init; }
     /// <summary>
+    /// The group the method is in, from <c>[Cache(Group = ...)]</c>, <c>.WithGroup(...)</c> in startup code or
+    /// <c>"Group"</c> in its appsettings entry, the highest of them winning; null when it is in none. The group's
+    /// settings from <c>mc.Group(...)</c> or <c>Groups</c> in appsettings apply to it, and
+    /// <c>IRuntimeCacheConfigurator.UpsertGroupAsync</c> reaches it.
+    /// </summary>
+    public string? Group { get; init; }
+    /// <summary>
     /// Where each setting with an effective value comes from, keyed by its <see cref="CacheEntryOptions"/> property name,
     /// such as <c>Duration</c> or <c>FailSafeTimeout</c>. A setting no source sets is left out: it has the library's
     /// default, which <see cref="Lifetime"/> shows.

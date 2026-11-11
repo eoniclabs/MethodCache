@@ -529,6 +529,8 @@ MethodCache.MethodCacheWeigher
 const MethodCache.MethodCacheWeigher.OtherValue = 64 -> long
 static MethodCache.MethodCacheWeigher.Bytes(long otherValue) -> System.Func<string!, object?, long>!
 static MethodCache.MethodCacheWeigher.Bytes(string! key, object? value) -> long
+MethodCache.CachedMethodInfo.Group.get -> string?
+MethodCache.CachedMethodInfo.Group.init -> void
 MethodCache.CachedMethodInfo.KeyParameters.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.CachedMethodInfo.KeyParameters.init -> void
 MethodCache.CachedMethodInfo.Lifetime.get -> MethodCache.CacheLifetimeInfo!

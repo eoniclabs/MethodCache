@@ -7,17 +7,42 @@ internal static class CachePolicyBuilderFactory
     /// <summary>
     /// Builds the policy for a cached method.
     /// </summary>
+    /// <exception cref="InvalidOperationException"><paramref name="options"/> sets WithName.</exception>
     public static CachePolicyBuilder ForMethod(string methodId, CacheEntryOptions options)
     {
+        RejectName($"mc.Method(...) for '{methodId}'", options);
         return FromOptions(options);
+    }
+
+    // A name labels an application's own call; a cached method is always reported by its method id
+    private static void RejectName(string target, CacheEntryOptions? options)
+    {
+        if (options?.Name != null)
+        {
+            throw new InvalidOperationException(
+                $"WithName is set in {target}, but WithName names an application's own GetOrCreateAsync call in metrics and logs, " +
+                "and a cached method is always named by its method id. Remove WithName there.");
+        }
     }
 
     /// <summary>
     /// Builds defaults that apply to many cached methods, described by <paramref name="target"/> in errors.
     /// </summary>
     /// <exception cref="InvalidOperationException"><paramref name="options"/> sets CacheWhen, DurationFor, SlidingFor or TagsFor.</exception>
-    public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options)
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="options"/> sets WithName, or ClearTags while <paramref name="clearsTags"/> is false: the defaults for
+    /// every method have no layer under them whose tags they could clear.
+    /// </exception>
+    public static CachePolicyBuilder ForDefaults(string target, CacheEntryOptions options, bool clearsTags = true)
     {
+        RejectName(target, options);
+        if (!clearsTags && options?.ClearsTags == true)
+        {
+            throw new InvalidOperationException(
+                $"ClearTags is set in {target}, but the defaults for every method are the lowest layer, so there are no tags under " +
+                "them to clear. Set ClearTags on a group with mc.Group(...) or on one method with mc.Method(...).");
+        }
+
         // A predicate checks one result type, so in defaults it would reject every other method's results
         if (options?.CacheWhen != null)
         {

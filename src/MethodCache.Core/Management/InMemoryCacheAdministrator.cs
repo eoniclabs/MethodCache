@@ -170,6 +170,7 @@ internal sealed class InMemoryCacheAdministrator : ICacheAdministrator
                 {
                     MethodId = result.MethodId,
                     Options = CacheEntryOptions.FromRuntime(runtime, preparedKey: false),
+                    Group = result.Policy.Metadata.GetValueOrDefault("group") is { Length: > 0 } group ? group : null,
                     SettingSources = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CacheSettingSource>(sources),
                     ReplacedSources = result.ReplacedSources,
                     Lifetime = Lifetime(runtime, storage.Distributed),

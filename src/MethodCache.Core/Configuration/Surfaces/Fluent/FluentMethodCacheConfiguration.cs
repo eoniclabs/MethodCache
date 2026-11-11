@@ -56,7 +56,7 @@ namespace MethodCache.Core.Configuration.Surfaces.Fluent
 
             if (BuildOptions(_defaultPolicyBuilders) is { } defaultOptions)
             {
-                drafts.Add(CachePolicyBuilderFactory.ForDefaults("mc.Defaults(...)", defaultOptions).Build(MethodIds.AllMethods));
+                drafts.Add(CachePolicyBuilderFactory.ForDefaults("mc.Defaults(...)", defaultOptions, clearsTags: false).Build(MethodIds.AllMethods));
             }
 
             foreach (var (groupName, groupConfiguration) in _groups)

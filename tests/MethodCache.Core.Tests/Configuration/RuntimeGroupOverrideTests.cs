@@ -170,6 +170,32 @@ public class RuntimeGroupOverrideTests
         Assert.Contains("RefreshAhead shorter than the Duration", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task GetMethods_ShowsEachMethodsGroup()
+    {
+        await using var provider = Build(out _);
+        var methods = provider.GetRequiredService<ICacheAdministrator>().GetMethods().ToDictionary(static m => m.MethodId);
+
+        Assert.Equal("pricing", methods[PriceId].Group);
+        Assert.Equal("pricing", methods[DiscountId].Group);
+        Assert.Null(methods[StockId].Group);
+    }
+
+    [Fact]
+    public async Task SettingSources_NameTheHighestSourceThatAddsTags()
+    {
+        await using var provider = Build(out _, configure: mc => mc.Defaults(o => o.AddTags("shop")));
+        var configurator = provider.GetRequiredService<IRuntimeCacheConfigurator>();
+        var admin = provider.GetRequiredService<ICacheAdministrator>();
+        Assert.Equal(CacheSettingSource.Code, admin.GetMethods().Single(m => m.MethodId == PriceId).SettingSources["Tags"]);
+
+        await configurator.UpsertAsync(PriceId, o => o.AddTags("incident"));
+
+        var price = admin.GetMethods().Single(m => m.MethodId == PriceId);
+        Assert.Equal(CacheSettingSource.RuntimeOverride, price.SettingSources["Tags"]);
+        Assert.Equal(["incident", "shop"], price.Options.Tags.Order(StringComparer.Ordinal));
+    }
+
     private static TimeSpan Parse(string value) => TimeSpan.FromMinutes(int.Parse(value.TrimEnd('m'), System.Globalization.CultureInfo.InvariantCulture));
 
     private static ServiceProvider Build(out Shop shop, TimeProvider? time = null, Action<MethodCacheBuilder>? configure = null)

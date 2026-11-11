@@ -473,6 +473,35 @@ public class ConfigFileRulesTests
         Assert.Equal(new[] { "order:{orderId}" }, Assert.Single(runtime.GetOverrides()).Options.Tags);
     }
 
+    [Fact]
+    public void ClearTagsInCodeDefaults_FailsStartup_AsInConfiguration()
+    {
+        using var provider = Services(mc => mc.Defaults(o => o.WithDuration(TimeSpan.FromMinutes(1)).ClearTags())).BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains("ClearTags is set in mc.Defaults(...)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("method")]
+    [InlineData("defaults")]
+    [InlineData("group")]
+    public void WithNameInCode_FailsStartup(string where)
+    {
+        using var provider = Services(mc =>
+        {
+            Action<CacheEntryOptions.Builder> named = o => o.WithName("orders").WithDuration(TimeSpan.FromMinutes(1));
+            if (where == "method") mc.Method((IRules r) => r.GetAsync(0)).Configure(named);
+            else if (where == "defaults") mc.Defaults(named);
+            else mc.Group("orders", named);
+        }).BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPolicyRegistry>().GetAllPolicies());
+
+        Assert.Contains("WithName is set in mc.", error.Message, StringComparison.Ordinal);
+    }
+
     private static InvalidOperationException LoadFails(Dictionary<string, string?> settings)
     {
         using var provider = Build(Configuration(settings));
