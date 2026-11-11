@@ -152,6 +152,9 @@ namespace MethodCache
         /// <summary>The policy of a generated call, whose key is already complete; null for options built by the application.</summary>
         internal CacheRuntimePolicy? Runtime { get; init; }
 
+        /// <summary>The memory cache's settings for these options, built on their first manual call and reused after.</summary>
+        internal object? ManualEntry;
+
         /// <summary>
         /// The name a manual call reports in metrics, traces and logs, set with <see cref="Builder.WithName"/>; null
         /// when the call has none. A cached method is named by its method id instead.

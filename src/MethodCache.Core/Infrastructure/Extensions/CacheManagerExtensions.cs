@@ -377,8 +377,7 @@ namespace MethodCache
             CacheEntryOptions options, CancellationToken cancellationToken)
         {
             var bypass = options.Enabled == false;
-            using var batch = bypass ? null : memory.BeginBulkLoad(keys.Select(key => MethodCacheKeys.VersionedKey(key, options.Version)),
-                CreateRuntimePolicy(FluentMethodName, options));
+            using var batch = bypass ? null : memory.BeginBulkLoad(keys.Select(key => MethodCacheKeys.VersionedKey(key, options.Version)), options);
             IReadOnlyDictionary<string, T>? produced = null;
             Exception? failure = null;
             using (var origin = memory.Telemetry?.BeginLoad("method", BulkMethodName, tags: options.Tags))

@@ -36,14 +36,10 @@ internal partial class InMemoryCacheManager
         CachePredicateCheck.EnsureMatches(options.TagsFor, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.SlidingFor, typeof(T), key);
         EnsureWithinMaxExpiration(options, nameof(options));
-        var policy = options.Runtime;
-        if (policy == null)
-        {
-            var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
-            policy = CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields);
-        }
-        return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, options.Runtime == null ? options.ManualName : policy.MethodId,
-            () => factory(state, cancellationToken).AsTask(), policy, cancellationToken));
+        if (options.Runtime is { } runtime)
+            return new ValueTask<T>(GetOrCreateFastAsync(cacheKey, runtime.MethodId, () => factory(state, cancellationToken).AsTask(), runtime, cancellationToken));
+        return new ValueTask<T>(GetOrCreatePublishedAsync(cacheKey, options.ManualName, () => factory(state, cancellationToken).AsTask(),
+            OptionsEntryPolicy(options), cancellationToken));
     }
 
     /// <summary>
@@ -63,8 +59,7 @@ internal partial class InMemoryCacheManager
         CachePredicateCheck.EnsureMatches(options.TagsFor, typeof(T), key);
         CachePredicateCheck.EnsureMatches(options.SlidingFor, typeof(T), key);
         EnsureWithinMaxExpiration(options, nameof(options));
-        var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
-        var policy = GetEntryPolicy(CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields));
+        var policy = OptionsEntryPolicy(options);
         var cacheKey = MethodCacheKeys.VersionedKey(key, options.Version);
         var shares = Shares(options.Distributed);
         if (!ShouldStore(value, policy, key, out var lifetime, out var entry))

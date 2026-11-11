@@ -1,3 +1,4 @@
+using MethodCache.Core.Configuration.Surfaces.Fluent;
 using MethodCache.Core.Runtime.Http;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -351,9 +352,9 @@ namespace MethodCache.Extensibility
         internal bool IsLoading(string key) => _flights.ContainsKey(key);
 
         /// <summary>Guards publication during a batch source read without reserving its keys against other writers.</summary>
-        internal BulkLoad BeginBulkLoad(IEnumerable<string> keys, CacheRuntimePolicy policy)
+        internal BulkLoad BeginBulkLoad(IEnumerable<string> keys, CacheEntryOptions options)
         {
-            var batch = new BulkLoad(this, keys, policy);
+            var batch = new BulkLoad(this, keys, options);
             _bulkLoads.TryAdd(batch, 0);
             return batch;
         }
@@ -381,9 +382,14 @@ namespace MethodCache.Extensibility
             ArgumentNullException.ThrowIfNull(policy);
             // A generated call is reported by its method id; a manual call by the name it was given, if any
             if (!string.Equals(policy.MethodId, CacheKeyLookup.MethodName, StringComparison.Ordinal)) methodName = policy.MethodId;
+            return GetOrCreatePublishedAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken);
+        }
+
+        private Task<T> GetOrCreatePublishedAsync<T>(string cacheKey, string methodName, Func<Task<T>> factory, EntryPolicy policy, CancellationToken cancellationToken)
+        {
             var bulk = CurrentBulkPublication.Value;
             var publication = bulk != null && ReferenceEquals(bulk.Owner, this) && bulk.Key == cacheKey ? bulk.Guard : null;
-            return GetOrCreateCoreAsync(cacheKey, methodName, factory, GetEntryPolicy(policy), cancellationToken, publication);
+            return GetOrCreateCoreAsync(cacheKey, methodName, factory, policy, cancellationToken, publication);
         }
 
         /// <inheritdoc />
@@ -1673,7 +1679,23 @@ namespace MethodCache.Extensibility
                 return last;
             }
 
+            // A copy with a call's arguments in its tags lives as long as its entry; keeping one in the table per entry
+            // would make every garbage collection walk them all, so it shares its method's settings instead.
+            if (policy.Template is { } template) return GetEntryPolicy(template).WithTags(policy.Tags);
             return t_lastEntryPolicy = PolicyCache.GetValue(policy, static p => EntryPolicy.From(p));
+        }
+
+        /// <summary>
+        /// The settings of an application's own call, built once for each <see cref="CacheEntryOptions"/> instance and
+        /// kept on it, so options used again share them and options built for one call add nothing that outlives it.
+        /// </summary>
+        private static EntryPolicy OptionsEntryPolicy(CacheEntryOptions options)
+        {
+            if (options.ManualEntry is EntryPolicy cached) return cached;
+            var draft = CachePolicyBuilderFactory.FromOptions(options).Build(CacheKeyLookup.MethodName);
+            var policy = EntryPolicy.From(CacheRuntimePolicy.FromPolicy(CacheKeyLookup.MethodName, draft.Policy, draft.Fields));
+            options.ManualEntry = policy;
+            return policy;
         }
 
         /// <summary>Converts to nanoseconds, saturating so that e.g. <see cref="TimeSpan.MaxValue"/> means "practically forever".</summary>
@@ -1783,6 +1805,23 @@ namespace MethodCache.Extensibility
             /// its <see cref="SlidingFor"/> gave it in place of <see cref="Sliding"/>. The policy itself when neither
             /// changes anything, so a result without them allocates nothing.
             /// </summary>
+            public EntryPolicy WithTags(IReadOnlyCollection<string> tags) => new()
+            {
+                Source = Source,
+                Generation = Generation,
+                Duration = Duration,
+                Sliding = Sliding,
+                RefreshWindow = RefreshWindow,
+                CacheWhen = CacheWhen,
+                DurationFor = DurationFor,
+                TagsFor = TagsFor,
+                SlidingFor = SlidingFor,
+                FailSafe = FailSafe,
+                FailSafeTimeout = FailSafeTimeout,
+                FailSafeRetryAfter = FailSafeRetryAfter,
+                Tags = tags.Count > 0 ? tags.Distinct(StringComparer.Ordinal).ToArray() : null
+            };
+
             public EntryPolicy ForResult(string[]? resultTags, long? sliding)
             {
                 var addsTags = resultTags is { Length: > 0 };
@@ -1943,13 +1982,13 @@ namespace MethodCache.Extensibility
             private readonly EntryPolicy _policy;
             private readonly Dictionary<string, Flight> _guards;
 
-            internal BulkLoad(InMemoryCacheManager owner, IEnumerable<string> keys, CacheRuntimePolicy policy)
+            internal BulkLoad(InMemoryCacheManager owner, IEnumerable<string> keys, CacheEntryOptions options)
             {
                 _owner = owner;
-                _policy = GetEntryPolicy(policy);
+                var policy = _policy = OptionsEntryPolicy(options);
                 var startedAt = owner._distributed?.Now ?? 0;
                 _guards = keys.Distinct(StringComparer.Ordinal).ToDictionary(static key => key,
-                    _ => new Flight(_policy.Tags) { SourceStartedAt = startedAt, Generation = policy.Generation, MethodId = policy.MethodId }, StringComparer.Ordinal);
+                    _ => new Flight(policy.Tags) { SourceStartedAt = startedAt, Generation = policy.Generation, MethodId = policy.Source!.MethodId }, StringComparer.Ordinal);
             }
 
             internal Task<T> GetOrCreateAsync<T>(ICacheManager manager, string key, Func<Task<T>> factory, CancellationToken cancellationToken)

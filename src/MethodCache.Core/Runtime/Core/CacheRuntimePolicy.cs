@@ -19,6 +19,11 @@ namespace MethodCache.Infrastructure
         internal PolicyGeneration? Generation { get; init; }
         internal string? Identity { get; init; }
         internal bool PrivateIdentity { get; init; }
+        /// <summary>
+        /// The method's own policy when this one is a copy with the call's arguments filled into its tags, so the
+        /// copy's entry shares the method's settings instead of resolving its own.
+        /// </summary>
+        internal CacheRuntimePolicy? Template { get; init; }
         private readonly IReadOnlyCollection<string> _tags = Array.Empty<string>();
         /// <summary>
         /// The unique identifier of the method this policy applies to.
