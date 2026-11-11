@@ -183,10 +183,20 @@ method succeeds, never when it throws.
 
 ### Configuration without redeploying
 
-Each setting comes from the highest layer that sets it: runtime overrides, then `appsettings.json`, then startup code,
-then the attribute. Global and group defaults, also ones set at runtime, fill in what a method leaves unset. Tags
-are combined instead: tags from the other layers are added to the attribute's, so `[CacheInvalidate]` keeps working,
-unless an override calls `ClearTags()`.
+A method's policy can come from four places, and each setting comes from the highest one that sets it:
+
+| Surface | Example | Changes while running |
+|---|---|---|
+| Runtime override (highest) | `configurator.UpsertGroupAsync("pricing", o => o.WithEnabled(false))`, or `PUT /methodcache/overrides` | Yes |
+| `appsettings.json` | `"Methods": { "[MyApp]MyApp.IUserService.GetUserAsync": { "Duration": "30m" } }` | Yes, on reload |
+| Startup code | `mc.Method((IUserService s) => s.GetUserAsync(Any<int>.Value)).Configure(o => ...)` | No |
+| `[Cache]` (lowest) | `[Cache(Duration = "10m", Group = "users")]` | No |
+
+They take the same settings by the same names. Startup code and `appsettings.json` also set defaults for every method
+and for a group, which fill in what a method leaves unset; a runtime override for a group or every method puts the
+same override on each method instead, since an override always wins. Tags are combined rather than replaced: tags
+from the other layers are added to the attribute's, so `[CacheInvalidate]` keeps working, unless a layer calls
+`ClearTags()`.
 
 <!-- snippet: readme-configuration -->
 ```cs
@@ -207,8 +217,10 @@ builder.Services.AddMethodCache(config => config
 ```
 
 Each key under `"Methods"` is a method id, as the admin method list shows it, and `"Groups"` sets defaults for a
-`[Cache(Group = ...)]` group. Edits to `appsettings.json` apply while the app runs. During an incident, `IRuntimeCacheConfigurator` changes a
-policy in code, and the change applies to the next call. See [Configuration](docs/features/configuration.md).
+`[Cache(Group = ...)]` group. Edits to `appsettings.json` apply while the app runs. During an incident,
+`IRuntimeCacheConfigurator` changes one method, a group or every method, and the change applies to the next call; with
+a backplane, on every instance. See [Configuration](docs/features/configuration.md), which also lists what each surface
+can set and why they differ.
 
 ### Distributed cache
 

@@ -69,6 +69,23 @@ namespace Docs.Configuration
             // end-snippet
         }
 
+        public static async Task RuntimeGroupOverrides(WebApplication app)
+        {
+            var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
+            // begin-snippet: configuration-runtime-groups
+            // Every method in the "user-data" group gets the same override
+            await configurator.UpsertGroupAsync("user-data", o => o.WithEnabled(false),
+                new RuntimeOverrideMetadata { Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(1) });
+
+            // Every cached method
+            await configurator.UpsertAllAsync(o => o.WithDuration(TimeSpan.FromMinutes(1)));
+
+            // Back: the group's overrides, then all of them
+            await configurator.RemoveGroupAsync("user-data");
+            await configurator.ClearAsync();
+            // end-snippet
+        }
+
         public static void Diagnostics(WebApplication app)
         {
             // begin-snippet: configuration-diagnostics

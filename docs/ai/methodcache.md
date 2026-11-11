@@ -106,7 +106,17 @@ builder.Services.AddMethodCache();                               // after your r
 - In `appsettings.json`, the `MethodCache` section holds `Defaults`, `FailSafe`, `Groups` (by group name) and
   `Methods` (by method id, such as `[MyApp]MyApp.IProductService.GetAsync`; not `Services`). Write durations as
   a number and a unit, `"5m"` (a bare number is rejected), `Tags` as a list, and only known setting names. Anything else, an
-  unknown method id and a method listed twice fail startup.
+  empty value, an unknown method id and a method listed twice fail startup. There is no `Notes` or `Metadata`
+  setting: write notes as a `//` comment next to the entry.
+- `WithName` belongs on one method or manual call; in `Defaults`, a group or `mc.Method(...).Configure(...)` it fails
+  startup. `ClearTags` in `Defaults` fails startup too; a group may clear the tags its methods get from `Defaults`.
+- To change caching while the app runs, use `IRuntimeCacheConfigurator`: `UpsertAsync(methodId, ...)` for one
+  method, `UpsertGroupAsync("pricing", ...)` for every method in a group, `UpsertAllAsync(...)` for every cached
+  method, and `RemoveAsync`, `RemoveGroupAsync` or `ClearAsync` to undo. An override that sets nothing, uses
+  `WithName`, has an `ExpiresAt` already passed, refreshes as soon as it is stored or doesn't fit one method of the
+  group throws `ArgumentException` and changes no method. Group names are case-sensitive.
+- Over HTTP, `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`; the `PUT` body is a JSON object
+  with the same settings as a `Methods` entry in `appsettings.json` plus one of `MethodId`, `Group` or `"All": true`.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
   gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own

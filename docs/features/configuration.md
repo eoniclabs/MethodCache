@@ -15,6 +15,38 @@ four layers. Change it in `appsettings.json` or at runtime, and the next call us
 When several layers configure the same method, they are merged setting by setting, and the highest layer that sets a
 setting wins. A runtime override of `Duration` leaves the attribute's `Tags` in place.
 
+## What each surface can set
+
+The four surfaces take the same settings, with the same names, and reject the same mistakes. Where they differ, the
+table says why.
+
+| Setting | `[Cache]` | Startup code | `appsettings.json` | Runtime override |
+|---|---|---|---|---|
+| `Duration`, `SlidingExpiration`, `RefreshAhead`, `FailSafe`, `FailSafeTimeout`, `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled`, `Distributed` | Yes | Yes | Yes | Yes |
+| `ClearTags` | No (1) | Yes | Yes | Yes |
+| `Group` (which group a method is in) | Yes | Yes | Yes | No (2) |
+| `CacheWhen`, `DurationFor`, `SlidingFor`, `TagsFor` | No (3) | Yes | No (3) | Only without a backplane (3) |
+| `InvalidatedElsewhere`, `InvalidatedManually` | Yes (4) | No | No | No |
+| For every method (`Defaults`) | No | Yes | Yes | Yes, `UpsertAllAsync` (5) |
+| For a group | No | Yes | Yes | Yes, `UpsertGroupAsync` (5) |
+| Over HTTP | No | No | No | Yes, `PUT /methodcache/overrides` ([Monitoring](monitoring.md#admin-endpoints)) |
+| Memory, distributed cache, telemetry | No | Yes (6) | No (6) | No |
+
+1. The attribute is the lowest layer, so it has no tags under it to clear. `mc.Defaults(...)` and `"Defaults"` can't
+   clear tags either, for the same reason, and say so at startup.
+2. A method's group decides which group settings it gets, which belongs to how the application is built rather than
+   to an incident.
+3. These are functions. An attribute and a JSON file can't hold one, and another instance can't run one, so an
+   override that every instance applies can't carry one.
+4. These only tell the analyzers at build time where a method is invalidated; they change no policy.
+5. A runtime override always wins, also over a method's own `[Cache]`. So the group and all-methods versions put the
+   same override on each method instead of filling in what methods leave unset, as `Defaults` does.
+6. These register services rather than set a policy. To read them from configuration, bind a section yourself:
+   `mc.Memory(o => builder.Configuration.GetSection("MethodCacheMemory").Bind(o))`.
+
+`WithName` names an application's own `GetOrCreateAsync` call in metrics and logs. A cached method is always named
+by its method id, so `WithName` in `mc.Method`, `mc.Defaults`, `mc.Group` or a runtime override is an error.
+
 Tags are the exception: they are combined, not replaced. Tags from startup code, `appsettings.json`, runtime overrides
 and the defaults are added to the `[Cache]` attribute's tags (without duplicates), so a `[CacheInvalidate]` that
 lists an attribute tag always reaches the entry. To replace the tags instead, call `ClearTags()` before `AddTags`
@@ -45,10 +77,14 @@ builder.Services.AddMethodCache(config =>
 <!-- endSnippet -->
 
 - `Defaults` applies to every cached method, also ones that only have `[Cache]`. `[Cache(Duration = "10m")]`
-  keeps its ten minutes while the defaults fill in what it leaves out.
+  keeps its ten minutes while the defaults fill in what it leaves out. `ClearTags()` in `Defaults` fails at startup,
+  since nothing under the defaults has tags.
 - A method joins a group with `[Cache(Group = "name")]`, `WithGroup("name")` in code, or `Group` in `appsettings.json`.
   Group names are case-sensitive. A group's defaults come from `config.Group(...)` and from `"Groups"` in
-  `appsettings.json`, which wins where both set a value; a method's own settings win over both.
+  `appsettings.json`, which wins where both set a value; a method's own settings win over both. `ClearTags()` in a
+  group drops the tags from `Defaults`, not the method's own tags, which are above it. A group that has settings but
+  no cached method in it, usually a typo or a difference in case, is logged as a warning at startup with the closest
+  group name in use.
 - `CacheWhen`, `DurationFor`, `SlidingFor` and `TagsFor` are set for one method only. In `Defaults` or a group they
   fail at startup ([Conditional caching](conditional-caching.md),
   [A duration from the result](expiration.md#a-duration-from-the-result),
@@ -89,9 +125,9 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
         "Duration": "1h",
         "SlidingExpiration": "10m",
         "RefreshAhead": "5m",
+        // Profiles change rarely
         "Tags": ["users"],
-        "Version": 1,
-        "Notes": "Profiles change rarely"
+        "Version": 1
       },
       "[MyApp]MyApp.IAccountService.GetBalanceAsync": { "FailSafe": "off" }
     }
@@ -110,10 +146,10 @@ builder.Services.AddMethodCache(methodCache => methodCache.FromConfiguration(bui
 - Settings: `Duration`, `SlidingExpiration`, `RefreshAhead` and `FailSafe` (each but `Duration` a time span or `"off"`), `FailSafeTimeout`,
   `FailSafeRetryAfter`, `Tags`, `Version`, `Enabled` and `Distributed`. A group under `Groups` and a method under
   `Methods` can also set `ClearTags` (`true` or `false`): `true` makes their `Tags` replace the lower layers' instead of
-  adding to them. Only a method can set `Group`, `Metadata` and `Notes`; in `Defaults` or a group they are an error.
-  `Metadata` and `Notes` are recorded for diagnostics and never change caching; to put a method in a group, use
-  `Group`. Names are case-insensitive; any other name is an error, so a misspelled `"Durration"` is reported
-  instead of ignored. The same goes for the section itself: it holds only `Defaults`, `FailSafe`, `Groups` and
+  adding to them. Only a method can set `Group`; in `Defaults` or a group it is an error. Keep notes about a method
+  in a `//` comment next to its entry: `Notes` and `Metadata` are errors. Names are case-insensitive; any other name
+  is an error, so a misspelled `"Durration"` is reported instead of ignored. A setting written without a value, such
+  as `"Enabled": ""`, or an empty tag is an error too, rather than read as unset. The same goes for the section itself: it holds only `Defaults`, `FailSafe`, `Groups` and
   `Methods`. A leftover `Services` section from 1.0.0-rc.1 is reported as an unknown setting.
 - Tag templates such as `"order:{orderId}"` are checked against the parameters of every method they reach, as for
   `[Cache]` ([MC0010](../user-guide/DIAGNOSTICS.md#mc0010)): a template that names a parameter a method doesn't have
@@ -183,13 +219,44 @@ await configurator.ClearAsync();
 | Method | What it does |
 |--------|--------------|
 | `UpsertAsync` | Adds or replaces the override for one method, by expression (`UpsertAsync<IOrdersService>(s => s.GetAsync(0), ...)`) or method id |
-| `RemoveAsync` / `ClearAsync` | Removes one override, or all of them |
+| `UpsertGroupAsync` | Puts the same override on every cached method in a group |
+| `UpsertAllAsync` | Puts the same override on every cached method |
+| `RemoveAsync` / `RemoveGroupAsync` / `ClearAsync` | Removes one method's override, the overrides of a group's methods, or all of them |
 | `GetOverrides()` | Returns the active overrides, ordered by method id, with their options and audit metadata |
 
-The async operations return `ValueTask` and take cancellation last. A method id or expression that reaches no cached
-method, or a method that returns nothing, throws an `ArgumentException` naming the closest cached id before
-anything is stored. A tag template that doesn't fit the method throws too.
-- Overrides change one method each. Group and global defaults come from startup code or `appsettings.json`.
+To change a whole group or every method at once, for example to turn caching off for the `user-data` group during an
+incident:
+
+<!-- snippet: configuration-runtime-groups -->
+```cs
+// Every method in the "user-data" group gets the same override
+await configurator.UpsertGroupAsync("user-data", o => o.WithEnabled(false),
+    new RuntimeOverrideMetadata { Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(1) });
+
+// Every cached method
+await configurator.UpsertAllAsync(o => o.WithDuration(TimeSpan.FromMinutes(1)));
+
+// Back: the group's overrides, then all of them
+await configurator.RemoveGroupAsync("user-data");
+await configurator.ClearAsync();
+```
+<!-- endSnippet -->
+
+The async operations return `ValueTask` and take cancellation last. These throw an `ArgumentException` before
+anything is stored:
+
+- a method id or expression that reaches no cached method, or a method that returns nothing (the message names the
+  closest cached id), or a group no cached method is in (the message names the closest group);
+- a tag template that doesn't fit a method the override reaches;
+- an override that sets nothing, or sets `WithName`;
+- an `ExpiresAt` that has already passed;
+- a `RefreshAhead` or `Duration` that would leave a method refreshing its entries as soon as they are stored, such as
+  a `RefreshAhead` of 20 minutes on a method whose `[Cache]` keeps entries for 10.
+
+The group and all-methods versions check every method first, so a mistake for one method changes none of them.
+- `UpsertGroupAsync` and `UpsertAllAsync` give each method an override of its own, replacing the one it had.
+  `GetOverrides()` lists them per method, `RemoveAsync` removes one of them, and a method that joins the group later
+  doesn't get it. Groups are case-sensitive, as everywhere.
 - Tags from an override are added to the method's tags unless the override calls `ClearTags()`.
   `WithEnabled(false)` turns caching off for the method; `WithDistributed(false)` keeps it in memory only.
 - An override that changes how the method caches drops the entries cached under the old settings at once; calls
@@ -211,6 +278,8 @@ anything is stored. A tag template that doesn't fit the method throws too.
   ([Distributed cache reference](../reference/distributed.md#policies-and-shared-entries)).
 - `RuntimeOverrideMetadata` keeps owner, reason and ticket for the audit trail, and `ExpiresAt` removes the override
   when it passes.
+- `MethodCache.AspNetCore` sets, lists and removes overrides over HTTP with a body written like a method's entry in
+  `appsettings.json` ([Monitoring](monitoring.md#admin-endpoints)).
 - A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
   its own configuration; MethodCache doesn't distribute files.
 
@@ -236,7 +305,9 @@ foreach (var report in diagnostics.GetMethods())
 value is a `CacheSettingSource`: `Attribute`, `Code`, `Configuration` or `RuntimeOverride`. A setting no layer sets
 is left out. `ReplacedSources` lists a setting that two of the method's own sources set, with the lower ones the
 higher one replaced: `Duration` with `[Attribute]` when startup code sets a `DurationFor` for a method whose `[Cache]`
-sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
+sets a `Duration`. A `Defaults` or group setting the method replaces isn't listed, since that is what defaults are for.
+Tags add up across layers, so `SettingSources["Tags"]` names the highest layer that adds tags. `Group` is the group
+the method is in, or null. The admin endpoint `GET /methodcache/methods` shows the same, with the sources as strings
 ([Monitoring](monitoring.md)).
 
 ### What applies on this instance
@@ -280,7 +351,7 @@ foreach (var method in diagnostics.GetMethods())
 |---------|------|---------|
 | `Duration` | A positive time span, and with the built-in memory cache at most `MethodCacheMemoryOptions.MaxExpiration` (7 days by default) | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException`. JSON: at startup. Longer than `MaxExpiration`: at startup from `[Cache]`, code and JSON, an `ArgumentException` from a runtime override, and an `ArgumentOutOfRangeException` from a manual call |
 | `SlidingExpiration`, `RefreshAhead`, `FailSafe` | A positive time span or `"off"`; in code, `TimeSpan.Zero` turns it off. A `SlidingExpiration` is at most `MaxExpiration`, like `Duration` | `[Cache]`: at build time ([MC0004](../user-guide/DIAGNOSTICS.md#mc0004)). Code: `ArgumentOutOfRangeException` for a negative value. JSON: at startup. A window longer than `MaxExpiration` fails where a longer `Duration` does |
-| `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](../user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup |
+| `RefreshAhead` | Shorter than `Duration` and `SlidingExpiration` | `[Cache]`: at build time ([MC0023](../user-guide/DIAGNOSTICS.md#mc0023)). Code: `InvalidOperationException` when the options are built. JSON: at startup. Runtime override: `ArgumentException`. When the two come from different layers, such as `RefreshAhead` in code and `Duration` in `Defaults`, the host logs a warning at startup and the cache refreshes halfway through the duration |
 | `FailSafeTimeout`, `FailSafeRetryAfter` | A positive time span | `[Cache]`: at build time. Code (`WithFailSafeTimeout`, `WithFailSafeRetryAfter`): `ArgumentOutOfRangeException`. JSON: at startup |
 | `Tags` | Not empty or whitespace; templates name parameters of the method | `[Cache]`: at build time. Code: `AddTags` throws an `ArgumentException` for an empty tag; templates at startup. JSON: at startup |
 | `Version` | Zero or more | Code: `ArgumentOutOfRangeException`. JSON: at startup. On `[Cache]`, a negative explicit value is MC0021; omission inherits |

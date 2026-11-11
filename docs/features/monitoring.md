@@ -98,11 +98,14 @@ app.MapHealthChecks("/health");
 ```
 <!-- endSnippet -->
 
-The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. Policies are read-only;
-use [runtime overrides](configuration.md#runtime-overrides) to change them.
+The [package README](../../src/MethodCache.AspNetCore/README.md#endpoints) lists the endpoints. `GET methods` shows each
+method's effective policy and group, and `GET`, `PUT` and `DELETE overrides` list, set and remove
+[runtime overrides](configuration.md#runtime-overrides) for a method, a group or every method, with a body written like
+a method's entry in `appsettings.json`
+([Runtime overrides over HTTP](../../src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
 
-To record who removes entries, pass `audit`. It gets the user, what the request removes (`Kind` and `Targets`) and the
-time, before the change; when it throws, nothing changes
+To record who changes the cache, pass `audit`. It gets the user, what the request removes or overrides (`Kind` and
+`Targets`) and the time, before the change; when it throws, nothing changes
 ([Audit](../../src/MethodCache.AspNetCore/README.md#audit)):
 
 <!-- snippet: aspnetcore-audit -->
