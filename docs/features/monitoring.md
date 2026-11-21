@@ -105,7 +105,8 @@ a method's entry in `appsettings.json`
 ([Runtime overrides over HTTP](../../src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
 
 To record who changes the cache, pass `audit`. It gets the user, what the request removes or overrides (`Kind` and
-`Targets`) and the time, before the change; when it throws, nothing changes
+`Targets`), the time and, for an override, who set it and why (`OverrideMetadata`), before the change; when it
+throws, nothing changes
 ([Audit](../../src/MethodCache.AspNetCore/README.md#audit)):
 
 <!-- snippet: aspnetcore-audit -->

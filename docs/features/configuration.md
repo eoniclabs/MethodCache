@@ -283,6 +283,31 @@ The group and all-methods versions check every method first, so a mistake for on
 - A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
   its own configuration; MethodCache doesn't distribute files.
 
+### Switching all caching off and on again
+
+During an incident, or to rule the cache out while you look for a bug, switch caching off for every method and back on
+when you are done:
+
+<!-- snippet: configuration-switch-off -->
+```cs
+// During an incident: every cached method calls its implementation, on every instance
+await configurator.UpsertAllAsync(o => o.WithEnabled(false),
+    new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(2) });
+
+// After it: every override goes, and each method has its other settings again
+await configurator.ClearAsync();
+```
+<!-- endSnippet -->
+
+- While it is off, every call runs the method, and the entries cached before are dropped, so the first calls after
+  `ClearAsync` load again.
+- `UpsertAllAsync` replaces the overrides the methods had, so `ClearAsync` afterwards loses nothing that was still
+  active. To keep an override for one method, set it again after `ClearAsync`.
+- `ExpiresAt` switches caching back on by itself if nobody does.
+- Over HTTP: `PUT overrides` with `{ "All": true, "Enabled": false, "Reason": "..." }`, then
+  `DELETE overrides?all=true` ([Runtime overrides over HTTP](../../src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
+- To switch off only some methods, put them in a [group](#defaults-and-groups) and use `UpsertGroupAsync` and `RemoveGroupAsync`.
+
 ## Seeing the effective policy
 
 `ICacheAdministrator.GetMethods()` shows each method's effective options, where each setting comes from, and whether

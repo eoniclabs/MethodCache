@@ -114,7 +114,15 @@ app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 | `Targets` | The stored key, the tags or the method id; empty for `Clear`. For an override: the method id, `group:<name>`, or `*` for every method |
 | `User` | The signed-in user, `HttpContext.User` |
 | `Time` | When the request arrived, from the app's `TimeProvider` |
+| `OverrideMetadata` | For `UpsertOverride`: the `Owner`, `Reason`, `Ticket` and `ExpiresAt` from the body, or `null` when it gives none. `null` for the other kinds |
 | `HttpContext` | The request, for anything else you record, such as the client's address or the trace id |
+
+The record says who asked for what; it holds no before and after. The function runs before the change, so to record
+the overrides a change replaces, read them there with `IRuntimeCacheConfigurator.GetOverrides()` from
+`action.HttpContext.RequestServices`. `GET overrides` shows the state after it.
+
+To test an audit function, build the action yourself:
+`new MethodCacheAdminAction(MethodCacheAdminActionKind.UpsertOverride, ["group:pricing"], new DefaultHttpContext { User = admin }, now, new RuntimeOverrideMetadata { Reason = "Incident 4211" })`.
 
 When the function throws, the request fails and nothing changes, so no change goes unrecorded. Reads and rejected
 requests (400, 401, 403, 415) aren't passed to it. A change answered with 503 is recorded, since it has removed the

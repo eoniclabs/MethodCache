@@ -363,7 +363,7 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 `IRuntimeCacheConfigurator.UpsertGroupAsync("pricing", o => o.WithEnabled(false))`, or `UpsertAllAsync(...)` for every
 cached method. Each method gets the same override, which wins over its `[Cache]`; pass an `ExpiresAt` to end it by
 itself, and `RemoveGroupAsync` or `ClearAsync` to end it now. An unknown group throws and names the closest one.
-([Runtime overrides](features/configuration.md#runtime-overrides))
+([Switching all caching off and on again](features/configuration.md#switching-all-caching-off-and-on-again))
 
 **Can I change a policy over HTTP?**
 Yes, with `MapMethodCacheAdmin` from `MethodCache.AspNetCore`: `PUT /methodcache/overrides` with a body written like a
@@ -456,8 +456,15 @@ show the same. ([Monitoring](features/monitoring.md))
 
 **How do I log who cleared or invalidated the cache through the admin endpoints?**
 Pass `audit` to `MapMethodCacheAdmin`: `app.MapMethodCacheAdmin("CacheAdmins", audit: (action, ct) => ...)`. It runs
-before each change with `action.User`, `action.Kind`, `action.Targets` and `action.Time`; when it throws, the request
-fails and nothing changes. ([ASP.NET Core](../src/MethodCache.AspNetCore/README.md#audit))
+before each change with `action.User`, `action.Kind`, `action.Targets`, `action.Time` and, for an override, the
+`Owner`, `Reason`, `Ticket` and `ExpiresAt` in `action.OverrideMetadata`; when it throws, the request fails and nothing
+changes. It holds no before and after: read `IRuntimeCacheConfigurator.GetOverrides()` inside the function for the
+state before. ([ASP.NET Core](../src/MethodCache.AspNetCore/README.md#audit))
+
+**How do I test my audit function?**
+Build the action yourself with its public constructor:
+`new MethodCacheAdminAction(MethodCacheAdminActionKind.Clear, [], new DefaultHttpContext { User = admin }, now)`, and
+pass it with a `CancellationToken`. ([ASP.NET Core](../src/MethodCache.AspNetCore/README.md#audit))
 
 **Why does `POST clear` need a `{}` body?**
 The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
@@ -534,6 +541,11 @@ the EF Core mapping and the invalidations in the projects the test project refer
 `InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it,
 and one marked `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
 ([Every tag has an invalidation](features/testing.md#every-tag-has-an-invalidation))
+
+**How do I fail a test on the warnings MethodCache logs at startup?**
+`Assert.Empty(CachedServices.Warnings(provider))` from `MethodCache.Testing` returns the same messages: a `RefreshAhead`
+or sliding window not shorter than its `Duration`, and a group with settings but no cached method.
+([Settings that conflict](features/testing.md#settings-that-conflict))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](features/testing.md#time))

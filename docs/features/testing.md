@@ -205,6 +205,25 @@ minimal API endpoint that takes a cached interface as a parameter fails the host
 registered ("Body was inferred but the method does not allow inferred body parameters"), so a test that starts the host
 fails with that error before it reaches `Registered`.
 
+## Settings that conflict
+
+Some settings are allowed on their own but conflict with a setting from another place, and the host logs a warning
+when it starts instead of failing: a `RefreshAhead` or sliding window not shorter than the `Duration` it ends up with,
+such as `RefreshAhead` on the method and `Duration` in `Defaults`, or a group with settings that no cached method is
+in, usually a misspelt name. `CachedServices.Warnings` returns the same warnings, so a test fails on them instead of a
+log line nobody reads:
+
+<!-- snippet: testing-cached-services-warnings -->
+```cs
+// No setting conflicts with another, so the host logs no MethodCache warning when it starts
+Assert.Empty(CachedServices.Warnings(provider));
+```
+<!-- endSnippet -->
+
+Each warning is the message the host logs, with the method id or group filled in. Build the provider with the
+application's configuration, `appsettings.json` too, since the conflicts are between layers. It throws
+`InvalidOperationException` when the provider has no `AddMethodCache`.
+
 ## Every tag has an invalidation
 
 A tag that nothing invalidates keeps its entries until they expire. `TagCoverage.Uninvalidated` lists the tags of the

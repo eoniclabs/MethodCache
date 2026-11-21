@@ -114,9 +114,13 @@ builder.Services.AddMethodCache();                               // after your r
   method, `UpsertGroupAsync("pricing", ...)` for every method in a group, `UpsertAllAsync(...)` for every cached
   method, and `RemoveAsync`, `RemoveGroupAsync` or `ClearAsync` to undo. An override that sets nothing, uses
   `WithName`, has an `ExpiresAt` already passed, refreshes as soon as it is stored or doesn't fit one method of the
-  group throws `ArgumentException` and changes no method. Group names are case-sensitive.
+  group throws `ArgumentException` and changes no method. Group names are case-sensitive. To switch all caching off
+  during an incident: `UpsertAllAsync(o => o.WithEnabled(false), new RuntimeOverrideMetadata { Reason = "...",
+  ExpiresAt = ... })`, and `ClearAsync()` to switch it on again.
 - Over HTTP, `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`; the `PUT` body is a JSON object
   with the same settings as a `Methods` entry in `appsettings.json` plus one of `MethodId`, `Group` or `"All": true`.
+  Its `audit` function gets a `MethodCacheAdminAction` with `User`, `Kind`, `Targets`, `Time` and, for an override,
+  `OverrideMetadata`; tests build one with `new MethodCacheAdminAction(kind, targets, httpContext, time)`.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
   gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own
@@ -142,7 +146,9 @@ builder.Services.AddMethodCache();                               // after your r
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
   service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
   list and catch one that is never registered; `CachedServices.Declared(typeof(IOrders).Assembly)` gives that list
-  from the project's own interfaces.
+  from the project's own interfaces. `Assert.Empty(CachedServices.Warnings(provider))` fails on the warnings the
+  host logs at startup, such as a `RefreshAhead` not shorter than the `Duration` from another layer or a group with
+  settings but no cached method.
 - `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
   `WithDuration` it lives five minutes.
 - Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
