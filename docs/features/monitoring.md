@@ -114,8 +114,9 @@ throws, nothing changes
 var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
 app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 {
-    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
-        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    // OverrideMetadata is the Owner, Reason, Ticket and ExpiresAt of an override; null for the other kinds
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}, reason {Reason}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time, action.OverrideMetadata?.Reason);
     return ValueTask.CompletedTask;
 });
 ```
