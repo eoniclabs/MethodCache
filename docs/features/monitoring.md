@@ -105,7 +105,8 @@ a method's entry in `appsettings.json`
 ([Runtime overrides over HTTP](../../src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
 
 To record who changes the cache, pass `audit`. It gets the user, what the request removes or overrides (`Kind` and
-`Targets`) and the time, before the change; when it throws, nothing changes
+`Targets`), the time and, for an override, who set it and why (`OverrideMetadata`), before the change; when it
+throws, nothing changes
 ([Audit](../../src/MethodCache.AspNetCore/README.md#audit)):
 
 <!-- snippet: aspnetcore-audit -->
@@ -113,8 +114,9 @@ To record who changes the cache, pass `audit`. It gets the user, what the reques
 var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
 app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 {
-    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
-        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    // OverrideMetadata is the Owner, Reason, Ticket and ExpiresAt of an override; null for the other kinds
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}, reason {Reason}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time, action.OverrideMetadata?.Reason);
     return ValueTask.CompletedTask;
 });
 ```

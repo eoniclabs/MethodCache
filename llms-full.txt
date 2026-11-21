@@ -119,9 +119,13 @@ builder.Services.AddMethodCache();                               // after your r
   method, `UpsertGroupAsync("pricing", ...)` for every method in a group, `UpsertAllAsync(...)` for every cached
   method, and `RemoveAsync`, `RemoveGroupAsync` or `ClearAsync` to undo. An override that sets nothing, uses
   `WithName`, has an `ExpiresAt` already passed, refreshes as soon as it is stored or doesn't fit one method of the
-  group throws `ArgumentException` and changes no method. Group names are case-sensitive.
+  group throws `ArgumentException` and changes no method. Group names are case-sensitive. To switch all caching off
+  during an incident: `UpsertAllAsync(o => o.WithEnabled(false), new RuntimeOverrideMetadata { Reason = "...",
+  ExpiresAt = ... })`, and `ClearAsync()` to switch it on again.
 - Over HTTP, `MapMethodCacheAdmin` adds `GET`, `PUT` and `DELETE` on `/overrides`; the `PUT` body is a JSON object
   with the same settings as a `Methods` entry in `appsettings.json` plus one of `MethodId`, `Group` or `"All": true`.
+  Its `audit` function gets a `MethodCacheAdminAction` with `User`, `Kind`, `Targets`, `Time` and, for an override,
+  `OverrideMetadata`; tests build one with `new MethodCacheAdminAction(kind, targets, httpContext, time)`.
 - `CacheWhen` is set for one method in code (`mc.Method(...).CacheWhen(...)`); in `Defaults` or a group it fails
   startup, and so does a `CacheWhen<T>` for a type the method can't return. The same goes for `DurationFor`, which
   gives each result its own duration (zero or less doesn't cache it), `SlidingFor`, which gives each result its own
@@ -147,7 +151,9 @@ builder.Services.AddMethodCache();                               // after your r
   registrations only, without resolving. Both, and `TagCoverage.Uninvalidated`, throw when the provider has no cached
   service. `CachedServices.Registered(provider)` lists the registered cached services, to compare with the expected
   list and catch one that is never registered; `CachedServices.Declared(typeof(IOrders).Assembly)` gives that list
-  from the project's own interfaces.
+  from the project's own interfaces. `Assert.Empty(CachedServices.Warnings(provider))` fails on the warnings the
+  host logs at startup, such as a `RefreshAhead` not shorter than the `Duration` from another layer or a group with
+  settings but no cached method.
 - `Defaults` and groups apply to cached methods only. A `GetOrCreateAsync` call has only its own options: without
   `WithDuration` it lives five minutes.
 - Use one version of every MethodCache package; NuGet warns with NU1608 when they differ.
@@ -252,11 +258,8 @@ https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml,
 
 # Getting started
 
-MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
-the add-on packages):
-
 ```bash
-dotnet add package MethodCache --prerelease
+dotnet add package MethodCache
 ```
 
 The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
@@ -825,7 +828,7 @@ Such an override can't set `CacheWhen`, `DurationFor`, `TagsFor` or `SlidingFor`
 `IRuntimeCacheConfigurator.UpsertGroupAsync("pricing", o => o.WithEnabled(false))`, or `UpsertAllAsync(...)` for every
 cached method. Each method gets the same override, which wins over its `[Cache]`; pass an `ExpiresAt` to end it by
 itself, and `RemoveGroupAsync` or `ClearAsync` to end it now. An unknown group throws and names the closest one.
-([Runtime overrides](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#runtime-overrides))
+([Switching all caching off and on again](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#switching-all-caching-off-and-on-again))
 
 **Can I change a policy over HTTP?**
 Yes, with `MapMethodCacheAdmin` from `MethodCache.AspNetCore`: `PUT /methodcache/overrides` with a body written like a
@@ -918,8 +921,15 @@ show the same. ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/
 
 **How do I log who cleared or invalidated the cache through the admin endpoints?**
 Pass `audit` to `MapMethodCacheAdmin`: `app.MapMethodCacheAdmin("CacheAdmins", audit: (action, ct) => ...)`. It runs
-before each change with `action.User`, `action.Kind`, `action.Targets` and `action.Time`; when it throws, the request
-fails and nothing changes. ([ASP.NET Core](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit))
+before each change with `action.User`, `action.Kind`, `action.Targets`, `action.Time` and, for an override, the
+`Owner`, `Reason`, `Ticket` and `ExpiresAt` in `action.OverrideMetadata`; when it throws, the request fails and nothing
+changes. It holds no before and after: read `IRuntimeCacheConfigurator.GetOverrides()` inside the function for the
+state before. ([ASP.NET Core](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit))
+
+**How do I test my audit function?**
+Build the action yourself with its public constructor:
+`new MethodCacheAdminAction(MethodCacheAdminActionKind.Clear, [], new DefaultHttpContext { User = admin }, now)`, and
+pass it with a `CancellationToken`. ([ASP.NET Core](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit))
 
 **Why does `POST clear` need a `{}` body?**
 The admin `POST` endpoints take only JSON, so a page on another site can't make a signed-in admin's browser call
@@ -996,6 +1006,11 @@ the EF Core mapping and the invalidations in the projects the test project refer
 `InvalidateTagAsync` calls. A tag marked `InvalidatedElsewhere` counts only when one of those projects invalidates it,
 and one marked `InvalidatedManually` always counts. Pass tags invalidated outside the solution in `alsoInvalidatedBy`. Analyzer MC0028 checks one project while you build.
 ([Every tag has an invalidation](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#every-tag-has-an-invalidation))
+
+**How do I fail a test on the warnings MethodCache logs at startup?**
+`Assert.Empty(CachedServices.Warnings(provider))` from `MethodCache.Testing` returns the same messages: a `RefreshAhead`
+or sliding window not shorter than its `Duration`, and a group with settings but no cached method.
+([Settings that conflict](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#settings-that-conflict))
 
 **How do I test expiration without waiting?**
 Register a fake `TimeProvider`; `AddMethodCacheTesting()` registers `FakeTimeProvider`. ([Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#time))
@@ -2635,6 +2650,29 @@ The group and all-methods versions check every method first, so a mistake for on
 - A changed `appsettings.json` applies on this instance before the reload notification returns. Each instance reloads
   its own configuration; MethodCache doesn't distribute files.
 
+### Switching all caching off and on again
+
+During an incident, or to rule the cache out while you look for a bug, switch caching off for every method and back on
+when you are done:
+
+```cs
+// During an incident: every cached method calls its implementation, on every instance
+await configurator.UpsertAllAsync(o => o.WithEnabled(false),
+    new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(2) });
+
+// After it: every override goes, and each method has its other settings again
+await configurator.ClearAsync();
+```
+
+- While it is off, every call runs the method, and the entries cached before are dropped, so the first calls after
+  `ClearAsync` load again.
+- `UpsertAllAsync` replaces the overrides the methods had, so `ClearAsync` afterwards loses nothing that was still
+  active. To keep an override for one method, set it again after `ClearAsync`.
+- `ExpiresAt` switches caching back on by itself if nobody does.
+- Over HTTP: `PUT overrides` with `{ "All": true, "Enabled": false, "Reason": "..." }`, then
+  `DELETE overrides?all=true` ([Runtime overrides over HTTP](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
+- To switch off only some methods, put them in a [group](#defaults-and-groups) and use `UpsertGroupAsync` and `RemoveGroupAsync`.
+
 ## Seeing the effective policy
 
 `ICacheAdministrator.GetMethods()` shows each method's effective options, where each setting comes from, and whether
@@ -3611,15 +3649,17 @@ a method's entry in `appsettings.json`
 ([Runtime overrides over HTTP](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#runtime-overrides-over-http)).
 
 To record who changes the cache, pass `audit`. It gets the user, what the request removes or overrides (`Kind` and
-`Targets`) and the time, before the change; when it throws, nothing changes
+`Targets`), the time and, for an override, who set it and why (`OverrideMetadata`), before the change; when it
+throws, nothing changes
 ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)):
 
 ```cs
 var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
 app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 {
-    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
-        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    // OverrideMetadata is the Owner, Reason, Ticket and ExpiresAt of an override; null for the other kinds
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}, reason {Reason}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time, action.OverrideMetadata?.Reason);
     return ValueTask.CompletedTask;
 });
 ```
@@ -4185,6 +4225,23 @@ service, keyed ones too, so a missing dependency fails the test, and it works on
 minimal API endpoint that takes a cached interface as a parameter fails the host first when that interface isn't
 registered ("Body was inferred but the method does not allow inferred body parameters"), so a test that starts the host
 fails with that error before it reaches `Registered`.
+
+## Settings that conflict
+
+Some settings are allowed on their own but conflict with a setting from another place, and the host logs a warning
+when it starts instead of failing: a `RefreshAhead` or sliding window not shorter than the `Duration` it ends up with,
+such as `RefreshAhead` on the method and `Duration` in `Defaults`, or a group with settings that no cached method is
+in, usually a misspelt name. `CachedServices.Warnings` returns the same warnings, so a test fails on them instead of a
+log line nobody reads:
+
+```cs
+// No setting conflicts with another, so the host logs no MethodCache warning when it starts
+Assert.Empty(CachedServices.Warnings(provider));
+```
+
+Each warning is the message the host logs, with the method id or group filled in. Build the provider with the
+application's configuration, `appsettings.json` too, since the conflicts are between layers. It throws
+`InvalidOperationException` when the provider has no `AddMethodCache`.
 
 ## Every tag has an invalidation
 
@@ -4961,7 +5018,7 @@ The rules that came after that version are then off. Turn one of them on in `.ed
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
-Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in the release candidates. Set the level
+Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in 1.0.0. Set the level
 only when warnings are errors. Without that, leave it unset, so an upgrade shows its new warnings.
 
 ## MC0001
@@ -6430,8 +6487,9 @@ Pass `audit` to record who changes the cache. It runs for `DELETE entry`, `inval
 var audit = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("CacheAdminAudit");
 app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 {
-    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}",
-        action.User.Identity?.Name, action.Kind, action.Targets, action.Time);
+    // OverrideMetadata is the Owner, Reason, Ticket and ExpiresAt of an override; null for the other kinds
+    audit.LogInformation("{User} ran {Action} on {Targets} at {Time}, reason {Reason}",
+        action.User.Identity?.Name, action.Kind, action.Targets, action.Time, action.OverrideMetadata?.Reason);
     return ValueTask.CompletedTask;
 });
 ```
@@ -6444,7 +6502,15 @@ app.MapMethodCacheAdmin("CacheAdmins", audit: (action, cancellationToken) =>
 | `Targets` | The stored key, the tags or the method id; empty for `Clear`. For an override: the method id, `group:<name>`, or `*` for every method |
 | `User` | The signed-in user, `HttpContext.User` |
 | `Time` | When the request arrived, from the app's `TimeProvider` |
+| `OverrideMetadata` | For `UpsertOverride`: the `Owner`, `Reason`, `Ticket` and `ExpiresAt` from the body, or `null` when it gives none. `null` for the other kinds |
 | `HttpContext` | The request, for anything else you record, such as the client's address or the trace id |
+
+The record says who asked for what; it holds no before and after. The function runs before the change, so to record
+the overrides a change replaces, read them there with `IRuntimeCacheConfigurator.GetOverrides()` from
+`action.HttpContext.RequestServices`. `GET overrides` shows the state after it.
+
+To test an audit function, build the action yourself:
+`new MethodCacheAdminAction(MethodCacheAdminActionKind.UpsertOverride, ["group:pricing"], new DefaultHttpContext { User = admin }, now, new RuntimeOverrideMetadata { Reason = "Incident 4211" })`.
 
 When the function throws, the request fails and nothing changes, so no change goes unrecorded. Reads and rejected
 requests (400, 401, 403, 415) aren't passed to it. A change answered with 503 is recorded, since it has removed the
@@ -7019,6 +7085,37 @@ See [Testing](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/t
 Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
+
+## 1.0.0 (2026-11-21)
+
+The first stable release. From this release a change that breaks the public API needs a new major version.
+
+### Upgrading from 1.0.0-rc.20
+
+Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
+`--prerelease`.
+
+### Added
+
+- `CachedServices.Warnings(provider)` in MethodCache.Testing returns the warnings the host logs at startup, such as a
+  `RefreshAhead` not shorter than the `Duration` from another layer or a group with settings but no cached method, so a
+  test can fail on them ([Settings that conflict](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/testing.md#settings-that-conflict)).
+- MethodCache.AspNetCore: `MethodCacheAdminAction.OverrideMetadata` gives the audit function the `Owner`, `Reason`,
+  `Ticket` and `ExpiresAt` of an override set over HTTP, and `MethodCacheAdminAction` has a public constructor, so a
+  test can call an audit function ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)).
+
+### Fixed
+
+- With a distributed cache, a value another instance had just stored could be loaded from the source again instead
+  of read from the distributed cache, when that instance's notice of the new value arrived as the load started. The
+  load now reads the distributed cache first, as it does otherwise.
+
+### Documentation
+
+- Configuration has a recipe for switching all caching off during an incident and on again
+  ([Switching all caching off and on again](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#switching-all-caching-off-and-on-again)).
+- The audit section says what the record holds, that it has no before and after, and how to read the overrides a
+  change replaces.
 
 ## 1.0.0-rc.20 (2026-11-11)
 

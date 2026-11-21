@@ -132,6 +132,14 @@ namespace Docs.Testing
             // end-snippet
         }
 
+        public static void CheckWarnings(IServiceProvider provider)
+        {
+            // begin-snippet: testing-cached-services-warnings
+            // No setting conflicts with another, so the host logs no MethodCache warning when it starts
+            Assert.Empty(CachedServices.Warnings(provider));
+            // end-snippet
+        }
+
         public static async Task OtherTenantAsync(IServiceProvider provider, Guid tenantA, Guid tenantB)
         {
             // begin-snippet: testing-other-tenant

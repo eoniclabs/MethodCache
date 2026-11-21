@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ public class AdminOverrideEndpointsTests : IAsyncLifetime
         public Task<int> GetStock(int productId) => Task.FromResult(Interlocked.Increment(ref Loads));
     }
 
-    private readonly List<(MethodCacheAdminActionKind Kind, string[] Targets)> _actions = [];
+    private readonly List<(MethodCacheAdminActionKind Kind, string[] Targets, RuntimeOverrideMetadata? Metadata)> _actions = [];
     private WebApplication _app = null!;
     private HttpClient _client = null!;
     private Pricing _pricing = null!;
@@ -67,7 +68,7 @@ public class AdminOverrideEndpointsTests : IAsyncLifetime
         _app.UseAuthorization();
         _app.MapMethodCacheAdmin("CacheAdmins", audit: (action, _) =>
         {
-            lock (_actions) _actions.Add((action.Kind, action.Targets.ToArray()));
+            lock (_actions) _actions.Add((action.Kind, action.Targets.ToArray(), action.OverrideMetadata));
             return ValueTask.CompletedTask;
         });
         await _app.StartAsync();
@@ -104,6 +105,8 @@ public class AdminOverrideEndpointsTests : IAsyncLifetime
         Assert.Equal(JsonValueKind.Null, item.GetProperty("slidingExpiration").ValueKind);
         Assert.Equal([MethodCacheAdminActionKind.UpsertOverride], _actions.Select(static a => a.Kind));
         Assert.Equal([[_priceId]], _actions.Select(static a => a.Targets));
+        Assert.Equal(new RuntimeOverrideMetadata { Reason = "Incident 4211", ExpiresAt = new DateTimeOffset(2026, 11, 12, 8, 0, 0, TimeSpan.Zero) },
+            Assert.Single(_actions).Metadata);
     }
 
     [Fact]
@@ -124,6 +127,22 @@ public class AdminOverrideEndpointsTests : IAsyncLifetime
         Assert.Empty((await _client.GetFromJsonAsync<List<JsonElement>>("/methodcache/overrides"))!);
         Assert.Equal([MethodCacheAdminActionKind.UpsertOverride, MethodCacheAdminActionKind.RemoveOverride], _actions.Select(static a => a.Kind));
         Assert.Equal([["group:pricing"], ["group:pricing"]], _actions.Select(static a => a.Targets));
+        Assert.All(_actions, static a => Assert.Null(a.Metadata));
+    }
+
+    [Fact]
+    public void AdminAction_CanBeBuiltInATestOfAnAuditFunction()
+    {
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "admin")], "Test")) };
+        var metadata = new RuntimeOverrideMetadata { Reason = "Incident 4211" };
+
+        var action = new MethodCacheAdminAction(MethodCacheAdminActionKind.UpsertOverride, ["group:pricing"], http, Now, metadata);
+
+        Assert.Equal("admin", action.User.Identity?.Name);
+        Assert.Equal(["group:pricing"], action.Targets);
+        Assert.Same(metadata, action.OverrideMetadata);
+        Assert.Throws<ArgumentNullException>(() => new MethodCacheAdminAction(MethodCacheAdminActionKind.Clear, null!, http, Now));
+        Assert.Throws<ArgumentNullException>(() => new MethodCacheAdminAction(MethodCacheAdminActionKind.Clear, [], null!, Now));
     }
 
     [Fact]

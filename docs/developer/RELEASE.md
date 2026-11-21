@@ -105,11 +105,13 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
 3. **Check all ten packages** on nuget.org after indexing: versions, `eoniclabs` ownership and available
    symbols. Do this for `rc.1` before advancing the release. Verify symbol-server retrieval of the portable
    PDBs; an accepted upload alone does not prove symbol indexing succeeded.
-4. **Write the GitHub release** for the tag, titled `MethodCache <version>` (such as `MethodCache 1.0.0-rc.20`), with
-   the version's section from [CHANGELOG.md](../../CHANGELOG.md) as its text, and marked as a pre-release for an rc:
+4. **Write the GitHub release** for the tag, titled `MethodCache <version>` (such as `MethodCache 1.0.0`), with
+   the version's section from [CHANGELOG.md](../../CHANGELOG.md) as its text, marked as a pre-release for an rc. From
+   1.0.0 create it as a draft, read it, then publish it:
 
    ```bash
    gh release create v1.0.0-rc.20 --title "MethodCache 1.0.0-rc.20" --notes-file notes.md --prerelease
+   gh release create v1.0.0 --title "MethodCache 1.0.0" --notes-file notes.md --draft
    ```
 
 `./release.sh --status <version>` shows the tag, its `MethodCache CI` status and which packages nuget.org has

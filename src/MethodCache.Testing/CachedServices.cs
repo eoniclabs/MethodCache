@@ -203,6 +203,34 @@ public static class CachedServices
         return problems;
     }
 
+    /// <summary>
+    /// The warnings MethodCache logs when the host starts about the policies in <paramref name="provider"/>, as the log
+    /// shows them: a sliding window or a refresh window that isn't shorter than the method's Duration, and a group that
+    /// has settings but no cached method in it. An empty list means none of them applies. A test host often doesn't
+    /// show the log, so assert the list is empty to catch them in CI.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// Assert.Empty(CachedServices.Warnings(provider));
+    /// </code>
+    /// </example>
+    /// <remarks>
+    /// The warnings are about the settings combined from <c>[Cache]</c>, startup code, <c>appsettings.json</c> and runtime
+    /// overrides, which no build check sees together. A group in configuration shared with another application can
+    /// rightly have no method here: leave that one out of the assertion.
+    /// </remarks>
+    /// <param name="provider">The application's service provider, built as in the application.</param>
+    /// <returns>Each warning's message.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// <c>AddMethodCache</c> wasn't called on the provider's services, or its policies are invalid, as startup would
+    /// report.
+    /// </exception>
+    public static IReadOnlyList<string> Warnings(IServiceProvider provider)
+    {
+        Validation(provider);
+        return Core.PolicyPipeline.Resolution.PolicyStartupValidation.Warnings(provider);
+    }
+
     private static Registration.RegistrationValidation Validation(IServiceProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);

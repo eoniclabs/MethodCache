@@ -826,6 +826,42 @@ public class DistributedCacheTests
         options.ClockSkewTolerance = TimeSpan.Zero;
     }
 
+    [Fact]
+    public async Task NoticeOfANewValue_ArrivingAsALoadStarts_StillReadsTheValueFromTheDistributedCache()
+    {
+        // The node that stores a value tells the others to drop their old copy. When that notice reaches another node
+        // just as it starts loading the same key, the load must still read the new value instead of running the
+        // factory again: the notice is about a value that is already in the distributed cache.
+        var time = new HookedTime(_time);
+        using var first = CreateNode(time: time);
+        using var second = CreateNode(time: time);
+        _hub.Hold();
+        await Get(first, "key", () => "from first");
+        _hub.HasHeld.Should().BeTrue();
+        time.OnRead = () =>
+        {
+            if (second.IsLoading("key") && _hub.HasHeld) _hub.Release();
+        };
+
+        var loads = 0;
+        var result = await Get(second, "key", () => { loads++; return "from second"; });
+
+        _hub.HasHeld.Should().BeFalse("the notice arrived while the load ran");
+        result.Should().Be("from first");
+        loads.Should().Be(0);
+    }
+
+    /// <summary>A clock that runs an action on each read, to deliver a message at an exact point in a call.</summary>
+    private sealed class HookedTime(FakeTimeProvider inner) : TimeProvider
+    {
+        public Action? OnRead { get; set; }
+        public override long TimestampFrequency => inner.TimestampFrequency;
+        public override DateTimeOffset GetUtcNow() { OnRead?.Invoke(); return inner.GetUtcNow(); }
+        public override long GetTimestamp() { OnRead?.Invoke(); return inner.GetTimestamp(); }
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+            => inner.CreateTimer(callback, state, dueTime, period);
+    }
+
     private sealed class TestBackplaneHub
     {
         private readonly List<TestBackplane> _members = new();
@@ -837,8 +873,28 @@ public class DistributedCacheTests
             return member;
         }
 
+        private List<BackplaneMessage>? _held;
+
+        /// <summary>Keeps messages until <see cref="Release"/>, as a network that delivers them a little later.</summary>
+        public void Hold() => _held = [];
+
+        public bool HasHeld => _held is { Count: > 0 };
+
+        public void Release()
+        {
+            var held = _held ?? [];
+            _held = null;
+            foreach (var message in held) SendAsync(message).GetAwaiter().GetResult();
+        }
+
         public async Task SendAsync(BackplaneMessage message)
         {
+            if (_held != null)
+            {
+                _held.Add(message);
+                return;
+            }
+
             foreach (var member in _members)
             {
                 if (member.Handler != null)

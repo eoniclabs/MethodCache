@@ -948,7 +948,10 @@ namespace MethodCache.Extensibility
         {
             try
             {
-                if (Shares(policy.Source?.Distributed) && policy.Source?.Generation?.DistributedReady != false && !flight.Invalidated)
+                // Read even when an invalidation already reached this load: another node announces each value it
+                // stores that way, and a removal stamps the distributed cache before it is announced, so the read
+                // can't return a value removed before it. Such a value is returned but not kept in memory (StoreLoaded).
+                if (Shares(policy.Source?.Distributed) && policy.Source?.Generation?.DistributedReady != false)
                 {
                     var stored = await ReadDistributedAsync<T>(key, policy, cancellationToken).ConfigureAwait(false);
                     if (stored.Found && ShouldStore(stored.Value, policy, methodName, out var storedLifetime, out var storedEntry) && Remaining(stored, policy, storedLifetime, storedEntry.Sliding) is > 0 and var remaining)

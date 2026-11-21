@@ -4,6 +4,37 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
+## 1.0.0 (2026-11-21)
+
+The first stable release. From this release a change that breaks the public API needs a new major version.
+
+### Upgrading from 1.0.0-rc.20
+
+Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
+`--prerelease`.
+
+### Added
+
+- `CachedServices.Warnings(provider)` in MethodCache.Testing returns the warnings the host logs at startup, such as a
+  `RefreshAhead` not shorter than the `Duration` from another layer or a group with settings but no cached method, so a
+  test can fail on them ([Settings that conflict](docs/features/testing.md#settings-that-conflict)).
+- MethodCache.AspNetCore: `MethodCacheAdminAction.OverrideMetadata` gives the audit function the `Owner`, `Reason`,
+  `Ticket` and `ExpiresAt` of an override set over HTTP, and `MethodCacheAdminAction` has a public constructor, so a
+  test can call an audit function ([Audit](src/MethodCache.AspNetCore/README.md#audit)).
+
+### Fixed
+
+- With a distributed cache, a value another instance had just stored could be loaded from the source again instead
+  of read from the distributed cache, when that instance's notice of the new value arrived as the load started. The
+  load now reads the distributed cache first, as it does otherwise.
+
+### Documentation
+
+- Configuration has a recipe for switching all caching off during an incident and on again
+  ([Switching all caching off and on again](docs/features/configuration.md#switching-all-caching-off-and-on-again)).
+- The audit section says what the record holds, that it has no before and after, and how to read the overrides a
+  change replaces.
+
 ## 1.0.0-rc.20 (2026-11-11)
 
 ### Upgrading from 1.0.0-rc.19

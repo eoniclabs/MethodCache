@@ -134,11 +134,12 @@ public static class MethodCacheEndpointRouteBuilderExtensions
     /// <summary>Records a change of one request before it is made.</summary>
     private readonly struct Audit(Func<MethodCacheAdminAction, CancellationToken, ValueTask>? audit, HttpContext http)
     {
-        public ValueTask RecordAsync(MethodCacheAdminActionKind kind, IReadOnlyList<string> targets, CancellationToken cancellationToken)
+        public ValueTask RecordAsync(MethodCacheAdminActionKind kind, IReadOnlyList<string> targets, CancellationToken cancellationToken,
+            RuntimeOverrideMetadata? overrideMetadata = null)
         {
             if (audit == null) return ValueTask.CompletedTask;
             var time = (http.RequestServices.GetService<TimeProvider>() ?? TimeProvider.System).GetUtcNow();
-            return audit(new MethodCacheAdminAction(kind, targets, http, time), cancellationToken);
+            return audit(new MethodCacheAdminAction(kind, targets, http, time, overrideMetadata), cancellationToken);
         }
     }
 
@@ -244,7 +245,7 @@ public static class MethodCacheEndpointRouteBuilderExtensions
         try
         {
             await configurator.UpsertAsync(request,
-                token => audit.RecordAsync(MethodCacheAdminActionKind.UpsertOverride, [target], token), cancellationToken).ConfigureAwait(false);
+                token => audit.RecordAsync(MethodCacheAdminActionKind.UpsertOverride, [target], token, request.Metadata), cancellationToken).ConfigureAwait(false);
         }
         catch (ArgumentException error)
         {

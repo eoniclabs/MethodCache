@@ -1,5 +1,1 @@
 #nullable enable
-OpenTelemetry.Metrics.MethodCacheMeterProviderBuilderExtensions
-OpenTelemetry.Trace.MethodCacheTracerProviderBuilderExtensions
-static OpenTelemetry.Metrics.MethodCacheMeterProviderBuilderExtensions.AddMethodCacheInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
-static OpenTelemetry.Trace.MethodCacheTracerProviderBuilderExtensions.AddMethodCacheInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!

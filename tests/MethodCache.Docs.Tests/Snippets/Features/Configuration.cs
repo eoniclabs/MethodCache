@@ -86,6 +86,19 @@ namespace Docs.Configuration
             // end-snippet
         }
 
+        public static async Task SwitchCachingOff(WebApplication app)
+        {
+            var configurator = app.Services.GetRequiredService<IRuntimeCacheConfigurator>();
+            // begin-snippet: configuration-switch-off
+            // During an incident: every cached method calls its implementation, on every instance
+            await configurator.UpsertAllAsync(o => o.WithEnabled(false),
+                new RuntimeOverrideMetadata { Owner = "ops", Reason = "Incident 4211", ExpiresAt = DateTimeOffset.UtcNow.AddHours(2) });
+
+            // After it: every override goes, and each method has its other settings again
+            await configurator.ClearAsync();
+            // end-snippet
+        }
+
         public static void Diagnostics(WebApplication app)
         {
             // begin-snippet: configuration-diagnostics
