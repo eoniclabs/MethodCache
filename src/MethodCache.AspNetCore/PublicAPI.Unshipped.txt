@@ -6,6 +6,8 @@ static Microsoft.Extensions.DependencyInjection.MethodCacheHealthChecksBuilderEx
 MethodCache.MethodCacheAdminAction
 MethodCache.MethodCacheAdminAction.HttpContext.get -> Microsoft.AspNetCore.Http.HttpContext!
 MethodCache.MethodCacheAdminAction.Kind.get -> MethodCache.MethodCacheAdminActionKind
+MethodCache.MethodCacheAdminAction.MethodCacheAdminAction(MethodCache.MethodCacheAdminActionKind kind, System.Collections.Generic.IReadOnlyList<string!>! targets, Microsoft.AspNetCore.Http.HttpContext! httpContext, System.DateTimeOffset time, MethodCache.RuntimeOverrideMetadata? overrideMetadata = null) -> void
+MethodCache.MethodCacheAdminAction.OverrideMetadata.get -> MethodCache.RuntimeOverrideMetadata?
 MethodCache.MethodCacheAdminAction.Targets.get -> System.Collections.Generic.IReadOnlyList<string!>!
 MethodCache.MethodCacheAdminAction.Time.get -> System.DateTimeOffset
 MethodCache.MethodCacheAdminAction.User.get -> System.Security.Claims.ClaimsPrincipal!
