@@ -282,4 +282,45 @@ public class CachedServicesTests
 
         Assert.Contains("AddMethodCache", error.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Warnings_WithoutConflictingSettings_IsEmpty()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddMethodCache();
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(CachedServices.Warnings(provider));
+    }
+
+    [Fact]
+    public void Warnings_ListWhatStartupLogs()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProducts, Products>();
+        services.AddMethodCache(mc =>
+        {
+            mc.Method((IProducts p) => p.GetAsync(0)).Configure(o => o.WithRefreshAhead(TimeSpan.FromMinutes(10)));
+            mc.Group("prodcts", o => o.WithDuration(TimeSpan.FromMinutes(1)));
+        });
+        using var provider = services.BuildServiceProvider();
+
+        var warnings = CachedServices.Warnings(provider);
+
+        Assert.Equal(2, warnings.Count);
+        Assert.Contains(warnings, w => w.StartsWith("The refresh window of ", StringComparison.Ordinal) && w.Contains("IProducts.GetAsync", StringComparison.Ordinal)
+            && w.Contains("(00:10:00) is not shorter than its Duration (00:10:00)", StringComparison.Ordinal));
+        Assert.Contains(warnings, w => w.StartsWith("The group 'prodcts' has settings in ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Warnings_WithoutMethodCache_Throws()
+    {
+        using var provider = new ServiceCollection().BuildServiceProvider();
+
+        var error = Assert.Throws<InvalidOperationException>(() => CachedServices.Warnings(provider));
+
+        Assert.Contains("AddMethodCache", error.Message, StringComparison.Ordinal);
+    }
 }
