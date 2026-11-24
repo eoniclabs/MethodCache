@@ -175,7 +175,7 @@ namespace MethodCache.SourceGenerator
                     diagnostics.AddRange(attributeErrors);
                     if (attributeErrors.Count != 0) continue;
                     if (SlidingNotShorterThanDuration(cacheAttr, method.Locations.FirstOrDefault()) is { } sliding) diagnostics.Add(sliding);
-                    var validation = ValidateCacheMethod(method);
+                    var validation = ValidateCacheMethod(method, cacheAttr);
                     if (validation.diagnostic != null)
                     {
                         diagnostics.Add(validation.diagnostic);

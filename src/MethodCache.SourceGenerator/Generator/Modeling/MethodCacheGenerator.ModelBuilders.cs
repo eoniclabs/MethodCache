@@ -10,7 +10,7 @@ namespace MethodCache.SourceGenerator
     public sealed partial class MethodCacheGenerator
     {
         // ======================== Modeling Helpers ========================
-        private static (DiagnosticInfo? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method, Location? reportAt = null)
+        private static (DiagnosticInfo? diagnostic, bool canProceed) ValidateCacheMethod(IMethodSymbol method, AttributeData cacheAttribute, Location? reportAt = null)
         {
             var location = reportAt ?? method.Locations.FirstOrDefault();
             var methodName = method.ToDisplayString();
@@ -79,6 +79,12 @@ namespace MethodCache.SourceGenerator
                 return (DiagnosticInfo.Create(Diagnostics.SharedUnsafeResultType, location, methodName,
                     result.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat),
                     unsafeType.ToDisplayString(SymbolDisplayFormat.CSharpShortErrorMessageFormat)), true);
+            }
+
+            // The checks below are about the copy in the distributed cache, which a method with Distributed = false never writes
+            if (cacheAttribute.NamedArguments.Any(static a => a.Key == "Distributed" && a.Value.Value is false))
+            {
+                return (null, true);
             }
 
             if (FindHiddenStateResultType(result, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)) is { } hidden)

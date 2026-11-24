@@ -106,7 +106,7 @@ namespace MethodCache.SourceGenerator
                     continue;
                 }
 
-                var validation = ValidateCacheMethod(method, location);
+                var validation = ValidateCacheMethod(method, attribute, location);
                 if (validation.diagnostic != null)
                 {
                     if (!validation.canProceed)
