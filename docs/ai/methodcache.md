@@ -63,7 +63,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
 - Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`
-  (MC0032), or resolving the class itself, bypasses the cache. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
+  (MC0032), or resolving the class itself, bypasses the cache. A framework that creates the class by its type, such
+  as gRPC's `MapGrpcService<T>` or an MVC controller, bypasses it too: cache an interface the class calls, such as its
+  data access. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
   itself or through a setup method of a referenced project (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written
@@ -95,7 +97,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
   invalidates. When another application invalidates it, such as a worker, list it in
   `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning; when only an operator
-  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`.
+  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`. Data that only
+  expires, such as data another application owns that nothing tells you about, gets no `Tags`: the `Duration` decides
+  how old it can get.
 - Keep `SlidingExpiration` shorter than `Duration`: an entry never lives past its `Duration`, so a longer window never
   extends anything (warning MC0038 on `[Cache]`, and a warning when the host starts for settings combined from
   `Defaults`, code or `appsettings.json`).

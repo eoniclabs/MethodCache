@@ -248,8 +248,9 @@ back as themselves ([Derived types](../features/distributed-cache.md#derived-typ
 
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
 cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
-abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
-`#pragma warning disable MC0020` or `<NoWarn>` in the project.
+abstract class (`[Union]` with MessagePack), which also silences this warning. A method with
+`[Cache(Distributed = false)]` isn't reported, since its results stay in memory. When the whole application uses only
+the in-memory cache, suppress the warning with `#pragma warning disable MC0020` or `<NoWarn>` in the project.
 
 ## MC0021
 
@@ -515,6 +516,15 @@ Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
 Both replace a `SuppressMessage` on each method and keep the reason next to the tag.
+
+When nothing can tell you the data changed, such as data another application owns and you only read, leave `Tags` out:
+a tag nothing invalidates removes nothing, and the `Duration` alone decides how old a value can get.
+
+```cs
+// Owned by the billing system, which tells us nothing: a value is at most 10 minutes old
+[Cache(Duration = "10m")]
+Task<Invoice?> GetInvoiceAsync(string number);
+```
 
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
 
@@ -839,6 +849,8 @@ public Task<List<CustomerSummary>> GetAllAsync()
     => db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count)).ToListAsync();
 ```
 
+A method with `[Cache(Distributed = false)]` isn't reported: its results stay in memory and are never written.
+
 ## MC0042
 
 A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
@@ -859,8 +871,11 @@ public sealed class Money
 
 Give the type public properties, such as `public decimal Amount { get; }` set by the constructor, or a record such as
 `public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
-with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
-suppress the warning then.
+with `[JsonConverter]`. A method with `[Cache(Distributed = false)]` isn't reported, since its results stay in memory.
+
+A converter you register yourself goes in the `JsonSerializerOptions` you pass to `UseJson`: MethodCache doesn't use the
+options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. The build
+can't see a converter in those options; suppress the warning then.
 
 ## MC0043
 

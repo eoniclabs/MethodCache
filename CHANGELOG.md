@@ -34,6 +34,10 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - With a distributed cache, a value another instance had just stored could be loaded from the source again instead
   of read from the distributed cache, when that instance's notice of the new value arrived as the load started. The
   load now reads the distributed cache first, as it does otherwise.
+- A cached method with an `IReadOnlySet<T>` or `ISet<T>` parameter no longer gives warning CS0184 in the generated
+  code, which failed a build that treats warnings as errors. The keys don't change.
+- MC0020, MC0041 and MC0042 are no longer reported for a method with `[Cache(Distributed = false)]`, whose results stay
+  in memory and are never written.
 
 ### Documentation
 
@@ -43,6 +47,12 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   change replaces.
 - A Blazor page covers Blazor Server, WebAssembly (in memory, per browser tab), prerendering and `InteractiveAuto`
   ([Blazor](docs/features/blazor.md)).
+- MC0028 and the how-to say that data that only expires, such as data another application owns, needs no tags.
+- Invalidation says that `keys.Tag<T>` uses the call's arguments only for the template's placeholders, that a tag
+  without placeholders is passed as the constant, and that `InvalidateTagAsync` returns a `ValueTask`.
+- The how-to and troubleshooting cover frameworks that create a class by its type, such as gRPC's
+  `MapGrpcService<T>` or a controller. MC0042 says that a converter goes in the options passed to `UseJson`, not in
+  ASP.NET Core's.
 
 ## 1.0.0-rc.20 (2026-11-11)
 
