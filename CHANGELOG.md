@@ -13,6 +13,10 @@ The first stable release. From this release a change that breaks the public API 
 Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
 `--prerelease`.
 
+A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
+stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in
+the options you pass to `UseJson`.
+
 ### Added
 
 - `CachedServices.Warnings(provider)` in MethodCache.Testing returns the warnings the host logs at startup, such as a
@@ -38,6 +42,12 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   code, which failed a build that treats warnings as errors. The keys don't change.
 - MC0020, MC0041 and MC0042 are no longer reported for a method with `[Cache(Distributed = false)]`, whose results stay
   in memory and are never written.
+- MC0042 reports only types the project compiles. It reported a struct from a package, such as NodaTime's `Instant`,
+  even with its converter in the options passed to `UseJson`, and missed a class from a package with the same problem,
+  whose private fields the build can't see. The check before sharing now reads MethodCache's JSON contract instead: a
+  type in a result that it writes as `{}` although the type has fields keeps the method's results in memory, with one
+  warning naming the type, and a converter in the `UseJson` options shares them. Before, such a value was shared and
+  the other instances read it back empty.
 
 ### Documentation
 

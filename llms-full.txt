@@ -188,8 +188,10 @@ builder.Services.AddMethodCache();                               // after your r
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
   data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
   `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
-  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`), or that holds a type JSON writes as
+  `{}` (state only in private fields, such as NodaTime's `Instant` without its converter), stays in memory, with a
+  warning: return records with public properties, and put a package's JSON converters in the options passed to
+  `UseJson(options)`, not only in ASP.NET Core's. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
   (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
   member needs no `Version` bump: entries are kept apart by the result's shape.
@@ -2761,7 +2763,7 @@ foreach (var method in diagnostics.GetMethods())
 | `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
 | `Storage.Shared` | Whether other instances read the values this one stores: false when values stay in memory, and while a runtime override that only this instance applies gives it a namespace of its own |
 | `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
-| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
+| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, one it writes as an empty object, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
 
 `NotShared` is what this instance saw since it started; each instance keeps its own.
 
@@ -3475,8 +3477,10 @@ Values are written as JSON with System.Text.Json, public fields included, so rec
 shared as they are. A `Dog` where `Animal` is declared comes back as a `Dog` too ([Derived types](#derived-types)).
 Each value is read back once before it is shared. A value that doesn't come back the same, such as a class with private
 setters, `object`, or a dictionary made with its own comparer, stays in that instance's memory only, with one warning
-that names the method and the type. Register your own `JsonSerializerOptions` or `JsonSerializerContext` with `UseJson`
-to share it (`[JsonInclude]` for private setters).
+that names the method and the type. So does a type that JSON writes as `{}` although it has fields, such as a struct
+from a package that keeps its state in private fields. Register your own `JsonSerializerOptions` or
+`JsonSerializerContext` with `UseJson` to share it (`[JsonInclude]` for private setters, the package's converter in
+the options).
 [Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
@@ -4887,8 +4891,11 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   either side isn't compared. A value whose declared type can't hold another type, such as an `int`, a `List<int>` or
   a sealed record of strings, has nothing to compare and costs nothing extra.
 - State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
-  bytes, so the check can't see that it is lost. Make such state serializable, or register a serializer that writes
-  it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
+  bytes, so the bytes can't show that it is lost. MethodCache's JSON serializer reads its contract instead: a type in
+  the result that it writes with no member although the type has fields, such as a struct from a package that keeps
+  its state in private fields, keeps the method's results in memory, with one warning naming the type. A converter for
+  the type in the options passed to `UseJson` writes it in full, and the results are shared. A custom serializer isn't
+  judged this way; make such state serializable there (`[JsonInclude]`, a converter).
 - A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
   `List<int>` for an array, and is still shared.
 - A serializer that never writes the same bytes twice (encryption with a fresh nonce) can't be compared, so only the
@@ -5961,8 +5968,8 @@ A method with `[Cache(Distributed = false)]` isn't reported: its results stay in
 
 ## MC0042
 
-A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
-state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+A cached result type, an element of it or a type of its public properties, is a type the project compiles that keeps
+all its state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
 written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
 so the other instances would get an empty value from the distributed cache:
 
@@ -5981,9 +5988,15 @@ Give the type public properties, such as `public decimal Amount { get; }` set by
 `public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
 with `[JsonConverter]`. A method with `[Cache(Distributed = false)]` isn't reported, since its results stay in memory.
 
+A type from another assembly, such as NodaTime's `Instant` or a type of another project, isn't reported: the build
+can't see a converter registered in the options passed to `UseJson`, nor the private fields of a class in another
+assembly. The check before sharing reads the serializer's contract instead, which has those converters. When it writes
+such a type as `{}`, the method's results stay in memory, with one warning naming the type
+([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization)).
+
 A converter you register yourself goes in the `JsonSerializerOptions` you pass to `UseJson`: MethodCache doesn't use the
-options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. The build
-can't see a converter in those options; suppress the warning then.
+options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. For a type
+of the project whose converter is only in those options, suppress the warning.
 
 ## MC0043
 
@@ -7271,6 +7284,10 @@ The first stable release. From this release a change that breaks the public API 
 Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
 `--prerelease`.
 
+A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
+stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in
+the options you pass to `UseJson`.
+
 ### Added
 
 - `CachedServices.Warnings(provider)` in MethodCache.Testing returns the warnings the host logs at startup, such as a
@@ -7296,6 +7313,12 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   code, which failed a build that treats warnings as errors. The keys don't change.
 - MC0020, MC0041 and MC0042 are no longer reported for a method with `[Cache(Distributed = false)]`, whose results stay
   in memory and are never written.
+- MC0042 reports only types the project compiles. It reported a struct from a package, such as NodaTime's `Instant`,
+  even with its converter in the options passed to `UseJson`, and missed a class from a package with the same problem,
+  whose private fields the build can't see. The check before sharing now reads MethodCache's JSON contract instead: a
+  type in a result that it writes as `{}` although the type has fields keeps the method's results in memory, with one
+  warning naming the type, and a converter in the `UseJson` options shares them. Before, such a value was shared and
+  the other instances read it back empty.
 
 ### Documentation
 

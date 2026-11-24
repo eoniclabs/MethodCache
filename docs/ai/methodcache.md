@@ -183,8 +183,10 @@ builder.Services.AddMethodCache();                               // after your r
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
   data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
   `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
-  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`), or that holds a type JSON writes as
+  `{}` (state only in private fields, such as NodaTime's `Instant` without its converter), stays in memory, with a
+  warning: return records with public properties, and put a package's JSON converters in the options passed to
+  `UseJson(options)`, not only in ASP.NET Core's. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
   (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
   member needs no `Version` bump: entries are kept apart by the result's shape.

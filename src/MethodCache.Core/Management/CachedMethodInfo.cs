@@ -50,7 +50,7 @@ public sealed record CachedMethodInfo
     public IReadOnlyList<string> KeyParameters { get; init; } = [];
     /// <summary>
     /// Result types whose values this instance kept in memory only although the method shares its values, and why,
-    /// such as a type the serializer doesn't read back unchanged. Empty when every value was shared.
+    /// such as a type the serializer doesn't read back unchanged or writes as an empty object. Empty when every value was shared.
     /// </summary>
     public IReadOnlyList<NotSharedResultInfo> NotShared { get; init; } = [];
 }

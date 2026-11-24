@@ -282,8 +282,10 @@ Values are written as JSON with System.Text.Json, public fields included, so rec
 shared as they are. A `Dog` where `Animal` is declared comes back as a `Dog` too ([Derived types](#derived-types)).
 Each value is read back once before it is shared. A value that doesn't come back the same, such as a class with private
 setters, `object`, or a dictionary made with its own comparer, stays in that instance's memory only, with one warning
-that names the method and the type. Register your own `JsonSerializerOptions` or `JsonSerializerContext` with `UseJson`
-to share it (`[JsonInclude]` for private setters).
+that names the method and the type. So does a type that JSON writes as `{}` although it has fields, such as a struct
+from a package that keeps its state in private fields. Register your own `JsonSerializerOptions` or
+`JsonSerializerContext` with `UseJson` to share it (`[JsonInclude]` for private setters, the package's converter in
+the options).
 [Distributed cache reference](../reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:

@@ -137,8 +137,11 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   either side isn't compared. A value whose declared type can't hold another type, such as an `int`, a `List<int>` or
   a sealed record of strings, has nothing to compare and costs nothing extra.
 - State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
-  bytes, so the check can't see that it is lost. Make such state serializable, or register a serializer that writes
-  it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
+  bytes, so the bytes can't show that it is lost. MethodCache's JSON serializer reads its contract instead: a type in
+  the result that it writes with no member although the type has fields, such as a struct from a package that keeps
+  its state in private fields, keeps the method's results in memory, with one warning naming the type. A converter for
+  the type in the options passed to `UseJson` writes it in full, and the results are shared. A custom serializer isn't
+  judged this way; make such state serializable there (`[JsonInclude]`, a converter).
 - A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
   `List<int>` for an array, and is still shared.
 - A serializer that never writes the same bytes twice (encryption with a fresh nonce) can't be compared, so only the

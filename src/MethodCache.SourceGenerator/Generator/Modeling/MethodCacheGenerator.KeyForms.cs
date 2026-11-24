@@ -313,12 +313,16 @@ namespace MethodCache.SourceGenerator
         }
 
         /// <summary>
-        /// The first of your own types in a result (the result, an element, a tuple item, or a public member of one of
-        /// your own types) that holds state but writes no member, so a serializer writes it as an empty object (MC0042).
+        /// The first type the project compiles in a result (the result, an element, a tuple item, or a public member of
+        /// one of your own types) that holds state but writes no member, so a serializer writes it as an empty object
+        /// (MC0042). A type from another assembly isn't reported: the build sees the private fields of its structs but
+        /// not of its classes, and can't see a converter registered in the options passed to <c>UseJson</c>, so the
+        /// check before sharing judges it against the serializer's own contract instead.
         /// </summary>
         private static INamedTypeSymbol? FindHiddenStateResultType(ITypeSymbol type, HashSet<ITypeSymbol> visited)
             => FindInResult(type, visited, static named =>
-                named.TypeKind is TypeKind.Class or TypeKind.Struct && !named.IsAbstract && !HasJsonConverter(named) && !WritesAnyMember(named) && HoldsState(named));
+                named.TypeKind is TypeKind.Class or TypeKind.Struct && !named.IsAbstract && named.OriginalDefinition.DeclaringSyntaxReferences.Length > 0 &&
+                !HasJsonConverter(named) && !WritesAnyMember(named) && HoldsState(named));
 
         /// <summary>
         /// The first of your own classes in a result with a public virtual navigation property, a property of one of

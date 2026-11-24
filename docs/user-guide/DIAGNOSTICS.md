@@ -853,8 +853,8 @@ A method with `[Cache(Distributed = false)]` isn't reported: its results stay in
 
 ## MC0042
 
-A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
-state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+A cached result type, an element of it or a type of its public properties, is a type the project compiles that keeps
+all its state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
 written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
 so the other instances would get an empty value from the distributed cache:
 
@@ -873,9 +873,15 @@ Give the type public properties, such as `public decimal Amount { get; }` set by
 `public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
 with `[JsonConverter]`. A method with `[Cache(Distributed = false)]` isn't reported, since its results stay in memory.
 
+A type from another assembly, such as NodaTime's `Instant` or a type of another project, isn't reported: the build
+can't see a converter registered in the options passed to `UseJson`, nor the private fields of a class in another
+assembly. The check before sharing reads the serializer's contract instead, which has those converters. When it writes
+such a type as `{}`, the method's results stay in memory, with one warning naming the type
+([Serialization](../reference/distributed.md#serialization)).
+
 A converter you register yourself goes in the `JsonSerializerOptions` you pass to `UseJson`: MethodCache doesn't use the
-options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. The build
-can't see a converter in those options; suppress the warning then.
+options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. For a type
+of the project whose converter is only in those options, suppress the warning.
 
 ## MC0043
 
