@@ -14,6 +14,12 @@ replaced that way: add an interface, or use [manual caching](features/manual-cac
 Adding one changes the registrations, constructors and tests that name the class.
 ([A class without an interface](getting-started.md#a-class-without-an-interface))
 
+**A framework creates my class itself, such as a gRPC service or a controller. How do I cache in it?**
+Put the cached methods on an interface the class calls, such as its data access, and inject that interface. gRPC's
+`MapGrpcService<T>`, MVC controllers, Razor Pages and similar frameworks create the class by its type and call it
+directly, so `[Cache]` on an interface the class itself implements never runs there.
+([Troubleshooting](troubleshooting.md#the-method-runs-on-every-call))
+
 **Can I put `[Cache]` on the class instead?**
 No. Put it on the interface method. On a class member it does nothing, and warning MC0001 says so; its code fix moves
 the attribute to the interface. ([Build diagnostics](user-guide/DIAGNOSTICS.md))
@@ -105,10 +111,15 @@ with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `Invalidate
 invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 then counts it,
 and `TagCoverage` counts it when the test project references the worker that invalidates it. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028), [In another application](features/invalidation.md#in-another-application))
 
-**A tag is only cleared by an admin, or simply expires. How do I stop MC0028 without a suppression?**
+**A tag is only cleared by an admin. How do I stop MC0028 without a suppression?**
 List it in `[Cache(Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]`. MC0028 and `TagCoverage` count
 it as invalidated without looking for an invalidation, so neither a `SuppressMessage` nor `alsoInvalidatedBy` is
 needed. ([Cleared by hand](features/invalidation.md#cleared-by-hand))
+
+**The data only expires, such as data another application owns that nothing tells me about. Which tags does it need?**
+None. A tag that nothing invalidates removes nothing, so leave `Tags` out: the `Duration` alone decides how old a value
+can get, and MC0028 has nothing to report. An operator can still clear the method's entries with
+`ICacheAdministrator.InvalidateMethodAsync`. ([MC0028](user-guide/DIAGNOSTICS.md#mc0028))
 
 **My sliding window seems to do nothing. Why?**
 It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a

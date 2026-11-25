@@ -366,7 +366,7 @@ foreach (var method in diagnostics.GetMethods())
 | `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
 | `Storage.Shared` | Whether other instances read the values this one stores: false when values stay in memory, and while a runtime override that only this instance applies gives it a namespace of its own |
 | `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
-| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](distributed-cache.md#serialization)) |
+| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, one it writes as an empty object, or one that doesn't read back unchanged ([Serialization](distributed-cache.md#serialization)) |
 
 `NotShared` is what this instance saw since it started; each instance keeps its own.
 

@@ -48,6 +48,38 @@ namespace App
             Assert.DoesNotContain(run.Diagnostics, d => d.Id == "MC0042");
         }
 
+        [Fact]
+        public void ATypeFromAnotherAssembly_GetsNoMC0042_SinceTheCheckBeforeSharingJudgesIt()
+        {
+            // The build sees the private fields of a struct from metadata but not of a class, nor a converter in the
+            // options passed to UseJson
+            var package = Image(Compilation("Package", @"namespace Package
+{
+    public readonly struct Timestamp { private readonly long _ticks; public Timestamp(long ticks) => _ticks = ticks; public long Ticks() => _ticks; }
+    public sealed class Moment { private readonly long _ticks; public Moment(long ticks) => _ticks = ticks; public long Ticks() => _ticks; }
+}"));
+
+            foreach (var member in new[] { "Package.Timestamp", "Package.Moment" })
+            {
+                var run = Run(Compilation("App", Service("Order", $"public sealed record Order(int Id, {member} CreatedAt);"), package));
+                Assert.DoesNotContain(run.Diagnostics, d => d.Id == "MC0042");
+            }
+        }
+
+        [Fact]
+        public void AMethodWithDistributedFalse_GetsNoChecksOfTheDistributedCopy()
+        {
+            // Its values stay in memory, so no serializer writes them
+            const string types = "public sealed class Money { private decimal _amount; public void Set(decimal a) => _amount = a; }";
+            var memoryOnly = Service("Money", types).Replace("[Cache]", "[Cache(Distributed = false)]", StringComparison.Ordinal);
+            var proxies = Image(Compilation("Microsoft.EntityFrameworkCore.Proxies", "namespace Microsoft.EntityFrameworkCore { public static class ProxiesExtensions { } }"));
+
+            Assert.Contains(Run(Compilation("App", Service("Money", types))).Diagnostics, d => d.Id == "MC0042");
+            Assert.DoesNotContain(Run(Compilation("App", memoryOnly)).Diagnostics, d => d.Id == "MC0042");
+            Assert.DoesNotContain(Run(Compilation("App", Service("object", "").Replace("[Cache]", "[Cache(Distributed = false)]", StringComparison.Ordinal))).Diagnostics, d => d.Id == "MC0020");
+            Assert.DoesNotContain(Run(Compilation("App", Service("List<Customer>", Entities).Replace("[Cache]", "[Cache(Distributed = false)]", StringComparison.Ordinal), proxies)).Diagnostics, d => d.Id == "MC0041");
+        }
+
         private const string Entities = @"
     public class Customer { public int Id { get; set; } public virtual List<Order> Orders { get; set; } = new(); }
     public class Order { public int Id { get; set; } public virtual Customer? Customer { get; set; } }

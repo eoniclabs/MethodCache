@@ -118,6 +118,9 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
   [Building a key yourself](keys.md#building-a-key-yourself).
 - Invalidation matches exact tags and keys; there are no wildcard patterns. Attach a common tag to all entries in a
   group instead.
+- `InvalidateTagAsync` and `InvalidateKeyAsync` return a `ValueTask<InvalidationResult>`
+  ([With several instances](#with-several-instances)). A helper declared as `Task` awaits the call instead of
+  returning it: `async Task ClearAsync() => await cache.InvalidateTagAsync("orders");`.
 - To remove every entry of one method, pass its id to `ICacheAdministrator.InvalidateMethodAsync`; get the id from
   `IMethodCacheKeys.MethodId` ([Cache keys](keys.md#building-a-key-yourself)).
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag and by method ([Monitoring](monitoring.md)).
@@ -160,7 +163,9 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 - `keys.Tag<T>(call, template)` fills in the template from the call's arguments exactly as the decorator does. The
   method never runs. The template must be one of the method's tags, or it throws and lists them, so a template that
   drifts away from the method fails in your tests instead of silently matching nothing. A `const` on the interface
-  lets the attribute and the call share it.
+  lets the attribute and the call share it. The arguments only fill in the template's placeholders, so pass any value,
+  such as `default` or `0`, for one the template doesn't use. A tag without placeholders needs no call: pass the
+  constant itself, `cache.InvalidateTagAsync(IOrders.ListTag)`.
 - For one entry, `cache.InvalidateKeyAsync(keys.For<IPriceSource>(s => s.GetRateAsync(provider, model)))` removes
   only that call's result.
 - Don't build the tag with plain string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped

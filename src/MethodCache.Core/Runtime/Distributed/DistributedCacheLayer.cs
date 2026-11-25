@@ -110,6 +110,7 @@ namespace MethodCache.Core.Runtime.Distributed
 
         internal const string UnwritableReason = "The serializer can't write these values.";
         internal const string ChangedReason = "These values don't read back unchanged from the serializer.";
+        internal const string WrittenEmptyReason = "The serializer writes a type in these values as an empty object.";
 
         /// <summary>The method, declared and runtime types whose values this instance keeps in memory only.</summary>
         internal IEnumerable<(Type Declared, Type Written, NotShared Record)> NotSharedResults()
@@ -624,6 +625,19 @@ namespace MethodCache.Core.Runtime.Distributed
             var method = RoundTripKey(methodName, value);
             if (_roundTrips.ContainsKey(method))
             {
+                return false;
+            }
+
+            // A type kept in private fields is written as {} and reads back empty, which writes the same bytes again
+            if (_serializer is JsonCacheSerializer json && (json.WrittenEmpty(typeof(T)) ?? (written == typeof(T) ? null : json.WrittenEmpty(written))) is { } empty)
+            {
+                if (_roundTrips.TryAdd(method, new NotShared(reportAs, WrittenEmptyReason, Now)))
+                {
+                    _logger.LogWarning(
+                        "MethodCache keeps the results of {Method} of type {Type} in memory only: {Serializer} writes {Empty} in them as an empty object, since it keeps its state in non-public fields, so the other instances would read it back empty (see MC0042). Register its JSON converter in the options you pass to UseJson, or give it public properties.",
+                        methodName ?? "SetAsync", written, _serializer.GetType().Name, empty);
+                }
+
                 return false;
             }
 

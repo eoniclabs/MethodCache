@@ -585,10 +585,10 @@ namespace MethodCache.SourceGenerator
                         {
                             // The runtime collection can add public state even if its declared base/interface
                             // has none. Only exact concrete types and known plain framework collections inline.
-                            if (param.Type is INamedTypeSymbol { TypeKind: TypeKind.Interface } && GetSequenceElementType(param.Type) is { } element)
+                            if (param.Type is INamedTypeSymbol { TypeKind: TypeKind.Interface } declared && GetSequenceElementType(param.Type) is { } element)
                             {
                                 var elementType = Utils.GetFullyQualifiedName(element);
-                                exactTypeChecks.Add($"({name} is null || {name} is {elementType}[] || {name}.GetType() == typeof(global::System.Collections.Generic.List<{elementType}>) || {name}.GetType() == typeof(global::System.Collections.Generic.HashSet<{elementType}>))");
+                                exactTypeChecks.Add($"({string.Join(" || ", new[] { $"{name} is null" }.Concat(PlainCollectionChecks(declared, name, elementType)))})");
                             }
                             else
                             {
@@ -680,6 +680,46 @@ namespace MethodCache.SourceGenerator
             /// The element type of a one-dimensional array, or of a type that is or implements exactly one
             /// <c>IEnumerable&lt;T&gt;</c>; null for anything else.
             /// </summary>
+            // The collection interfaces an array and a List<T> implement, and those a HashSet<T> implements
+            private static readonly HashSet<string> ListInterfaces = new(StringComparer.Ordinal)
+            {
+                "System.Collections.Generic.IEnumerable`1",
+                "System.Collections.Generic.ICollection`1",
+                "System.Collections.Generic.IList`1",
+                "System.Collections.Generic.IReadOnlyCollection`1",
+                "System.Collections.Generic.IReadOnlyList`1",
+            };
+
+            private static readonly HashSet<string> SetInterfaces = new(StringComparer.Ordinal)
+            {
+                "System.Collections.Generic.IEnumerable`1",
+                "System.Collections.Generic.ICollection`1",
+                "System.Collections.Generic.IReadOnlyCollection`1",
+                "System.Collections.Generic.ISet`1",
+                "System.Collections.Generic.IReadOnlySet`1",
+            };
+
+            /// <summary>
+            /// The checks that an argument declared as the collection interface <paramref name="declared"/> is an array,
+            /// a <c>List&lt;T&gt;</c> or a <c>HashSet&lt;T&gt;</c>, the plain collections whose key is written inline. Only
+            /// those that implement the interface: a check for an array behind <c>IReadOnlySet&lt;T&gt;</c> can never be
+            /// true, and the compiler warns about it (CS0184), which fails a build that treats warnings as errors.
+            /// </summary>
+            private static IEnumerable<string> PlainCollectionChecks(INamedTypeSymbol declared, string name, string elementType)
+            {
+                var definition = MetadataName(declared.OriginalDefinition);
+                if (ListInterfaces.Contains(definition))
+                {
+                    yield return $"{name} is {elementType}[]";
+                    yield return $"{name}.GetType() == typeof(global::System.Collections.Generic.List<{elementType}>)";
+                }
+
+                if (SetInterfaces.Contains(definition))
+                {
+                    yield return $"{name}.GetType() == typeof(global::System.Collections.Generic.HashSet<{elementType}>)";
+                }
+            }
+
             internal static ITypeSymbol? GetSequenceElementType(ITypeSymbol type)
             {
                 if (type is IArrayTypeSymbol array)

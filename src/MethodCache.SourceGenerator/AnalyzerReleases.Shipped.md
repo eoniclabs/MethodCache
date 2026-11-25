@@ -32,4 +32,4 @@ MC0038 | Usage | Warning | Reports a SlidingExpiration that is not shorter than 
 MC0039 | Performance | Warning | Reports a class that derives from a type a cached result holds but that generated code can't name (generic, private, file-local, or not public in a referenced assembly), so the distributed cache can't restore it as itself.
 MC0040 | Performance | Warning | Reports a derived type MethodCache registers for a type a cached result holds that the JsonSerializerContext passed to UseJson has no contract for, while it has one for the base type.
 MC0041 | Performance | Warning | Reports a cached result that holds a type with public virtual navigation properties in a project that references Microsoft.EntityFrameworkCore.Proxies, since lazy-loading proxies can't be restored from the distributed cache.
-MC0042 | Reliability | Warning | Reports a cached result type, element or member of your own whose state is all non-public, so serializers write it as an empty object.
+MC0042 | Reliability | Warning | Reports a cached result type, element or member the project compiles whose state is all non-public, so serializers write it as an empty object.

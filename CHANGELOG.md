@@ -4,14 +4,15 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## 1.0.0 (2026-11-21)
-
-The first stable release. From this release a change that breaks the public API needs a new major version.
+## 1.0.0-rc.21 (2026-11-25)
 
 ### Upgrading from 1.0.0-rc.20
 
-Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
-`--prerelease`.
+Nothing to change in your code: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows.
+
+A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
+stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in
+the options you pass to `UseJson`.
 
 ### Added
 
@@ -34,6 +35,16 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - With a distributed cache, a value another instance had just stored could be loaded from the source again instead
   of read from the distributed cache, when that instance's notice of the new value arrived as the load started. The
   load now reads the distributed cache first, as it does otherwise.
+- A cached method with an `IReadOnlySet<T>` or `ISet<T>` parameter no longer gives warning CS0184 in the generated
+  code, which failed a build that treats warnings as errors. The keys don't change.
+- MC0020, MC0041 and MC0042 are no longer reported for a method with `[Cache(Distributed = false)]`, whose results stay
+  in memory and are never written.
+- MC0042 reports only types the project compiles. It reported a struct from a package, such as NodaTime's `Instant`,
+  even with its converter in the options passed to `UseJson`, and missed a class from a package with the same problem,
+  whose private fields the build can't see. The check before sharing now reads MethodCache's JSON contract instead: a
+  type in a result that it writes as `{}` although the type has fields keeps the method's results in memory, with one
+  warning naming the type, and a converter in the `UseJson` options shares them. Before, such a value was shared and
+  the other instances read it back empty.
 
 ### Documentation
 
@@ -43,6 +54,12 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   change replaces.
 - A Blazor page covers Blazor Server, WebAssembly (in memory, per browser tab), prerendering and `InteractiveAuto`
   ([Blazor](docs/features/blazor.md)).
+- MC0028 and the how-to say that data that only expires, such as data another application owns, needs no tags.
+- Invalidation says that `keys.Tag<T>` uses the call's arguments only for the template's placeholders, that a tag
+  without placeholders is passed as the constant, and that `InvalidateTagAsync` returns a `ValueTask`.
+- The how-to and troubleshooting cover frameworks that create a class by its type, such as gRPC's
+  `MapGrpcService<T>` or a controller. MC0042 says that a converter goes in the options passed to `UseJson`, not in
+  ASP.NET Core's.
 
 ## 1.0.0-rc.20 (2026-11-11)
 

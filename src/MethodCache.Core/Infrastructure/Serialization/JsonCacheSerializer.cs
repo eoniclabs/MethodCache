@@ -1,4 +1,7 @@
 using System.Buffers;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -22,6 +25,7 @@ namespace MethodCache.Extensibility;
 internal sealed class JsonCacheSerializer : ISerializer, MethodCache.Infrastructure.IRestoresDerivedTypes
 {
     private readonly JsonSerializerOptions _options;
+    private readonly ConcurrentDictionary<Type, Type?> _writtenEmpty = new();
 
     /// <inheritdoc />
     public IReadOnlyDictionary<Type, Type[]> Restored { get; } = new Dictionary<Type, Type[]>();
@@ -141,4 +145,70 @@ internal sealed class JsonCacheSerializer : ISerializer, MethodCache.Infrastruct
 
     // Looked up through the options so a JsonSerializerContext resolver works without reflection
     private JsonTypeInfo<T> TypeInfo<T>() => (JsonTypeInfo<T>)_options.GetTypeInfo(typeof(T));
+
+    /// <summary>
+    /// The first type in what a value of <paramref name="type"/> holds (the type itself, an element, a dictionary key
+    /// or value, a property, or a derived type it restores) that these options write as an empty object although it
+    /// keeps state in fields, such as a struct from a package that keeps it in private fields and has no converter in
+    /// these options. It would read back empty, and writing that again gives the same bytes, so only its contract
+    /// shows the loss. Null when there is none.
+    /// </summary>
+    internal Type? WrittenEmpty(Type type)
+        => _writtenEmpty.GetOrAdd(type, static (declared, self) => self.FindWrittenEmpty(declared, []), this);
+
+    private Type? FindWrittenEmpty(Type type, HashSet<Type> visited)
+    {
+        type = Nullable.GetUnderlyingType(type) ?? type;
+        if (!visited.Add(type)) return null;
+
+        JsonTypeInfo info;
+        try
+        {
+            info = _options.GetTypeInfo(type);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException or ArgumentException)
+        {
+            // No contract here, so values of it fail to write and stay in memory anyway
+            return null;
+        }
+
+        switch (info.Kind)
+        {
+            case JsonTypeInfoKind.Enumerable:
+                return info.ElementType is { } element ? FindWrittenEmpty(element, visited) : null;
+            case JsonTypeInfoKind.Dictionary:
+                return (info.KeyType is { } key ? FindWrittenEmpty(key, visited) : null) ??
+                       (info.ElementType is { } value ? FindWrittenEmpty(value, visited) : null);
+            case JsonTypeInfoKind.Object:
+                if (info.Properties.Count == 0 && HoldsFields(type)) return type;
+                foreach (var property in info.Properties)
+                {
+                    if (FindWrittenEmpty(property.PropertyType, visited) is { } found) return found;
+                }
+
+                foreach (var derived in info.PolymorphismOptions?.DerivedTypes ?? [])
+                {
+                    if (FindWrittenEmpty(derived.DerivedType, visited) is { } found) return found;
+                }
+
+                return null;
+            default:
+                // A converter writes it: a number, a string, a date, or a type with a converter of its own or in the options
+                return null;
+        }
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "A check only: fields trimming removed aren't counted, so it finds less, never a type that writes its state.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075",
+        Justification = "A check only: fields trimming removed aren't counted, so it finds less, never a type that writes its state.")]
+    private static bool HoldsFields(Type type)
+    {
+        for (var current = type; current != null && current != typeof(object) && current != typeof(ValueType); current = current.BaseType)
+        {
+            if (current.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length > 0) return true;
+        }
+
+        return false;
+    }
 }

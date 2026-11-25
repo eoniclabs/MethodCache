@@ -68,7 +68,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
 - Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`
-  (MC0032), or resolving the class itself, bypasses the cache. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
+  (MC0032), or resolving the class itself, bypasses the cache. A framework that creates the class by its type, such
+  as gRPC's `MapGrpcService<T>` or an MVC controller, bypasses it too: cache an interface the class calls, such as its
+  data access. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
   itself or through a setup method of a referenced project (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written
@@ -100,7 +102,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
   invalidates. When another application invalidates it, such as a worker, list it in
   `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning; when only an operator
-  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`.
+  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`. Data that only
+  expires, such as data another application owns that nothing tells you about, gets no `Tags`: the `Duration` decides
+  how old it can get.
 - Keep `SlidingExpiration` shorter than `Duration`: an entry never lives past its `Duration`, so a longer window never
   extends anything (warning MC0038 on `[Cache]`, and a warning when the host starts for settings combined from
   `Defaults`, code or `appsettings.json`).
@@ -184,8 +188,10 @@ builder.Services.AddMethodCache();                               // after your r
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
   data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
   `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
-  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`), or that holds a type JSON writes as
+  `{}` (state only in private fields, such as NodaTime's `Instant` without its converter), stays in memory, with a
+  warning: return records with public properties, and put a package's JSON converters in the options passed to
+  `UseJson(options)`, not only in ASP.NET Core's. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
   (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
   member needs no `Version` bump: entries are kept apart by the result's shape.
@@ -260,8 +266,11 @@ https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml,
 
 # Getting started
 
+MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
+the add-on packages):
+
 ```bash
-dotnet add package MethodCache
+dotnet add package MethodCache --prerelease
 ```
 
 The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
@@ -481,6 +490,12 @@ replaced that way: add an interface, or use [manual caching](https://github.com/
 Adding one changes the registrations, constructors and tests that name the class.
 ([A class without an interface](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#a-class-without-an-interface))
 
+**A framework creates my class itself, such as a gRPC service or a controller. How do I cache in it?**
+Put the cached methods on an interface the class calls, such as its data access, and inject that interface. gRPC's
+`MapGrpcService<T>`, MVC controllers, Razor Pages and similar frameworks create the class by its type and call it
+directly, so `[Cache]` on an interface the class itself implements never runs there.
+([Troubleshooting](https://github.com/eoniclabs/MethodCache/blob/main/docs/troubleshooting.md#the-method-runs-on-every-call))
+
 **Can I put `[Cache]` on the class instead?**
 No. Put it on the interface method. On a class member it does nothing, and warning MC0001 says so; its code fix moves
 the attribute to the interface. ([Build diagnostics](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md))
@@ -572,10 +587,15 @@ with `[CacheInvalidate]`, an entity mapping, `InvalidateTagAsync` or `Invalidate
 invalidates it, such as a worker, list it in `[Cache(InvalidatedElsewhere = ["catalog"])]`; MC0028 then counts it,
 and `TagCoverage` counts it when the test project references the worker that invalidates it. ([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028), [In another application](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#in-another-application))
 
-**A tag is only cleared by an admin, or simply expires. How do I stop MC0028 without a suppression?**
+**A tag is only cleared by an admin. How do I stop MC0028 without a suppression?**
 List it in `[Cache(Tags = ["food-catalog"], InvalidatedManually = ["food-catalog"])]`. MC0028 and `TagCoverage` count
 it as invalidated without looking for an invalidation, so neither a `SuppressMessage` nor `alsoInvalidatedBy` is
 needed. ([Cleared by hand](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/invalidation.md#cleared-by-hand))
+
+**The data only expires, such as data another application owns that nothing tells me about. Which tags does it need?**
+None. A tag that nothing invalidates removes nothing, so leave `Tags` out: the `Duration` alone decides how old a value
+can get, and MC0028 has nothing to report. An operator can still clear the method's entries with
+`ICacheAdministrator.InvalidateMethodAsync`. ([MC0028](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0028))
 
 **My sliding window seems to do nothing. Why?**
 It is as long as the `Duration` or longer. An entry never lives past its `Duration`, so `WithSlidingExpiration` of a
@@ -1725,6 +1745,9 @@ await cache.InvalidateTagAsync("customer:7");   // add this tag to every custome
   [Building a key yourself](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#building-a-key-yourself).
 - Invalidation matches exact tags and keys; there are no wildcard patterns. Attach a common tag to all entries in a
   group instead.
+- `InvalidateTagAsync` and `InvalidateKeyAsync` return a `ValueTask<InvalidationResult>`
+  ([With several instances](#with-several-instances)). A helper declared as `Task` awaits the call instead of
+  returning it: `async Task ClearAsync() => await cache.InvalidateTagAsync("orders");`.
 - To remove every entry of one method, pass its id to `ICacheAdministrator.InvalidateMethodAsync`; get the id from
   `IMethodCacheKeys.MethodId` ([Cache keys](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/keys.md#building-a-key-yourself)).
 - The admin endpoints and `ICacheAdministrator` also invalidate by tag and by method ([Monitoring](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/monitoring.md)).
@@ -1763,7 +1786,9 @@ public static async Task UpdateRateAsync(string provider, string model, decimal 
 - `keys.Tag<T>(call, template)` fills in the template from the call's arguments exactly as the decorator does. The
   method never runs. The template must be one of the method's tags, or it throws and lists them, so a template that
   drifts away from the method fails in your tests instead of silently matching nothing. A `const` on the interface
-  lets the attribute and the call share it.
+  lets the attribute and the call share it. The arguments only fill in the template's placeholders, so pass any value,
+  such as `default` or `0`, for one the template doesn't use. A tag without placeholders needs no call: pass the
+  constant itself, `cache.InvalidateTagAsync(IOrders.ListTag)`.
 - For one entry, `cache.InvalidateKeyAsync(keys.For<IPriceSource>(s => s.GetRateAsync(provider, model)))` removes
   only that call's result.
 - Don't build the tag with plain string interpolation. Tags write arguments in one canonical way (`:` and `\` escaped
@@ -2741,7 +2766,7 @@ foreach (var method in diagnostics.GetMethods())
 | `Storage.MemoryOnlyReason` | Why values stay in memory: no distributed cache, `Enabled` or `Distributed` false (and where), `StoreValuesByDefault = false`, or a synchronous method |
 | `Storage.Shared` | Whether other instances read the values this one stores: false when values stay in memory, and while a runtime override that only this instance applies gives it a namespace of its own |
 | `KeyParameters` | The parameters whose values make up the key, in order; a `CancellationToken` isn't part of it, and `Version` is |
-| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
+| `NotShared` | Result types this instance kept in memory although the method shares its values, with the reason, how many and since when: a type the serializer can't write, one it writes as an empty object, or one that doesn't read back unchanged ([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/distributed-cache.md#serialization)) |
 
 `NotShared` is what this instance saw since it started; each instance keeps its own.
 
@@ -3455,8 +3480,10 @@ Values are written as JSON with System.Text.Json, public fields included, so rec
 shared as they are. A `Dog` where `Animal` is declared comes back as a `Dog` too ([Derived types](#derived-types)).
 Each value is read back once before it is shared. A value that doesn't come back the same, such as a class with private
 setters, `object`, or a dictionary made with its own comparer, stays in that instance's memory only, with one warning
-that names the method and the type. Register your own `JsonSerializerOptions` or `JsonSerializerContext` with `UseJson`
-to share it (`[JsonInclude]` for private setters).
+that names the method and the type. So does a type that JSON writes as `{}` although it has fields, such as a struct
+from a package that keeps its state in private fields. Register your own `JsonSerializerOptions` or
+`JsonSerializerContext` with `UseJson` to share it (`[JsonInclude]` for private setters, the package's converter in
+the options).
 [Distributed cache reference](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization) has the exact rules.
 
 The `MethodCache.Serialization.MessagePack` package makes values smaller and faster to read:
@@ -4867,8 +4894,11 @@ The exact behavior of the Redis, SQL Server and PostgreSQL providers, for advanc
   either side isn't compared. A value whose declared type can't hold another type, such as an `int`, a `List<int>` or
   a sealed record of strings, has nothing to compare and costs nothing extra.
 - State the serializer never writes (data only in private fields, which JSON writes as `{}`) reads back as the same
-  bytes, so the check can't see that it is lost. Make such state serializable, or register a serializer that writes
-  it, with `UseJson(options)` or `UseJson(context)` (`[JsonInclude]`, `[JsonDerivedType]`).
+  bytes, so the bytes can't show that it is lost. MethodCache's JSON serializer reads its contract instead: a type in
+  the result that it writes with no member although the type has fields, such as a struct from a package that keeps
+  its state in private fields, keeps the method's results in memory, with one warning naming the type. A converter for
+  the type in the options passed to `UseJson` writes it in full, and the results are shared. A custom serializer isn't
+  judged this way; make such state serializable there (`[JsonInclude]`, a converter).
 - A collection declared as an interface (`IReadOnlyList<int>`) may come back as another implementation, such as a
   `List<int>` for an array, and is still shared.
 - A serializer that never writes the same bytes twice (encryption with a fresh nonce) can't be compared, so only the
@@ -4976,6 +5006,8 @@ The exact behavior of `MethodCache.HttpCaching`, for advanced users and coding a
   register generated closed types ([Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md#3-register-it)).
 - **The caller doesn't use the interface.** The cache is a decorator around the interface. Resolving or injecting the
   class itself, creating it with `new`, or calling the method from inside the class (`this.GetAsync(...)`) skips it.
+  So does a framework that creates the class by its type and calls it directly, such as gRPC's `MapGrpcService<T>`
+  or an MVC controller: put the cached methods on an interface the class calls instead, such as its data access.
   Warning [MC0032](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0032) reports a class created with `new`, and
   [MC0031](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0031) a call from inside the class.
 - **The arguments differ between calls.** A `DateTime.Now`, a new `Guid` or a request object with a unique id in it
@@ -5156,7 +5188,7 @@ The rules that came after that version are then off. Turn one of them on in `.ed
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
-Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in 1.0.0. Set the level
+Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in the release candidates. Set the level
 only when warnings are errors. Without that, leave it unset, so an upgrade shows its new warnings.
 
 ## MC0001
@@ -5334,8 +5366,9 @@ back as themselves ([Derived types](https://github.com/eoniclabs/MethodCache/blo
 
 Return a concrete type, such as `Task<Product>` or `Task<List<Product>>`, to share the results through the distributed
 cache, or name the types that implement it with `[JsonDerivedType(typeof(Square), "square")]` on the interface or
-abstract class (`[Union]` with MessagePack), which also silences this warning. When only the in-memory cache is used, or memory-only is what you want, suppress the warning with
-`#pragma warning disable MC0020` or `<NoWarn>` in the project.
+abstract class (`[Union]` with MessagePack), which also silences this warning. A method with
+`[Cache(Distributed = false)]` isn't reported, since its results stay in memory. When the whole application uses only
+the in-memory cache, suppress the warning with `#pragma warning disable MC0020` or `<NoWarn>` in the project.
 
 ## MC0021
 
@@ -5601,6 +5634,15 @@ Task<IReadOnlyList<Recipe>> ListAsync();
 ```
 
 Both replace a `SuppressMessage` on each method and keep the reason next to the tag.
+
+When nothing can tell you the data changed, such as data another application owns and you only read, leave `Tags` out:
+a tag nothing invalidates removes nothing, and the `Duration` alone decides how old a value can get.
+
+```cs
+// Owned by the billing system, which tells us nothing: a value is at most 10 minutes old
+[Cache(Duration = "10m")]
+Task<Invoice?> GetInvoiceAsync(string number);
+```
 
 A project that invalidates nothing, such as a library that only declares the cached interfaces, isn't reported.
 
@@ -5925,10 +5967,12 @@ public Task<List<CustomerSummary>> GetAllAsync()
     => db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count)).ToListAsync();
 ```
 
+A method with `[Cache(Distributed = false)]` isn't reported: its results stay in memory and are never written.
+
 ## MC0042
 
-A cached result type, an element of it or a type of its public properties, is one of your own types that keeps all its
-state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
+A cached result type, an element of it or a type of its public properties, is a type the project compiles that keeps
+all its state in non-public fields or properties. JSON and MessagePack write public properties and fields, so such a value is
 written as an empty object. The check before sharing can't tell, since the empty object reads back and writes the same,
 so the other instances would get an empty value from the distributed cache:
 
@@ -5945,8 +5989,17 @@ public sealed class Money
 
 Give the type public properties, such as `public decimal Amount { get; }` set by the constructor, or a record such as
 `public sealed record Money(decimal Amount)`. Or mark the fields `[JsonInclude]`, or give the type a JSON converter
-with `[JsonConverter]`. A converter registered only in the options passed to `UseJson` can't be seen by the build;
-suppress the warning then.
+with `[JsonConverter]`. A method with `[Cache(Distributed = false)]` isn't reported, since its results stay in memory.
+
+A type from another assembly, such as NodaTime's `Instant` or a type of another project, isn't reported: the build
+can't see a converter registered in the options passed to `UseJson`, nor the private fields of a class in another
+assembly. The check before sharing reads the serializer's contract instead, which has those converters. When it writes
+such a type as `{}`, the method's results stay in memory, with one warning naming the type
+([Serialization](https://github.com/eoniclabs/MethodCache/blob/main/docs/reference/distributed.md#serialization)).
+
+A converter you register yourself goes in the `JsonSerializerOptions` you pass to `UseJson`: MethodCache doesn't use the
+options of ASP.NET Core's JSON, so a converter registered only there doesn't reach the distributed cache. For a type
+of the project whose converter is only in those options, suppress the warning.
 
 ## MC0043
 
@@ -7225,14 +7278,15 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## 1.0.0 (2026-11-21)
-
-The first stable release. From this release a change that breaks the public API needs a new major version.
+## 1.0.0-rc.21 (2026-11-25)
 
 ### Upgrading from 1.0.0-rc.20
 
-Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
-`--prerelease`.
+Nothing to change in your code: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows.
+
+A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
+stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in
+the options you pass to `UseJson`.
 
 ### Added
 
@@ -7255,6 +7309,16 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - With a distributed cache, a value another instance had just stored could be loaded from the source again instead
   of read from the distributed cache, when that instance's notice of the new value arrived as the load started. The
   load now reads the distributed cache first, as it does otherwise.
+- A cached method with an `IReadOnlySet<T>` or `ISet<T>` parameter no longer gives warning CS0184 in the generated
+  code, which failed a build that treats warnings as errors. The keys don't change.
+- MC0020, MC0041 and MC0042 are no longer reported for a method with `[Cache(Distributed = false)]`, whose results stay
+  in memory and are never written.
+- MC0042 reports only types the project compiles. It reported a struct from a package, such as NodaTime's `Instant`,
+  even with its converter in the options passed to `UseJson`, and missed a class from a package with the same problem,
+  whose private fields the build can't see. The check before sharing now reads MethodCache's JSON contract instead: a
+  type in a result that it writes as `{}` although the type has fields keeps the method's results in memory, with one
+  warning naming the type, and a converter in the `UseJson` options shares them. Before, such a value was shared and
+  the other instances read it back empty.
 
 ### Documentation
 
@@ -7264,6 +7328,12 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   change replaces.
 - A Blazor page covers Blazor Server, WebAssembly (in memory, per browser tab), prerendering and `InteractiveAuto`
   ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md)).
+- MC0028 and the how-to say that data that only expires, such as data another application owns, needs no tags.
+- Invalidation says that `keys.Tag<T>` uses the call's arguments only for the template's placeholders, that a tag
+  without placeholders is passed as the constant, and that `InvalidateTagAsync` returns a `ValueTask`.
+- The how-to and troubleshooting cover frameworks that create a class by its type, such as gRPC's
+  `MapGrpcService<T>` or a controller. MC0042 says that a converter goes in the options passed to `UseJson`, not in
+  ASP.NET Core's.
 
 ## 1.0.0-rc.20 (2026-11-11)
 

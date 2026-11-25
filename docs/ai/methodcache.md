@@ -63,7 +63,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Only interface methods that return a value can be cached: sync, `Task<T>` or `ValueTask<T>`. Return a list, never
   a lazy `IEnumerable<T>` or `IQueryable<T>`.
 - Callers must use the interface. Calling the method from inside the class (MC0031), creating the class with `new`
-  (MC0032), or resolving the class itself, bypasses the cache. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
+  (MC0032), or resolving the class itself, bypasses the cache. A framework that creates the class by its type, such
+  as gRPC's `MapGrpcService<T>` or an MVC controller, bypasses it too: cache an interface the class calls, such as its
+  data access. Several instances of one class are keyed registrations. A program with cached services must call `AddMethodCache()`,
   itself or through a setup method of a referenced project (MC0030).
 - Keys are generated from the method and its arguments; don't write keys for `[Cache]` methods. A `CancellationToken`
   is not part of the key. Every value that changes the result must be a parameter. Sets and dictionaries are written
@@ -95,7 +97,9 @@ builder.Services.AddMethodCache();                               // after your r
 - Every tag on a `[Cache]` method needs an invalidation that names it; MC0028 reports one that nothing in the project
   invalidates. When another application invalidates it, such as a worker, list it in
   `[Cache(Tags = [...], InvalidatedElsewhere = ["tag"])]` instead of suppressing the warning; when only an operator
-  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`.
+  clears it by hand, such as through `MapMethodCacheAdmin`, list it in `InvalidatedManually = ["tag"]`. Data that only
+  expires, such as data another application owns that nothing tells you about, gets no `Tags`: the `Duration` decides
+  how old it can get.
 - Keep `SlidingExpiration` shorter than `Duration`: an entry never lives past its `Duration`, so a longer window never
   extends anything (warning MC0038 on `[Cache]`, and a warning when the host starts for settings combined from
   `Defaults`, code or `appsettings.json`).
@@ -179,8 +183,10 @@ builder.Services.AddMethodCache();                               // after your r
   `IDistributedCache`. When processes should keep their own values and share only invalidations (a worker that changes
   data an API caches, or several API instances), add `.Distributed(o => o.StoreValuesByDefault = false)` in every process (not
   `Defaults(o => o.WithDistributed(false))`, which manual calls ignore): values stay in memory unless a method or call sets `Distributed = true`/`WithDistributed(true)`, and invalidations reach all of them (PostgreSQL `LISTEN`/`NOTIFY`, Redis pub/sub, SQL Server polling). Values are
-  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`) stays in memory, with a
-  warning: return records with public properties. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
+  JSON; use `UseJson(context)` for Native AOT and `UseJson(options)` for your own settings. A result type that doesn't read back unchanged (private setters, `object`), or that holds a type JSON writes as
+  `{}` (state only in private fields, such as NodaTime's `Instant` without its converter), stays in memory, with a
+  warning: return records with public properties, and put a package's JSON converters in the options passed to
+  `UseJson(options)`, not only in ASP.NET Core's. A `Dog` in a `List<Animal>` comes back as a `Dog` (the generator
   registers derived types; under Native AOT add them to the context, MC0040). Never change a cached result in place
   (MC0043): the memory cache hands the same instance to later callers, so change a copy. A renamed property or enum
   member needs no `Version` bump: entries are kept apart by the result's shape.

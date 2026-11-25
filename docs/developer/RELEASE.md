@@ -110,7 +110,7 @@ Tags from before the first public release (v1.0.0–v1.2.3, 2025) were deleted o
    1.0.0 create it as a draft, read it, then publish it:
 
    ```bash
-   gh release create v1.0.0-rc.20 --title "MethodCache 1.0.0-rc.20" --notes-file notes.md --prerelease
+   gh release create v1.0.0-rc.21 --title "MethodCache 1.0.0-rc.21" --notes-file notes.md --prerelease
    gh release create v1.0.0 --title "MethodCache 1.0.0" --notes-file notes.md --draft
    ```
 

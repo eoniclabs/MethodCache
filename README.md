@@ -134,11 +134,13 @@ every cached method tagged with that user.
 
 ## Getting started
 
-```bash
-dotnet add package MethodCache
-```
+MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
+the add-on packages). Use the newest release candidate: each one replaces the one before it, and the
+[changelog](CHANGELOG.md) says what to change when you upgrade.
 
-The [changelog](CHANGELOG.md) says what changed in each release and what to change when you upgrade.
+```bash
+dotnet add package MethodCache --prerelease
+```
 
 1. Put `[Cache]` on interface methods that return data (sync, `Task<T>` or `ValueTask<T>`), and
    `[CacheInvalidate]` on the methods that change it.

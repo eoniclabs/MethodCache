@@ -948,5 +948,48 @@ namespace TestApp
 
             Assert.Empty(problems);
         }
+
+        [Fact]
+        public void CollectionInterfaceParameters_CompileWithoutWarningsInGeneratedCode()
+        {
+            // An array can't be behind IReadOnlySet<T> or ISet<T>, so a check for one would be warning CS0184
+            var source = @"
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using MethodCache;
+
+namespace TestApp
+{
+    public interface IIds<T> : IEnumerable<T> { }
+
+    public interface ITestService
+    {
+        [Cache] Task<int> EnumerableAsync(IEnumerable<Guid> ids);
+        [Cache] Task<int> CollectionAsync(ICollection<Guid> ids);
+        [Cache] Task<int> ListAsync(IList<Guid> ids);
+        [Cache] Task<int> ReadOnlyCollectionAsync(IReadOnlyCollection<Guid> ids);
+        [Cache] Task<int> ReadOnlyListAsync(IReadOnlyList<Guid> ids);
+        [Cache] Task<int> SetAsync(ISet<Guid> ids);
+        [Cache] Task<int> ReadOnlySetAsync(IReadOnlySet<Guid> ids);
+        [Cache] Task<int> OwnAsync(IIds<Guid> ids);
+    }
+}";
+            var run = GeneratorRun.Run(GeneratorRun.Compilation("TestApp", source));
+
+            var generatedTrees = run.Output.SyntaxTrees.Skip(1).ToHashSet();
+            var problems = run.Output.GetDiagnostics()
+                .Where(d => d.Severity >= DiagnosticSeverity.Warning && generatedTrees.Contains(d.Location.SourceTree!))
+                .ToList();
+            foreach (var problem in problems)
+            {
+                _output.WriteLine(problem.ToString());
+            }
+
+            Assert.Empty(problems);
+            var decorator = run.Source("TestApp.ITestServiceDecorator.g.cs");
+            Assert.Contains("is global::System.Guid[]", decorator, StringComparison.Ordinal);
+            Assert.Contains("typeof(global::System.Collections.Generic.HashSet<global::System.Guid>)", decorator, StringComparison.Ordinal);
+        }
     }
 }

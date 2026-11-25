@@ -130,6 +130,45 @@ public class DistributedSerializationTests
         Warnings.Should().Be(2, "each instance warns once");
     }
 
+    /// <summary>Keeps its state in a private field, as some types from packages do.</summary>
+    public readonly struct Stamp(long ticks)
+    {
+        private readonly long _ticks = ticks;
+
+        public long Ticks() => _ticks;
+    }
+
+    public sealed record Order(int Id, Stamp CreatedAt);
+
+    public sealed class StampConverter : JsonConverter<Stamp>
+    {
+        public override Stamp Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options) => new(reader.GetInt64());
+
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, Stamp value, System.Text.Json.JsonSerializerOptions options) => writer.WriteNumberValue(value.Ticks());
+    }
+
+    [Fact]
+    public async Task ATypeKeptInPrivateFields_StaysInMemoryOnly_UnlessTheOptionsHaveItsConverter()
+    {
+        // Written as {} it reads back as a Stamp of 0, which writes {} again, so only the contract shows the loss
+        var (a, _) = CreateNode();
+        var (b, _) = CreateNode();
+
+        (await Load(a, "k", () => new Order(1, new Stamp(42)))).CreatedAt.Ticks().Should().Be(42);
+        Warnings.Should().Be(1);
+        _logger.Messages.Should().Contain(m => m.Message.Contains("writes " + typeof(Stamp) + " in them as an empty object", StringComparison.Ordinal));
+        (await Load(b, "k", () => new Order(1, new Stamp(42)))).CreatedAt.Ticks().Should().Be(42, "B finds no empty copy to read");
+
+        // With its converter in the options passed to UseJson, it is written in full and shared
+        var options = new System.Text.Json.JsonSerializerOptions { Converters = { new StampConverter() } };
+        var (c, _) = CreateNode(new JsonCacheSerializer(options));
+        var (d, _) = CreateNode(new JsonCacheSerializer(options));
+
+        await Load(c, "shared", () => new Order(2, new Stamp(7)));
+        (await Load<Order>(d, "shared", () => throw new InvalidOperationException("D must read C's value"))).CreatedAt.Ticks().Should().Be(7);
+        Warnings.Should().Be(2, "only A and B warned");
+    }
+
     [Fact]
     public async Task DerivedValueOfADeclaredBaseType_StaysInMemoryOnly()
     {
