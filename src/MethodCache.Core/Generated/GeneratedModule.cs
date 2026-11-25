@@ -22,6 +22,7 @@ public static class GeneratedCode
         Modules[module.GetType()] = (contractVersion, module);
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "An assembly with generated decorators uses MethodCache's types, so trimming keeps its reference to MethodCache; an assembly that lost it has no decorators to find.")]
     internal static GeneratedModuleBuilder[] Describe(IEnumerable<Assembly> explicitAssemblies, IEnumerable<Type> services)
     {
         var requested = explicitAssemblies.Distinct().ToArray();

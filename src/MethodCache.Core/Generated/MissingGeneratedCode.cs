@@ -16,6 +16,7 @@ internal static class MissingGeneratedCode
     /// <exception cref="InvalidOperationException">A registered interface has <c>[Cache]</c> methods but no generated code.</exception>
     [UnconditionalSuppressMessage("Trimming", "IL2070",
         Justification = "A check only: when trimming removes an interface's methods or attributes it finds nothing and stays silent.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "An assembly with generated decorators uses MethodCache's types, so trimming keeps its reference to MethodCache; an assembly that lost it has no decorators to find.")]
     internal static void ThrowIfAny(IServiceCollection services, IEnumerable<GeneratedModuleBuilder> modules)
     {
         // Native AOT always compiles the generated code it has; attributes aren't read there

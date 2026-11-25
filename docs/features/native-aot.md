@@ -43,7 +43,7 @@ for you, because one source generator can't see another generator's output.
 
 Under Native AOT, give cached methods arguments that the decorator writes into the key itself:
 
-- simple values (strings, numbers, `bool`, `Guid`, dates, enums),
+- simple values (strings, numbers, `bool`, `char`, `Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`, enums),
 - records, classes and structs whose public properties and fields are simple values, passed as exactly the declared
   type (a sealed type is safest: an instance of a derived class goes through the key generator),
 - types that implement `ICacheKeyProvider`,
@@ -53,7 +53,10 @@ Under Native AOT, give cached methods arguments that the decorator writes into t
 Collection subclasses with their own public state also use the key generator; implement `ICacheKeyProvider` on
 these types when using Native AOT. Plain lists, arrays and sets keep their inline keys.
 
-Other arguments, such as interfaces, `object` or collections of collections, go through the key generator, which
-serializes them with reflection-based System.Text.Json. Publishing then reports trim and AOT warnings (IL2026,
-IL3050) from `MethodCache.Core`, and the call throws `InvalidOperationException` at runtime. Wrap such an argument in a type that
-implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](keys.md#types-whose-state-is-private).
+Other arguments, such as interfaces, `object`, collections of collections and framework types such as `DateOnly`,
+`BigInteger` or `Uri`, go through the key generator, which serializes them with reflection-based System.Text.Json.
+Publishing then reports trim and AOT warnings (IL2026, IL3050) on the generated decorator of each such method, which
+names the method, and under Native AOT the call throws `InvalidOperationException` at runtime. Wrap such an argument
+in a type that implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](keys.md#types-whose-state-is-private).
+A trimmed app, such as Blazor WebAssembly, gets the same warnings and still runs, as long as trimming keeps the
+members of those argument types.

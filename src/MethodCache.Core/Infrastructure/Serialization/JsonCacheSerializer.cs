@@ -30,10 +30,20 @@ internal sealed class JsonCacheSerializer : ISerializer, MethodCache.Infrastruct
     public IReadOnlyList<(Type Declared, Type Derived)> Missing { get; } = [];
 
     /// <summary>
+    /// Why the reflection here reports nothing: System.Text.Json reads types by reflection only for options without a
+    /// resolver, and only while reflection is on. Native AOT turns it off, and the docs ask trimmed and Native AOT apps
+    /// with a distributed cache to pass a JsonSerializerContext with UseJson(context).
+    /// </summary>
+    private const string ReflectionJustification =
+        "Reflection-based JSON is used only for options without a resolver while reflection is enabled; trimmed and Native AOT apps pass a JsonSerializerContext with UseJson(context), as the docs say.";
+
+    /// <summary>
     /// Creates a serializer with the given <paramref name="options"/>, or System.Text.Json's defaults with
     /// <see cref="JsonSerializerOptions.IncludeFields"/> on, that also writes and restores the derived types in
     /// <paramref name="derived"/> as themselves.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = ReflectionJustification)]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = ReflectionJustification)]
     public JsonCacheSerializer(JsonSerializerOptions? options = null, MethodCache.Infrastructure.DerivedTypeRegistry? derived = null)
     {
         if (derived is not { Count: > 0 })
@@ -96,6 +106,8 @@ internal sealed class JsonCacheSerializer : ISerializer, MethodCache.Infrastruct
     {
         public static readonly JsonSerializerOptions Options = Create();
 
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = ReflectionJustification)]
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = ReflectionJustification)]
         private static JsonSerializerOptions Create()
         {
             var options = new JsonSerializerOptions(JsonSerializerOptions.Default) { IncludeFields = true };

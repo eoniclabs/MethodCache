@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TrackPublicApi>true</TrackPublicApi>
+    <!-- Trimmed and Native AOT apps, such as Blazor WebAssembly, trim this assembly, and the build reports code that trimming or Native AOT could break -->
+    <IsAotCompatible>true</IsAotCompatible>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -13,6 +14,26 @@ namespace MethodCache.Core.Runtime.KeyGeneration;
 /// </summary>
 internal static class KeyArguments
 {
+    /// <summary>
+    /// The trim and Native AOT warning for an argument without a key form of its own: the app sees it on the generated
+    /// decorator of the method that takes the argument.
+    /// </summary>
+    internal const string ReflectionMessage =
+        "An argument of this cached method has no key form of its own (an interface, object, an unsealed class, a collection of collections), " +
+        "so MethodCache serializes it with reflection-based System.Text.Json. Trimming can remove the members that tell values apart, " +
+        "and Native AOT can't serialize it. Implement ICacheKeyProvider on the argument's type, or pass a sealed type with public properties.";
+
+    /// <summary>
+    /// Why a key generator called through its interface doesn't carry <see cref="ReflectionMessage"/>: a generated
+    /// decorator reaches it through <c>MethodCall.CreateFallbackKey</c>, which carries the warning to the app, and the
+    /// other callers pass no arguments or keys they built themselves.
+    /// </summary>
+    /// <summary>Why the reflection in this class reports nothing itself: <see cref="Serialize"/> carries the warning.</summary>
+    private const string OnlyFromSerialize = "Reached only from Serialize, which carries the warning to the app.";
+
+    internal const string InterfaceJustification =
+        "Generated decorators reach the key generator through MethodCall.CreateFallbackKey, which reports the warning on the decorator; other callers pass explicit keys.";
+
     // Fields count too, so two values that differ only in a public field don't share a key. JSON writes every lone
     // surrogate as U+FFFD, so strings and chars that hold one are written in a form no valid text can take. A value
     // whose runtime type differs from the type it is declared as is written with that type (see RuntimeTypeResolver).
@@ -20,7 +41,11 @@ internal static class KeyArguments
     // infinities, such as a "no limit" double.PositiveInfinity, are written as their names instead of failing. Framework
     // types whose public properties don't hold their value (BigInteger's are IsZero, Sign...; IPAddress's throw) are
     // written as their text. A JsonElement is written as its JSON.
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerOptions.Default)
+    private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = OnlyFromSerialize)]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = OnlyFromSerialize)]
+    private static JsonSerializerOptions CreateJsonOptions() => new(JsonSerializerOptions.Default)
     {
         IncludeFields = true,
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
@@ -33,6 +58,8 @@ internal static class KeyArguments
     /// inside it (a property, an element) has a type whose state is all non-public: every such value would serialize
     /// to <c>{}</c>, different arguments would share one key, and callers would get each other's cached results.
     /// </summary>
+    [RequiresUnreferencedCode(ReflectionMessage)]
+    [RequiresDynamicCode(ReflectionMessage)]
     public static byte[] Serialize(object arg)
     {
         var type = KeyType(arg);
@@ -75,6 +102,8 @@ internal static class KeyArguments
         public Type Type { get; } = type;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = OnlyFromSerialize)]
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = OnlyFromSerialize)]
     private static bool HasInstanceFields(Type type)
     {
         // GetFields without DeclaredOnly omits private base fields. Inspect every level so inheritance cannot
@@ -144,8 +173,14 @@ internal static class KeyArguments
         private static readonly MethodInfo CreateInfoMethod =
             typeof(RuntimeTypeResolver).GetMethod(nameof(CreateInfo), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-        private readonly DefaultJsonTypeInfoResolver _default = new();
+        private readonly DefaultJsonTypeInfoResolver _default = CreateDefault();
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = OnlyFromSerialize)]
+        [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = OnlyFromSerialize)]
+        private static DefaultJsonTypeInfoResolver CreateDefault() => new();
+
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = OnlyFromSerialize)]
+        [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = OnlyFromSerialize)]
         public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options)
             => IsExact(type)
                 ? ExactInfo(_default, type, options)
@@ -155,6 +190,8 @@ internal static class KeyArguments
             => JsonMetadataServices.CreateValueInfo<T>(options, new RuntimeTypeConverter<T>(resolver));
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = OnlyFromSerialize)]
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = OnlyFromSerialize)]
     private static JsonTypeInfo? ExactInfo(DefaultJsonTypeInfoResolver resolver, Type type, JsonSerializerOptions options)
     {
         var info = RefuseHiddenState(resolver.GetTypeInfo(type, options));
@@ -165,6 +202,7 @@ internal static class KeyArguments
     }
 
     /// <summary>A set or a dictionary, whose enumeration order says nothing about its value.</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = OnlyFromSerialize)]
     private static bool IsUnordered(Type type)
         => typeof(System.Collections.IDictionary).IsAssignableFrom(type)
            || type.GetInterfaces().Append(type).Any(static i => i.IsGenericType && i.GetGenericTypeDefinition() is var definition &&
@@ -301,6 +339,8 @@ internal static class KeyArguments
 
         public JsonEncodedText Name { get; private init; }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = OnlyFromSerialize)]
+        [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode", Justification = OnlyFromSerialize)]
         public static RuntimeWriter Create(Type type, JsonSerializerOptions options)
             => (RuntimeWriter)CreateMethod.MakeGenericMethod(type).Invoke(null, [options])!;
 

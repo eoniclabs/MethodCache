@@ -157,6 +157,7 @@ namespace MethodCache.SourceGenerator
                     .Cast<IMethodSymbol>()
                     .Where(m => m.MethodKind == MethodKind.Ordinary && Utils.IsInterceptable(m));
 
+                var methodsStart = sb.Length;
                 foreach (var method in allMethods)
                 {
                     if (method.Parameters.Length == 0 && method.ContainingType.ToDisplayString() is "System.IDisposable" or "System.IAsyncDisposable") continue;
@@ -170,6 +171,9 @@ namespace MethodCache.SourceGenerator
                     else
                         EmitPassthroughMethod(sb, method);
                 }
+
+                if (sb.ToString(methodsStart, sb.Length - methodsStart).Contains(FallbackKey + "("))
+                    EmitFallbackKey(sb);
 
                 // The container owns and disposes the implementation, so disposing the decorator does nothing
                 if (disposable)
@@ -196,6 +200,37 @@ namespace MethodCache.SourceGenerator
                 sb.AppendLine("#pragma warning restore CS8019");
 
                 return sb.ToString();
+            }
+
+            private const string FallbackKey = "__McFallbackKey";
+
+            /// <summary>
+            /// The key of a call that goes to the key generator without needing reflection: every argument is a type the key
+            /// generator writes itself (a <c>TimeSpan</c>, a <c>char</c>, an <c>ICacheKeyProvider</c>...), or an argument with
+            /// an inline key form for its declared type is an instance of a derived type at run time, which is rare. A call
+            /// whose declared argument types need reflection calls <c>CreateFallbackKey</c> itself, so trimmed and Native AOT
+            /// apps get the warning on that method.
+            /// </summary>
+            private static void EmitFallbackKey(StringBuilder sb)
+            {
+                const string justification = "MethodCache calls this only where the key generator writes every argument without reflection, or where only an argument whose runtime type derives from its declared type, which has an inline key, is serialized by reflection.";
+                sb.AppendLine($"        [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"Trimming\", \"IL2026:RequiresUnreferencedCode\", Justification = \"{justification}\")]");
+                sb.AppendLine($"        [global::System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(\"AOT\", \"IL3050:RequiresDynamicCode\", Justification = \"{justification}\")]");
+                sb.AppendLine($"        private static global::MethodCache.Generated.KeyBuilder {FallbackKey}(global::MethodCache.Generated.MethodCall call, object?[] arguments) => call.CreateFallbackKey(arguments);");
+                sb.AppendLine();
+            }
+
+            /// <summary>
+            /// A type the key generator writes itself, without reflection (see <c>FastHashKeyGenerator.WriteArgument</c>):
+            /// the simple types, <c>char</c>, native integers, <c>TimeSpan</c>, and any <c>ICacheKeyProvider</c>.
+            /// </summary>
+            private static bool IsWrittenWithoutReflection(ITypeSymbol type)
+            {
+                if (type is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } nullable)
+                    return IsWrittenWithoutReflection(nullable.TypeArguments[0]);
+                if (IsSimpleType(type) || IsCacheKeyProvider(type)) return true;
+                if (type.SpecialType is SpecialType.System_Char or SpecialType.System_IntPtr or SpecialType.System_UIntPtr) return true;
+                return type.ContainingNamespace?.ToDisplayString() == "System" && type.Name == "TimeSpan";
             }
 
             private static string GetClassGenericParameters(INamedTypeSymbol symbol)
@@ -330,7 +365,7 @@ namespace MethodCache.SourceGenerator
                     if (exactTypeChecks.Count > 0)
                     {
                         sb.AppendLine($"            if (!({string.Join(" && ", exactTypeChecks)}))");
-                        sb.AppendLine($"                __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                        sb.AppendLine($"                __mcKeyBuilder = {FallbackKey}(__mcCall, new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
                         sb.AppendLine("            else");
                         sb.AppendLine("            {");
                     }
@@ -349,7 +384,8 @@ namespace MethodCache.SourceGenerator
                 }
                 else
                 {
-                    sb.AppendLine($"            var __mcKeyBuilder = __mcCall.CreateFallbackKey(new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
+                    var fallback = keyParams.All(p => IsWrittenWithoutReflection(p.Type)) ? $"{FallbackKey}(__mcCall, " : "__mcCall.CreateFallbackKey(";
+                    sb.AppendLine($"            var __mcKeyBuilder = {fallback}new object?[] {{ {string.Join(", ", keyParams.Select(Utils.ParameterIdentifier))} }});");
                     EmitHit(sb, kind, valueType, safeFieldName, "__mcKeyBuilder.AsSpan()");
                     sb.AppendLine("            var __mcKey = __mcKeyBuilder.ToString();");
                 }
