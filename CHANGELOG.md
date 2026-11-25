@@ -4,14 +4,11 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## 1.0.0 (2026-11-21)
-
-The first stable release. From this release a change that breaks the public API needs a new major version.
+## 1.0.0-rc.21 (2026-11-25)
 
 ### Upgrading from 1.0.0-rc.20
 
-Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
-`--prerelease`.
+Nothing to change in your code: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows.
 
 A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
 stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in

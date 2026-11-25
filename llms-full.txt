@@ -266,8 +266,11 @@ https://github.com/eoniclabs/MethodCache/issues/new?template=agent-feedback.yml,
 
 # Getting started
 
+MethodCache 1.0 is a release candidate on nuget.org, so add `--prerelease` until 1.0.0 is out (the same goes for
+the add-on packages):
+
 ```bash
-dotnet add package MethodCache
+dotnet add package MethodCache --prerelease
 ```
 
 The `MethodCache` package contains the library, the source generator and the analyzers. It requires .NET 10 and the
@@ -5185,7 +5188,7 @@ The rules that came after that version are then off. Turn one of them on in `.ed
 1.0 stays on at any level, and without the property every rule is on. A value that isn't a version, such as `latest`,
 fails the build with MCB001.
 
-Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in 1.0.0. Set the level
+Every rule up to 1.0.0 counts as a rule of 1.0, so `1.0` turns nothing off in the release candidates. Set the level
 only when warnings are errors. Without that, leave it unset, so an upgrade shows its new warnings.
 
 ## MC0001
@@ -7275,14 +7278,11 @@ Changes that a user of the packages notices. The release steps are in
 [docs/developer/RELEASE.md](https://github.com/eoniclabs/MethodCache/blob/main/docs/developer/RELEASE.md); when you tag a release, copy its section into the GitHub
 release.
 
-## 1.0.0 (2026-11-21)
-
-The first stable release. From this release a change that breaks the public API needs a new major version.
+## 1.0.0-rc.21 (2026-11-25)
 
 ### Upgrading from 1.0.0-rc.20
 
-Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows. Install without
-`--prerelease`.
+Nothing to change in your code: the cache keys are the same as in 1.0.0-rc.20, and the public API only grows.
 
 A result holding a type that MethodCache's JSON writes as `{}`, such as NodaTime's `Instant` without its converter, now
 stays in memory with a warning instead of reaching the other instances empty. To share it, put the type's converter in
