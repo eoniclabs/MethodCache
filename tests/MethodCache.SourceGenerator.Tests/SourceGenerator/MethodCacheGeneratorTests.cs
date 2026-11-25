@@ -122,6 +122,62 @@ namespace App
             Assert.DoesNotContain(result.GeneratedSources, s => s.Key.EndsWith("MethodCacheHostMarkers.g.cs", StringComparison.Ordinal));
         }
 
+        // A method whose declared argument type needs reflection calls CreateFallbackKey itself, so trimmed and Native AOT
+        // apps get the warning on it. One whose argument has an inline key goes to reflection only for an instance of a
+        // derived type, through a helper that keeps that rare case from warning.
+        [Fact]
+        public async Task ArgumentWithoutKeyForm_CallsTheFallbackItself()
+        {
+            const string source = @"using System.Threading.Tasks;
+using MethodCache;
+namespace App
+{
+    public interface IReports { [Cache(Duration = ""5m"")] Task<int> FindAsync(object filter); }
+}";
+
+            var decorator = Assert.Single((await GetGeneratedSources(source)).GeneratedSources, s => s.Key.EndsWith("IReportsDecorator.g.cs", StringComparison.Ordinal)).Value;
+
+            Assert.Contains("__mcCall.CreateFallbackKey(", decorator);
+            Assert.DoesNotContain("__McFallbackKey", decorator);
+        }
+
+        [Fact]
+        public async Task ArgumentsTheKeyGeneratorWritesItself_GoToTheFallbackWithoutAWarning()
+        {
+            const string source = @"using System;
+using System.Threading.Tasks;
+using MethodCache;
+namespace App
+{
+    public interface IClock { [Cache(Duration = ""5m"")] Task<int> GetAsync(TimeSpan window, char unit, nint handle); }
+}";
+
+            var decorator = Assert.Single((await GetGeneratedSources(source)).GeneratedSources, s => s.Key.EndsWith("IClockDecorator.g.cs", StringComparison.Ordinal)).Value;
+
+            Assert.DoesNotContain("__mcCall.CreateFallbackKey(", decorator);
+            Assert.Contains("__McFallbackKey(__mcCall, ", decorator);
+        }
+
+        [Fact]
+        public async Task ArgumentWithInlineKey_GoesToTheFallbackForADerivedInstanceWithoutAWarning()
+        {
+            const string source = @"using System.Collections.Generic;
+using System.Threading.Tasks;
+using MethodCache;
+namespace App
+{
+    public sealed record Query(string Term, int Page);
+    public interface ICatalog { [Cache(Duration = ""5m"")] Task<int> SearchAsync(List<Query> queries); }
+}";
+
+            var decorator = Assert.Single((await GetGeneratedSources(source)).GeneratedSources, s => s.Key.EndsWith("ICatalogDecorator.g.cs", StringComparison.Ordinal)).Value;
+
+            Assert.DoesNotContain("__mcCall.CreateFallbackKey(", decorator);
+            Assert.Contains("__McFallbackKey(__mcCall, ", decorator);
+            Assert.Contains("UnconditionalSuppressMessage(\"Trimming\", \"IL2026:RequiresUnreferencedCode\"", decorator);
+            Assert.Contains("UnconditionalSuppressMessage(\"AOT\", \"IL3050:RequiresDynamicCode\"", decorator);
+        }
+
         private void LogGeneratedSources(GeneratedSourceResult result)
         {
             _output.WriteLine("=== GENERATED SOURCES ===");

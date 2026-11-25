@@ -91,6 +91,12 @@ public readonly struct MethodCall
     }
 
     /// <summary>Encodes arguments lacking an inline key representation using this invocation's policy.</summary>
+    /// <remarks>
+    /// Trimmed and Native AOT apps get a warning on the generated decorator that calls this, so the method whose
+    /// arguments need reflection is named.
+    /// </remarks>
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(MethodCache.Core.Runtime.KeyGeneration.KeyArguments.ReflectionMessage)]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode(MethodCache.Core.Runtime.KeyGeneration.KeyArguments.ReflectionMessage)]
     public KeyBuilder CreateFallbackKey(object?[] arguments)
     {
         ArgumentNullException.ThrowIfNull(arguments);

@@ -430,4 +430,14 @@ public class GeneratedContractTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
         Assert.Equal(99, await joined);
     }
+
+    // Trimmed and Native AOT apps get the warning on the generated decorator whose arguments need reflection
+    [Fact]
+    public void CreateFallbackKey_CarriesTheTrimAndAotWarning()
+    {
+        var method = typeof(MethodCall).GetMethod(nameof(MethodCall.CreateFallbackKey))!;
+
+        Assert.NotNull(System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute>(method));
+        Assert.NotNull(System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute>(method));
+    }
 }

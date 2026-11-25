@@ -36,6 +36,8 @@ internal class JsonKeyGenerator : ICacheKeyGenerator
     public const int MaxReadableLength = 200;
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = KeyArguments.InterfaceJustification)]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = KeyArguments.InterfaceJustification)]
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
     {
         var buffer = new ArrayBufferWriter<byte>(128);

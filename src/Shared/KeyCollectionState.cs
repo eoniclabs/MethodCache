@@ -11,6 +11,10 @@ internal static class KeyCollectionState
 
     internal sealed record Member(string Name, Type Type, Func<object, object?> Read);
 
+    // The key generator reads these by reflection only for arguments without a key form of their own; the method that
+    // reaches it carries the trim warning to the app (KeyArguments.ReflectionMessage)
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reached only from key generation by reflection, which carries the warning to the app.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Reached only from key generation by reflection, which carries the warning to the app.")]
     public static Member[] For(Type type) => Members.GetOrAdd(type, static collection =>
     {
         if (collection == typeof(string) || !typeof(IEnumerable).IsAssignableFrom(collection)) return [];

@@ -21,6 +21,10 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - MethodCache.AspNetCore: `MethodCacheAdminAction.OverrideMetadata` gives the audit function the `Owner`, `Reason`,
   `Ticket` and `ExpiresAt` of an override set over HTTP, and `MethodCacheAdminAction` has a public constructor, so a
   test can call an audit function ([Audit](src/MethodCache.AspNetCore/README.md#audit)).
+- `MethodCache` is marked as compatible with trimming and Native AOT. Blazor WebAssembly and other trimmed apps now
+  trim it too (about half its size), and a cached method whose arguments need reflection for the key gets a trim and
+  AOT warning (IL2026, IL3050) on its generated decorator, naming the method, instead of one warning for the whole
+  `MethodCache.Core` assembly ([Native AOT](docs/features/native-aot.md#keys)).
 - MC0026 also warns when a cached implementation takes Blazor's `AuthenticationStateProvider`, `ProtectedSessionStorage`
   or `ProtectedLocalStorage`, which read the signed-in user of the circuit or the browser
   ([Blazor](docs/features/blazor.md#on-the-server)).

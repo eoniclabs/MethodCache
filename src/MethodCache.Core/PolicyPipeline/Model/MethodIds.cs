@@ -134,6 +134,8 @@ internal static class MethodIds
     }
 
     /// <summary>The id of <paramref name="method"/>, named by the type that declares it.</summary>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2075",
+        Justification = "The method's overloads are members of a cached interface, and its generated decorator calls every one of them, so trimming keeps them.")]
     public static string For(MethodInfo method)
     {
         ArgumentNullException.ThrowIfNull(method);
@@ -202,7 +204,15 @@ internal static class MethodIds
     /// A parameter type as the generator writes it: C# keywords for built-in types, otherwise the qualified name with
     /// its type arguments, <c>?</c> for nullable value types and <c>[]</c> for arrays.
     /// </summary>
-    private static void AppendParameterType(StringBuilder builder, Type type)
+    private static void AppendParameterType(StringBuilder builder, Type type) => AppendParameterType(builder, type, null);
+
+    /// <param name="builder">Where the name is written.</param>
+    /// <param name="type">The type to name.</param>
+    /// <param name="typeArguments">
+    /// The type arguments of <paramref name="type"/> when it is a generic definition that encloses a nested type: its
+    /// arguments come from the nested type, so the closed type never has to be made (Native AOT may not have it).
+    /// </param>
+    private static void AppendParameterType(StringBuilder builder, Type type, Type[]? typeArguments)
     {
         if (type.IsByRef)
         {
@@ -235,16 +245,11 @@ internal static class MethodIds
             return;
         }
 
-        var arguments = type.IsGenericType ? type.GetGenericArguments() : Type.EmptyTypes;
+        var arguments = typeArguments ?? (type.IsGenericType ? type.GetGenericArguments() : Type.EmptyTypes);
         var inherited = type.DeclaringType?.GetGenericArguments().Length ?? 0;
         if (type.DeclaringType is { } declaringType)
         {
-            if (inherited > 0)
-            {
-                declaringType = declaringType.GetGenericTypeDefinition().MakeGenericType(arguments.Take(inherited).ToArray());
-            }
-
-            AppendParameterType(builder, declaringType);
+            AppendParameterType(builder, declaringType, inherited > 0 ? arguments.Take(inherited).ToArray() : null);
             builder.Append('.');
         }
         else if (!type.IsGenericParameter && !string.IsNullOrEmpty(type.Namespace))

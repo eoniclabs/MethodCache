@@ -65,6 +65,8 @@ internal class FastHashKeyGenerator : ICacheKeyGenerator
     }
 
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026", Justification = KeyArguments.InterfaceJustification)]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050", Justification = KeyArguments.InterfaceJustification)]
     public string GenerateKey(string methodName, object?[] args, CacheRuntimePolicy policy)
         => GenerateKey(methodName, args, policy.Version);
 
@@ -85,9 +87,13 @@ internal class FastHashKeyGenerator : ICacheKeyGenerator
         return new PreparedPrefix(methodName, version, prefix, writer.WrittenSpan.ToArray());
     }
 
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(KeyArguments.ReflectionMessage)]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode(KeyArguments.ReflectionMessage)]
     internal string GenerateKey(PreparedPrefix prefix, object?[] args)
         => GenerateKey(prefix.MethodName, args, prefix.Version, prefix);
 
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(KeyArguments.ReflectionMessage)]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode(KeyArguments.ReflectionMessage)]
     private static string GenerateKey(string methodName, object?[] args, int? version, PreparedPrefix? prepared = null)
     {
         var writer = t_writer ?? new ArrayBufferWriter<byte>(256);
@@ -134,6 +140,8 @@ internal class FastHashKeyGenerator : ICacheKeyGenerator
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(KeyArguments.ReflectionMessage)]
+    [System.Diagnostics.CodeAnalysis.RequiresDynamicCode(KeyArguments.ReflectionMessage)]
     private static void WriteArgument(ArrayBufferWriter<byte> writer, object? arg)
     {
         switch (arg)

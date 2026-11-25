@@ -103,9 +103,11 @@ public static async Task SignOutAsync(ICacheAdministrator cache)
 ```
 <!-- endSnippet -->
 
-- Publishing trims the app, and MethodCache needs nothing extra for it. If you set `TrimMode` to `full`, give
-  cached methods the arguments listed [under Native AOT](native-aot.md#keys), since the members of other argument
-  types can be trimmed away.
+- Publishing trims the app, MethodCache included, and MethodCache needs nothing extra for it. With the trim analyzer
+  on (`<EnableTrimAnalyzer>true</EnableTrimAnalyzer>`), a cached method whose arguments need reflection for the key
+  gets a warning (IL2026) on its generated decorator. Give it the arguments listed
+  [under Native AOT](native-aot.md#keys), above all with `TrimMode` set to `full`, which can trim away the members of
+  other argument types.
 
 ## Prerendering and `InteractiveAuto`
 
