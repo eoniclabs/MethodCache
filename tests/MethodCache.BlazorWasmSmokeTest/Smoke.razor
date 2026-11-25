@@ -1,0 +1,56 @@
+@inject IProducts Products
+@inject Loads Loads
+@inject ICacheAdministrator Cache
+@inject FakeTimeProvider Time
+
+<pre id="result">@_result</pre>
+
+@code {
+    private string _result = "running";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var log = new System.Text.StringBuilder();
+        void Check(string name, bool ok, string detail = "") => log.AppendLine($"{(ok ? "PASS" : "FAIL")} {name} {detail}");
+        try
+        {
+            var first = await Products.GetAsync(1);
+            var second = await Products.GetAsync(1);
+            Check("hit", second.Load == first.Load, $"loads={Loads.Count}");
+
+            var loadsBefore = Loads.Count;
+            var together = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Products.GetAsync(2)));
+            Check("one load for concurrent callers", Loads.Count == loadsBefore + 1 && together.All(p => p.Load == together[0].Load));
+
+            await Products.UpdateAsync(1);
+            Check("tag invalidation", (await Products.GetAsync(1)).Load != first.Load);
+
+            var beforeExpiry = await Products.GetAsync(3);
+            Time.Advance(TimeSpan.FromMinutes(11));
+            Check("expiry", (await Products.GetAsync(3)).Load != beforeExpiry.Load);
+
+            var fresh = await Products.GetFreshAsync(4);
+            Time.Advance(TimeSpan.FromMinutes(9.5));
+            Check("refresh-ahead serves the cached value", (await Products.GetFreshAsync(4)).Load == fresh.Load);
+            // The reload runs in the background on the browser's one thread: give it turns until it has stored its value
+            var refreshed = false;
+            for (var i = 0; i < 200 && !refreshed; i++)
+            {
+                await Task.Delay(10);
+                refreshed = (await Products.GetFreshAsync(4)).Load != fresh.Load;
+            }
+            Check("refresh-ahead reloads in the background", refreshed);
+
+            var beforeClear = await Products.GetAsync(5);
+            await Cache.ClearAsync();
+            Check("clear", (await Products.GetAsync(5)).Load != beforeClear.Load);
+        }
+        catch (Exception ex)
+        {
+            Check("no exception", false, ex.ToString());
+        }
+
+        log.AppendLine("DONE");
+        _result = log.ToString();
+    }
+}

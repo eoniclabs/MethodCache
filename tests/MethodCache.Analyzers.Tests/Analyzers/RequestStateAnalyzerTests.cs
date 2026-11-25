@@ -13,6 +13,9 @@ using System.Threading.Tasks;
 using MethodCache;
 
 namespace Microsoft.AspNetCore.Http { public interface IHttpContextAccessor { } public abstract class HttpContext { } }
+namespace Microsoft.AspNetCore.Components.Authorization { public abstract class AuthenticationStateProvider { } }
+namespace Microsoft.AspNetCore.Components.Server { public class ServerAuthenticationStateProvider : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider { } }
+namespace Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage { public abstract class ProtectedBrowserStorage { } public sealed class ProtectedSessionStorage : ProtectedBrowserStorage { } }
 
 public interface IPrices
 {
@@ -30,6 +33,9 @@ public interface IPlain
         [InlineData("public sealed class Prices(Microsoft.AspNetCore.Http.IHttpContextAccessor http) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "IHttpContextAccessor")]
         [InlineData("public sealed class Prices : IPrices { public Prices(ClaimsPrincipal user) { } public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "ClaimsPrincipal")]
         [InlineData("public class Prices(int scale, Microsoft.AspNetCore.Http.HttpContext context) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "HttpContext")]
+        [InlineData("public sealed class Prices(Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider auth) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "AuthenticationStateProvider")]
+        [InlineData("public sealed class Prices(Microsoft.AspNetCore.Components.Server.ServerAuthenticationStateProvider auth) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "ServerAuthenticationStateProvider")]
+        [InlineData("public sealed class Prices(Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedSessionStorage session) : IPrices { public Task<decimal> GetAsync(int id) => Task.FromResult(1m); }", "ProtectedSessionStorage")]
         public async Task CachedImplementation_TakingRequestState_IsReported(string declaration, string typeName)
         {
             var diagnostic = Assert.Single(await AnalyzeAsync(Header + declaration));

@@ -312,7 +312,8 @@ a cached one ([cached objects are shared](../features/memory-cache.md#cached-obj
 ## MC0026
 
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
-`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`, and in Blazor
+`AuthenticationStateProvider` or `ProtectedSessionStorage`/`ProtectedLocalStorage`. It is reported too
 when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
 directly or through a factory such as `IDbContextFactory<T>`. The analyzer follows constructors two levels down (the
 class the implementation takes, and a class that class takes), and follows an interface to the classes that implement

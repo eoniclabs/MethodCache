@@ -23,7 +23,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 jobs=("$@")
 collect_output="${METHODCACHE_CI_COLLECT_BUILD_OUTPUT:-false}"
 if [ ${#jobs[@]} -eq 0 ]; then
-  jobs=(build demo tests diffcoverage properties soak cultures aot packages docs)
+  jobs=(build demo tests diffcoverage properties soak cultures aot wasm packages docs)
   collect_output="${METHODCACHE_CI_COLLECT_BUILD_OUTPUT:-true}"
 fi
 
