@@ -35,6 +35,7 @@ rules, for when a guide isn't enough.
 - [Monitoring](features/monitoring.md): statistics, admin endpoints, health check and OpenTelemetry.
 - [Memory cache](features/memory-cache.md): size limits, null values and jitter.
 - [Native AOT](features/native-aot.md): what to register when you publish with Native AOT.
+- [Blazor](features/blazor.md): Blazor Server, WebAssembly, prerendering and `InteractiveAuto`.
 - [Testing](features/testing.md): test with caching on or off, count loads and invalidations, and check that every tag has an invalidation.
 - [Security](security.md): what each package protects against, and what it leaves to you.
 

@@ -9,6 +9,8 @@
 #   build/ci/jobs.sh unit       every test except the Docker-backed ones (Windows and macOS), on net10.0
 #   build/ci/jobs.sh cultures   the unit tests under tr-TR and sv-SE
 #   build/ci/jobs.sh aot        publish and run tests/MethodCache.AotSmokeTest with Native AOT
+#   build/ci/jobs.sh wasm       publish tests/MethodCache.BlazorWasmSmokeTest for the browser and run it in headless
+#                               Chromium (needs Node.js and Playwright, as in the build image)
 #   build/ci/jobs.sh packages   pack all 10 packages, install them in apps (needs METHODCACHE_REDIS_URL,
 #                               METHODCACHE_SQLSERVER_CONNECTION and METHODCACHE_POSTGRESQL_CONNECTION)
 #   build/ci/jobs.sh docs       the docs snippets and llms.txt match their sources
@@ -78,6 +80,31 @@ job_cultures() {
     LANG="$culture.UTF-8" LC_ALL="$culture.UTF-8" \
       dotnet test "$solution" --configuration Release --no-build --framework net10.0 --filter "$without_docker"
   done
+}
+
+job_wasm() {
+  rm -rf artifacts/wasm-smoke
+  dotnet publish tests/MethodCache.BlazorWasmSmokeTest --configuration Release --output artifacts/wasm-smoke
+  local port log server code=0
+  log=$(mktemp)
+  # Port 0: the OS picks a free one, and the server prints it
+  python3 -u -m http.server 0 --bind 127.0.0.1 --directory artifacts/wasm-smoke/wwwroot > "$log" 2>&1 &
+  server=$!
+  for _ in $(seq 1 50); do
+    port=$(sed -nE 's/.*port ([0-9]+).*/\1/p' "$log" | head -1)
+    [ -n "$port" ] && break
+    sleep 0.1
+  done
+  if [ -z "$port" ]; then
+    kill "$server" 2>/dev/null || true
+    cat "$log"
+    echo "The web server for the WebAssembly smoke test did not start" >&2
+    return 1
+  fi
+  node tests/MethodCache.BlazorWasmSmokeTest/run.mjs "http://127.0.0.1:$port/" || code=$?
+  kill "$server" 2>/dev/null || true
+  rm -f "$log"
+  return "$code"
 }
 
 job_aot() {

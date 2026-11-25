@@ -93,11 +93,11 @@ after checking that no build or container still uses it; never apply global Dock
 
 | Script | Runs on | What it does |
 |---|---|---|
-| `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `webdemo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
+| `jobs.sh <job>...` | anything with the .NET 10 SDK | the jobs themselves: `build`, `demo`, `webdemo`, `tests`, `diffcoverage`, `unit`, `cultures`, `aot`, `wasm`, `packages`, `docs`, and the longer `properties`, `soak` and `mutation` |
 | `diff_coverage.py` | | the share of changed lines under `src/` that a Cobertura report covers (used by `diffcoverage`) |
 | `linux.sh [job...]` | Linux with Docker | every Linux job inside the build image (`Dockerfile`), with Redis and SQL Server for the package apps |
 | `windows.ps1 [job...]` | Windows | `build` and `unit` (the Docker-backed tests run on Linux only) |
-| `Dockerfile` | | the Linux build image: .NET 10 SDK, clang for Native AOT, Python |
+| `Dockerfile` | | the Linux build image: .NET 10 SDK, clang for Native AOT, Python, Node.js with Playwright's Chromium |
 | `coordinator.sh` | Megatron (macOS) | finds commits without a result, runs the three platforms and posts the results to GitHub |
 | `install-coordinator.sh` | Megatron | checks the servers and installs the coordinator as a LaunchAgent |
 | `coordinator-state.py` | Megatron, Python 3 | validates/reuses complete results and collects owned idle macOS checkouts |
@@ -134,6 +134,14 @@ base with `origin/main` ran. It prints each uncovered changed line. `DIFF_COVERA
 `DIFF_COVERAGE_BASE` the commit to compare with. It is in the default `linux.sh` job list, after `tests`, and
 needs the full history and `origin/main` (the build servers clone both). It takes about 1.5 min
 (the net10.0 test run with coverage).
+
+## Blazor WebAssembly smoke test
+
+`jobs.sh wasm` publishes `tests/MethodCache.BlazorWasmSmokeTest` for the browser, trimmed as Blazor publishes by
+default, serves it from a local web server and opens it in headless Chromium with `run.mjs`. The page checks hits, one
+load for concurrent callers, tag invalidation, expiry, refresh-ahead in the background and `ClearAsync` on the
+browser's single thread without a generic host, and the job fails on a failed check, a browser console error or a
+trim warning. It needs Node.js and the `playwright` package (found through `NODE_PATH`), which the build image has.
 
 ## Native AOT contract checks
 

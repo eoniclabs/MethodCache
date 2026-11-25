@@ -91,7 +91,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
   `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
 - The key holds only the method's arguments. A cached implementation must not read the current user or request
-  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026), directly or through a
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, Blazor's `AuthenticationStateProvider`, row-level security on the
+  connection; MC0026), directly or through a
   `DbContext` set up for the signed-in user: pass the user or tenant id as an argument instead. With row-level
   security, give cached reads a context of their own from `IDbContextFactory<T>` that sets what the policies read from
   the method's arguments, and check in the endpoint that the user may read it.
@@ -217,6 +218,7 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `CachedServices`,
   `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
+- `blazor.md`: Blazor Server, WebAssembly (memory only, per tab), prerendering and `InteractiveAuto`.
 - `source-generator.md`: what the generated decorator does.
 
 ## Namespaces
@@ -951,6 +953,18 @@ when Prometheus scrapes. ([Hit ratio per method](https://github.com/eoniclabs/Me
 
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md))
+
+**Does MethodCache work in Blazor?**
+Yes. On the server (Blazor Server, `InteractiveServer`, prerendering) it works as in any ASP.NET Core app, with a
+distributed cache if you add one. In Blazor WebAssembly it caches in memory, per browser tab. ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md))
+
+**How do I cache per user in Blazor Server?**
+Read the user from `AuthenticationStateProvider` outside the cached service and pass the user's id as an argument.
+MC0026 warns when a cached implementation takes `AuthenticationStateProvider`. ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md#on-the-server))
+
+**What do I cache in Blazor WebAssembly, and what happens when the user signs out?**
+Cache the client that calls your API. Call `ICacheAdministrator.ClearAsync()` before signing out, so the next user of
+the tab doesn't see the previous user's results. ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md#in-the-browser))
 
 ## Testing
 
@@ -4039,6 +4053,125 @@ implements `ICacheKeyProvider`, as `TenantId` does in [Cache keys](https://githu
 
 ---
 
+<!-- source: docs/features/blazor.md -->
+
+# Blazor
+
+MethodCache works in Blazor apps without anything Blazor-specific to install: put `[Cache]` on an interface, register
+it and call `AddMethodCache()`, as in [Getting started](https://github.com/eoniclabs/MethodCache/blob/main/docs/getting-started.md). Where the code runs decides what is
+cached and who shares it:
+
+| Where the code runs | Who shares a cached result | Distributed cache |
+|---|---|---|
+| On the server: Blazor Server, `InteractiveServer`, static server rendering and prerendering | Every user and circuit of the app instance | Redis, SQL Server or PostgreSQL, as in any ASP.NET Core app |
+| In the browser: Blazor WebAssembly, `InteractiveWebAssembly` | One browser tab, until it is reloaded or closed | None: the browser can't reach them |
+
+`InteractiveAuto` runs a component on the server first and in the browser later, so it uses both caches. They are
+separate: an invalidation in one doesn't reach the other.
+
+CI publishes a Blazor WebAssembly app on every change and runs it in a headless browser: hits, one load for concurrent
+callers, tag invalidation, expiry, refresh-ahead and clearing the cache.
+
+## On the server
+
+A Blazor Server app, and every component the server renders in a Blazor Web App, is an ASP.NET Core app, and the rest
+of these docs apply as they are. Two things differ from a web API:
+
+- A scoped service lives as long as the user's circuit, not one request. The cached results are still shared by
+  every user, whatever the lifetime of the service.
+- In an interactive component there is no `HttpContext`. The signed-in user comes from `AuthenticationStateProvider`.
+
+A cached implementation must not read the signed-in user, because the key holds only the method's arguments and the
+next user would get the result. Read the user outside the cached service and pass the user's id as an argument:
+
+```cs
+public interface IOrders
+{
+    [Cache(Duration = "5m")]
+    Task<IReadOnlyList<Order>> ForUserAsync(string userId);
+}
+
+// Not cached: reads the signed-in user of the circuit and passes the id on, so it is part of the key
+public sealed class MyOrders(AuthenticationStateProvider auth, IOrders orders)
+{
+    public async Task<IReadOnlyList<Order>> GetAsync()
+    {
+        var state = await auth.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("Nobody is signed in.");
+        return await orders.ForUserAsync(userId);
+    }
+}
+```
+
+[MC0026](https://github.com/eoniclabs/MethodCache/blob/main/docs/user-guide/DIAGNOSTICS.md#mc0026) warns when a cached implementation takes `AuthenticationStateProvider`,
+`ProtectedSessionStorage` or `ProtectedLocalStorage`, as it does for `IHttpContextAccessor` and `ClaimsPrincipal`.
+
+## In the browser
+
+Blazor WebAssembly runs the same `MethodCache` package in the browser, in memory only. Caching there saves calls to
+your server: cache the client that calls your API, and each result is fetched once per tab until it expires or is
+invalidated.
+
+```cs
+public interface ICatalog
+{
+    [Cache(Duration = "10m")]
+    Task<IReadOnlyList<Product>> SearchAsync(string text);
+}
+
+// In the WebAssembly project: each search reaches the server once per browser tab within ten minutes
+public sealed class CatalogClient(HttpClient http) : ICatalog
+{
+    public async Task<IReadOnlyList<Product>> SearchAsync(string text)
+        => await http.GetFromJsonAsync<List<Product>>($"api/products?text={Uri.EscapeDataString(text)}") ?? [];
+}
+```
+
+```cs
+// Program.cs of the WebAssembly project
+services.AddScoped<ICatalog, CatalogClient>();
+services.AddMethodCache();   // memory only: the browser can't reach Redis, SQL Server or PostgreSQL
+```
+
+- Don't add `MethodCache.Redis`, `MethodCache.SqlServer` or `MethodCache.PostgreSql` to the WebAssembly project.
+  Cache on the server as well when every user should share a result.
+- The cache is gone when the tab is reloaded or closed. Two tabs have a cache each, and an invalidation in one tab
+  doesn't reach the other.
+- Everything cached in the tab belongs to the user who is signed in there. Clear the cache before that user signs
+  out, so the next user of the tab doesn't see those results:
+
+```cs
+// Before signing out in the browser, so the next user of this tab doesn't see the previous user's results
+public static async Task SignOutAsync(ICacheAdministrator cache)
+{
+    await cache.ClearAsync();
+    // ... then sign out as usual
+}
+```
+
+- Publishing trims the app, and MethodCache needs nothing extra for it. If you set `TrimMode` to `full`, give
+  cached methods the arguments listed [under Native AOT](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/native-aot.md#keys), since the members of other argument
+  types can be trimmed away.
+
+## Prerendering and `InteractiveAuto`
+
+A prerendered component runs twice: once on the server to produce the first HTML, and again when it becomes
+interactive, and a component that loads data in `OnInitializedAsync` loads it both times. With `InteractiveServer`
+both runs are on the server, so the second is a cache hit when the cached method gets the same arguments. With
+`InteractiveWebAssembly` or `InteractiveAuto` the second run is in the browser, whose cache is new, so the call is made
+again. Keep the prerendered data with Blazor's `[PersistentState]` on the component's property, and the browser
+doesn't load it a second time.
+
+With `InteractiveAuto` the interface usually has two implementations: one on the server that reads the database, and
+one in the client project that calls your API. Put `[Cache]` and `[CacheInvalidate]` on the interface they share, and
+each side caches its own calls. A write clears the cache of the side that makes it: called in the browser, it clears
+the browser's copy, and your API, which runs the server's implementation, clears the server's. Other tabs and other
+users' browsers keep their copy until it expires, so give results that change often a short `Duration`.
+
+
+---
+
 <!-- source: docs/features/testing.md -->
 
 # Testing
@@ -5260,7 +5393,8 @@ a cached one ([cached objects are shared](https://github.com/eoniclabs/MethodCac
 ## MC0026
 
 A class implements an interface with `[Cache]` methods and takes per-request state in its constructor:
-`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`. It is reported too
+`IHttpContextAccessor`, `HttpContext`, `HttpRequest`, `ClaimsPrincipal` or another `IPrincipal`, and in Blazor
+`AuthenticationStateProvider` or `ProtectedSessionStorage`/`ProtectedLocalStorage`. It is reported too
 when it takes a class whose constructor takes that state, such as a `DbContext` that filters rows by the signed-in user,
 directly or through a factory such as `IDbContextFactory<T>`. The analyzer follows constructors two levels down (the
 class the implementation takes, and a class that class takes), and follows an interface to the classes that implement
@@ -7103,6 +7237,9 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - MethodCache.AspNetCore: `MethodCacheAdminAction.OverrideMetadata` gives the audit function the `Owner`, `Reason`,
   `Ticket` and `ExpiresAt` of an override set over HTTP, and `MethodCacheAdminAction` has a public constructor, so a
   test can call an audit function ([Audit](https://github.com/eoniclabs/MethodCache/blob/main/src/MethodCache.AspNetCore/README.md#audit)).
+- MC0026 also warns when a cached implementation takes Blazor's `AuthenticationStateProvider`, `ProtectedSessionStorage`
+  or `ProtectedLocalStorage`, which read the signed-in user of the circuit or the browser
+  ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md#on-the-server)).
 
 ### Fixed
 
@@ -7116,6 +7253,8 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   ([Switching all caching off and on again](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/configuration.md#switching-all-caching-off-and-on-again)).
 - The audit section says what the record holds, that it has no before and after, and how to read the overrides a
   change replaces.
+- A Blazor page covers Blazor Server, WebAssembly (in memory, per browser tab), prerendering and `InteractiveAuto`
+  ([Blazor](https://github.com/eoniclabs/MethodCache/blob/main/docs/features/blazor.md)).
 
 ## 1.0.0-rc.20 (2026-11-11)
 

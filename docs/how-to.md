@@ -487,6 +487,18 @@ when Prometheus scrapes. ([Hit ratio per method](features/monitoring.md#hit-rati
 **How do I publish with Native AOT?**
 Register your `JsonSerializerContext` with `mc.UseJson(AppJsonContext.Default)`. ([Native AOT](features/native-aot.md))
 
+**Does MethodCache work in Blazor?**
+Yes. On the server (Blazor Server, `InteractiveServer`, prerendering) it works as in any ASP.NET Core app, with a
+distributed cache if you add one. In Blazor WebAssembly it caches in memory, per browser tab. ([Blazor](features/blazor.md))
+
+**How do I cache per user in Blazor Server?**
+Read the user from `AuthenticationStateProvider` outside the cached service and pass the user's id as an argument.
+MC0026 warns when a cached implementation takes `AuthenticationStateProvider`. ([Blazor](features/blazor.md#on-the-server))
+
+**What do I cache in Blazor WebAssembly, and what happens when the user signs out?**
+Cache the client that calls your API. Call `ICacheAdministrator.ClearAsync()` before signing out, so the next user of
+the tab doesn't see the previous user's results. ([Blazor](features/blazor.md#in-the-browser))
+
 ## Testing
 
 **How do I turn caching off in tests?**

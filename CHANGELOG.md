@@ -21,6 +21,9 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
 - MethodCache.AspNetCore: `MethodCacheAdminAction.OverrideMetadata` gives the audit function the `Owner`, `Reason`,
   `Ticket` and `ExpiresAt` of an override set over HTTP, and `MethodCacheAdminAction` has a public constructor, so a
   test can call an audit function ([Audit](src/MethodCache.AspNetCore/README.md#audit)).
+- MC0026 also warns when a cached implementation takes Blazor's `AuthenticationStateProvider`, `ProtectedSessionStorage`
+  or `ProtectedLocalStorage`, which read the signed-in user of the circuit or the browser
+  ([Blazor](docs/features/blazor.md#on-the-server)).
 
 ### Fixed
 
@@ -34,6 +37,8 @@ Nothing to change: the cache keys are the same as in 1.0.0-rc.20, and the public
   ([Switching all caching off and on again](docs/features/configuration.md#switching-all-caching-off-and-on-again)).
 - The audit section says what the record holds, that it has no before and after, and how to read the overrides a
   change replaces.
+- A Blazor page covers Blazor Server, WebAssembly (in memory, per browser tab), prerendering and `InteractiveAuto`
+  ([Blazor](docs/features/blazor.md)).
 
 ## 1.0.0-rc.20 (2026-11-11)
 

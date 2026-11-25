@@ -86,7 +86,8 @@ builder.Services.AddMethodCache();                               // after your r
 - Cached objects are shared between callers: return immutable types such as records. Never cache `JsonNode`,
   `JsonObject`, `DataTable` or a `Stream` (MC0025); return a record, a string or a `JsonElement`.
 - The key holds only the method's arguments. A cached implementation must not read the current user or request
-  (`IHttpContextAccessor`, `ClaimsPrincipal`, row-level security on the connection; MC0026), directly or through a
+  (`IHttpContextAccessor`, `ClaimsPrincipal`, Blazor's `AuthenticationStateProvider`, row-level security on the
+  connection; MC0026), directly or through a
   `DbContext` set up for the signed-in user: pass the user or tenant id as an argument instead. With row-level
   security, give cached reads a context of their own from `IDbContextFactory<T>` that sets what the policies read from
   the method's arguments, and check in the endpoint that the user may read it.
@@ -212,6 +213,7 @@ https://github.com/eoniclabs/MethodCache/tree/main/docs/features. Read the one f
 - `testing.md`: tests with and without caching, `MethodCache.Testing` (recorder, fake clock, `CachedServices`,
   `TagCoverage`), time.
 - `native-aot.md`: trimming and Native AOT.
+- `blazor.md`: Blazor Server, WebAssembly (memory only, per tab), prerendering and `InteractiveAuto`.
 - `source-generator.md`: what the generated decorator does.
 
 ## Namespaces

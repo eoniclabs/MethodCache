@@ -25,6 +25,9 @@ namespace MethodCache.Internal
             "Microsoft.AspNetCore.Http.IHttpContextAccessor",
             "Microsoft.AspNetCore.Http.HttpContext",
             "Microsoft.AspNetCore.Http.HttpRequest",
+            // Blazor: the signed-in user of the circuit or the browser, and that user's browser storage
+            "Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider",
+            "Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedBrowserStorage",
             "System.Security.Claims.ClaimsPrincipal",
             "System.Security.Principal.IPrincipal");
 
